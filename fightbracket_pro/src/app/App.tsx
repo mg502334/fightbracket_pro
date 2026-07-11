@@ -300,6 +300,7 @@ export default function App() {
     let newThemes: Record<string, GameTheme> = {};
     
     events.forEach((ev: any) => {
+      if (!ev.videogame) return; // Skip events without a videogame
       const gameId = `startgg-${ev.videogame.id}`;
       if (!gameOrder.includes(gameId) && !newGameIds.includes(gameId)) {
         newGameIds.push(gameId);
