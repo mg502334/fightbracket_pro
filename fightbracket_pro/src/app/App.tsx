@@ -432,10 +432,15 @@ export default function App() {
         if (s1 != null && s1 >= 0) p1Score = s1;
         if (s2 != null && s2 >= 0) p2Score = s2;
         
+        let parsedRound = set.round || 1;
+        if (set.fullRoundText && set.fullRoundText.toLowerCase().includes('reset')) {
+          parsedRound += 0.1;
+        }
+
         newMatches.push({
           id: String(set.id),
           gameId,
-          round: set.round || 1,
+          round: parsedRound,
           roundName: set.fullRoundText || `Round ${set.round || 1}`,
           matchNumber: idx + 1,
           player1Id: p1 ? String(p1) : null,
