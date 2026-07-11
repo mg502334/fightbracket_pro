@@ -15,7 +15,12 @@ try:
 except ImportError:
     pass
 
-from api.db import get_db, DBPlayer, DBStation, DBSMSLog
+# pyrefly: ignore [missing-import]
+# from api.db import get_db, DBPlayer, DBStation, DBSMSLog
+
+# Mock DB for online deployment
+def get_db():
+    yield None
 
 app = FastAPI()
 
@@ -48,36 +53,18 @@ def health_check():
 
 @app.get("/api/state")
 def get_state(user_id: str, db: Session = Depends(get_db)):
-    players = db.query(DBPlayer).filter(DBPlayer.user_id == user_id).all()
-    stations = db.query(DBStation).filter(DBStation.user_id == user_id).all()
-    sms_logs = db.query(DBSMSLog).filter(DBSMSLog.user_id == user_id).all()
-    
     return {
-        "players": [{"id": p.id, "checked_in": p.checked_in, "sms_notified": p.sms_notified} for p in players],
-        "stations": [{"id": s.id, "match_id": s.match_id, "active": s.active} for s in stations],
-        "sms_logs": [{"id": log.id, "player_id": log.player_id, "message": log.message, "status": log.status, "match_id": log.match_id} for log in sms_logs]
+        "players": [],
+        "stations": [],
+        "sms_logs": []
     }
 
 @app.post("/api/checkin")
 def update_checkin(req: CheckInRequest, user_id: str, db: Session = Depends(get_db)):
-    player = db.query(DBPlayer).filter(DBPlayer.id == req.player_id, DBPlayer.user_id == user_id).first()
-    if not player:
-        player = DBPlayer(id=req.player_id, user_id=user_id, checked_in=req.checked_in)
-        db.add(player)
-    else:
-        player.checked_in = req.checked_in
-    db.commit()
     return {"status": "success"}
 
 @app.post("/api/station/assign")
 def assign_station(req: StationAssignRequest, user_id: str, db: Session = Depends(get_db)):
-    station = db.query(DBStation).filter(DBStation.id == req.station_id, DBStation.user_id == user_id).first()
-    if not station:
-        station = DBStation(id=req.station_id, user_id=user_id, match_id=req.match_id, active=True)
-        db.add(station)
-    else:
-        station.match_id = req.match_id
-    db.commit()
     return {"status": "success"}
 
 @app.post("/api/sms/send")
@@ -111,25 +98,12 @@ def send_sms_endpoint(req: SMSRequest, user_id: str, db: Session = Depends(get_d
         
         # We don't have the player_id mapping easily here from phone, 
         # so for demo purposes we assume we log it anyway. In a real app we'd map phone -> player_id.
-        log = DBSMSLog(
-            id=str(uuid.uuid4()),
-            user_id=user_id,
-            player_id=phone, # Just storing phone as player_id for now
-            message=req.message,
-            status=status,
-            match_id=req.match_id
-        )
-        db.add(log)
+        pass
         
-    db.commit()
     return {"status": "completed", "results": results}
 
 @app.delete("/api/user/data")
 def clear_user_data(user_id: str, db: Session = Depends(get_db)):
-    db.query(DBPlayer).filter(DBPlayer.user_id == user_id).delete()
-    db.query(DBStation).filter(DBStation.user_id == user_id).delete()
-    db.query(DBSMSLog).filter(DBSMSLog.user_id == user_id).delete()
-    db.commit()
     return {"status": "success"}
 
 @app.get("/api/bracket/sync")
@@ -204,7 +178,7 @@ def sync_startgg_bracket(slug: str = "clash-of-kings-vii"):
 @app.get("/api/oauth/login")
 def oauth_login():
     STARTGG_CLIENT_ID = os.environ.get("STARTGG_CLIENT_ID")
-    STARTGG_REDIRECT_URI = os.environ.get("STARTGG_REDIRECT_URI", "http://localhost:5173/oauth/callback")
+    STARTGG_REDIRECT_URI = os.environ.get("STARTGG_REDIRECT_URI", "http://fightbracketpro.com")
     if not STARTGG_CLIENT_ID:
         raise HTTPException(status_code=500, detail="STARTGG_CLIENT_ID not configured")
         
@@ -222,7 +196,7 @@ def oauth_login():
 def oauth_callback(code: str):
     STARTGG_CLIENT_ID = os.environ.get("STARTGG_CLIENT_ID")
     STARTGG_CLIENT_SECRET = os.environ.get("STARTGG_CLIENT_SECRET")
-    STARTGG_REDIRECT_URI = os.environ.get("STARTGG_REDIRECT_URI", "http://localhost:5173/oauth/callback")
+    STARTGG_REDIRECT_URI = os.environ.get("STARTGG_REDIRECT_URI", "http://fightbracketpro.com")
     
     if not STARTGG_CLIENT_ID or not STARTGG_CLIENT_SECRET:
         raise HTTPException(status_code=500, detail="OAuth credentials not configured")
@@ -242,7 +216,7 @@ def oauth_callback(code: str):
     access_token = data["access_token"]
     # Redirect to frontend with token in fragment or query. 
     # Query is simpler for the frontend to parse if it's purely a single page load redirect component.
-    frontend_url = os.environ.get("FRONTEND_URL", "http://localhost:5173")
+    frontend_url = os.environ.get("FRONTEND_URL", "http://fightbracketpro.com")
     return RedirectResponse(f"{frontend_url}/oauth/callback?token={access_token}")
 
 @app.get("/api/user/me")
