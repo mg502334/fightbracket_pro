@@ -107,10 +107,10 @@ def clear_user_data(user_id: str, db: Session = Depends(get_db)):
     return {"status": "success"}
 
 @app.get("/api/bracket/sync")
-def sync_startgg_bracket(slug: str = "clash-of-kings-vii"):
-    STARTGG_TOKEN = os.environ.get("STARTGG_API_TOKEN")
+def sync_startgg_bracket(slug: str = "clash-of-kings-vii", token: str = None):
+    STARTGG_TOKEN = token or os.environ.get("STARTGG_API_TOKEN")
     if not STARTGG_TOKEN:
-        raise HTTPException(status_code=400, detail="STARTGG_API_TOKEN is not set in environment.")
+        raise HTTPException(status_code=400, detail="Start.gg API token is required. Please login first.")
 
     headers = {
         "Authorization": f"Bearer {STARTGG_TOKEN}",

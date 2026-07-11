@@ -3,7 +3,7 @@ import { Toaster, toast } from "sonner";
 import { motion, AnimatePresence } from "motion/react";
 import {
   Trophy, GitBranch, UserCheck, Monitor, MessageSquare, Smartphone,
-  ExternalLink, RefreshCw, Zap, MapPin, Globe, Moon, Sun
+  ExternalLink, RefreshCw, Zap, MapPin, Globe, Moon, Sun, X
 } from "lucide-react";
 import { useTheme } from "next-themes";
 
@@ -146,6 +146,17 @@ export default function App() {
     });
   };
 
+  const handleRemoveGame = (e: React.MouseEvent, gameIdToRemove: string) => {
+    e.stopPropagation();
+    setGameOrder(prev => prev.filter(id => id !== gameIdToRemove));
+    if (activeGame === gameIdToRemove) {
+      const nextOrder = gameOrder.filter(id => id !== gameIdToRemove);
+      setActiveGame(nextOrder.length > 0 ? nextOrder[0] : null);
+    }
+    setPlayers(prev => prev.filter(p => p.gameId !== gameIdToRemove));
+    setMatches(prev => prev.filter(m => m.gameId !== gameIdToRemove));
+  };
+
   const theme: GameTheme | null = activeGame ? gameThemes[activeGame] : null;
   const gamePlayers = activeGame ? players.filter(p => p.gameId === activeGame) : [];
   const gameMatches = activeGame ? matches.filter(m => m.gameId === activeGame) : [];
@@ -269,8 +280,13 @@ export default function App() {
   }, [theme?.primaryColor, players, userId]);
 
   async function handleLiveImport(slug: string) {
-    const res = await fetch(`/api/bracket/sync?slug=${encodeURIComponent(slug)}`);
-    if (!res.ok) throw new Error('Failed to fetch tournament from Start.gg');
+    const token = localStorage.getItem('startgg_access_token');
+    const url = `/api/bracket/sync?slug=${encodeURIComponent(slug)}${token ? `&token=${token}` : ''}`;
+    const res = await fetch(url);
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || 'Failed to fetch tournament from Start.gg');
+    }
     
     const { data } = await res.json();
     if (!data?.tournament) throw new Error('Tournament not found or invalid format');
@@ -483,6 +499,15 @@ export default function App() {
                 <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: `${gt.primaryColor}20`, color: gt.primaryColor, fontFamily: 'JetBrains Mono, monospace', fontSize: 9 }}>
                   {liveCount} LIVE
                 </span>
+              )}
+              {isActive && (
+                <div 
+                  onClick={(e) => handleRemoveGame(e, gameId)}
+                  className="ml-1 opacity-50 hover:opacity-100 p-0.5 rounded-full hover:bg-black/20 transition-all"
+                  style={{ color: gt.primaryColor }}
+                >
+                  <X size={12} />
+                </div>
               )}
             </button>
           );
