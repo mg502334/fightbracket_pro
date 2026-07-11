@@ -3,7 +3,7 @@ import { Toaster, toast } from "sonner";
 import { motion, AnimatePresence } from "motion/react";
 import {
   Trophy, GitBranch, UserCheck, Monitor, MessageSquare, Smartphone,
-  ExternalLink, RefreshCw, Zap, MapPin, Globe, Moon, Sun, X
+  ExternalLink, RefreshCw, Zap, MapPin, Globe, Moon, Sun, X, Tv
 } from "lucide-react";
 import { useTheme } from "next-themes";
 
@@ -17,13 +17,14 @@ import { MobileCompanion } from "./components/MobileCompanion";
 import { GameSelectionModal } from "./components/GameSelectionModal";
 import { ImportModal } from "./components/ImportModal";
 import { CallMatchModal } from "./components/CallMatchModal";
+import { StreamsPanel } from "./components/StreamsPanel";
 
 import {
   type BracketMatch, type Player, type Station, type SMSLog, type GameTheme,
   generateMockDataForGame
 } from "./data/tournamentData";
 
-type Tab = 'overview' | 'bracket' | 'checkin' | 'stations' | 'sms' | 'mobile';
+type Tab = 'overview' | 'bracket' | 'checkin' | 'stations' | 'sms' | 'streams' | 'mobile';
 
 const DEFAULT_GAME_ORDER: string[] = ['tekken8', 'sf6', 'fatalFury'];
 const TABS: { id: Tab; label: string; icon: React.ComponentType<{ size?: number }> }[] = [
@@ -32,6 +33,7 @@ const TABS: { id: Tab; label: string; icon: React.ComponentType<{ size?: number 
   { id: 'checkin', label: 'CHECK-IN', icon: UserCheck },
   { id: 'stations', label: 'STATIONS', icon: Monitor },
   { id: 'sms', label: 'SMS', icon: MessageSquare },
+  { id: 'streams', label: 'STREAMS', icon: Tv },
   { id: 'mobile', label: 'MOBILE', icon: Smartphone },
 ];
 
@@ -720,6 +722,12 @@ export default function App() {
               <div>
                 <SectionHeader title="MOBILE COMPANION" subtitle="Preview the player-facing companion app" theme={theme} />
                 <MobileCompanion players={players} matches={matches} theme={theme} />
+              </div>
+            )}
+            {activeTab === 'streams' && (
+              <div>
+                <SectionHeader title="LIVE STREAMS" subtitle="Monitor active broadcast channels" theme={theme} />
+                <StreamsPanel matches={gameMatches} players={gamePlayers} theme={theme} />
               </div>
             )}
           </motion.div>
