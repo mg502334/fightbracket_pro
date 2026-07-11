@@ -29,7 +29,11 @@ export function BracketView({ matches, players, theme, onCallMatch }: BracketVie
 
   const minRound = rounds[0] ?? 0;
   const maxRound = Math.max(...rounds, 0);
-  const r0Count = matchesByRound[minRound]?.length ?? 1;
+  
+  // Find the maximum number of matches in any single round to determine total height
+  const maxMatchesInAnyRound = Math.max(...Object.values(matchesByRound).map(r => r.length), 1);
+  const r0Count = maxMatchesInAnyRound;
+
   // Height unit per first-round match slot
   const UNIT = 90;
   const totalHeight = r0Count * UNIT;
@@ -42,8 +46,8 @@ export function BracketView({ matches, players, theme, onCallMatch }: BracketVie
   }
 
   return (
-    <div className="overflow-auto pb-4">
-      <div className="relative flex gap-0" style={{ minWidth: rounds.length * 220, height: totalHeight + 20 }}>
+    <div className="overflow-auto pb-4 h-full">
+      <div className="relative flex gap-0" style={{ minWidth: rounds.length * 220, height: Math.max(totalHeight + 20, 600) }}>
         {rounds.map((round, roundIdx) => {
           const roundMatches = matchesByRound[round];
           const isLast = round === maxRound;
