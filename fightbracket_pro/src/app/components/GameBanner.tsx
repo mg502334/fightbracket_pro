@@ -7,6 +7,7 @@ interface GameBannerProps {
   entrantCount: number;
   checkedInCount: number;
   activeMatchCount: number;
+  completionPercentage?: number;
 }
 
 const GameLogos: Record<string, React.ReactNode> = {
@@ -33,7 +34,7 @@ const GameLogos: Record<string, React.ReactNode> = {
   ),
 };
 
-export function GameBanner({ theme, entrantCount, checkedInCount, activeMatchCount }: GameBannerProps) {
+export function GameBanner({ theme, entrantCount, checkedInCount, activeMatchCount, completionPercentage = 0 }: GameBannerProps) {
   const isActive = activeMatchCount > 0;
 
   return (
@@ -103,6 +104,11 @@ export function GameBanner({ theme, entrantCount, checkedInCount, activeMatchCou
             >
               <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: theme.primaryColor }} />
               IN PROGRESS
+              {completionPercentage > 0 && (
+                <span className="ml-1 px-1.5 py-0.5 rounded text-[10px]" style={{ background: `${theme.primaryColor}30`, color: theme.primaryColor }}>
+                  {completionPercentage}%
+                </span>
+              )}
             </div>
           )}
         </div>

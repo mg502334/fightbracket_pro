@@ -199,6 +199,8 @@ export default function App() {
     return a.seed - b.seed;
   }) : [];
   const activeMatches = gameMatches.filter(m => m.state === 'in_progress' || m.state === 'called');
+  const completedMatches = gameMatches.filter(m => m.state === 'completed');
+  const completionPercentage = gameMatches.length > 0 ? Math.round((completedMatches.length / gameMatches.length) * 100) : 0;
   const checkedInCount = gamePlayers.filter(p => p.checkedIn).length;
 
   const handleCheckIn = useCallback(async (playerId: string, checked: boolean) => {
@@ -603,7 +605,7 @@ export default function App() {
         <>
           <AnimatePresence mode="wait">
             <motion.div key={activeGame} initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}>
-              <GameBanner theme={theme} entrantCount={gamePlayers.length} checkedInCount={checkedInCount} activeMatchCount={activeMatches.length} />
+              <GameBanner theme={theme} entrantCount={gamePlayers.length} checkedInCount={checkedInCount} activeMatchCount={activeMatches.length} completionPercentage={completionPercentage} />
             </motion.div>
           </AnimatePresence>
 
@@ -769,6 +771,11 @@ function OverviewTab({
   const pendingReadyMatches = matches.filter(m => m.state === 'pending' && m.player1Id && m.player2Id);
   const notCheckedIn = players.filter(p => !p.checkedIn);
 
+  const [playerSearch, setPlayerSearch] = useState('');
+  const filteredPlayers = playerSearch 
+    ? players.filter(p => p.tag.toLowerCase().includes(playerSearch.toLowerCase()) || (p.realName && p.realName.toLowerCase().includes(playerSearch.toLowerCase())))
+    : players;
+
   return (
     <div className="grid gap-4" style={{ gridTemplateColumns: '1fr 1fr' }}>
       {/* Live matches full width */}
@@ -857,15 +864,25 @@ function OverviewTab({
 
       {/* Player Status */}
       <div className="rounded overflow-hidden" style={{ background: 'var(--card)', border: '1px solid rgba(122,158,192,0.15)' }}>
-        <div className="px-5 py-3 border-b flex items-center gap-2" style={{ borderColor: 'rgba(122,158,192,0.1)', background: 'var(--sidebar)' }}>
-          <span className="text-xs tracking-widest" style={{ fontFamily: 'JetBrains Mono, monospace', color: 'var(--foreground)' }}>PLAYER STATUS</span>
-          <span className="ml-auto text-xs opacity-40" style={{ fontFamily: 'JetBrains Mono, monospace' }}>{players.length}</span>
+        <div className="px-5 py-3 border-b flex flex-col gap-3" style={{ borderColor: 'rgba(122,158,192,0.1)', background: 'var(--sidebar)' }}>
+          <div className="flex items-center gap-2">
+            <span className="text-xs tracking-widest" style={{ fontFamily: 'JetBrains Mono, monospace', color: 'var(--foreground)' }}>PLAYER STATUS</span>
+            <span className="ml-auto text-xs opacity-40" style={{ fontFamily: 'JetBrains Mono, monospace' }}>{filteredPlayers.length}</span>
+          </div>
+          <input
+            type="text"
+            placeholder="Search players..."
+            value={playerSearch}
+            onChange={(e) => setPlayerSearch(e.target.value)}
+            className="w-full bg-black/20 border border-white/10 rounded px-3 py-1.5 text-xs text-white placeholder-white/30 focus:outline-none focus:border-white/30 transition-colors"
+            style={{ fontFamily: 'JetBrains Mono, monospace' }}
+          />
         </div>
         <div className="overflow-y-auto" style={{ maxHeight: 300 }}>
-          {players.length === 0 ? (
+          {filteredPlayers.length === 0 ? (
             <div className="py-6 text-center text-xs opacity-40" style={{ fontFamily: 'JetBrains Mono, monospace' }}>No players found</div>
           ) : (
-            players.map(p => {
+            filteredPlayers.map(p => {
               const gt = gameThemes[p.gameId] || { primaryColor: '#aaa', shortName: 'GAME' };
               const isEliminated = p.status === 'eliminated';
               return (
