@@ -153,6 +153,13 @@ def sync_startgg_bracket(slug: str = "clash-of-kings-vii", token: str = None):
                   id
                   name
                 }
+                standing {
+                  stats {
+                    score {
+                      value
+                    }
+                  }
+                }
               }
             }
           }

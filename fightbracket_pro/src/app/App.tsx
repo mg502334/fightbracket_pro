@@ -390,6 +390,13 @@ export default function App() {
         }
         const winnerId = set.winnerId ? String(set.winnerId) : null;
         
+        let p1Score = 0;
+        let p2Score = 0;
+        const s1 = slots[0]?.standing?.stats?.score?.value;
+        const s2 = slots[1]?.standing?.stats?.score?.value;
+        if (s1 != null && s1 >= 0) p1Score = s1;
+        if (s2 != null && s2 >= 0) p2Score = s2;
+        
         newMatches.push({
           id: String(set.id),
           gameId,
@@ -400,8 +407,8 @@ export default function App() {
           player2Id: p2 ? String(p2) : null,
           state: matchState,
           stationId: null,
-          player1Score: 0,
-          player2Score: 0,
+          player1Score: p1Score,
+          player2Score: p2Score,
           winnerId,
           streamUrl,
           bestOf: 3
