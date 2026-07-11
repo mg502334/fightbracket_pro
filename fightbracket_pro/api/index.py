@@ -134,7 +134,7 @@ def sync_startgg_bracket(slug: str = "clash-of-kings-vii", token: str = None):
     query_event = """
     query EventQuery($eventId: ID!) {
       event(id: $eventId) {
-        entrants(query: {page: 1, perPage: 60}) {
+        entrants(query: {page: 1, perPage: 150}) {
           nodes {
             id
             name
@@ -149,7 +149,7 @@ def sync_startgg_bracket(slug: str = "clash-of-kings-vii", token: str = None):
             }
           }
         }
-        sets(page: 1, perPage: 40, sortType: STANDARD) {
+        sets(page: 1, perPage: 100, sortType: RECENT) {
           nodes {
             id
             state
