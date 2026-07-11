@@ -32,16 +32,20 @@ export function StreamsPanel({ matches, players, theme }: StreamsPanelProps) {
     });
 
     // Next, assign the currently active match to the channel (if any)
-    const activeMatches = matches.filter(m => m.state === 'in_progress' || m.state === 'called');
+    // We filter out completed matches and sort by Math.abs(round) descending
+    // This ensures we always pick the deepest bracket match (like Grand Finals) 
+    // over any stale pool matches that were accidentally left in_progress
+    const activeMatches = [...matches]
+      .filter(m => m.state !== 'completed' && m.streamUrl && m.streamUrl.includes('twitch.tv/'))
+      .sort((a, b) => Math.abs(b.round) - Math.abs(a.round));
+      
     activeMatches.forEach(match => {
-      if (match.streamUrl && match.streamUrl.includes('twitch.tv/')) {
-        const regexMatch = match.streamUrl.match(/twitch\.tv\/([^/?]+)/i);
-        if (regexMatch && regexMatch[1]) {
-          const channel = regexMatch[1].toLowerCase();
-          // Take the first active match
-          if (channelsMap.get(channel) === null) {
-            channelsMap.set(channel, match);
-          }
+      const regexMatch = match.streamUrl?.match(/twitch\.tv\/([^/?]+)/i);
+      if (regexMatch && regexMatch[1]) {
+        const channel = regexMatch[1].toLowerCase();
+        // Take the first active match (which is now guaranteed to be the latest round)
+        if (channelsMap.get(channel) === null) {
+          channelsMap.set(channel, match);
         }
       }
     });
