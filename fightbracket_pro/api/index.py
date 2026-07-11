@@ -126,14 +126,15 @@ def sync_startgg_bracket(slug: str = "clash-of-kings-vii", token: str = None):
           id
           name
           videogame { id name }
-          entrants(query: {perPage: 32}) {
+          entrants(query: {page: 1, perPage: 200}) {
             nodes {
               id
               name
               participants {
-                id
                 gamerTag
-                prefix
+              }
+              seeds {
+                seedNum
               }
             }
           }

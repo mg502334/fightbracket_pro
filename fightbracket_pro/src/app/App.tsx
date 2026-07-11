@@ -16,6 +16,7 @@ import { AnnouncementOverlay } from "./components/AnnouncementOverlay";
 import { MobileCompanion } from "./components/MobileCompanion";
 import { GameSelectionModal } from "./components/GameSelectionModal";
 import { ImportModal } from "./components/ImportModal";
+import { CallMatchModal } from "./components/CallMatchModal";
 
 import {
   type BracketMatch, type Player, type Station, type SMSLog, type GameTheme,
@@ -53,6 +54,7 @@ export default function App() {
   const [announcement, setAnnouncement] = useState<BracketMatch | null>(null);
   const [showGameModal, setShowGameModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
+  const [pendingCallMatch, setPendingCallMatch] = useState<BracketMatch | null>(null);
   const [startggUser, setStartggUser] = useState<{ id: string; name: string } | null>(null);
   const [activeTournament, setActiveTournament] = useState<{name: string, location: string} | null>(() => safeParse('fb_tournament', null));
   
@@ -192,7 +194,10 @@ export default function App() {
   const gamePlayers = activeGame ? players.filter(p => p.gameId === activeGame).map(p => ({
     ...p,
     status: (championId === p.id || activePlayerIds.has(p.id)) ? 'active' as const : 'eliminated' as const
-  })) : [];
+  })).sort((a, b) => {
+    if (a.status !== b.status) return a.status === 'active' ? -1 : 1;
+    return a.seed - b.seed;
+  }) : [];
   const activeMatches = gameMatches.filter(m => m.state === 'in_progress' || m.state === 'called');
   const checkedInCount = gamePlayers.filter(p => p.checkedIn).length;
 
@@ -217,10 +222,14 @@ export default function App() {
   }, []);
 
   const handleCallMatch = useCallback((match: BracketMatch, stationId?: number) => {
-    const sid = stationId ?? match.stationId;
-    if (!sid) return;
+    if (!stationId) {
+      setPendingCallMatch(match);
+      return;
+    }
+    const sid = stationId;
 
     setMatches(prev => prev.map(m => m.id === match.id ? { ...m, state: 'called', stationId: sid } : m));
+    setStations(prev => prev.map(s => s.id === sid ? { ...s, matchId: match.id } : s));
     const updatedMatch: BracketMatch = { ...match, state: 'called', stationId: sid };
     setAnnouncement(updatedMatch);
 
@@ -245,6 +254,11 @@ export default function App() {
       style: { background: 'var(--card)', border: `1px solid ${theme?.primaryColor || '#00FF88'}40`, color: 'var(--foreground)' },
     });
   }, [theme?.primaryColor, players, gameThemes]);
+
+  const handleUndoCall = useCallback((matchId: string) => {
+    setMatches(prev => prev.map(m => m.id === matchId ? { ...m, state: 'pending', stationId: null } : m));
+    setStations(prev => prev.map(s => s.matchId === matchId ? { ...s, matchId: null } : s));
+  }, []);
 
   const handleAssignMatch = useCallback(async (stationId: number, matchId: string) => {
     setStations(prev => prev.map(s => s.id === stationId ? { ...s, matchId } : s));
@@ -364,7 +378,7 @@ export default function App() {
           realName: ent.name,
           country: 'US',
           countryFlag: '🇺🇸',
-          seed: 1,
+          seed: ent.seeds?.[0]?.seedNum || 1,
           checkedIn: true,
           phone: '',
           smsNotified: false,
@@ -582,7 +596,6 @@ export default function App() {
               <div className="text-sm tabular-nums" style={{ fontFamily: 'Rajdhani, sans-serif', fontWeight: 700 }}>{s.value}</div>
             </div>
           ))}
-        </div>
       </div>
 
       {/* Game banner */}
@@ -631,7 +644,7 @@ export default function App() {
           <AnimatePresence mode="wait">
             <motion.div key={`${activeGame}-${activeTab}`} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}>
             {activeTab === 'overview' && (
-              <OverviewTab players={gamePlayers} matches={gameMatches} stations={stations} onCallMatch={handleCallMatch} gameThemes={gameThemes} />
+              <OverviewTab players={gamePlayers} matches={gameMatches} stations={stations} onCallMatch={(m) => setPendingCallMatch(m)} onUndoCall={handleUndoCall} gameThemes={gameThemes} />
             )}
             {activeTab === 'bracket' && (
               <div>
@@ -706,6 +719,20 @@ export default function App() {
         }}
       />
 
+      {pendingCallMatch && theme && (
+        <CallMatchModal
+          match={pendingCallMatch}
+          players={players}
+          stations={stations}
+          theme={theme}
+          onConfirm={(stationId) => {
+            handleCallMatch(pendingCallMatch, stationId);
+            setPendingCallMatch(null);
+          }}
+          onCancel={() => setPendingCallMatch(null)}
+        />
+      )}
+
       <GameSelectionModal
         isOpen={showGameModal}
         onClose={() => setShowGameModal(false)}
@@ -728,12 +755,13 @@ export default function App() {
 // ── Overview Tab ──
 
 function OverviewTab({
-  players, matches, stations, onCallMatch, gameThemes
+  players, matches, stations, onCallMatch, onUndoCall, gameThemes
 }: {
   players: Player[];
   matches: BracketMatch[];
   stations: Station[];
-  onCallMatch: (match: BracketMatch, stationId: number) => void;
+  onCallMatch: (match: BracketMatch, stationId?: number) => void;
+  onUndoCall: (matchId: string) => void;
   gameThemes: Record<string, GameTheme>;
 }) {
   const playerMap = Object.fromEntries(players.map(p => [p.id, p]));
@@ -773,6 +801,15 @@ function OverviewTab({
                   <span className="text-xs tabular-nums" style={{ fontFamily: 'JetBrains Mono, monospace', color: '#FFD600' }}>
                     {m.player1Score} – {m.player2Score}
                   </span>
+                  {m.state === 'called' && (
+                    <button
+                      onClick={() => onUndoCall(m.id)}
+                      className="px-2 py-1 rounded text-xs opacity-60 hover:opacity-100 transition-opacity ml-2"
+                      style={{ background: 'rgba(255,23,68,0.15)', color: '#FF1744', fontFamily: 'JetBrains Mono, monospace' }}
+                    >
+                      UNDO
+                    </button>
+                  )}
                 </div>
               </div>
             );
