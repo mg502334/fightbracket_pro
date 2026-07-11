@@ -23,6 +23,7 @@ export interface Player {
   status?: 'active' | 'eliminated';
   character?: string;
   gameId: string;
+  placement?: number;
 }
 
 export interface BracketMatch {

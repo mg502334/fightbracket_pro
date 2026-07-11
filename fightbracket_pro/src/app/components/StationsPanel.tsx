@@ -11,10 +11,15 @@ interface StationsPanelProps {
   onAssignMatch: (stationId: number, matchId: string) => void;
   onCallMatch: (match: BracketMatch, stationId: number) => void;
   onClearStation: (stationId: number) => void;
+  onAddStation: () => void;
+  onRemoveStation: (stationId: number) => void;
+  onRenameStation: (stationId: number, name: string) => void;
 }
 
-export function StationsPanel({ stations, matches, players, theme, onAssignMatch, onCallMatch, onClearStation }: StationsPanelProps) {
+export function StationsPanel({ stations, matches, players, theme, onAssignMatch, onCallMatch, onClearStation, onAddStation, onRemoveStation, onRenameStation }: StationsPanelProps) {
   const [selectedStation, setSelectedStation] = useState<number | null>(null);
+  const [editingStation, setEditingStation] = useState<number | null>(null);
+  const [editName, setEditName] = useState('');
 
   const playerMap = Object.fromEntries(players.map(p => [p.id, p]));
 
@@ -69,12 +74,35 @@ export function StationsPanel({ stations, matches, players, theme, onAssignMatch
             >
               <div className="flex items-center gap-2">
                 <Monitor size={13} style={{ color: isLive ? (gameTheme?.primaryColor ?? theme.primaryColor) : 'var(--muted-foreground)' }} />
-                <span
-                  className="text-sm tracking-wider"
-                  style={{ fontFamily: 'Rajdhani, sans-serif', fontWeight: 700, color: isLive ? (gameTheme?.primaryColor ?? theme.primaryColor) : 'var(--foreground)' }}
-                >
-                  {station.name}
-                </span>
+                {editingStation === station.id ? (
+                  <input
+                    type="text"
+                    value={editName}
+                    autoFocus
+                    onBlur={() => {
+                      if (editName.trim()) onRenameStation(station.id, editName.trim());
+                      setEditingStation(null);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        if (editName.trim()) onRenameStation(station.id, editName.trim());
+                        setEditingStation(null);
+                      }
+                      if (e.key === 'Escape') setEditingStation(null);
+                    }}
+                    className="bg-transparent border-b border-white/20 text-sm tracking-wider focus:outline-none focus:border-white/50 w-24"
+                    style={{ fontFamily: 'Rajdhani, sans-serif', fontWeight: 700, color: 'var(--foreground)' }}
+                  />
+                ) : (
+                  <span
+                    className="text-sm tracking-wider cursor-pointer hover:opacity-80"
+                    onClick={() => { setEditingStation(station.id); setEditName(station.name); }}
+                    style={{ fontFamily: 'Rajdhani, sans-serif', fontWeight: 700, color: isLive ? (gameTheme?.primaryColor ?? theme.primaryColor) : 'var(--foreground)' }}
+                    title="Click to rename"
+                  >
+                    {station.name}
+                  </span>
+                )}
                 {gameTheme && (
                   <span
                     className="text-xs px-1.5 py-0.5 rounded tracking-wider"
@@ -128,7 +156,16 @@ export function StationsPanel({ stations, matches, players, theme, onAssignMatch
                     <button
                       onClick={() => onClearStation(station.id)}
                       className="flex items-center justify-center w-8 h-7 rounded transition-all hover:opacity-80"
+                      title="Clear Station"
                       style={{ background: 'rgba(255,23,68,0.1)', border: '1px solid rgba(255,23,68,0.3)', color: '#FF1744' }}
+                    >
+                      <X size={11} />
+                    </button>
+                    <button
+                      onClick={() => { if(confirm('Remove this station?')) onRemoveStation(station.id); }}
+                      className="flex items-center justify-center w-8 h-7 rounded transition-all hover:opacity-80 ml-1"
+                      title="Remove Station"
+                      style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--muted-foreground)' }}
                     >
                       <X size={11} />
                     </button>
@@ -139,19 +176,29 @@ export function StationsPanel({ stations, matches, players, theme, onAssignMatch
                   <div className="text-xs opacity-30 mb-3 text-center py-2" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
                     — OPEN —
                   </div>
-                  <button
-                    onClick={() => setSelectedStation(station.id)}
-                    className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded text-xs tracking-widest transition-all hover:opacity-80"
-                    style={{
-                      background: `${theme.primaryColor}10`,
-                      border: `1px dashed ${theme.primaryColor}30`,
-                      color: theme.primaryColor,
-                      fontFamily: 'JetBrains Mono, monospace',
-                    }}
-                  >
-                    <Plus size={11} />
-                    ASSIGN MATCH
-                  </button>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setSelectedStation(station.id)}
+                      className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded text-xs tracking-widest transition-all hover:opacity-80"
+                      style={{
+                        background: `${theme.primaryColor}10`,
+                        border: `1px dashed ${theme.primaryColor}30`,
+                        color: theme.primaryColor,
+                        fontFamily: 'JetBrains Mono, monospace',
+                      }}
+                    >
+                      <Plus size={11} />
+                      ASSIGN MATCH
+                    </button>
+                    <button
+                      onClick={() => { if(confirm('Remove this station?')) onRemoveStation(station.id); }}
+                      className="flex items-center justify-center w-8 h-7 rounded transition-all hover:opacity-80 shrink-0"
+                      title="Remove Station"
+                      style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--muted-foreground)' }}
+                    >
+                      <X size={11} />
+                    </button>
+                  </div>
                 </div>
               ) : isSelecting ? (
                 <div>
@@ -207,6 +254,22 @@ export function StationsPanel({ stations, matches, players, theme, onAssignMatch
           </div>
         );
       })}
+      
+      {/* Add Station Button */}
+      <button
+        onClick={onAddStation}
+        className="rounded flex flex-col items-center justify-center transition-all hover:opacity-80 min-h-[160px]"
+        style={{
+          background: 'var(--card)',
+          border: `1px dashed ${theme.primaryColor}30`,
+          opacity: 0.6,
+        }}
+      >
+        <Plus size={24} style={{ color: theme.primaryColor, marginBottom: '8px' }} />
+        <span className="text-sm tracking-wider" style={{ fontFamily: 'Rajdhani, sans-serif', fontWeight: 700, color: theme.primaryColor }}>
+          ADD STATION
+        </span>
+      </button>
     </div>
   );
 }

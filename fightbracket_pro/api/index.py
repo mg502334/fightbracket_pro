@@ -117,7 +117,7 @@ def sync_startgg_bracket(slug: str = "clash-of-kings-vii", token: str = None):
         "Content-Type": "application/json"
     }
 
-    query = """
+    query_tourney = """
     query TournamentQuery($slug: String!) {
       tournament(slug: $slug) {
         id
@@ -126,39 +126,49 @@ def sync_startgg_bracket(slug: str = "clash-of-kings-vii", token: str = None):
           id
           name
           videogame { id name }
-          entrants(query: {page: 1, perPage: 200}) {
-            nodes {
-              id
-              name
-              participants {
-                gamerTag
-              }
-              seeds {
-                seedNum
-              }
+        }
+      }
+    }
+    """
+
+    query_event = """
+    query EventQuery($eventId: ID!) {
+      event(id: $eventId) {
+        entrants(query: {page: 1, perPage: 60}) {
+          nodes {
+            id
+            name
+            participants {
+              gamerTag
+            }
+            seeds {
+              seedNum
+            }
+            standing {
+              placement
             }
           }
-          sets(page: 1, perPage: 64, sortType: STANDARD) {
-            nodes {
-              id
-              state
-              fullRoundText
-              round
-              winnerId
-              stream {
-                streamName
-                streamSource
+        }
+        sets(page: 1, perPage: 40, sortType: STANDARD) {
+          nodes {
+            id
+            state
+            fullRoundText
+            round
+            winnerId
+            stream {
+              streamName
+              streamSource
+            }
+            slots {
+              entrant {
+                id
+                name
               }
-              slots {
-                entrant {
-                  id
-                  name
-                }
-                standing {
-                  stats {
-                    score {
-                      value
-                    }
+              standing {
+                stats {
+                  score {
+                    value
                   }
                 }
               }
@@ -172,7 +182,7 @@ def sync_startgg_bracket(slug: str = "clash-of-kings-vii", token: str = None):
     try:
         resp = requests.post(
             "https://api.start.gg/gql/alpha",
-            json={"query": query, "variables": {"slug": slug}},
+            json={"query": query_tourney, "variables": {"slug": slug}},
             headers=headers
         )
         data = resp.json()
@@ -180,11 +190,25 @@ def sync_startgg_bracket(slug: str = "clash-of-kings-vii", token: str = None):
         if resp.status_code != 200:
             raise HTTPException(status_code=400, detail=data.get("message", f"Start.gg returned HTTP {resp.status_code}"))
 
-        # Start.gg may return partial data even if there are GraphQL errors (e.g. for sets).
-        # Only throw an error if we didn't get any tournament data at all.
         if "errors" in data and not data.get("data", {}).get("tournament"):
             raise HTTPException(status_code=400, detail=str(data["errors"]))
             
+        tournament_data = data.get("data", {}).get("tournament")
+        if tournament_data:
+            events = tournament_data.get("events", [])
+            for event in events:
+                event_id = event["id"]
+                ev_resp = requests.post(
+                    "https://api.start.gg/gql/alpha",
+                    json={"query": query_event, "variables": {"eventId": event_id}},
+                    headers=headers
+                )
+                ev_data = ev_resp.json()
+                if "data" in ev_data and ev_data["data"].get("event"):
+                    event_details = ev_data["data"]["event"]
+                    event["entrants"] = event_details.get("entrants")
+                    event["sets"] = event_details.get("sets")
+
         return {"status": "success", "data": data.get("data")}
     except HTTPException:
         raise

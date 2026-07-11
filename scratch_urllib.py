@@ -8,21 +8,49 @@ headers = {
 }
 
 query = """
-query TournamentQuery($slug: String!) {
-  tournament(slug: $slug) {
-    events {
-      sets(page: 1, perPage: 5, sortType: STANDARD) {
-        nodes {
+    query TournamentQuery($slug: String!) {
+      tournament(slug: $slug) {
+        id
+        name
+        events {
           id
-          stream {
-            streamName
-            streamSource
+          name
+          videogame { id name }
+          entrants(query: {page: 1, perPage: 40}) {
+            nodes {
+              id
+              name
+            }
+          }
+          sets(page: 1, perPage: 20, sortType: STANDARD) {
+            nodes {
+              id
+              state
+              fullRoundText
+              round
+              winnerId
+              stream {
+                streamName
+                streamSource
+              }
+              slots {
+                entrant {
+                  id
+                  name
+                }
+                standing {
+                  stats {
+                    score {
+                      value
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }
     }
-  }
-}
 """
 
 data = json.dumps({

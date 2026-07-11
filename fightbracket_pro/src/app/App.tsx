@@ -47,7 +47,7 @@ export default function App() {
   
   // Generating default stations
   const [stations, setStations] = useState<Station[]>(() => safeParse('fb_stations', 
-    Array.from({ length: 8 }).map((_, i) => ({ id: i + 1, active: true, matchId: null }))
+    Array.from({ length: 8 }).map((_, i) => ({ id: i + 1, name: `Station ${i + 1}`, active: true, matchId: null, gameId: null }))
   ));
   
   const [smsLogs, setSmsLogs] = useState<SMSLog[]>(() => safeParse('fb_smsLogs', []));
@@ -300,6 +300,22 @@ export default function App() {
     }
   }, [userId]);
 
+  const handleAddStation = useCallback(() => {
+    setStations(prev => {
+      const newId = Math.max(0, ...prev.map(s => s.id)) + 1;
+      return [...prev, { id: newId, name: `Station ${newId}`, active: true, matchId: null, gameId: null }];
+    });
+  }, []);
+
+  const handleRemoveStation = useCallback((stationId: number) => {
+    handleClearStation(stationId);
+    setStations(prev => prev.filter(s => s.id !== stationId));
+  }, [handleClearStation]);
+
+  const handleRenameStation = useCallback((stationId: number, name: string) => {
+    setStations(prev => prev.map(s => s.id === stationId ? { ...s, name } : s));
+  }, []);
+
   const handleSendSMS = useCallback(async (playerIds: string[], message: string, matchId?: string) => {
     const phoneNumbers = playerIds.map(pid => players.find(p => p.id === pid)?.phone).filter(Boolean) as string[];
     
@@ -385,6 +401,7 @@ export default function App() {
           phone: '',
           smsNotified: false,
           character: 'Unknown',
+          placement: ent.standing?.placement,
           gameId
         });
       });
@@ -598,6 +615,7 @@ export default function App() {
               <div className="text-sm tabular-nums" style={{ fontFamily: 'Rajdhani, sans-serif', fontWeight: 700 }}>{s.value}</div>
             </div>
           ))}
+        </div>
       </div>
 
       {/* Game banner */}
@@ -650,7 +668,7 @@ export default function App() {
             )}
             {activeTab === 'bracket' && (
               <div>
-                <SectionHeader title="TOURNAMENT BRACKET" subtitle={`${theme.displayName} · Single Elimination`} theme={theme} />
+                <SectionHeader title="TOURNAMENT BRACKET" subtitle={`${theme.displayName} · Double Elimination`} theme={theme} />
                 <BracketView
                   matches={gameMatches}
                   players={gamePlayers}
@@ -680,6 +698,9 @@ export default function App() {
                   onAssignMatch={handleAssignMatch}
                   onCallMatch={(m, sid) => handleCallMatch(m, sid)}
                   onClearStation={handleClearStation}
+                  onAddStation={handleAddStation}
+                  onRemoveStation={handleRemoveStation}
+                  onRenameStation={handleRenameStation}
                 />
               </div>
             )}
@@ -899,6 +920,86 @@ function OverviewTab({
                   </span>
                 </div>
               );
+            })
+          )}
+        </div>
+      </div>
+      
+      {/* Standings */}
+      <div className="rounded overflow-hidden" style={{ background: 'var(--card)', border: '1px solid rgba(122,158,192,0.15)' }}>
+        <div className="px-5 py-3 border-b flex flex-col gap-3" style={{ borderColor: 'rgba(122,158,192,0.1)', background: 'var(--sidebar)' }}>
+          <div className="flex items-center gap-2">
+            <Trophy size={13} style={{ color: '#FFD600' }} />
+            <span className="text-xs tracking-widest" style={{ fontFamily: 'JetBrains Mono, monospace', color: 'var(--foreground)' }}>TOP 8 STANDINGS</span>
+          </div>
+        </div>
+        <div className="overflow-y-auto" style={{ maxHeight: 300 }}>
+          {players.filter(p => p.placement && p.placement <= 8).length === 0 ? (
+            <div className="py-6 text-center text-xs opacity-40" style={{ fontFamily: 'JetBrains Mono, monospace' }}>Standings unavailable</div>
+          ) : (
+            players
+              .filter(p => p.placement && p.placement <= 8)
+              .sort((a, b) => a.placement! - b.placement!)
+              .map((p, i) => {
+                const colors: Record<number, string> = { 1: '#FFD700', 2: '#C0C0C0', 3: '#CD7F32' };
+                const color = colors[p.placement!] || 'var(--foreground)';
+                return (
+                  <div key={p.id} className="flex items-center gap-3 px-5 py-2.5" style={{ borderBottom: '1px solid rgba(122,158,192,0.05)' }}>
+                    <div className="w-6 text-center text-xs font-bold" style={{ fontFamily: 'JetBrains Mono, monospace', color }}>
+                      {p.placement}
+                    </div>
+                    <span className="text-sm">{p.countryFlag}</span>
+                    <div className="flex-1">
+                      <div className="text-xs" style={{ fontFamily: 'Rajdhani, sans-serif', fontWeight: 700, color: 'var(--foreground)' }}>
+                        {p.tag}
+                      </div>
+                    </div>
+                  </div>
+                );
+            })
+          )}
+        </div>
+      </div>
+
+      {/* Completed Matches */}
+      <div className="col-span-2 rounded overflow-hidden" style={{ background: 'var(--card)', border: '1px solid rgba(122,158,192,0.15)' }}>
+        <div className="px-5 py-3 border-b flex flex-col gap-3" style={{ borderColor: 'rgba(122,158,192,0.1)', background: 'var(--sidebar)' }}>
+          <div className="flex items-center gap-2">
+            <span className="text-xs tracking-widest" style={{ fontFamily: 'JetBrains Mono, monospace', color: 'var(--foreground)' }}>RECENT RESULTS</span>
+          </div>
+        </div>
+        <div className="overflow-y-auto" style={{ maxHeight: 300 }}>
+          {matches.filter(m => m.state === 'completed').length === 0 ? (
+            <div className="py-6 text-center text-xs opacity-40" style={{ fontFamily: 'JetBrains Mono, monospace' }}>No matches completed yet</div>
+          ) : (
+            matches
+              .filter(m => m.state === 'completed')
+              .sort((a, b) => b.round - a.round)
+              .slice(0, 10)
+              .map((m) => {
+                const gt = gameThemes[m.gameId] || { primaryColor: '#aaa', shortName: 'GAME' };
+                const p1 = m.player1Id ? playerMap[m.player1Id] : null;
+                const p2 = m.player2Id ? playerMap[m.player2Id] : null;
+                return (
+                  <div key={m.id} className="flex items-center gap-3 px-5 py-2.5" style={{ borderBottom: '1px solid rgba(122,158,192,0.05)' }}>
+                    <span className="text-xs px-2 py-0.5 rounded" style={{ background: `${gt.primaryColor}15`, color: gt.primaryColor, fontFamily: 'JetBrains Mono, monospace', fontSize: 9 }}>{gt.shortName}</span>
+                    <div className="flex-1 min-w-0 flex items-center gap-2">
+                      <span className="text-xs" style={{ fontFamily: 'Rajdhani, sans-serif', fontWeight: p1?.id === m.winnerId ? 700 : 400, color: p1?.id === m.winnerId ? 'var(--foreground)' : 'var(--muted-foreground)' }}>
+                        {p1?.tag ?? 'TBD'}
+                      </span>
+                      <span className="text-[10px] opacity-30">vs</span>
+                      <span className="text-xs" style={{ fontFamily: 'Rajdhani, sans-serif', fontWeight: p2?.id === m.winnerId ? 700 : 400, color: p2?.id === m.winnerId ? 'var(--foreground)' : 'var(--muted-foreground)' }}>
+                        {p2?.tag ?? 'TBD'}
+                      </span>
+                    </div>
+                    <div className="text-xs opacity-40 mr-4" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
+                      {m.roundName}
+                    </div>
+                    <span className="text-xs tabular-nums" style={{ fontFamily: 'JetBrains Mono, monospace', color: 'var(--foreground)' }}>
+                      {m.player1Score} – {m.player2Score}
+                    </span>
+                  </div>
+                );
             })
           )}
         </div>
