@@ -153,18 +153,35 @@ export function BracketView({ matches, players, theme, onCallMatch }: BracketVie
 
                       {canCall && isHovered && (
                         <div
-                          className="flex items-center justify-center gap-1 py-1 text-xs tracking-widest"
+                          className="flex items-center justify-center gap-1 py-1 text-xs tracking-widest cursor-pointer"
+                          onClick={() => onCallMatch(match)}
                           style={{
                             background: `${theme.primaryColor}20`,
                             color: theme.primaryColor,
                             fontFamily: 'JetBrains Mono, monospace',
-                            fontSize: 10,
-                            borderTop: `1px solid ${theme.primaryColor}30`,
+                            fontWeight: 700
                           }}
                         >
                           <ChevronRight size={10} />
                           CALL MATCH
                         </div>
+                      )}
+                      {match.streamUrl && (
+                        <a
+                          href={match.streamUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center justify-center gap-1 py-1 text-xs tracking-widest mt-px hover:opacity-80 transition-opacity"
+                          style={{
+                            background: `#6441a5`,
+                            color: 'white',
+                            fontFamily: 'JetBrains Mono, monospace',
+                            fontWeight: 700,
+                            textDecoration: 'none'
+                          }}
+                        >
+                          WATCH LIVE
+                        </a>
                       )}
                     </div>
                   </div>

@@ -1,0 +1,4 @@
+{
+  "query": "query TournamentQuery($slug: String!) { tournament(slug: $slug) { events { sets(page: 1, perPage: 5, sortType: STANDARD) { nodes { id stream { streamName streamSource streamLogo } } } } } }",
+  "variables": {"slug": "space-city-beatdown-july-2026"}
+}

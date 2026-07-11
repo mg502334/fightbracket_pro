@@ -35,26 +35,41 @@ const TABS: { id: Tab; label: string; icon: React.ComponentType<{ size?: number 
 ];
 
 export default function App() {
-  const [activeGame, setActiveGame] = useState<string | null>(null);
+  const safeParse = (key: string, defaultVal: any) => {
+    try { const saved = localStorage.getItem(key); return saved ? JSON.parse(saved) : defaultVal; } catch { return defaultVal; }
+  };
+
+  const [activeGame, setActiveGame] = useState<string | null>(() => safeParse('fb_activeGame', null));
   const [activeTab, setActiveTab] = useState<Tab>('overview');
-  const [players, setPlayers] = useState<Player[]>([]);
-  const [matches, setMatches] = useState<BracketMatch[]>([]);
+  const [players, setPlayers] = useState<Player[]>(() => safeParse('fb_players', []));
+  const [matches, setMatches] = useState<BracketMatch[]>(() => safeParse('fb_matches', []));
   
   // Generating default stations
-  const [stations, setStations] = useState<Station[]>(
+  const [stations, setStations] = useState<Station[]>(() => safeParse('fb_stations', 
     Array.from({ length: 8 }).map((_, i) => ({ id: i + 1, active: true, matchId: null }))
-  );
+  ));
   
-  const [smsLogs, setSmsLogs] = useState<SMSLog[]>([]);
+  const [smsLogs, setSmsLogs] = useState<SMSLog[]>(() => safeParse('fb_smsLogs', []));
   const [announcement, setAnnouncement] = useState<BracketMatch | null>(null);
   const [showGameModal, setShowGameModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [startggUser, setStartggUser] = useState<{ id: string; name: string } | null>(null);
-  const [activeTournament, setActiveTournament] = useState<{name: string, location: string} | null>(null);
+  const [activeTournament, setActiveTournament] = useState<{name: string, location: string} | null>(() => safeParse('fb_tournament', null));
   
   // Dynamic games state
-  const [gameThemes, setGameThemes] = useState<Record<string, GameTheme>>({});
-  const [gameOrder, setGameOrder] = useState<string[]>([]);
+  const [gameThemes, setGameThemes] = useState<Record<string, GameTheme>>(() => safeParse('fb_themes', {}));
+  const [gameOrder, setGameOrder] = useState<string[]>(() => safeParse('fb_gameOrder', []));
+
+  useEffect(() => {
+    localStorage.setItem('fb_activeGame', JSON.stringify(activeGame));
+    localStorage.setItem('fb_players', JSON.stringify(players));
+    localStorage.setItem('fb_matches', JSON.stringify(matches));
+    localStorage.setItem('fb_stations', JSON.stringify(stations));
+    localStorage.setItem('fb_smsLogs', JSON.stringify(smsLogs));
+    localStorage.setItem('fb_tournament', JSON.stringify(activeTournament));
+    localStorage.setItem('fb_themes', JSON.stringify(gameThemes));
+    localStorage.setItem('fb_gameOrder', JSON.stringify(gameOrder));
+  }, [activeGame, players, matches, stations, smsLogs, activeTournament, gameThemes, gameOrder]);
   
   // Create anonymous user ID if not logged in
   const userId = useMemo(() => {
@@ -158,8 +173,26 @@ export default function App() {
   };
 
   const theme: GameTheme | null = activeGame ? gameThemes[activeGame] : null;
-  const gamePlayers = activeGame ? players.filter(p => p.gameId === activeGame) : [];
-  const gameMatches = activeGame ? matches.filter(m => m.gameId === activeGame) : [];
+  const gameMatches = matches.filter(m => m.gameId === activeGame);
+  
+  // Calculate player status based on whether they have future/active matches
+  const activePlayerIds = new Set<string>();
+  gameMatches.forEach(m => {
+    if (m.state !== 'completed') {
+      if (m.player1Id) activePlayerIds.add(m.player1Id);
+      if (m.player2Id) activePlayerIds.add(m.player2Id);
+    }
+  });
+  
+  // Find the final match to protect the winner from being marked eliminated
+  const maxRoundMatch = gameMatches.reduce((prev, current) => 
+    (prev && prev.round > current.round) ? prev : current, gameMatches[0]);
+  const championId = maxRoundMatch && maxRoundMatch.state === 'completed' ? maxRoundMatch.winnerId : null;
+
+  const gamePlayers = activeGame ? players.filter(p => p.gameId === activeGame).map(p => ({
+    ...p,
+    status: (championId === p.id || activePlayerIds.has(p.id)) ? 'active' as const : 'eliminated' as const
+  })) : [];
   const activeMatches = gameMatches.filter(m => m.state === 'in_progress' || m.state === 'called');
   const checkedInCount = gamePlayers.filter(p => p.checkedIn).length;
 
@@ -304,7 +337,12 @@ export default function App() {
       const gameId = `startgg-${ev.videogame.id}`;
       if (!gameOrder.includes(gameId) && !newGameIds.includes(gameId)) {
         newGameIds.push(gameId);
-        const hue = Math.floor(Math.random() * 360);
+        let hue = Math.floor(Math.random() * 360);
+        const gameName = ev.videogame.name.toLowerCase();
+        if (gameName.includes('tekken 8')) hue = 0;
+        else if (gameName.includes('street fighter 6')) hue = 280;
+        else if (gameName.includes('wolves') || gameName.includes('fatal fury')) hue = 50;
+
         newThemes[gameId] = {
           id: gameId,
           displayName: ev.videogame.name.toUpperCase(),
@@ -327,7 +365,7 @@ export default function App() {
           country: 'US',
           countryFlag: '🇺🇸',
           seed: 1,
-          checkedIn: false,
+          checkedIn: true,
           phone: '',
           smsNotified: false,
           character: 'Unknown',
@@ -346,6 +384,12 @@ export default function App() {
         else if (set.state === 3) matchState = 'completed';
         else if (set.state === 6) matchState = 'called';
         
+        let streamUrl: string | undefined = undefined;
+        if (set.stream?.streamSource === 'TWITCH' && set.stream?.streamName) {
+          streamUrl = `https://twitch.tv/${set.stream.streamName}`;
+        }
+        const winnerId = set.winnerId ? String(set.winnerId) : null;
+        
         newMatches.push({
           id: String(set.id),
           gameId,
@@ -358,7 +402,8 @@ export default function App() {
           stationId: null,
           player1Score: 0,
           player2Score: 0,
-          winnerId: null,
+          winnerId,
+          streamUrl,
           bestOf: 3
         });
       });
@@ -579,7 +624,7 @@ export default function App() {
           <AnimatePresence mode="wait">
             <motion.div key={`${activeGame}-${activeTab}`} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}>
             {activeTab === 'overview' && (
-              <OverviewTab players={players} matches={matches} stations={stations} onCallMatch={handleCallMatch} gameThemes={gameThemes} />
+              <OverviewTab players={gamePlayers} matches={gameMatches} stations={stations} onCallMatch={handleCallMatch} gameThemes={gameThemes} />
             )}
             {activeTab === 'bracket' && (
               <div>
@@ -766,26 +811,31 @@ function OverviewTab({
         </div>
       </div>
 
-      {/* Not checked in */}
-      <div className="rounded overflow-hidden" style={{ background: 'var(--card)', border: '1px solid rgba(255,23,68,0.15)' }}>
-        <div className="px-5 py-3 border-b flex items-center gap-2" style={{ borderColor: 'rgba(255,23,68,0.1)', background: 'var(--sidebar)' }}>
-          <span className="text-xs tracking-widest" style={{ fontFamily: 'JetBrains Mono, monospace', color: '#FF1744' }}>NOT CHECKED IN</span>
-          <span className="ml-auto text-xs opacity-40" style={{ fontFamily: 'JetBrains Mono, monospace' }}>{notCheckedIn.length}</span>
+      {/* Player Status */}
+      <div className="rounded overflow-hidden" style={{ background: 'var(--card)', border: '1px solid rgba(122,158,192,0.15)' }}>
+        <div className="px-5 py-3 border-b flex items-center gap-2" style={{ borderColor: 'rgba(122,158,192,0.1)', background: 'var(--sidebar)' }}>
+          <span className="text-xs tracking-widest" style={{ fontFamily: 'JetBrains Mono, monospace', color: 'var(--foreground)' }}>PLAYER STATUS</span>
+          <span className="ml-auto text-xs opacity-40" style={{ fontFamily: 'JetBrains Mono, monospace' }}>{players.length}</span>
         </div>
         <div className="overflow-y-auto" style={{ maxHeight: 300 }}>
-          {notCheckedIn.length === 0 ? (
-            <div className="py-6 text-center text-xs" style={{ fontFamily: 'JetBrains Mono, monospace', color: '#00FF88' }}>✓ All players checked in!</div>
+          {players.length === 0 ? (
+            <div className="py-6 text-center text-xs opacity-40" style={{ fontFamily: 'JetBrains Mono, monospace' }}>No players found</div>
           ) : (
-            notCheckedIn.map(p => {
+            players.map(p => {
               const gt = gameThemes[p.gameId] || { primaryColor: '#aaa', shortName: 'GAME' };
+              const isEliminated = p.status === 'eliminated';
               return (
-                <div key={p.id} className="flex items-center gap-3 px-5 py-2.5" style={{ borderBottom: '1px solid rgba(122,158,192,0.05)' }}>
+                <div key={p.id} className="flex items-center gap-3 px-5 py-2.5" style={{ borderBottom: '1px solid rgba(122,158,192,0.05)', opacity: isEliminated ? 0.5 : 1 }}>
                   <span className="text-sm">{p.countryFlag}</span>
                   <div className="flex-1">
-                    <div className="text-xs" style={{ fontFamily: 'Rajdhani, sans-serif', fontWeight: 700, color: 'var(--foreground)' }}>{p.tag}</div>
+                    <div className="text-xs" style={{ fontFamily: 'Rajdhani, sans-serif', fontWeight: 700, color: isEliminated ? '#FF1744' : 'var(--foreground)', textDecoration: isEliminated ? 'line-through' : 'none' }}>
+                      {p.tag}
+                    </div>
                     <div className="text-xs opacity-40" style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9 }}>{gt.shortName} · #{p.seed}</div>
                   </div>
-                  <span className="text-xs opacity-30 tabular-nums" style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10 }}>{p.phone}</span>
+                  <span className="text-xs tabular-nums font-bold" style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10, color: isEliminated ? '#FF1744' : '#00FF88' }}>
+                    {isEliminated ? 'ELIMINATED' : 'ACTIVE'}
+                  </span>
                 </div>
               );
             })

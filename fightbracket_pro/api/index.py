@@ -143,6 +143,11 @@ def sync_startgg_bracket(slug: str = "clash-of-kings-vii", token: str = None):
               state
               fullRoundText
               round
+              winnerId
+              stream {
+                streamName
+                streamSource
+              }
               slots {
                 entrant {
                   id

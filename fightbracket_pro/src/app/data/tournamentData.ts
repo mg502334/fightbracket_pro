@@ -20,7 +20,8 @@ export interface Player {
   checkedIn: boolean;
   phone: string;
   smsNotified: boolean;
-  character: string;
+  status?: 'active' | 'eliminated';
+  character?: string;
   gameId: string;
 }
 
@@ -37,6 +38,7 @@ export interface BracketMatch {
   player1Score: number;
   player2Score: number;
   winnerId: string | null;
+  streamUrl?: string;
   bestOf: number;
 }
 

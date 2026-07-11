@@ -1,0 +1,5 @@
+personal token 55c386d66dda4be8912737dfde87a195
+
+3rd Party token ebb22680522a304f7d436d5a90bd08d1
+
+client fall back and application https://www.fightbracketpro.com/
