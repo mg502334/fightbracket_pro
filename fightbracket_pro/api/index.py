@@ -164,6 +164,9 @@ def sync_startgg_bracket(slug: str = "clash-of-kings-vii", token: str = None):
         )
         data = resp.json()
         
+        if resp.status_code != 200:
+            raise HTTPException(status_code=400, detail=data.get("message", f"Start.gg returned HTTP {resp.status_code}"))
+
         # Start.gg may return partial data even if there are GraphQL errors (e.g. for sets).
         # Only throw an error if we didn't get any tournament data at all.
         if "errors" in data and not data.get("data", {}).get("tournament"):
