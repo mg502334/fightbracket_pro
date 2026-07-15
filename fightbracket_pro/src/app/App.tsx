@@ -462,7 +462,17 @@ export default function App() {
       setActiveGame(newGameIds[0]);
     }
     
-    setActiveTournament({ name: tName, location: 'Online' });
+    let tLocation = 'Online';
+    if (!data.tournament.isOnline) {
+      if (data.tournament.city && data.tournament.addrState) {
+        tLocation = `${data.tournament.city}, ${data.tournament.addrState}`;
+      } else if (data.tournament.venueAddress) {
+        tLocation = data.tournament.venueAddress;
+      } else {
+        tLocation = 'Offline';
+      }
+    }
+    setActiveTournament({ name: tName, location: tLocation });
     
     // Append or replace? We'll append players and matches. To avoid dupes, we could filter.
     setPlayers(prev => [...prev, ...newPlayers]);
@@ -483,7 +493,7 @@ export default function App() {
     setActiveGame(null);
     setActiveTournament(null);
     setSmsLogs([]);
-    setStations(Array.from({ length: 8 }).map((_, i) => ({ id: i + 1, active: true, matchId: null })));
+    setStations(Array.from({ length: 8 }).map((_, i) => ({ id: i + 1, name: `Station ${i + 1}`, active: true, matchId: null, gameId: null })));
     
     try {
       await fetch(`/api/user/data?user_id=${userId}`, { method: 'DELETE' });
@@ -784,6 +794,9 @@ export default function App() {
       />
 
       <Toaster position="bottom-right" />
+      <footer className="text-center py-4 border-t shrink-0 text-xs opacity-50" style={{ background: 'var(--sidebar)', borderColor: 'var(--border)', fontFamily: 'JetBrains Mono, monospace' }}>
+        Developed and Powered by &copy; 2026 Ender Gaming Core Hosting. All rights reserved.
+      </footer>
     </div>
   );
 }

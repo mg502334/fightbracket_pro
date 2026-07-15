@@ -122,6 +122,10 @@ def sync_startgg_bracket(slug: str = "clash-of-kings-vii", token: str = None):
       tournament(slug: $slug) {
         id
         name
+        city
+        addrState
+        venueAddress
+        isOnline
         events {
           id
           name
@@ -217,20 +221,14 @@ def sync_startgg_bracket(slug: str = "clash-of-kings-vii", token: str = None):
 
 @app.get("/api/oauth/login")
 def oauth_login():
-    STARTGG_CLIENT_ID = os.environ.get("STARTGG_CLIENT_ID")
-    STARTGG_REDIRECT_URI = os.environ.get("STARTGG_REDIRECT_URI", "http://fightbracketpro.com")
-    if not STARTGG_CLIENT_ID:
-        raise HTTPException(status_code=500, detail="STARTGG_CLIENT_ID not configured")
-        
-    scope = "user.identity"
-    params = {
-        "response_type": "code",
-        "client_id": STARTGG_CLIENT_ID,
-        "scope": scope,
-        "redirect_uri": STARTGG_REDIRECT_URI
-    }
-    url = f"https://api.start.gg/oauth/authorize?{urllib.parse.urlencode(params)}"
-    return RedirectResponse(url)
+    # Bypass OAuth flow and use the provided Personal Access Token
+    token = os.environ.get("STARTGG_API_TOKEN")
+    if not token:
+        # Fallback to the token found in synctoken.txt
+        token = "7a0992d510fe43a2a308fdc60ad75c02"
+    
+    frontend_url = os.environ.get("FRONTEND_URL", "http://fightbracketpro.com")
+    return RedirectResponse(f"{frontend_url}/oauth/callback?token={token}")
 
 @app.get("/api/oauth/callback")
 def oauth_callback(code: str):
