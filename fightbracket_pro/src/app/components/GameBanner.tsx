@@ -72,7 +72,7 @@ export function GameBanner({ theme, entrantCount, checkedInCount, activeMatchCou
               className="text-xs tracking-widest mb-1 opacity-70"
               style={{ fontFamily: 'JetBrains Mono, monospace', color: theme.primaryColor }}
             >
-              {theme.publisher} · NOW LIVE
+              {theme.publisher}{isActive ? ' · NOW LIVE' : ''}
             </div>
             <div
               className="text-2xl tracking-wider"

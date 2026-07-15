@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { Swords, Clock, CheckCircle2, AlertCircle, ChevronRight } from "lucide-react";
-import type { BracketMatch, Player, GameTheme } from "../data/tournamentData";
+import { BracketType, type BracketMatch, type Player, type GameTheme } from "../data/tournamentData";
 
 interface BracketViewProps {
   matches: BracketMatch[];
   players: Player[];
   theme: GameTheme;
   onCallMatch: (match: BracketMatch) => void;
+  onGenerateBracket?: (type: BracketType) => void;
 }
 
 const STATE_CONFIG = {
@@ -16,8 +17,42 @@ const STATE_CONFIG = {
   completed: { label: 'DONE', color: '#3A5A7A', bg: 'rgba(58,90,122,0.1)', icon: CheckCircle2 },
 };
 
-export function BracketView({ matches, players, theme, onCallMatch }: BracketViewProps) {
+export function BracketView({ matches, players, theme, onCallMatch, onGenerateBracket }: BracketViewProps) {
   const [hoveredMatchId, setHoveredMatchId] = useState<string | null>(null);
+  const [selectedFormat, setSelectedFormat] = useState<BracketType>(BracketType.SINGLE_ELIMINATION);
+
+  if (matches.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full p-10 opacity-80 mt-10">
+        <Swords size={48} className="mb-4 opacity-30" style={{ color: theme.primaryColor }} />
+        <h3 className="text-xl tracking-widest mb-2" style={{ fontFamily: 'Rajdhani, sans-serif', fontWeight: 700 }}>BRACKET NOT GENERATED</h3>
+        <p className="text-sm opacity-60 mb-6 text-center max-w-sm" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
+          {players.length === 0 ? "Add players first, then generate the bracket to begin the tournament." : `${players.length} players added. Ready to generate bracket.`}
+        </p>
+        <div className="flex flex-col items-center gap-4 w-full max-w-xs">
+          <select 
+            value={selectedFormat}
+            onChange={(e) => setSelectedFormat(e.target.value as BracketType)}
+            className="w-full bg-black/40 border rounded px-3 py-2.5 text-sm focus:outline-none transition-colors"
+            style={{ borderColor: 'rgba(122,158,192,0.3)', fontFamily: 'JetBrains Mono, monospace' }}
+            disabled={players.length === 0}
+          >
+            {Object.values(BracketType).map(format => (
+              <option key={format} value={format}>{format.replace(/_/g, ' ')}</option>
+            ))}
+          </select>
+          <button 
+            disabled={players.length === 0}
+            onClick={() => onGenerateBracket?.(selectedFormat)} 
+            className="w-full px-6 py-2.5 rounded text-sm tracking-widest font-bold text-black hover:brightness-125 transition-all disabled:opacity-30 disabled:cursor-not-allowed" 
+            style={{ background: theme.primaryColor, fontFamily: 'Rajdhani, sans-serif' }}
+          >
+            GENERATE BRACKET
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const playerMap = Object.fromEntries(players.map(p => [p.id, p]));
 

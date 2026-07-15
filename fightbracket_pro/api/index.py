@@ -257,6 +257,63 @@ def oauth_callback(code: str):
     frontend_url = os.environ.get("FRONTEND_URL", "http://fightbracketpro.com")
     return RedirectResponse(f"{frontend_url}/oauth/callback?token={access_token}")
 
+@app.get("/api/startgg/user")
+def get_startgg_user(slug: str, token: str = None):
+    STARTGG_TOKEN = token or os.environ.get("STARTGG_API_TOKEN")
+    if not STARTGG_TOKEN:
+        raise HTTPException(status_code=400, detail="Start.gg API token is required. Please login first.")
+
+    # clean up slug if they passed the full url or 'user/'
+    if "start.gg/user/" in slug:
+        slug = slug.split("start.gg/user/")[-1].split("/")[0]
+    if slug.startswith("user/"):
+        slug = slug[5:]
+
+    headers = {
+        "Authorization": f"Bearer {STARTGG_TOKEN}",
+        "Content-Type": "application/json"
+    }
+
+    query = """
+    query UserQuery($slug: String!) {
+      user(slug: $slug) {
+        id
+        name
+        location {
+          country
+        }
+        player {
+          id
+          gamerTag
+        }
+      }
+    }
+    """
+    
+    try:
+        resp = requests.post(
+            "https://api.start.gg/gql/alpha",
+            json={"query": query, "variables": {"slug": slug}},
+            headers=headers
+        )
+        data = resp.json()
+        
+        if resp.status_code != 200:
+            raise HTTPException(status_code=400, detail=data.get("message", f"Start.gg returned HTTP {resp.status_code}"))
+
+        if "errors" in data:
+            raise HTTPException(status_code=400, detail=str(data["errors"]))
+            
+        user_data = data.get("data", {}).get("user")
+        if not user_data:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        return {"status": "success", "user": user_data}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.get("/api/user/me")
 def get_current_user(token: str):
     if not token:

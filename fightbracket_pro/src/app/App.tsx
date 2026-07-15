@@ -8,6 +8,7 @@ import {
 import { useTheme } from "next-themes";
 
 import { GameBanner } from "./components/GameBanner";
+import { AddPlayerModal } from "./components/AddPlayerModal";
 import { BracketView } from "./components/BracketView";
 import { CheckInPanel } from "./components/CheckInPanel";
 import { StationsPanel } from "./components/StationsPanel";
@@ -21,7 +22,7 @@ import { StreamsPanel } from "./components/StreamsPanel";
 
 import {
   type BracketMatch, type Player, type Station, type SMSLog, type GameTheme,
-  generateMockDataForGame
+  generateMockDataForGame, generateDynamicBracket, BracketType
 } from "./data/tournamentData";
 
 type Tab = 'overview' | 'bracket' | 'checkin' | 'stations' | 'sms' | 'streams' | 'mobile';
@@ -56,6 +57,7 @@ export default function App() {
   const [announcement, setAnnouncement] = useState<BracketMatch | null>(null);
   const [showGameModal, setShowGameModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
+  const [showAddPlayerModal, setShowAddPlayerModal] = useState(false);
   const [pendingCallMatch, setPendingCallMatch] = useState<BracketMatch | null>(null);
   const [startggUser, setStartggUser] = useState<{ id: string; name: string } | null>(null);
   const [activeTournament, setActiveTournament] = useState<{name: string, location: string} | null>(() => safeParse('fb_tournament', null));
@@ -152,12 +154,8 @@ export default function App() {
       publisher: 'Unknown',
     };
 
-    const mockData = generateMockDataForGame(newGameId, game.name);
-    
     setGameThemes(prev => ({ ...prev, [newGameId]: newTheme }));
     setGameOrder(prev => [...prev, newGameId]);
-    setPlayers(prev => [...prev, ...mockData.players]);
-    setMatches(prev => [...prev, ...mockData.matches]);
     setActiveGame(newGameId);
     setShowGameModal(false);
     toast.success(`${game.name} added to tournament tabs!`, {
@@ -174,6 +172,35 @@ export default function App() {
     }
     setPlayers(prev => prev.filter(p => p.gameId !== gameIdToRemove));
     setMatches(prev => prev.filter(m => m.gameId !== gameIdToRemove));
+  };
+
+  const handleAddPlayer = (playerData: { tag: string; realName: string; seed: number; startggId?: string; country?: string }) => {
+    if (!activeGame) return;
+    const newPlayer: Player = {
+      id: `p-${Date.now()}`,
+      tag: playerData.tag,
+      realName: playerData.realName,
+      seed: playerData.seed,
+      country: playerData.country || 'US',
+      countryFlag: '🎮', // Default flag
+      checkedIn: true,
+      phone: '',
+      smsNotified: false,
+      gameId: activeGame,
+    };
+    setPlayers(prev => [...prev, newPlayer]);
+  };
+
+  const handleGenerateBracket = (type: BracketType) => {
+    if (!activeGame) return;
+    const gamePlayerIds = players.filter(p => p.gameId === activeGame).map(p => p.id);
+    if (gamePlayerIds.length === 0) {
+      toast.error('Add players before generating bracket');
+      return;
+    }
+    const newMatches = generateDynamicBracket(activeGame, gamePlayerIds, type);
+    setMatches(prev => [...prev.filter(m => m.gameId !== activeGame), ...newMatches]);
+    toast.success(`Generated ${type.replace(/_/g, ' ')} bracket!`);
   };
 
   const theme: GameTheme | null = activeGame ? gameThemes[activeGame] : null;
@@ -256,6 +283,10 @@ export default function App() {
     setPlayers(prev => prev.map(p => playerIds.includes(p.id) ? { ...p, smsNotified: true } : p));
     toast.success(`Match called — Station ${sid}`, {
       style: { background: 'var(--card)', border: `1px solid ${theme?.primaryColor || '#00FF88'}40`, color: 'var(--foreground)' },
+      action: {
+        label: 'Undo',
+        onClick: () => handleUndoCall(match.id),
+      },
     });
   }, [theme?.primaryColor, players, gameThemes]);
 
@@ -695,6 +726,7 @@ export default function App() {
                     if (availStation) handleCallMatch(m, availStation.id);
                     else toast.error('No available stations', { style: { background: 'var(--card)', color: 'var(--foreground)' } });
                   }}
+                  onGenerateBracket={handleGenerateBracket}
                 />
               </div>
             )}
@@ -792,6 +824,16 @@ export default function App() {
         onImport={handleLiveImport}
         theme={theme || { id: 'default', displayName: 'FightBracket', shortName: 'FB', primaryColor: '#00E5FF', secondaryColor: '#FF006E', bgFrom: '#050A14', glowColor: 'rgba(0,229,255,0.4)', description: '', publisher: '' }}
       />
+
+      {activeGame && theme && (
+        <AddPlayerModal
+          isOpen={showAddPlayerModal}
+          onClose={() => setShowAddPlayerModal(false)}
+          onAdd={handleAddPlayer}
+          theme={theme}
+          nextSeed={players.filter(p => p.gameId === activeGame).length + 1}
+        />
+      )}
 
       <Toaster position="bottom-right" />
       <footer className="text-center py-4 border-t shrink-0 text-xs opacity-50" style={{ background: 'var(--sidebar)', borderColor: 'var(--border)', fontFamily: 'JetBrains Mono, monospace' }}>
@@ -915,6 +957,13 @@ function OverviewTab({
           <div className="flex items-center gap-2">
             <span className="text-xs tracking-widest" style={{ fontFamily: 'JetBrains Mono, monospace', color: 'var(--foreground)' }}>PLAYER STATUS</span>
             <span className="ml-auto text-xs opacity-40" style={{ fontFamily: 'JetBrains Mono, monospace' }}>{filteredPlayers.length}</span>
+            <button
+              onClick={() => setShowAddPlayerModal(true)}
+              className="ml-2 px-2 py-1 rounded text-xs transition-colors hover:bg-white/10"
+              style={{ border: '1px solid rgba(122,158,192,0.3)', fontFamily: 'JetBrains Mono, monospace' }}
+            >
+              + ADD
+            </button>
           </div>
           <input
             type="text"

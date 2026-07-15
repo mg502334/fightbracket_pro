@@ -10,6 +10,19 @@ export interface GameTheme {
   publisher: string;
 }
 
+export enum BracketType {
+  SINGLE_ELIMINATION = 'SINGLE_ELIMINATION',
+  DOUBLE_ELIMINATION = 'DOUBLE_ELIMINATION',
+  ROUND_ROBIN = 'ROUND_ROBIN',
+  SWISS = 'SWISS',
+  EXHIBITION = 'EXHIBITION',
+  CUSTOM_SCHEDULE = 'CUSTOM_SCHEDULE',
+  MATCHMAKING = 'MATCHMAKING',
+  ELIMINATION_ROUNDS = 'ELIMINATION_ROUNDS',
+  RACE = 'RACE',
+  CIRCUIT = 'CIRCUIT'
+}
+
 export interface Player {
   id: string;
   tag: string;
@@ -290,6 +303,101 @@ function gen8Bracket(gameId: string, playerIds: string[]): BracketMatch[] {
     winnerId: null,
     bestOf: 5,
   });
+
+  return matches;
+}
+
+// Generate dynamic single elimination bracket
+export function generateDynamicBracket(gameId: string, playerIds: string[], type: BracketType = BracketType.SINGLE_ELIMINATION): BracketMatch[] {
+  if (playerIds.length === 0) return [];
+  
+  if (type !== BracketType.SINGLE_ELIMINATION) {
+    // For now, fallback to single elimination for unsupported types until fully implemented
+    console.warn(`Bracket type ${type} not fully implemented yet. Falling back to single elimination.`);
+  }
+
+  const matches: BracketMatch[] = [];
+  const n = playerIds.length;
+  let p = 1;
+  while (p < n) p *= 2;
+  
+  // Create an array of size p, filled with nulls (byes)
+  // Simple seeding: we won't do full perfect 1v16, 8v9 seeding for simplicity here,
+  // but we can try to do basic top vs bottom.
+  // A standard way is to place seeds. Let's assume playerIds is already sorted by seed.
+  const seeds = Array(p).fill(null);
+  for (let i = 0; i < n; i++) {
+    seeds[i] = playerIds[i];
+  }
+  
+  // Actually, standard seeding order for power of 2:
+  const getSeedingOrder = (power: number): number[] => {
+    if (power === 1) return [0];
+    const prev = getSeedingOrder(power / 2);
+    const order: number[] = [];
+    for (const s of prev) {
+      order.push(s);
+      order.push(power - 1 - s);
+    }
+    return order;
+  };
+  
+  const order = getSeedingOrder(p);
+  const paired = [];
+  for (let i = 0; i < p; i += 2) {
+    paired.push([seeds[order[i]], seeds[order[i+1]]]);
+  }
+
+  let currentRoundPairings = paired;
+  let roundNum = 0;
+  let totalMatches = p - 1;
+  let matchCounter = 0;
+  
+  const getRoundName = (matchesInRound: number) => {
+    if (matchesInRound === 1) return 'Grand Finals';
+    if (matchesInRound === 2) return 'Semifinals';
+    if (matchesInRound === 4) return 'Quarterfinals';
+    return `Round of ${matchesInRound * 2}`;
+  };
+
+  while (currentRoundPairings.length > 0) {
+    const nextRoundPairings = [];
+    const isFinals = currentRoundPairings.length === 1;
+    const matchesInRound = currentRoundPairings.length;
+    const roundName = getRoundName(matchesInRound);
+
+    for (let i = 0; i < matchesInRound; i++) {
+      const [p1, p2] = currentRoundPairings[i];
+      // If one is null, it's a bye. The other automatically wins.
+      const isBye = p1 === null || p2 === null;
+      const winner = isBye ? (p1 || p2) : null;
+      
+      matches.push({
+        id: `${gameId}-dyn-r${roundNum}-m${i}`,
+        gameId,
+        round: roundNum,
+        roundName,
+        matchNumber: i,
+        player1Id: p1,
+        player2Id: p2,
+        state: isBye ? 'completed' : 'pending',
+        stationId: null,
+        player1Score: isBye && p1 ? 2 : 0,
+        player2Score: isBye && p2 ? 2 : 0,
+        winnerId: winner,
+        bestOf: isFinals ? 5 : 3,
+      });
+
+      if (i % 2 !== 0) {
+        // We just completed a pair of matches (i-1 and i), their winners go to next round
+        // Wait, for next round, we don't know the winners yet. We just put null.
+        nextRoundPairings.push([null, null]);
+      }
+    }
+    
+    currentRoundPairings = nextRoundPairings;
+    roundNum++;
+  }
 
   return matches;
 }
