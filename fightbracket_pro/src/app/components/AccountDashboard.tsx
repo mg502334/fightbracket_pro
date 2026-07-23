@@ -23,6 +23,9 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
+  // Profile state
+  const [displayName, setDisplayName] = useState(user?.user_metadata?.displayName || '');
+
   // Start.gg state
   const [startggToken, setStartggToken] = useState(() => {
     try { return localStorage.getItem('fb_startggToken') || ''; } catch { return ''; }
@@ -170,6 +173,12 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
     setFetchingStartgg(false);
   };
 
+  const saveDisplayName = async () => {
+    const { error } = await supabase.auth.updateUser({ data: { displayName } });
+    if (error) toast.error(error.message);
+    else toast.success('Profile updated! Changes will reflect globally.');
+  };
+
   if (!user) {
     return (
       <div className="flex items-center justify-center h-full p-4">
@@ -212,7 +221,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
       <div className="flex justify-between items-center bg-[#050A14]/80 border border-[#00FF88]/20 p-6 rounded-xl">
         <div>
           <h2 className="text-3xl font-bold font-rajdhani text-white">ACCOUNT DASHBOARD</h2>
-          <p className="text-[#00FF88] font-mono text-sm mt-1">Logged in as {user.email}</p>
+          <p className="text-[#00FF88] font-mono text-sm mt-1">Welcome, {user.user_metadata?.displayName || 'Host'}</p>
         </div>
         <button 
           onClick={() => supabase.auth.signOut()} 
@@ -226,6 +235,25 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
         
         {/* Left Column: Cloud Tournaments */}
         <div className="space-y-6">
+          <div className="bg-[#050A14] border border-[#00FF88]/30 p-6 rounded-xl shadow-lg">
+            <h3 className="text-xl font-bold font-rajdhani text-[#00FF88] tracking-widest mb-4">PROFILE</h3>
+            <div className="flex gap-2">
+              <input 
+                type="text" 
+                value={displayName} 
+                onChange={e => setDisplayName(e.target.value)} 
+                placeholder="Gamertag or Channel Name" 
+                className="flex-1 bg-[#111] border border-gray-800 rounded p-2 text-white focus:border-[#00FF88] outline-none font-mono text-sm" 
+              />
+              <button 
+                onClick={saveDisplayName} 
+                className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded font-rajdhani font-bold tracking-wider transition-colors"
+              >
+                SAVE
+              </button>
+            </div>
+          </div>
+
           <div className="bg-[#050A14] border border-[#00E5FF]/30 p-6 rounded-xl shadow-lg">
             <div className="flex justify-between items-center mb-6 border-b border-gray-800 pb-4">
               <h3 className="text-xl font-bold font-rajdhani text-[#00E5FF] tracking-widest">CLOUD SAVES</h3>
