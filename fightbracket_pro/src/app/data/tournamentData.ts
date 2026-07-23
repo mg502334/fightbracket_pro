@@ -67,6 +67,7 @@ export interface ExhibitionMatch {
   firstTo: number;
   videoUrl: string;
   createdAt: number;
+  hostTag?: string;
 }
 
 export interface Station {

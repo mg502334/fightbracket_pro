@@ -9,8 +9,6 @@ import { useTheme } from "next-themes";
 
 import { GameBanner } from "./components/GameBanner";
 import { AddPlayerModal } from "./components/AddPlayerModal";
-import { AuthModal } from "./components/AuthModal";
-import { CloudTournamentsModal } from "./components/CloudTournamentsModal";
 import { supabase } from "./supabaseClient";
 import { BracketView } from "./components/BracketView";
 import { CheckInPanel } from "./components/CheckInPanel";
@@ -23,13 +21,14 @@ import { ImportModal } from "./components/ImportModal";
 import { CallMatchModal } from "./components/CallMatchModal";
 import { StreamsPanel } from "./components/StreamsPanel";
 import { ExhibitionsPanel } from "./components/ExhibitionsPanel";
+import { AccountDashboard } from "./components/AccountDashboard";
 
 import {
   type BracketMatch, type Player, type Station, type SMSLog, type GameTheme, type ExhibitionMatch,
   generateMockDataForGame, generateDynamicBracket, BracketType
 } from "./data/tournamentData";
 
-type Tab = 'overview' | 'bracket' | 'checkin' | 'stations' | 'sms' | 'streams' | 'vods' | 'mobile';
+type Tab = 'overview' | 'bracket' | 'checkin' | 'stations' | 'sms' | 'streams' | 'vods' | 'mobile' | 'account';
 
 const DEFAULT_GAME_ORDER: string[] = ['tekken8', 'sf6', 'fatalFury'];
 const TABS: { id: Tab; label: string; icon: React.ComponentType<{ size?: number }> }[] = [
@@ -41,6 +40,7 @@ const TABS: { id: Tab; label: string; icon: React.ComponentType<{ size?: number 
   { id: 'streams', label: 'STREAMS', icon: Tv },
   { id: 'vods', label: 'EXHIBITIONS', icon: Play },
   { id: 'mobile', label: 'MOBILE', icon: Smartphone },
+  { id: 'account', label: 'ACCOUNT', icon: UserCheck },
 ];
 
 export default function App() {
@@ -66,8 +66,6 @@ export default function App() {
   const [pendingCallMatch, setPendingCallMatch] = useState<BracketMatch | null>(null);
   const [startggUser, setStartggUser] = useState<{ id: string; name: string } | null>(null);
   const [supabaseUser, setSupabaseUser] = useState<any>(null);
-  const [showAuthModal, setShowAuthModal] = useState(false);
-  const [showCloudModal, setShowCloudModal] = useState(false);
   const [activeTournament, setActiveTournament] = useState<{name: string, location: string} | null>(() => safeParse('fb_tournament', null));
   const [autoSyncSlug, setAutoSyncSlug] = useState<string | null>(() => safeParse('fb_autoSyncSlug', null));
   const [exhibitions, setExhibitions] = useState<ExhibitionMatch[]>(() => safeParse('fb_exhibitions', []));
@@ -635,10 +633,12 @@ export default function App() {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: '#00FF88' }} />
-            <span className="text-xs" style={{ fontFamily: 'JetBrains Mono, monospace', color: '#00FF88' }}>LIVE</span>
-          </div>
+          {matches.some(m => m.state === 'in_progress' || m.state === 'called') && (
+            <div className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: '#00FF88' }} />
+              <span className="text-xs font-bold tracking-widest" style={{ fontFamily: 'JetBrains Mono, monospace', color: '#00FF88' }}>LIVE</span>
+            </div>
+          )}
           <a href="https://start.gg" target="_blank" rel="noreferrer"
             className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs tracking-wider hover:opacity-80 transition-opacity"
             style={{ background: 'var(--border)', border: '1px solid rgba(0,229,255,0.2)', color: '#00E5FF', fontFamily: 'JetBrains Mono, monospace' }}>
@@ -662,29 +662,12 @@ export default function App() {
               CLEAR TOURNAMENT
             </button>
           )}
-          {supabaseUser ? (
-             <div className="flex items-center gap-3 ml-2">
-                <span className="text-sm" style={{ fontFamily: 'Rajdhani, sans-serif', fontWeight: 700, color: 'var(--foreground)' }}>{supabaseUser.email}</span>
-                <button onClick={() => supabase.auth.signOut()} className="text-xs opacity-50 hover:opacity-100 transition-opacity" style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10 }}>[LOGOUT]</button>
-             </div>
-          ) : startggUser ? (
+          {startggUser && (
              <div className="flex items-center gap-3 ml-2">
                 <span className="text-sm" style={{ fontFamily: 'Rajdhani, sans-serif', fontWeight: 700, color: 'var(--foreground)' }}>{startggUser.name}</span>
                 <button onClick={() => { localStorage.removeItem('startgg_access_token'); setStartggUser(null); }} className="text-xs opacity-50 hover:opacity-100 transition-opacity" style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10 }}>[DISCONNECT]</button>
              </div>
-          ) : (
-             <button onClick={() => setShowAuthModal(true)}
-               className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs tracking-wider hover:opacity-80 transition-opacity ml-2"
-               style={{ background: '#FF006E15', border: '1px solid rgba(255,0,110,0.3)', color: '#FF006E', fontFamily: 'JetBrains Mono, monospace' }}>
-               <UserCheck size={11} />
-               ACCOUNT
-             </button>
           )}
-          <button onClick={() => setShowCloudModal(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs tracking-wider hover:opacity-80 transition-opacity ml-2"
-            style={{ background: '#00FF8815', border: '1px solid rgba(0,255,136,0.3)', color: '#00FF88', fontFamily: 'JetBrains Mono, monospace' }}>
-            <Cloud size={11} /> CLOUD
-          </button>
           <ThemeToggleButton />
         </div>
       </header>
@@ -861,8 +844,32 @@ export default function App() {
                   exhibitions={exhibitions} 
                   setExhibitions={setExhibitions} 
                   theme={theme} 
-                  userId={userId} 
+                  userId={supabaseUser?.id || null} 
                   activeGameId={activeGame} 
+                />
+              </div>
+            )}
+            {activeTab === 'account' && (
+              <div className="h-full">
+                <AccountDashboard 
+                  user={supabaseUser}
+                  theme={theme}
+                  currentTournamentData={{
+                    players, matches, stations, gameThemes, gameOrder, activeGame, activeTournament, smsLogs, autoSyncSlug, exhibitions
+                  }}
+                  onLoad={(data) => {
+                    if (data.players) setPlayers(data.players);
+                    if (data.matches) setMatches(data.matches);
+                    if (data.stations) setStations(data.stations);
+                    if (data.gameThemes) setGameThemes(data.gameThemes);
+                    if (data.gameOrder) setGameOrder(data.gameOrder);
+                    if (data.activeGame) setActiveGame(data.activeGame);
+                    if (data.activeTournament) setActiveTournament(data.activeTournament);
+                    if (data.smsLogs) setSmsLogs(data.smsLogs);
+                    if (data.autoSyncSlug !== undefined) setAutoSyncSlug(data.autoSyncSlug);
+                    if (data.exhibitions) setExhibitions(data.exhibitions);
+                  }}
+                  onStartggImport={(slug) => handleLiveImport(slug)}
                 />
               </div>
             )}
@@ -913,30 +920,7 @@ export default function App() {
         onImport={(slug) => handleLiveImport(slug)}
         theme={theme || { id: 'default', displayName: 'FightBracket', shortName: 'FB', primaryColor: '#00E5FF', secondaryColor: '#FF006E', bgFrom: '#050A14', glowColor: 'rgba(0,229,255,0.4)', description: '', publisher: '' }}
       />
-
-      {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}
       
-      {showCloudModal && (
-        <CloudTournamentsModal 
-          onClose={() => setShowCloudModal(false)}
-          currentTournamentData={{
-            players, matches, stations, gameThemes, gameOrder, activeGame, activeTournament, smsLogs, autoSyncSlug, exhibitions
-          }}
-          onLoad={(data) => {
-            if (data.players) setPlayers(data.players);
-            if (data.matches) setMatches(data.matches);
-            if (data.stations) setStations(data.stations);
-            if (data.gameThemes) setGameThemes(data.gameThemes);
-            if (data.gameOrder) setGameOrder(data.gameOrder);
-            if (data.activeGame) setActiveGame(data.activeGame);
-            if (data.activeTournament) setActiveTournament(data.activeTournament);
-            if (data.smsLogs) setSmsLogs(data.smsLogs);
-            if (data.autoSyncSlug !== undefined) setAutoSyncSlug(data.autoSyncSlug);
-            if (data.exhibitions) setExhibitions(data.exhibitions);
-          }}
-        />
-      )}
-
       {activeGame && theme && (
         <AddPlayerModal
           isOpen={showAddPlayerModal}

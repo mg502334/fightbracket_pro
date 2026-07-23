@@ -20,6 +20,7 @@ export function ExhibitionsPanel({ exhibitions, setExhibitions, theme, userId, a
   const [p2Name, setP2Name] = useState('');
   const [firstTo, setFirstTo] = useState(5);
   const [videoUrl, setVideoUrl] = useState('');
+  const [hostTag, setHostTag] = useState('');
 
   const activeExhibitions = exhibitions.filter(e => e.gameId === activeGameId).sort((a, b) => b.createdAt - a.createdAt);
   const activeExhibition = exhibitions.find(e => e.id === activeExhibitionId);
@@ -39,12 +40,13 @@ export function ExhibitionsPanel({ exhibitions, setExhibitions, theme, userId, a
       player2Score: 0,
       firstTo: firstTo,
       videoUrl: videoUrl,
-      createdAt: Date.now()
+      createdAt: Date.now(),
+      hostTag: hostTag || undefined
     };
 
     setExhibitions(prev => [newExhibition, ...prev]);
     setShowCreate(false);
-    setP1Name(''); setP2Name(''); setVideoUrl(''); setFirstTo(5);
+    setP1Name(''); setP2Name(''); setVideoUrl(''); setFirstTo(5); setHostTag('');
     setActiveExhibitionId(newExhibition.id);
   };
 
@@ -247,6 +249,10 @@ export function ExhibitionsPanel({ exhibitions, setExhibitions, theme, userId, a
               <input type="number" min="1" max="99" value={firstTo} onChange={e => setFirstTo(parseInt(e.target.value))} required className="w-full bg-black border border-gray-700 rounded p-2 text-white focus:border-[#00E5FF] outline-none" />
             </div>
           </div>
+          <div className="mb-6">
+            <label className="block text-xs font-mono text-gray-400 mb-1">HOST TAG (Optional)</label>
+            <input type="text" value={hostTag} onChange={e => setHostTag(e.target.value)} placeholder="e.g. Ninja, xQc" className="w-full bg-black border border-gray-700 rounded p-2 text-white focus:border-[#00E5FF] outline-none" />
+          </div>
           <button type="submit" className="w-full py-2.5 rounded text-black font-bold font-rajdhani tracking-widest hover:brightness-125 transition-all" style={{ background: theme.primaryColor }}>
             START TRACKING
           </button>
@@ -264,7 +270,10 @@ export function ExhibitionsPanel({ exhibitions, setExhibitions, theme, userId, a
             <div key={ex.id} className="bg-black/30 border border-gray-800 rounded-xl p-4 hover:border-gray-600 transition-colors cursor-pointer relative group" onClick={() => setActiveExhibitionId(ex.id)}>
               <div className="flex justify-between items-center mb-4">
                 <span className="text-xs font-mono text-gray-500">{new Date(ex.createdAt).toLocaleDateString()}</span>
-                <span className="text-xs font-mono bg-white/10 px-2 py-0.5 rounded text-white">FT{ex.firstTo}</span>
+                <div className="flex gap-2">
+                  {ex.hostTag && <span className="text-xs font-mono bg-[#00E5FF]/10 text-[#00E5FF] px-2 py-0.5 rounded border border-[#00E5FF]/20">Host: {ex.hostTag}</span>}
+                  <span className="text-xs font-mono bg-white/10 px-2 py-0.5 rounded text-white">FT{ex.firstTo}</span>
+                </div>
               </div>
               
               <div className="flex justify-between items-center mb-2">
