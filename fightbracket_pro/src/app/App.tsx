@@ -668,6 +668,21 @@ export default function App() {
                 <button onClick={() => { localStorage.removeItem('startgg_access_token'); setStartggUser(null); }} className="text-xs opacity-50 hover:opacity-100 transition-opacity" style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10 }}>[DISCONNECT]</button>
              </div>
           )}
+          {supabaseUser ? (
+             <button onClick={() => setActiveTab('account')}
+               className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs tracking-wider hover:opacity-80 transition-opacity ml-2"
+               style={{ background: '#FF006E15', border: '1px solid rgba(255,0,110,0.3)', color: '#FF006E', fontFamily: 'JetBrains Mono, monospace' }}>
+               <UserCheck size={11} />
+               {supabaseUser.email}
+             </button>
+          ) : (
+             <button onClick={() => setActiveTab('account')}
+               className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs tracking-wider hover:opacity-80 transition-opacity ml-2"
+               style={{ background: '#FF006E15', border: '1px solid rgba(255,0,110,0.3)', color: '#FF006E', fontFamily: 'JetBrains Mono, monospace' }}>
+               <UserCheck size={11} />
+               LOGIN
+             </button>
+          )}
           <ThemeToggleButton />
         </div>
       </header>
