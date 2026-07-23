@@ -776,7 +776,30 @@ export default function App() {
 
       {/* Main content */}
       <main className="flex-1 overflow-auto p-5 relative">
-        {!activeGame || !theme ? (
+        {activeTab === 'account' ? (
+          <div className="h-full">
+            <AccountDashboard 
+              user={supabaseUser}
+              theme={theme}
+              currentTournamentData={{
+                players, matches, stations, gameThemes, gameOrder, activeGame, activeTournament, smsLogs, autoSyncSlug, exhibitions
+              }}
+              onLoad={(data) => {
+                if (data.players) setPlayers(data.players);
+                if (data.matches) setMatches(data.matches);
+                if (data.stations) setStations(data.stations);
+                if (data.gameThemes) setGameThemes(data.gameThemes);
+                if (data.gameOrder) setGameOrder(data.gameOrder);
+                if (data.activeGame) setActiveGame(data.activeGame);
+                if (data.activeTournament) setActiveTournament(data.activeTournament);
+                if (data.smsLogs) setSmsLogs(data.smsLogs);
+                if (data.autoSyncSlug !== undefined) setAutoSyncSlug(data.autoSyncSlug);
+                if (data.exhibitions) setExhibitions(data.exhibitions);
+              }}
+              onStartggImport={(slug) => handleLiveImport(slug)}
+            />
+          </div>
+        ) : !activeGame || !theme ? (
           <div className="absolute inset-0 flex flex-col items-center justify-center p-10 text-center opacity-50">
             <Trophy size={64} className="mb-6 opacity-20" />
             <h2 className="text-2xl tracking-widest mb-2" style={{ fontFamily: 'Rajdhani, sans-serif', fontWeight: 700 }}>NO TOURNAMENT LOADED</h2>
@@ -861,30 +884,6 @@ export default function App() {
                   theme={theme} 
                   userId={supabaseUser?.id || null} 
                   activeGameId={activeGame} 
-                />
-              </div>
-            )}
-            {activeTab === 'account' && (
-              <div className="h-full">
-                <AccountDashboard 
-                  user={supabaseUser}
-                  theme={theme}
-                  currentTournamentData={{
-                    players, matches, stations, gameThemes, gameOrder, activeGame, activeTournament, smsLogs, autoSyncSlug, exhibitions
-                  }}
-                  onLoad={(data) => {
-                    if (data.players) setPlayers(data.players);
-                    if (data.matches) setMatches(data.matches);
-                    if (data.stations) setStations(data.stations);
-                    if (data.gameThemes) setGameThemes(data.gameThemes);
-                    if (data.gameOrder) setGameOrder(data.gameOrder);
-                    if (data.activeGame) setActiveGame(data.activeGame);
-                    if (data.activeTournament) setActiveTournament(data.activeTournament);
-                    if (data.smsLogs) setSmsLogs(data.smsLogs);
-                    if (data.autoSyncSlug !== undefined) setAutoSyncSlug(data.autoSyncSlug);
-                    if (data.exhibitions) setExhibitions(data.exhibitions);
-                  }}
-                  onStartggImport={(slug) => handleLiveImport(slug)}
                 />
               </div>
             )}
