@@ -16,11 +16,27 @@ except ImportError:
     pass
 
 # pyrefly: ignore [missing-import]
-# from api.db import get_db, DBPlayer, DBStation, DBSMSLog
+from api.db import get_db, DBPlayer, DBStation, DBSMSLog, DBTournament
+import jwt
+from fastapi import Header
 
-# Mock DB for online deployment
-def get_db():
-    yield None
+def get_current_user_id(authorization: str = Header(None)):
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Missing or invalid token")
+    token = authorization.split(" ")[1]
+    jwt_secret = os.environ.get("SUPABASE_JWT_SECRET")
+    if not jwt_secret:
+        try:
+            payload = jwt.decode(token, options={"verify_signature": False})
+            return payload.get("sub")
+        except jwt.PyJWTError:
+            raise HTTPException(status_code=401, detail="Invalid token")
+    else:
+        try:
+            payload = jwt.decode(token, jwt_secret, algorithms=["HS256"], audience="authenticated")
+            return payload.get("sub")
+        except jwt.PyJWTError as e:
+            raise HTTPException(status_code=401, detail=f"Invalid token: {e}")
 
 app = FastAPI()
 
@@ -47,9 +63,54 @@ class StationAssignRequest(BaseModel):
     station_id: int
     match_id: str | None
 
+class TournamentSaveRequest(BaseModel):
+    id: str
+    name: str
+    data: str
+
 @app.get("/api/health")
 def health_check():
     return {"status": "ok"}
+
+@app.get("/api/tournaments")
+def get_tournaments(user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    if not db:
+        return {"tournaments": []}
+    tournaments = db.query(DBTournament).filter(DBTournament.user_id == user_id).all()
+    return {"tournaments": [{"id": t.id, "name": t.name, "updated_at": t.updated_at.isoformat()} for t in tournaments]}
+
+@app.get("/api/tournaments/{tournament_id}")
+def get_tournament(tournament_id: str, user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    if not db:
+        raise HTTPException(status_code=404, detail="Database not available")
+    tournament = db.query(DBTournament).filter(DBTournament.id == tournament_id, DBTournament.user_id == user_id).first()
+    if not tournament:
+        raise HTTPException(status_code=404, detail="Tournament not found")
+    return {"tournament": {"id": tournament.id, "name": tournament.name, "data": tournament.data, "updated_at": tournament.updated_at.isoformat()}}
+
+@app.post("/api/tournaments")
+def save_tournament(req: TournamentSaveRequest, user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    if not db:
+        return {"status": "error", "detail": "Database not available"}
+    tournament = db.query(DBTournament).filter(DBTournament.id == req.id, DBTournament.user_id == user_id).first()
+    if tournament:
+        tournament.name = req.name
+        tournament.data = req.data
+    else:
+        tournament = DBTournament(id=req.id, user_id=user_id, name=req.name, data=req.data)
+        db.add(tournament)
+    db.commit()
+    return {"status": "success"}
+
+@app.delete("/api/tournaments/{tournament_id}")
+def delete_tournament(tournament_id: str, user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    if not db:
+        return {"status": "error", "detail": "Database not available"}
+    tournament = db.query(DBTournament).filter(DBTournament.id == tournament_id, DBTournament.user_id == user_id).first()
+    if tournament:
+        db.delete(tournament)
+        db.commit()
+    return {"status": "success"}
 
 @app.get("/api/state")
 def get_state(user_id: str, db: Session = Depends(get_db)):
@@ -153,13 +214,14 @@ def sync_startgg_bracket(slug: str = "clash-of-kings-vii", token: str = None):
             }
           }
         }
-        sets(page: 1, perPage: 100, sortType: RECENT) {
+        sets(page: 1, perPage: 100, sortType: STANDARD) {
           nodes {
             id
             state
             fullRoundText
             round
             winnerId
+            displayScore
             stream {
               streamName
               streamSource

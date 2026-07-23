@@ -1,5 +1,5 @@
 import os
-from sqlalchemy import create_engine, Column, String, Boolean, Integer, DateTime
+from sqlalchemy import create_engine, Column, String, Boolean, Integer, DateTime, Text
 from sqlalchemy.orm import declarative_base, sessionmaker
 from datetime import datetime
 
@@ -35,6 +35,14 @@ class DBSMSLog(Base):
     sent_at = Column(DateTime, default=datetime.utcnow)
     status = Column(String)
     match_id = Column(String, nullable=True)
+
+class DBTournament(Base):
+    __tablename__ = "tournaments"
+    id = Column(String, primary_key=True, index=True)
+    user_id = Column(String, index=True, nullable=False)
+    name = Column(String)
+    data = Column(Text)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 # Create tables if they don't exist
 Base.metadata.create_all(bind=engine)

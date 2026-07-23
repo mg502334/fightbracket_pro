@@ -56,172 +56,184 @@ export function BracketView({ matches, players, theme, onCallMatch, onGenerateBr
 
   const playerMap = Object.fromEntries(players.map(p => [p.id, p]));
 
-  const rounds = Array.from(new Set(matches.map(m => m.round))).sort((a, b) => a - b);
-  const matchesByRound: Record<number, BracketMatch[]> = {};
-  rounds.forEach(r => {
-    matchesByRound[r] = matches.filter(m => m.round === r).sort((a, b) => a.matchNumber - b.matchNumber);
-  });
-
-  const minRound = rounds[0] ?? 0;
-  const maxRound = Math.max(...rounds, 0);
-  
-  // Find the maximum number of matches in any single round to determine total height
-  const maxMatchesInAnyRound = Math.max(...Object.values(matchesByRound).map(r => r.length), 1);
-  const r0Count = maxMatchesInAnyRound;
-
-  // Height unit per first-round match slot
-  const UNIT = 90;
-  const totalHeight = r0Count * UNIT;
-
-  function getMatchTop(round: number, matchIndex: number): number {
-    const relativeRound = round - minRound;
-    const slotsPerMatch = Math.pow(2, relativeRound);
-    const slotHeight = UNIT * slotsPerMatch;
-    return matchIndex * slotHeight + (slotHeight - 72) / 2;
-  }
+  // Categorize matches
+  const winnersMatches = matches.filter(m => m.round > 0 && !m.roundName.toLowerCase().includes('grand final'));
+  const losersMatches = matches.filter(m => m.round < 0 || m.roundName.toLowerCase().includes('loser'));
+  const grandFinalsMatches = matches.filter(m => m.round > 0 && m.roundName.toLowerCase().includes('grand final'));
 
   return (
-    <div className="overflow-auto pb-4 h-full">
-      <div className="relative flex gap-0" style={{ minWidth: rounds.length * 220, height: Math.max(totalHeight + 20, 600) }}>
-        {rounds.map((round, roundIdx) => {
-          const roundMatches = matchesByRound[round];
-          const isLast = round === maxRound;
+    <div className="overflow-auto pb-8 h-full space-y-16 p-4">
+      <BracketSection 
+        title="WINNERS BRACKET" 
+        matches={winnersMatches} 
+        playerMap={playerMap} 
+        theme={theme} 
+        hoveredMatchId={hoveredMatchId} 
+        setHoveredMatchId={setHoveredMatchId} 
+        onCallMatch={onCallMatch} 
+      />
+      <BracketSection 
+        title="LOSERS BRACKET" 
+        matches={losersMatches} 
+        playerMap={playerMap} 
+        theme={theme} 
+        hoveredMatchId={hoveredMatchId} 
+        setHoveredMatchId={setHoveredMatchId} 
+        onCallMatch={onCallMatch} 
+      />
+      <BracketSection 
+        title="GRAND FINALS" 
+        matches={grandFinalsMatches} 
+        playerMap={playerMap} 
+        theme={theme} 
+        hoveredMatchId={hoveredMatchId} 
+        setHoveredMatchId={setHoveredMatchId} 
+        onCallMatch={onCallMatch} 
+      />
+    </div>
+  );
+}
+
+function BracketSection({ 
+  title, matches, playerMap, theme, hoveredMatchId, setHoveredMatchId, onCallMatch 
+}: { 
+  title: string; 
+  matches: BracketMatch[]; 
+  playerMap: Record<string, Player>;
+  theme: GameTheme;
+  hoveredMatchId: string | null;
+  setHoveredMatchId: (id: string | null) => void;
+  onCallMatch: (match: BracketMatch) => void;
+}) {
+  if (matches.length === 0) return null;
+
+  // Sort rounds. For losers, rounds are usually negative (-1, -2, -3), we want them to render left-to-right from largest negative to closest to 0.
+  // Start.gg uses -1 for Losers Round 1. Wait, -1 is Losers R1. So we want to sort ascending.
+  // Actually, sometimes it's sorted 1, 2, 3. So just sort by absolute value if negative?
+  // Start.gg Losers bracket rounds: Losers R1 is -1. Losers R2 is -2. Wait, actually, Start.gg rounds for losers go -1, -2, -3...
+  // Wait, if Losers R1 is -1 and Losers R2 is -2, then sorting mathematically puts -8 before -1. 
+  // Let's sort based on the string name or just round number. Start.gg usually means smaller absolute value is earlier, wait!
+  // Start.gg assigns Losers R1 = -1. Losers R2 = -2.
+  // We want to render -1, then -2, then -3. So we should sort by absolute value, or descending for negative numbers.
+  const isLosers = matches[0]?.round < 0;
+  const rounds = Array.from(new Set(matches.map(m => m.round))).sort((a, b) => isLosers ? b - a : a - b);
+
+  return (
+    <div>
+      <div className="text-xl tracking-widest mb-6 border-b pb-2" style={{ fontFamily: 'Rajdhani, sans-serif', fontWeight: 700, color: theme.primaryColor, borderColor: `${theme.primaryColor}30` }}>
+        {title}
+      </div>
+      <div className="flex gap-12 min-w-max">
+        {rounds.map((round, rIdx) => {
+          const roundMatches = matches.filter(m => m.round === round);
+          const isLast = rIdx === rounds.length - 1;
 
           return (
-            <div key={round} className="relative shrink-0" style={{ width: 220 }}>
-              {/* Round label */}
+            <div key={round} className="flex flex-col min-w-[240px]">
               <div
-                className="absolute -top-7 left-0 right-4 text-center text-xs tracking-widest truncate"
+                className="text-center text-xs tracking-widest truncate mb-6"
                 style={{ fontFamily: 'JetBrains Mono, monospace', color: theme.primaryColor, opacity: 0.7 }}
               >
                 {roundMatches[0]?.roundName}
               </div>
+              <div className="flex flex-col justify-around flex-1 gap-6 relative">
+                {roundMatches.map(match => {
+                  const p1 = match.player1Id ? playerMap[match.player1Id] : null;
+                  const p2 = match.player2Id ? playerMap[match.player2Id] : null;
+                  const cfg = STATE_CONFIG[match.state];
+                  const Icon = cfg.icon;
+                  const isHovered = hoveredMatchId === match.id;
+                  const canCall = match.state === 'pending' && p1 && p2;
+                  const isLive = match.state === 'in_progress' || match.state === 'called';
 
-              {roundMatches.map((match, mIdx) => {
-                const top = getMatchTop(round, mIdx);
-                const p1 = match.player1Id ? playerMap[match.player1Id] : null;
-                const p2 = match.player2Id ? playerMap[match.player2Id] : null;
-                const cfg = STATE_CONFIG[match.state];
-                const Icon = cfg.icon;
-                const isHovered = hoveredMatchId === match.id;
-                const canCall = match.state === 'pending' && p1 && p2;
-                const isLive = match.state === 'in_progress' || match.state === 'called';
-
-                return (
-                  <div
-                    key={match.id}
-                    className="absolute"
-                    style={{ top, left: 8, right: isLast ? 8 : 24 }}
-                    onMouseEnter={() => setHoveredMatchId(match.id)}
-                    onMouseLeave={() => setHoveredMatchId(null)}
-                  >
-                    {/* Connector line to next round */}
-                    {!isLast && (
-                      <>
-                        <div
-                          className="absolute"
-                          style={{
-                            right: -20,
-                            top: '50%',
-                            width: 20,
-                            height: 1,
-                            background: isLive ? theme.primaryColor : 'rgba(122,158,192,0.2)',
-                            transform: 'translateY(-50%)',
-                          }}
+                  return (
+                    <div key={match.id} className="relative w-full">
+                      {/* Connection Line */}
+                      {!isLast && (
+                        <div 
+                          className="absolute top-1/2 -right-6 h-px w-6" 
+                          style={{ background: isLive ? theme.primaryColor : 'rgba(122,158,192,0.2)' }} 
                         />
-                        {mIdx % 2 === 0 && (
-                          <div
-                            className="absolute"
-                            style={{
-                              right: -20,
-                              top: '50%',
-                              width: 1,
-                              height: UNIT * Math.pow(2, round - minRound),
-                              background: 'rgba(122,158,192,0.15)',
-                            }}
-                          />
-                        )}
-                      </>
-                    )}
-
-                    <div
-                      className="rounded overflow-hidden cursor-pointer transition-all duration-150"
-                      style={{
-                        background: isHovered ? `${theme.primaryColor}12` : cfg.bg,
-                        border: `1px solid ${isLive ? theme.primaryColor : isHovered ? `${theme.primaryColor}40` : 'rgba(122,158,192,0.15)'}`,
-                        boxShadow: isLive ? `0 0 12px ${theme.glowColor}` : 'none',
-                      }}
-                      onClick={() => canCall && onCallMatch(match)}
-                    >
-                      {/* Match header */}
+                      )}
                       <div
-                        className="flex items-center justify-between px-2 py-0.5"
-                        style={{ background: 'rgba(0,0,0,0.3)', borderBottom: '1px solid rgba(122,158,192,0.1)' }}
+                        className="rounded overflow-hidden cursor-pointer transition-all duration-150 w-full"
+                        style={{
+                          background: isHovered ? `${theme.primaryColor}12` : cfg.bg,
+                          border: `1px solid ${isLive ? theme.primaryColor : isHovered ? `${theme.primaryColor}40` : 'rgba(122,158,192,0.15)'}`,
+                          boxShadow: isLive ? `0 0 12px ${theme.glowColor}` : 'none',
+                        }}
+                        onMouseEnter={() => setHoveredMatchId(match.id)}
+                        onMouseLeave={() => setHoveredMatchId(null)}
+                        onClick={() => canCall && onCallMatch(match)}
                       >
-                        <span className="text-xs opacity-50" style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10 }}>
-                          BO{match.bestOf} {match.stationId ? `· STN ${match.stationId}` : ''}
-                        </span>
-                        <div className="flex items-center gap-1">
-                          <Icon size={10} style={{ color: cfg.color }} />
-                          <span className="text-xs" style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10, color: cfg.color }}>
-                            {cfg.label}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Players */}
-                      <PlayerSlot
-                        player={p1}
-                        score={match.player1Score}
-                        isWinner={match.winnerId === match.player1Id}
-                        isCompleted={match.state === 'completed'}
-                        theme={theme}
-                      />
-                      <div className="h-px" style={{ background: 'var(--border)' }} />
-                      <PlayerSlot
-                        player={p2}
-                        score={match.player2Score}
-                        isWinner={match.winnerId === match.player2Id}
-                        isCompleted={match.state === 'completed'}
-                        theme={theme}
-                      />
-
-                      {canCall && isHovered && (
                         <div
-                          className="flex items-center justify-center gap-1 py-1 text-xs tracking-widest cursor-pointer"
-                          onClick={() => onCallMatch(match)}
-                          style={{
-                            background: `${theme.primaryColor}20`,
-                            color: theme.primaryColor,
-                            fontFamily: 'JetBrains Mono, monospace',
-                            fontWeight: 700
-                          }}
+                          className="flex items-center justify-between px-2 py-1"
+                          style={{ background: 'rgba(0,0,0,0.3)', borderBottom: '1px solid rgba(122,158,192,0.1)' }}
                         >
-                          <ChevronRight size={10} />
-                          CALL MATCH
+                          <span className="text-xs opacity-50" style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10 }}>
+                            BO{match.bestOf} {match.stationId ? `· STN ${match.stationId}` : ''}
+                          </span>
+                          <div className="flex items-center gap-1">
+                            <Icon size={10} style={{ color: cfg.color }} />
+                            <span className="text-xs" style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10, color: cfg.color }}>
+                              {cfg.label}
+                            </span>
+                          </div>
                         </div>
-                      )}
-                      {match.streamUrl && (
-                        <a
-                          href={match.streamUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center justify-center gap-1 py-1 text-xs tracking-widest mt-px hover:opacity-80 transition-opacity"
-                          style={{
-                            background: `#6441a5`,
-                            color: 'white',
-                            fontFamily: 'JetBrains Mono, monospace',
-                            fontWeight: 700,
-                            textDecoration: 'none'
-                          }}
-                        >
-                          WATCH LIVE
-                        </a>
-                      )}
+
+                        <PlayerSlot
+                          player={p1}
+                          score={match.player1Score}
+                          isWinner={match.winnerId === match.player1Id}
+                          isCompleted={match.state === 'completed'}
+                          theme={theme}
+                        />
+                        <div className="h-px" style={{ background: 'var(--border)' }} />
+                        <PlayerSlot
+                          player={p2}
+                          score={match.player2Score}
+                          isWinner={match.winnerId === match.player2Id}
+                          isCompleted={match.state === 'completed'}
+                          theme={theme}
+                        />
+
+                        {canCall && isHovered && (
+                          <div
+                            className="flex items-center justify-center gap-1 py-1.5 text-xs tracking-widest cursor-pointer hover:bg-black/20"
+                            onClick={(e) => { e.stopPropagation(); onCallMatch(match); }}
+                            style={{
+                              background: `${theme.primaryColor}20`,
+                              color: theme.primaryColor,
+                              fontFamily: 'JetBrains Mono, monospace',
+                              fontWeight: 700
+                            }}
+                          >
+                            <ChevronRight size={12} />
+                            CALL MATCH
+                          </div>
+                        )}
+                        {match.streamUrl && (
+                          <a
+                            href={match.streamUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center justify-center gap-1 py-1.5 text-xs tracking-widest mt-px hover:opacity-80 transition-opacity"
+                            style={{
+                              background: `#6441a5`,
+                              color: 'white',
+                              fontFamily: 'JetBrains Mono, monospace',
+                              fontWeight: 700,
+                              textDecoration: 'none'
+                            }}
+                          >
+                            WATCH LIVE
+                          </a>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
           );
         })}
@@ -245,7 +257,7 @@ function PlayerSlot({
 }) {
   if (!player) {
     return (
-      <div className="flex items-center gap-2 px-2 py-1.5">
+      <div className="flex items-center gap-2 px-3 py-2">
         <span className="text-xs opacity-20 italic" style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 11 }}>TBD</span>
       </div>
     );
@@ -253,19 +265,19 @@ function PlayerSlot({
 
   return (
     <div
-      className="flex items-center justify-between px-2 py-1.5"
+      className="flex items-center justify-between px-3 py-2"
       style={{ opacity: isCompleted && !isWinner ? 0.4 : 1 }}
     >
-      <div className="flex items-center gap-1.5 min-w-0">
+      <div className="flex items-center gap-2 min-w-0">
         <span className="text-xs opacity-40 tabular-nums w-4 shrink-0" style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10 }}>
           {player.seed}
         </span>
-        <span className="text-xs truncate" style={{ fontFamily: 'Rajdhani, sans-serif', fontWeight: isWinner ? 700 : 500, color: isWinner ? theme.primaryColor : 'var(--foreground)' }}>
+        <span className="text-sm truncate" style={{ fontFamily: 'Rajdhani, sans-serif', fontWeight: isWinner ? 700 : 500, color: isWinner ? theme.primaryColor : 'var(--foreground)' }}>
           {player.countryFlag} {player.tag}
         </span>
       </div>
       <span
-        className="text-xs tabular-nums ml-1 shrink-0"
+        className="text-sm tabular-nums ml-2 shrink-0"
         style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, color: isWinner ? theme.primaryColor : score > 0 ? 'var(--foreground)' : 'rgba(122,158,192,0.4)' }}
       >
         {score}

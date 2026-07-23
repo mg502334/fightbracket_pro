@@ -3,12 +3,15 @@ import { Toaster, toast } from "sonner";
 import { motion, AnimatePresence } from "motion/react";
 import {
   Trophy, GitBranch, UserCheck, Monitor, MessageSquare, Smartphone,
-  ExternalLink, RefreshCw, Zap, MapPin, Globe, Moon, Sun, X, Tv
+  ExternalLink, RefreshCw, Zap, MapPin, Globe, Moon, Sun, X, Tv, Cloud, Play
 } from "lucide-react";
 import { useTheme } from "next-themes";
 
 import { GameBanner } from "./components/GameBanner";
 import { AddPlayerModal } from "./components/AddPlayerModal";
+import { AuthModal } from "./components/AuthModal";
+import { CloudTournamentsModal } from "./components/CloudTournamentsModal";
+import { supabase } from "./supabaseClient";
 import { BracketView } from "./components/BracketView";
 import { CheckInPanel } from "./components/CheckInPanel";
 import { StationsPanel } from "./components/StationsPanel";
@@ -19,13 +22,14 @@ import { GameSelectionModal } from "./components/GameSelectionModal";
 import { ImportModal } from "./components/ImportModal";
 import { CallMatchModal } from "./components/CallMatchModal";
 import { StreamsPanel } from "./components/StreamsPanel";
+import { ExhibitionsPanel } from "./components/ExhibitionsPanel";
 
 import {
-  type BracketMatch, type Player, type Station, type SMSLog, type GameTheme,
+  type BracketMatch, type Player, type Station, type SMSLog, type GameTheme, type ExhibitionMatch,
   generateMockDataForGame, generateDynamicBracket, BracketType
 } from "./data/tournamentData";
 
-type Tab = 'overview' | 'bracket' | 'checkin' | 'stations' | 'sms' | 'streams' | 'mobile';
+type Tab = 'overview' | 'bracket' | 'checkin' | 'stations' | 'sms' | 'streams' | 'vods' | 'mobile';
 
 const DEFAULT_GAME_ORDER: string[] = ['tekken8', 'sf6', 'fatalFury'];
 const TABS: { id: Tab; label: string; icon: React.ComponentType<{ size?: number }> }[] = [
@@ -35,6 +39,7 @@ const TABS: { id: Tab; label: string; icon: React.ComponentType<{ size?: number 
   { id: 'stations', label: 'STATIONS', icon: Monitor },
   { id: 'sms', label: 'SMS', icon: MessageSquare },
   { id: 'streams', label: 'STREAMS', icon: Tv },
+  { id: 'vods', label: 'EXHIBITIONS', icon: Play },
   { id: 'mobile', label: 'MOBILE', icon: Smartphone },
 ];
 
@@ -60,7 +65,12 @@ export default function App() {
   const [showAddPlayerModal, setShowAddPlayerModal] = useState(false);
   const [pendingCallMatch, setPendingCallMatch] = useState<BracketMatch | null>(null);
   const [startggUser, setStartggUser] = useState<{ id: string; name: string } | null>(null);
+  const [supabaseUser, setSupabaseUser] = useState<any>(null);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showCloudModal, setShowCloudModal] = useState(false);
   const [activeTournament, setActiveTournament] = useState<{name: string, location: string} | null>(() => safeParse('fb_tournament', null));
+  const [autoSyncSlug, setAutoSyncSlug] = useState<string | null>(() => safeParse('fb_autoSyncSlug', null));
+  const [exhibitions, setExhibitions] = useState<ExhibitionMatch[]>(() => safeParse('fb_exhibitions', []));
   
   // Dynamic games state
   const [gameThemes, setGameThemes] = useState<Record<string, GameTheme>>(() => safeParse('fb_themes', {}));
@@ -75,10 +85,31 @@ export default function App() {
     localStorage.setItem('fb_tournament', JSON.stringify(activeTournament));
     localStorage.setItem('fb_themes', JSON.stringify(gameThemes));
     localStorage.setItem('fb_gameOrder', JSON.stringify(gameOrder));
-  }, [activeGame, players, matches, stations, smsLogs, activeTournament, gameThemes, gameOrder]);
+    localStorage.setItem('fb_autoSyncSlug', JSON.stringify(autoSyncSlug));
+    localStorage.setItem('fb_exhibitions', JSON.stringify(exhibitions));
+  }, [activeGame, players, matches, stations, smsLogs, activeTournament, gameThemes, gameOrder, autoSyncSlug, exhibitions]);
   
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSupabaseUser(session?.user ?? null);
+    });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSupabaseUser(session?.user ?? null);
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (!autoSyncSlug) return;
+    const interval = setInterval(() => {
+      handleLiveImport(autoSyncSlug, true).catch(() => {});
+    }, 60000); // Poll every 60 seconds
+    return () => clearInterval(interval);
+  }, [autoSyncSlug]);
+
   // Create anonymous user ID if not logged in
   const userId = useMemo(() => {
+    if (supabaseUser?.id) return supabaseUser.id;
     if (startggUser?.id) return startggUser.id;
     let localId = localStorage.getItem('local_user_id');
     if (!localId) {
@@ -86,9 +117,7 @@ export default function App() {
       localStorage.setItem('local_user_id', localId);
     }
     return localId;
-  }, [startggUser]);
-
-
+  }, [startggUser, supabaseUser]);
   useEffect(() => {
     fetch(`/api/state?user_id=${userId}`)
       .then(res => res.json())
@@ -377,7 +406,7 @@ export default function App() {
     }
   }, [theme?.primaryColor, players, userId]);
 
-  async function handleLiveImport(slug: string) {
+  async function handleLiveImport(slug: string, isAutoSync = false) {
     const token = localStorage.getItem('startgg_access_token');
     const url = `/api/bracket/sync?slug=${encodeURIComponent(slug)}${token ? `&token=${token}` : ''}`;
     const res = await fetch(url);
@@ -468,6 +497,18 @@ export default function App() {
           parsedRound += 0.1;
         }
 
+        if (set.displayScore && set.displayScore !== "DQ") {
+           const parts = set.displayScore.split(" - ");
+           if (parts.length === 2) {
+               const leftScoreStr = parts[0].trim().split(" ").pop();
+               const rightScoreStr = parts[1].trim().split(" ").pop();
+               const ls = parseInt(leftScoreStr as string);
+               const rs = parseInt(rightScoreStr as string);
+               if (!isNaN(ls)) p1Score = ls;
+               if (!isNaN(rs)) p2Score = rs;
+           }
+        }
+
         newMatches.push({
           id: String(set.id),
           gameId,
@@ -505,13 +546,38 @@ export default function App() {
     }
     setActiveTournament({ name: tName, location: tLocation });
     
-    // Append or replace? We'll append players and matches. To avoid dupes, we could filter.
-    setPlayers(prev => [...prev, ...newPlayers]);
-    setMatches(prev => [...prev, ...newMatches]);
-    setShowImportModal(false);
-    toast.success(`Imported ${tName} successfully!`, {
-      style: { background: 'var(--card)', border: `1px solid var(--border)`, color: '#00FF88' },
+    // Merge state for 100% accurate sync
+    setPlayers(prev => {
+      const merged = [...prev];
+      newPlayers.forEach(np => {
+        const idx = merged.findIndex(p => p.id === np.id);
+        if (idx >= 0) merged[idx] = { ...merged[idx], ...np };
+        else merged.push(np);
+      });
+      return merged;
     });
+    
+    setMatches(prev => {
+      const merged = [...prev];
+      newMatches.forEach(nm => {
+        const idx = merged.findIndex(m => m.id === nm.id);
+        if (idx >= 0) {
+          // preserve station assignment if already called/in_progress locally
+          merged[idx] = { ...merged[idx], ...nm, stationId: merged[idx].stationId };
+        } else {
+          merged.push(nm);
+        }
+      });
+      return merged;
+    });
+
+    if (!isAutoSync) {
+      setAutoSyncSlug(slug);
+      setShowImportModal(false);
+      toast.success(`Imported ${tName} successfully!`, {
+        style: { background: 'var(--card)', border: `1px solid var(--border)`, color: '#00FF88' },
+      });
+    }
   }
 
   const handleClearTournament = async () => {
@@ -523,6 +589,8 @@ export default function App() {
     setGameOrder([]);
     setActiveGame(null);
     setActiveTournament(null);
+    setAutoSyncSlug(null);
+    setExhibitions([]);
     setSmsLogs([]);
     setStations(Array.from({ length: 8 }).map((_, i) => ({ id: i + 1, name: `Station ${i + 1}`, active: true, matchId: null, gameId: null })));
     
@@ -594,19 +662,29 @@ export default function App() {
               CLEAR TOURNAMENT
             </button>
           )}
-          {startggUser ? (
+          {supabaseUser ? (
+             <div className="flex items-center gap-3 ml-2">
+                <span className="text-sm" style={{ fontFamily: 'Rajdhani, sans-serif', fontWeight: 700, color: 'var(--foreground)' }}>{supabaseUser.email}</span>
+                <button onClick={() => supabase.auth.signOut()} className="text-xs opacity-50 hover:opacity-100 transition-opacity" style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10 }}>[LOGOUT]</button>
+             </div>
+          ) : startggUser ? (
              <div className="flex items-center gap-3 ml-2">
                 <span className="text-sm" style={{ fontFamily: 'Rajdhani, sans-serif', fontWeight: 700, color: 'var(--foreground)' }}>{startggUser.name}</span>
-                <button onClick={() => { localStorage.removeItem('startgg_access_token'); setStartggUser(null); }} className="text-xs opacity-50 hover:opacity-100 transition-opacity" style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10 }}>[LOGOUT]</button>
+                <button onClick={() => { localStorage.removeItem('startgg_access_token'); setStartggUser(null); }} className="text-xs opacity-50 hover:opacity-100 transition-opacity" style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10 }}>[DISCONNECT]</button>
              </div>
           ) : (
-             <a href="/api/oauth/login"
+             <button onClick={() => setShowAuthModal(true)}
                className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs tracking-wider hover:opacity-80 transition-opacity ml-2"
                style={{ background: '#FF006E15', border: '1px solid rgba(255,0,110,0.3)', color: '#FF006E', fontFamily: 'JetBrains Mono, monospace' }}>
                <UserCheck size={11} />
-               LOGIN WITH START.GG
-             </a>
+               ACCOUNT
+             </button>
           )}
+          <button onClick={() => setShowCloudModal(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs tracking-wider hover:opacity-80 transition-opacity ml-2"
+            style={{ background: '#00FF8815', border: '1px solid rgba(0,255,136,0.3)', color: '#00FF88', fontFamily: 'JetBrains Mono, monospace' }}>
+            <Cloud size={11} /> CLOUD
+          </button>
           <ThemeToggleButton />
         </div>
       </header>
@@ -777,6 +855,17 @@ export default function App() {
                 <StreamsPanel matches={gameMatches} players={gamePlayers} theme={theme} />
               </div>
             )}
+            {activeTab === 'vods' && (
+              <div className="h-full">
+                <ExhibitionsPanel 
+                  exhibitions={exhibitions} 
+                  setExhibitions={setExhibitions} 
+                  theme={theme} 
+                  userId={userId} 
+                  activeGameId={activeGame} 
+                />
+              </div>
+            )}
           </motion.div>
         </AnimatePresence>
         )}
@@ -821,9 +910,32 @@ export default function App() {
       <ImportModal
         isOpen={showImportModal}
         onClose={() => setShowImportModal(false)}
-        onImport={handleLiveImport}
+        onImport={(slug) => handleLiveImport(slug)}
         theme={theme || { id: 'default', displayName: 'FightBracket', shortName: 'FB', primaryColor: '#00E5FF', secondaryColor: '#FF006E', bgFrom: '#050A14', glowColor: 'rgba(0,229,255,0.4)', description: '', publisher: '' }}
       />
+
+      {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}
+      
+      {showCloudModal && (
+        <CloudTournamentsModal 
+          onClose={() => setShowCloudModal(false)}
+          currentTournamentData={{
+            players, matches, stations, gameThemes, gameOrder, activeGame, activeTournament, smsLogs, autoSyncSlug, exhibitions
+          }}
+          onLoad={(data) => {
+            if (data.players) setPlayers(data.players);
+            if (data.matches) setMatches(data.matches);
+            if (data.stations) setStations(data.stations);
+            if (data.gameThemes) setGameThemes(data.gameThemes);
+            if (data.gameOrder) setGameOrder(data.gameOrder);
+            if (data.activeGame) setActiveGame(data.activeGame);
+            if (data.activeTournament) setActiveTournament(data.activeTournament);
+            if (data.smsLogs) setSmsLogs(data.smsLogs);
+            if (data.autoSyncSlug !== undefined) setAutoSyncSlug(data.autoSyncSlug);
+            if (data.exhibitions) setExhibitions(data.exhibitions);
+          }}
+        />
+      )}
 
       {activeGame && theme && (
         <AddPlayerModal

@@ -56,6 +56,19 @@ export interface BracketMatch {
   bestOf: number;
 }
 
+export interface ExhibitionMatch {
+  id: string;
+  hostId: string;
+  gameId: string;
+  player1Name: string;
+  player2Name: string;
+  player1Score: number;
+  player2Score: number;
+  firstTo: number;
+  videoUrl: string;
+  createdAt: number;
+}
+
 export interface Station {
   id: number;
   name: string;
