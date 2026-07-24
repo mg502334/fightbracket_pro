@@ -52,12 +52,12 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<Tab>('overview');
   const [players, setPlayers] = useState<Player[]>(() => safeParse('fb_players', []));
   const [matches, setMatches] = useState<BracketMatch[]>(() => safeParse('fb_matches', []));
-  
+
   // Generating default stations
-  const [stations, setStations] = useState<Station[]>(() => safeParse('fb_stations', 
+  const [stations, setStations] = useState<Station[]>(() => safeParse('fb_stations',
     Array.from({ length: 8 }).map((_, i) => ({ id: i + 1, name: `Station ${i + 1}`, active: true, matchId: null, gameId: null }))
   ));
-  
+
   const [smsLogs, setSmsLogs] = useState<SMSLog[]>(() => safeParse('fb_smsLogs', []));
   const [announcement, setAnnouncement] = useState<BracketMatch | null>(null);
   const [showGameModal, setShowGameModal] = useState(false);
@@ -66,10 +66,10 @@ export default function App() {
   const [pendingCallMatch, setPendingCallMatch] = useState<BracketMatch | null>(null);
   const [startggUser, setStartggUser] = useState<{ id: string; name: string } | null>(null);
   const [supabaseUser, setSupabaseUser] = useState<any>(null);
-  const [activeTournament, setActiveTournament] = useState<{name: string, location: string} | null>(() => safeParse('fb_tournament', null));
+  const [activeTournament, setActiveTournament] = useState<{ name: string, location: string } | null>(() => safeParse('fb_tournament', null));
   const [autoSyncSlug, setAutoSyncSlug] = useState<string | null>(() => safeParse('fb_autoSyncSlug', null));
   const [exhibitions, setExhibitions] = useState<ExhibitionMatch[]>(() => safeParse('fb_exhibitions', []));
-  
+
   // Dynamic games state
   const [gameThemes, setGameThemes] = useState<Record<string, GameTheme>>(() => safeParse('fb_themes', {}));
   const [gameOrder, setGameOrder] = useState<string[]>(() => safeParse('fb_gameOrder', []));
@@ -86,12 +86,12 @@ export default function App() {
     localStorage.setItem('fb_autoSyncSlug', JSON.stringify(autoSyncSlug));
     localStorage.setItem('fb_exhibitions', JSON.stringify(exhibitions));
   }, [activeGame, players, matches, stations, smsLogs, activeTournament, gameThemes, gameOrder, autoSyncSlug, exhibitions]);
-  
+
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(({ data: { session } }: any) => {
       setSupabaseUser(session?.user ?? null);
     });
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: any, session: any) => {
       setSupabaseUser(session?.user ?? null);
     });
     return () => subscription.unsubscribe();
@@ -100,7 +100,7 @@ export default function App() {
   useEffect(() => {
     if (!autoSyncSlug) return;
     const interval = setInterval(() => {
-      handleLiveImport(autoSyncSlug, true).catch(() => {});
+      handleLiveImport(autoSyncSlug, true).catch(() => { });
     }, 60000); // Poll every 60 seconds
     return () => clearInterval(interval);
   }, [autoSyncSlug]);
@@ -232,7 +232,7 @@ export default function App() {
 
   const theme: GameTheme | null = activeGame ? gameThemes[activeGame] : null;
   const gameMatches = matches.filter(m => m.gameId === activeGame);
-  
+
   // Calculate player status based on whether they have future/active matches
   const activePlayerIds = new Set<string>();
   gameMatches.forEach(m => {
@@ -241,9 +241,9 @@ export default function App() {
       if (m.player2Id) activePlayerIds.add(m.player2Id);
     }
   });
-  
+
   // Find the final match to protect the winner from being marked eliminated
-  const maxRoundMatch = gameMatches.reduce((prev, current) => 
+  const maxRoundMatch = gameMatches.reduce((prev, current) =>
     (prev && prev.round > current.round) ? prev : current, gameMatches[0]);
   const championId = maxRoundMatch && maxRoundMatch.state === 'completed' ? maxRoundMatch.winnerId : null;
 
@@ -262,7 +262,7 @@ export default function App() {
   const handleCheckIn = useCallback(async (playerId: string, checked: boolean) => {
     setPlayers(prev => prev.map(p => p.id === playerId ? { ...p, checkedIn: checked } : p));
     const player = players.find(p => p.id === playerId);
-    
+
     try {
       await fetch(`/api/checkin?user_id=${userId}`, {
         method: 'POST',
@@ -325,7 +325,7 @@ export default function App() {
   const handleAssignMatch = useCallback(async (stationId: number, matchId: string) => {
     setStations(prev => prev.map(s => s.id === stationId ? { ...s, matchId } : s));
     setMatches(prev => prev.map(m => m.id === matchId ? { ...m, stationId } : m));
-    
+
     try {
       await fetch(`/api/station/assign?user_id=${userId}`, {
         method: 'POST',
@@ -348,7 +348,7 @@ export default function App() {
       }
       return prev.map(s => s.id === stationId ? { ...s, matchId: null } : s);
     });
-    
+
     try {
       await fetch(`/api/station/assign?user_id=${userId}`, {
         method: 'POST',
@@ -378,7 +378,7 @@ export default function App() {
 
   const handleSendSMS = useCallback(async (playerIds: string[], message: string, matchId?: string) => {
     const phoneNumbers = playerIds.map(pid => players.find(p => p.id === pid)?.phone).filter(Boolean) as string[];
-    
+
     try {
       const res = await fetch(`/api/sms/send?user_id=${userId}`, {
         method: 'POST',
@@ -386,7 +386,7 @@ export default function App() {
         body: JSON.stringify({ phone_numbers: phoneNumbers, message, match_id: matchId, enable_real_sms: false })
       });
       const data = await res.json();
-      
+
       const newLogs = playerIds.map((pid, i): SMSLog => ({
         id: `sms-${Date.now()}-${i}`,
         playerId: pid,
@@ -404,26 +404,129 @@ export default function App() {
     }
   }, [theme?.primaryColor, players, userId]);
 
-  async function handleLiveImport(slug: string, isAutoSync = false) {
-    const token = localStorage.getItem('startgg_access_token');
-    const url = `/api/bracket/sync?slug=${encodeURIComponent(slug)}${token ? `&token=${token}` : ''}`;
-    const res = await fetch(url);
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.detail || 'Failed to fetch tournament from Start.gg');
+  async function fetchStartggDirect(slug: string, token?: string | null) {
+    if (!token) {
+      throw new Error('Start.gg API token required. Please log in with Start.gg or enter your Personal Access Token in Account settings.');
     }
+
+    const headers: Record<string, string> = {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    };
+
+    const queryTourney = `
+      query TournamentQuery($slug: String!) {
+        tournament(slug: $slug) {
+          id name city addrState venueAddress isOnline
+          events { id name videogame { id name } }
+        }
+      }
+    `;
+
+    const tourneyRes = await fetch('https://api.start.gg/gql/alpha', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ query: queryTourney, variables: { slug } })
+    });
+
+    const tourneyJson = await tourneyRes.json().catch(() => ({}));
+    if (tourneyJson.message?.includes('Invalid authentication token') || tourneyJson.errors?.[0]?.message?.includes('Invalid authentication token')) {
+      throw new Error('Start.gg API token is missing or invalid. Please connect your Start.gg account or enter a Personal Access Token in Account settings.');
+    }
+    if (!tourneyRes.ok || tourneyJson.errors) {
+      const msg = tourneyJson.errors?.[0]?.message || tourneyJson.message || 'Failed to fetch tournament from Start.gg';
+      throw new Error(msg);
+    }
+
+    const tournament = tourneyJson.data?.tournament;
+    if (!tournament) throw new Error('Tournament not found on Start.gg');
+
+    const queryEntrants = `
+      query EventEntrants($eventId: ID!, $page: Int!) {
+        event(id: $eventId) {
+          entrants(query: {page: $page, perPage: 100}) {
+            pageInfo { totalPages total }
+            nodes { id name participants { gamerTag } seeds { seedNum } standing { placement } }
+          }
+        }
+      }
+    `;
+
+    const querySets = `
+      query EventSets($eventId: ID!, $page: Int!) {
+        event(id: $eventId) {
+          sets(page: $page, perPage: 50, sortType: STANDARD) {
+            pageInfo { totalPages total }
+            nodes {
+              id state fullRoundText round winnerId displayScore
+              stream { streamName streamSource }
+              slots { entrant { id name } standing { stats { score { value } } } }
+            }
+          }
+        }
+      }
+    `;
+
+    for (const ev of tournament.events || []) {
+      const entRes = await fetch('https://api.start.gg/gql/alpha', {
+        method: 'POST', headers, body: JSON.stringify({ query: queryEntrants, variables: { eventId: ev.id, page: 1 } })
+      });
+      const entJson = await entRes.json().catch(() => ({}));
+      ev.entrants = entJson.data?.event?.entrants || { nodes: [] };
+
+      const setRes = await fetch('https://api.start.gg/gql/alpha', {
+        method: 'POST', headers, body: JSON.stringify({ query: querySets, variables: { eventId: ev.id, page: 1 } })
+      });
+      const setJson = await setRes.json().catch(() => ({}));
+      ev.sets = setJson.data?.event?.sets || { nodes: [] };
+    }
+
+    return tournament;
+  }
+
+  async function handleLiveImport(rawSlug: string, isAutoSync = false) {
+    let slug = rawSlug.trim();
+    if (slug.includes('start.gg/tournament/')) {
+      slug = slug.split('start.gg/tournament/')[1];
+    } else if (slug.includes('tournament/')) {
+      slug = slug.split('tournament/')[1];
+    }
+    slug = slug.split('/')[0].split('?')[0].trim();
+
+    const token = localStorage.getItem('startgg_access_token') || localStorage.getItem('fb_startggToken');
     
-    const { data } = await res.json();
-    if (!data?.tournament) throw new Error('Tournament not found or invalid format');
-    
-    const tName = data.tournament.name;
-    const events = data.tournament.events || [];
-    
+    let tournamentData: any = null;
+    try {
+      const url = `/api/bracket/sync?slug=${encodeURIComponent(slug)}${token ? `&token=${token}` : ''}`;
+      const res = await fetch(url);
+      if (res.ok) {
+        const json = await res.json();
+        tournamentData = json.data?.tournament;
+      } else {
+        const err = await res.json().catch(() => ({ detail: null }));
+        if (err.detail) throw new Error(err.detail);
+      }
+    } catch (e: any) {
+      if (e.message && (e.message.includes('token') || e.message.includes('Token') || e.message.includes('Account settings'))) {
+        throw e;
+      }
+    }
+
+    if (!tournamentData) {
+      // Direct client fallback to Start.gg GraphQL API
+      tournamentData = await fetchStartggDirect(slug, token);
+    }
+
+    if (!tournamentData) throw new Error('Tournament not found or invalid format');
+
+    const tName = tournamentData.name;
+    const events = tournamentData.events || [];
+
     let newPlayers: Player[] = [];
     let newMatches: BracketMatch[] = [];
     let newGameIds: string[] = [];
     let newThemes: Record<string, GameTheme> = {};
-    
+
     events.forEach((ev: any) => {
       if (!ev.videogame) return; // Skip events without a videogame
       const gameId = `startgg-${ev.videogame.id}`;
@@ -471,40 +574,40 @@ export default function App() {
         const slots = set.slots || [];
         const p1 = slots[0]?.entrant?.id;
         const p2 = slots[1]?.entrant?.id;
-        
+
         let matchState: BracketMatch['state'] = 'pending';
         if (set.state === 2) matchState = 'in_progress';
         else if (set.state === 3) matchState = 'completed';
         else if (set.state === 6) matchState = 'called';
-        
+
         let streamUrl: string | undefined = undefined;
         if (set.stream?.streamSource === 'TWITCH' && set.stream?.streamName) {
           streamUrl = `https://twitch.tv/${set.stream.streamName}`;
         }
         const winnerId = set.winnerId ? String(set.winnerId) : null;
-        
+
         let p1Score = 0;
         let p2Score = 0;
         const s1 = slots[0]?.standing?.stats?.score?.value;
         const s2 = slots[1]?.standing?.stats?.score?.value;
         if (s1 != null && s1 >= 0) p1Score = s1;
         if (s2 != null && s2 >= 0) p2Score = s2;
-        
+
         let parsedRound = set.round || 1;
         if (set.fullRoundText && set.fullRoundText.toLowerCase().includes('reset')) {
           parsedRound += 0.1;
         }
 
         if (set.displayScore && set.displayScore !== "DQ") {
-           const parts = set.displayScore.split(" - ");
-           if (parts.length === 2) {
-               const leftScoreStr = parts[0].trim().split(" ").pop();
-               const rightScoreStr = parts[1].trim().split(" ").pop();
-               const ls = parseInt(leftScoreStr as string);
-               const rs = parseInt(rightScoreStr as string);
-               if (!isNaN(ls)) p1Score = ls;
-               if (!isNaN(rs)) p2Score = rs;
-           }
+          const parts = set.displayScore.split(" - ");
+          if (parts.length === 2) {
+            const leftScoreStr = parts[0].trim().split(" ").pop();
+            const rightScoreStr = parts[1].trim().split(" ").pop();
+            const ls = parseInt(leftScoreStr as string);
+            const rs = parseInt(rightScoreStr as string);
+            if (!isNaN(ls)) p1Score = ls;
+            if (!isNaN(rs)) p2Score = rs;
+          }
         }
 
         newMatches.push({
@@ -531,19 +634,19 @@ export default function App() {
       setGameOrder(prev => [...prev, ...newGameIds]);
       setActiveGame(newGameIds[0]);
     }
-    
+
     let tLocation = 'Online';
-    if (!data.tournament.isOnline) {
-      if (data.tournament.city && data.tournament.addrState) {
-        tLocation = `${data.tournament.city}, ${data.tournament.addrState}`;
-      } else if (data.tournament.venueAddress) {
-        tLocation = data.tournament.venueAddress;
+    if (!tournamentData.isOnline) {
+      if (tournamentData.city && tournamentData.addrState) {
+        tLocation = `${tournamentData.city}, ${tournamentData.addrState}`;
+      } else if (tournamentData.venueAddress) {
+        tLocation = tournamentData.venueAddress;
       } else {
         tLocation = 'Offline';
       }
     }
     setActiveTournament({ name: tName, location: tLocation });
-    
+
     // Merge state for 100% accurate sync
     setPlayers(prev => {
       const merged = [...prev];
@@ -554,7 +657,7 @@ export default function App() {
       });
       return merged;
     });
-    
+
     setMatches(prev => {
       const merged = [...prev];
       newMatches.forEach(nm => {
@@ -580,7 +683,7 @@ export default function App() {
 
   const handleClearTournament = async () => {
     if (!confirm("Are you sure you want to clear all tournament data? This action cannot be undone.")) return;
-    
+
     setPlayers([]);
     setMatches([]);
     setGameThemes({});
@@ -591,7 +694,7 @@ export default function App() {
     setExhibitions([]);
     setSmsLogs([]);
     setStations(Array.from({ length: 8 }).map((_, i) => ({ id: i + 1, name: `Station ${i + 1}`, active: true, matchId: null, gameId: null })));
-    
+
     try {
       await fetch(`/api/user/data?user_id=${userId}`, { method: 'DELETE' });
       toast.success('Tournament data cleared');
@@ -646,10 +749,10 @@ export default function App() {
           </a>
           <button onClick={() => setShowImportModal(true)}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs tracking-wider transition-opacity hover:opacity-100"
-            style={{ 
-              background: 'var(--border)', 
-              border: '1px solid rgba(0,229,255,0.2)', 
-              color: '#00E5FF', 
+            style={{
+              background: 'var(--border)',
+              border: '1px solid rgba(0,229,255,0.2)',
+              color: '#00E5FF',
               fontFamily: 'JetBrains Mono, monospace'
             }}>
             <GitBranch size={11} />
@@ -663,25 +766,25 @@ export default function App() {
             </button>
           )}
           {startggUser && (
-             <div className="flex items-center gap-3 ml-2">
-                <span className="text-sm" style={{ fontFamily: 'Rajdhani, sans-serif', fontWeight: 700, color: 'var(--foreground)' }}>{startggUser.name}</span>
-                <button onClick={() => { localStorage.removeItem('startgg_access_token'); setStartggUser(null); }} className="text-xs opacity-50 hover:opacity-100 transition-opacity" style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10 }}>[DISCONNECT]</button>
-             </div>
+            <div className="flex items-center gap-3 ml-2">
+              <span className="text-sm" style={{ fontFamily: 'Rajdhani, sans-serif', fontWeight: 700, color: 'var(--foreground)' }}>{startggUser.name}</span>
+              <button onClick={() => { localStorage.removeItem('startgg_access_token'); setStartggUser(null); }} className="text-xs opacity-50 hover:opacity-100 transition-opacity" style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10 }}>[DISCONNECT]</button>
+            </div>
           )}
           {supabaseUser ? (
-             <button onClick={() => setActiveTab('account')}
-               className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs tracking-wider hover:opacity-80 transition-opacity ml-2"
-               style={{ background: '#FF006E15', border: '1px solid rgba(255,0,110,0.3)', color: '#FF006E', fontFamily: 'JetBrains Mono, monospace' }}>
-               <UserCheck size={11} />
-               {supabaseUser.user_metadata?.displayName || 'ACCOUNT'}
-             </button>
+            <button onClick={() => setActiveTab('account')}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs tracking-wider hover:opacity-80 transition-opacity ml-2"
+              style={{ background: '#FF006E15', border: '1px solid rgba(255,0,110,0.3)', color: '#FF006E', fontFamily: 'JetBrains Mono, monospace' }}>
+              <UserCheck size={11} />
+              {supabaseUser.user_metadata?.displayName || 'ACCOUNT'}
+            </button>
           ) : (
-             <button onClick={() => setActiveTab('account')}
-               className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs tracking-wider hover:opacity-80 transition-opacity ml-2"
-               style={{ background: '#FF006E15', border: '1px solid rgba(255,0,110,0.3)', color: '#FF006E', fontFamily: 'JetBrains Mono, monospace' }}>
-               <UserCheck size={11} />
-               LOGIN
-             </button>
+            <button onClick={() => setActiveTab('account')}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs tracking-wider hover:opacity-80 transition-opacity ml-2"
+              style={{ background: '#FF006E15', border: '1px solid rgba(255,0,110,0.3)', color: '#FF006E', fontFamily: 'JetBrains Mono, monospace' }}>
+              <UserCheck size={11} />
+              LOGIN
+            </button>
           )}
           <ThemeToggleButton />
         </div>
@@ -711,7 +814,7 @@ export default function App() {
                 </span>
               )}
               {isActive && (
-                <div 
+                <div
                   onClick={(e) => handleRemoveGame(e, gameId)}
                   className="ml-1 opacity-50 hover:opacity-100 p-0.5 rounded-full hover:bg-black/20 transition-all"
                   style={{ color: gt.primaryColor }}
@@ -778,7 +881,7 @@ export default function App() {
       <main className="flex-1 overflow-auto p-5 relative">
         {activeTab === 'account' ? (
           <div className="h-full">
-            <AccountDashboard 
+            <AccountDashboard
               user={supabaseUser}
               theme={theme}
               currentTournamentData={{
@@ -810,85 +913,85 @@ export default function App() {
         ) : (
           <AnimatePresence mode="wait">
             <motion.div key={`${activeGame}-${activeTab}`} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}>
-            {activeTab === 'overview' && (
-              <OverviewTab players={gamePlayers} matches={gameMatches} stations={stations} onCallMatch={(m) => setPendingCallMatch(m)} onUndoCall={handleUndoCall} gameThemes={gameThemes} />
-            )}
-            {activeTab === 'bracket' && (
-              <div>
-                <SectionHeader title="TOURNAMENT BRACKET" subtitle={`${theme.displayName} · Double Elimination`} theme={theme} />
-                <BracketView
-                  matches={gameMatches}
-                  players={gamePlayers}
-                  theme={theme}
-                  onCallMatch={m => {
-                    const availStation = stations.find(s => s.active && !s.matchId);
-                    if (availStation) handleCallMatch(m, availStation.id);
-                    else toast.error('No available stations', { style: { background: 'var(--card)', color: 'var(--foreground)' } });
-                  }}
-                  onGenerateBracket={handleGenerateBracket}
-                />
-              </div>
-            )}
-            {activeTab === 'checkin' && (
-              <div>
-                <SectionHeader title="PARTICIPANT CHECK-IN" subtitle={`${checkedInCount} of ${gamePlayers.length} checked in`} theme={theme} />
-                <CheckInPanel players={gamePlayers} theme={theme} onCheckIn={handleCheckIn} />
-              </div>
-            )}
-            {activeTab === 'stations' && (
-              <div>
-                <SectionHeader title="STATION MANAGEMENT" subtitle={`${stations.filter(s => s.active && s.matchId).length} / ${stations.filter(s => s.active).length} stations occupied`} theme={theme} />
-                <StationsPanel
-                  stations={stations}
-                  matches={matches}
-                  players={players}
-                  theme={theme}
-                  onAssignMatch={handleAssignMatch}
-                  onCallMatch={(m, sid) => handleCallMatch(m, sid)}
-                  onClearStation={handleClearStation}
-                  onAddStation={handleAddStation}
-                  onRemoveStation={handleRemoveStation}
-                  onRenameStation={handleRenameStation}
-                />
-              </div>
-            )}
-            {activeTab === 'sms' && (
-              <div>
-                <SectionHeader title="SMS NOTIFICATIONS" subtitle="Send match calls & announcements via Twilio" theme={theme} />
-                <SMSPanel
-                  players={gamePlayers}
-                  matches={gameMatches}
-                  theme={theme}
-                  smsLogs={smsLogs.filter(l => gamePlayers.some(p => p.id === l.playerId))}
-                  onSendSMS={handleSendSMS}
-                />
-              </div>
-            )}
-            {activeTab === 'mobile' && (
-              <div>
-                <SectionHeader title="MOBILE COMPANION" subtitle="Preview the player-facing companion app" theme={theme} />
-                <MobileCompanion players={players} matches={matches} theme={theme} />
-              </div>
-            )}
-            {activeTab === 'streams' && (
-              <div>
-                <SectionHeader title="LIVE STREAMS" subtitle="Monitor active broadcast channels" theme={theme} />
-                <StreamsPanel matches={gameMatches} players={gamePlayers} theme={theme} />
-              </div>
-            )}
-            {activeTab === 'vods' && (
-              <div className="h-full">
-                <ExhibitionsPanel 
-                  exhibitions={exhibitions} 
-                  setExhibitions={setExhibitions} 
-                  theme={theme} 
-                  userId={supabaseUser?.id || null} 
-                  activeGameId={activeGame} 
-                />
-              </div>
-            )}
-          </motion.div>
-        </AnimatePresence>
+              {activeTab === 'overview' && (
+                <OverviewTab players={gamePlayers} matches={gameMatches} stations={stations} onCallMatch={(m) => setPendingCallMatch(m)} onUndoCall={handleUndoCall} gameThemes={gameThemes} onOpenAddPlayer={() => setShowAddPlayerModal(true)} />
+              )}
+              {activeTab === 'bracket' && (
+                <div>
+                  <SectionHeader title="TOURNAMENT BRACKET" subtitle={`${theme.displayName} · Double Elimination`} theme={theme} />
+                  <BracketView
+                    matches={gameMatches}
+                    players={gamePlayers}
+                    theme={theme}
+                    onCallMatch={m => {
+                      const availStation = stations.find(s => s.active && !s.matchId);
+                      if (availStation) handleCallMatch(m, availStation.id);
+                      else toast.error('No available stations', { style: { background: 'var(--card)', color: 'var(--foreground)' } });
+                    }}
+                    onGenerateBracket={handleGenerateBracket}
+                  />
+                </div>
+              )}
+              {activeTab === 'checkin' && (
+                <div>
+                  <SectionHeader title="PARTICIPANT CHECK-IN" subtitle={`${checkedInCount} of ${gamePlayers.length} checked in`} theme={theme} />
+                  <CheckInPanel players={gamePlayers} theme={theme} onCheckIn={handleCheckIn} />
+                </div>
+              )}
+              {activeTab === 'stations' && (
+                <div>
+                  <SectionHeader title="STATION MANAGEMENT" subtitle={`${stations.filter(s => s.active && s.matchId).length} / ${stations.filter(s => s.active).length} stations occupied`} theme={theme} />
+                  <StationsPanel
+                    stations={stations}
+                    matches={matches}
+                    players={players}
+                    theme={theme}
+                    onAssignMatch={handleAssignMatch}
+                    onCallMatch={(m, sid) => handleCallMatch(m, sid)}
+                    onClearStation={handleClearStation}
+                    onAddStation={handleAddStation}
+                    onRemoveStation={handleRemoveStation}
+                    onRenameStation={handleRenameStation}
+                  />
+                </div>
+              )}
+              {activeTab === 'sms' && (
+                <div>
+                  <SectionHeader title="SMS NOTIFICATIONS" subtitle="Send match calls & announcements via Twilio" theme={theme} />
+                  <SMSPanel
+                    players={gamePlayers}
+                    matches={gameMatches}
+                    theme={theme}
+                    smsLogs={smsLogs.filter(l => gamePlayers.some(p => p.id === l.playerId))}
+                    onSendSMS={handleSendSMS}
+                  />
+                </div>
+              )}
+              {activeTab === 'mobile' && (
+                <div>
+                  <SectionHeader title="MOBILE COMPANION" subtitle="Preview the player-facing companion app" theme={theme} />
+                  <MobileCompanion players={players} matches={matches} theme={theme} />
+                </div>
+              )}
+              {activeTab === 'streams' && (
+                <div>
+                  <SectionHeader title="LIVE STREAMS" subtitle="Monitor active broadcast channels" theme={theme} />
+                  <StreamsPanel matches={gameMatches} players={gamePlayers} theme={theme} />
+                </div>
+              )}
+              {activeTab === 'vods' && (
+                <div className="h-full">
+                  <ExhibitionsPanel
+                    exhibitions={exhibitions}
+                    setExhibitions={setExhibitions}
+                    theme={theme}
+                    userId={supabaseUser?.id || null}
+                    activeGameId={activeGame}
+                  />
+                </div>
+              )}
+            </motion.div>
+          </AnimatePresence>
         )}
       </main>
 
@@ -934,7 +1037,7 @@ export default function App() {
         onImport={(slug) => handleLiveImport(slug)}
         theme={theme || { id: 'default', displayName: 'FightBracket', shortName: 'FB', primaryColor: '#00E5FF', secondaryColor: '#FF006E', bgFrom: '#050A14', glowColor: 'rgba(0,229,255,0.4)', description: '', publisher: '' }}
       />
-      
+
       {activeGame && theme && (
         <AddPlayerModal
           isOpen={showAddPlayerModal}
@@ -956,7 +1059,7 @@ export default function App() {
 // ── Overview Tab ──
 
 function OverviewTab({
-  players, matches, stations, onCallMatch, onUndoCall, gameThemes
+  players, matches, stations, onCallMatch, onUndoCall, gameThemes, onOpenAddPlayer
 }: {
   players: Player[];
   matches: BracketMatch[];
@@ -964,6 +1067,7 @@ function OverviewTab({
   onCallMatch: (match: BracketMatch, stationId?: number) => void;
   onUndoCall: (matchId: string) => void;
   gameThemes: Record<string, GameTheme>;
+  onOpenAddPlayer?: () => void;
 }) {
   const playerMap = Object.fromEntries(players.map(p => [p.id, p]));
   const activeMatches = matches.filter(m => m.state === 'in_progress' || m.state === 'called');
@@ -971,7 +1075,7 @@ function OverviewTab({
   const notCheckedIn = players.filter(p => !p.checkedIn);
 
   const [playerSearch, setPlayerSearch] = useState('');
-  const filteredPlayers = playerSearch 
+  const filteredPlayers = playerSearch
     ? players.filter(p => p.tag.toLowerCase().includes(playerSearch.toLowerCase()) || (p.realName && p.realName.toLowerCase().includes(playerSearch.toLowerCase())))
     : players;
 
@@ -1068,7 +1172,7 @@ function OverviewTab({
             <span className="text-xs tracking-widest" style={{ fontFamily: 'JetBrains Mono, monospace', color: 'var(--foreground)' }}>PLAYER STATUS</span>
             <span className="ml-auto text-xs opacity-40" style={{ fontFamily: 'JetBrains Mono, monospace' }}>{filteredPlayers.length}</span>
             <button
-              onClick={() => setShowAddPlayerModal(true)}
+              onClick={onOpenAddPlayer}
               className="ml-2 px-2 py-1 rounded text-xs transition-colors hover:bg-white/10"
               style={{ border: '1px solid rgba(122,158,192,0.3)', fontFamily: 'JetBrains Mono, monospace' }}
             >
@@ -1109,7 +1213,7 @@ function OverviewTab({
           )}
         </div>
       </div>
-      
+
       {/* Standings */}
       <div className="rounded overflow-hidden" style={{ background: 'var(--card)', border: '1px solid rgba(122,158,192,0.15)' }}>
         <div className="px-5 py-3 border-b flex flex-col gap-3" style={{ borderColor: 'rgba(122,158,192,0.1)', background: 'var(--sidebar)' }}>
@@ -1141,7 +1245,7 @@ function OverviewTab({
                     </div>
                   </div>
                 );
-            })
+              })
           )}
         </div>
       </div>
@@ -1185,7 +1289,7 @@ function OverviewTab({
                     </span>
                   </div>
                 );
-            })
+              })
           )}
         </div>
       </div>
@@ -1210,7 +1314,7 @@ function ThemeToggleButton() {
   const { theme, setTheme } = useTheme();
   // Using mounted check to avoid hydration mismatch
   const [mounted, setMounted] = useState(false);
-  
+
   useEffect(() => {
     setMounted(true);
   }, []);
