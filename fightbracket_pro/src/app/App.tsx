@@ -637,11 +637,18 @@ export default function App() {
           }
         }
 
+        const poolIdentifier = set.phaseGroup?.displayIdentifier;
+        const phaseName = set.phaseGroup?.phase?.name;
+        let roundLabel = set.fullRoundText || `Round ${set.round || 1}`;
+        if (poolIdentifier && !roundLabel.toLowerCase().includes('pool')) {
+          roundLabel = `[Pool ${poolIdentifier}] ${roundLabel}`;
+        }
+
         newMatches.push({
           id: String(set.id),
           gameId,
           round: parsedRound,
-          roundName: set.fullRoundText || `Round ${set.round || 1}`,
+          roundName: roundLabel,
           matchNumber: idx + 1,
           player1Id: p1 ? String(p1) : null,
           player2Id: p2 ? String(p2) : null,
@@ -651,7 +658,9 @@ export default function App() {
           player2Score: p2Score,
           winnerId,
           streamUrl,
-          bestOf: 3
+          bestOf: 3,
+          pool: poolIdentifier,
+          phase: phaseName,
         });
       });
     });

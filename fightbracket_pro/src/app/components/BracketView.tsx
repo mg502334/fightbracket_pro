@@ -20,6 +20,7 @@ const STATE_CONFIG = {
 export function BracketView({ matches, players, theme, onCallMatch, onGenerateBracket }: BracketViewProps) {
   const [hoveredMatchId, setHoveredMatchId] = useState<string | null>(null);
   const [selectedFormat, setSelectedFormat] = useState<BracketType>(BracketType.SINGLE_ELIMINATION);
+  const [selectedPool, setSelectedPool] = useState<string>('ALL');
 
   if (matches.length === 0) {
     return (
@@ -56,13 +57,42 @@ export function BracketView({ matches, players, theme, onCallMatch, onGenerateBr
 
   const playerMap = Object.fromEntries(players.map(p => [p.id, p]));
 
-  // Categorize matches
-  const winnersMatches = matches.filter(m => m.round > 0 && !m.roundName.toLowerCase().includes('grand final'));
-  const losersMatches = matches.filter(m => m.round < 0 || m.roundName.toLowerCase().includes('loser'));
-  const grandFinalsMatches = matches.filter(m => m.round > 0 && m.roundName.toLowerCase().includes('grand final'));
+  // Extract unique pools if present
+  const availablePools = Array.from(new Set(matches.map(m => m.pool).filter(Boolean))) as string[];
+
+  // Filter matches by selected pool if a pool is picked
+  const filteredMatches = selectedPool === 'ALL' 
+    ? matches 
+    : matches.filter(m => m.pool === selectedPool);
+
+  // Categorize matches cleanly
+  const losersMatches = filteredMatches.filter(m => m.round < 0 || m.roundName.toLowerCase().includes('loser'));
+  const grandFinalsMatches = filteredMatches.filter(m => m.roundName.toLowerCase().includes('grand final'));
+  const winnersMatches = filteredMatches.filter(m => !losersMatches.includes(m) && !grandFinalsMatches.includes(m));
 
   return (
-    <div className="overflow-auto pb-8 h-full space-y-16 p-4">
+    <div className="overflow-auto pb-8 h-full space-y-12 p-4">
+      {availablePools.length > 0 && (
+        <div className="flex items-center gap-3 pb-2 border-b border-white/10">
+          <span className="text-xs font-mono font-bold opacity-60 tracking-wider">FILTER POOL:</span>
+          <button
+            onClick={() => setSelectedPool('ALL')}
+            className={`px-3 py-1 rounded text-xs font-mono font-bold transition-all ${selectedPool === 'ALL' ? 'bg-[#00E5FF] text-black' : 'bg-white/5 hover:bg-white/10 text-white'}`}
+          >
+            ALL POOLS
+          </button>
+          {availablePools.map(pool => (
+            <button
+              key={pool}
+              onClick={() => setSelectedPool(pool)}
+              className={`px-3 py-1 rounded text-xs font-mono font-bold transition-all ${selectedPool === pool ? 'bg-[#00E5FF] text-black' : 'bg-white/5 hover:bg-white/10 text-white'}`}
+            >
+              POOL {pool}
+            </button>
+          ))}
+        </div>
+      )}
+
       <BracketSection 
         title="WINNERS BRACKET" 
         matches={winnersMatches} 

@@ -54,6 +54,8 @@ export interface BracketMatch {
   winnerId: string | null;
   streamUrl?: string;
   bestOf: number;
+  pool?: string;
+  phase?: string;
 }
 
 export interface ExhibitionMatch {
