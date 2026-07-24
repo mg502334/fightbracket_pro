@@ -3,13 +3,6 @@ from sqlalchemy import create_engine, Column, String, Boolean, Integer, DateTime
 from sqlalchemy.orm import declarative_base, sessionmaker
 from datetime import datetime
 
-# Load URL from environment. Vercel provides POSTGRES_URL.
-DATABASE_URL = os.environ.get("POSTGRES_URL", "sqlite:///./test.db")
-if DATABASE_URL.startswith("postgres://"):
-    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
-
-engine = create_engine(DATABASE_URL)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
 class DBPlayer(Base):
@@ -44,10 +37,33 @@ class DBTournament(Base):
     data = Column(Text)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-# Create tables if they don't exist
-Base.metadata.create_all(bind=engine)
+# Lazy engine — only created when first needed, prevents cold-start crash on Vercel
+_engine = None
+_SessionLocal = None
+
+def _get_engine():
+    global _engine, _SessionLocal
+    if _engine is None:
+        DATABASE_URL = os.environ.get("POSTGRES_URL", "")
+        if not DATABASE_URL:
+            return None, None
+        if DATABASE_URL.startswith("postgres://"):
+            DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+        try:
+            _engine = create_engine(DATABASE_URL)
+            _SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=_engine)
+            Base.metadata.create_all(bind=_engine)
+        except Exception as e:
+            print(f"DB connection failed: {e}")
+            _engine = None
+            _SessionLocal = None
+    return _engine, _SessionLocal
 
 def get_db():
+    _, SessionLocal = _get_engine()
+    if SessionLocal is None:
+        yield None
+        return
     db = SessionLocal()
     try:
         yield db
