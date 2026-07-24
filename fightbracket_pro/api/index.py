@@ -15,8 +15,10 @@ try:
 except ImportError:
     pass
 
-# pyrefly: ignore [missing-import]
-from api.db import get_db, DBPlayer, DBStation, DBSMSLog, DBTournament
+try:
+    from api.db import get_db, DBPlayer, DBStation, DBSMSLog, DBTournament
+except ModuleNotFoundError:
+    from db import get_db, DBPlayer, DBStation, DBSMSLog, DBTournament
 import jwt
 from fastapi import Header
 
@@ -169,9 +171,20 @@ def clear_user_data(user_id: str, db: Session = Depends(get_db)):
 
 @app.get("/api/bracket/sync")
 def sync_startgg_bracket(slug: str = "clash-of-kings-vii", token: str = None):
+    if slug:
+        slug = slug.strip()
+        if "start.gg/tournament/" in slug:
+            slug = slug.split("start.gg/tournament/")[-1]
+        elif "tournament/" in slug:
+            slug = slug.split("tournament/")[-1]
+        slug = slug.split("/")[0].split("?")[0].strip()
+
     STARTGG_TOKEN = token or os.environ.get("STARTGG_API_TOKEN")
     if not STARTGG_TOKEN:
-        raise HTTPException(status_code=400, detail="Start.gg API token is required. Please login first.")
+        raise HTTPException(
+            status_code=401, 
+            detail="Start.gg API token is required. Please log in with Start.gg or enter your Personal Access Token in Account settings."
+        )
 
     headers = {
         "Authorization": f"Bearer {STARTGG_TOKEN}",
@@ -196,10 +209,14 @@ def sync_startgg_bracket(slug: str = "clash-of-kings-vii", token: str = None):
     }
     """
 
-    query_event = """
-    query EventQuery($eventId: ID!) {
+    query_entrants = """
+    query EventEntrants($eventId: ID!, $page: Int!) {
       event(id: $eventId) {
-        entrants(query: {page: 1, perPage: 150}) {
+        entrants(query: {page: $page, perPage: 100}) {
+          pageInfo {
+            totalPages
+            total
+          }
           nodes {
             id
             name
@@ -214,7 +231,18 @@ def sync_startgg_bracket(slug: str = "clash-of-kings-vii", token: str = None):
             }
           }
         }
-        sets(page: 1, perPage: 100, sortType: STANDARD) {
+      }
+    }
+    """
+
+    query_sets = """
+    query EventSets($eventId: ID!, $page: Int!) {
+      event(id: $eventId) {
+        sets(page: $page, perPage: 50, sortType: STANDARD) {
+          pageInfo {
+            totalPages
+            total
+          }
           nodes {
             id
             state
@@ -254,26 +282,72 @@ def sync_startgg_bracket(slug: str = "clash-of-kings-vii", token: str = None):
         data = resp.json()
         
         if resp.status_code != 200:
-            raise HTTPException(status_code=400, detail=data.get("message", f"Start.gg returned HTTP {resp.status_code}"))
+            err_msg = data.get("message", f"Start.gg returned HTTP {resp.status_code}")
+            if "Invalid authentication token" in err_msg or "authentication" in err_msg.lower():
+                err_msg = "Start.gg API token is missing or invalid. Please connect your Start.gg account or enter a Personal Access Token in Account settings."
+            raise HTTPException(status_code=400, detail=err_msg)
 
         if "errors" in data and not data.get("data", {}).get("tournament"):
-            raise HTTPException(status_code=400, detail=str(data["errors"]))
+            errs = data.get("errors", [])
+            err_msg = errs[0].get("message", "Error querying Start.gg API") if isinstance(errs, list) and errs else "Tournament not found"
+            if "Invalid authentication token" in err_msg or "authentication" in err_msg.lower():
+                err_msg = "Start.gg API token is missing or invalid. Please connect your Start.gg account or enter a Personal Access Token in Account settings."
+            raise HTTPException(status_code=400, detail=err_msg)
             
         tournament_data = data.get("data", {}).get("tournament")
         if tournament_data:
             events = tournament_data.get("events", [])
             for event in events:
                 event_id = event["id"]
-                ev_resp = requests.post(
-                    "https://api.start.gg/gql/alpha",
-                    json={"query": query_event, "variables": {"eventId": event_id}},
-                    headers=headers
-                )
-                ev_data = ev_resp.json()
-                if "data" in ev_data and ev_data["data"].get("event"):
-                    event_details = ev_data["data"]["event"]
-                    event["entrants"] = event_details.get("entrants")
-                    event["sets"] = event_details.get("sets")
+
+                # 1. Fetch Entrants (paginated)
+                all_entrants = []
+                page = 1
+                while True:
+                    ev_resp = requests.post(
+                        "https://api.start.gg/gql/alpha",
+                        json={"query": query_entrants, "variables": {"eventId": event_id, "page": page}},
+                        headers=headers
+                    )
+                    if ev_resp.status_code != 200:
+                        break
+                    ev_data = ev_resp.json()
+                    if "errors" in ev_data or not ev_data.get("data", {}).get("event"):
+                        break
+                    entrants_obj = ev_data.get("data", {}).get("event", {}).get("entrants") or {}
+                    nodes = entrants_obj.get("nodes", [])
+                    if nodes:
+                        all_entrants.extend(nodes)
+                    total_pages = entrants_obj.get("pageInfo", {}).get("totalPages") or 1
+                    if page >= total_pages or not nodes:
+                        break
+                    page += 1
+
+                # 2. Fetch Sets (paginated)
+                all_sets = []
+                page = 1
+                while True:
+                    ev_resp = requests.post(
+                        "https://api.start.gg/gql/alpha",
+                        json={"query": query_sets, "variables": {"eventId": event_id, "page": page}},
+                        headers=headers
+                    )
+                    if ev_resp.status_code != 200:
+                        break
+                    ev_data = ev_resp.json()
+                    if "errors" in ev_data or not ev_data.get("data", {}).get("event"):
+                        break
+                    sets_obj = ev_data.get("data", {}).get("event", {}).get("sets") or {}
+                    nodes = sets_obj.get("nodes", [])
+                    if nodes:
+                        all_sets.extend(nodes)
+                    total_pages = sets_obj.get("pageInfo", {}).get("totalPages") or 1
+                    if page >= total_pages or not nodes:
+                        break
+                    page += 1
+
+                event["entrants"] = {"nodes": all_entrants}
+                event["sets"] = {"nodes": all_sets}
 
         return {"status": "success", "data": data.get("data")}
     except HTTPException:
