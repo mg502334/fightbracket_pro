@@ -66,7 +66,7 @@ export default function App() {
   const [pendingCallMatch, setPendingCallMatch] = useState<BracketMatch | null>(null);
   const [startggUser, setStartggUser] = useState<{ id: string; name: string } | null>(null);
   const [supabaseUser, setSupabaseUser] = useState<any>(null);
-  const [activeTournament, setActiveTournament] = useState<{ name: string, location: string } | null>(() => safeParse('fb_tournament', null));
+  const [activeTournament, setActiveTournament] = useState<{ name: string, location: string, numAttendees?: number } | null>(() => safeParse('fb_tournament', null));
   const [autoSyncSlug, setAutoSyncSlug] = useState<string | null>(() => safeParse('fb_autoSyncSlug', null));
   const [exhibitions, setExhibitions] = useState<ExhibitionMatch[]>(() => safeParse('fb_exhibitions', []));
 

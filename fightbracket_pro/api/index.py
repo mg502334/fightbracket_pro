@@ -212,6 +212,38 @@ def sync_startgg_bracket(slug: str = "clash-of-kings-vii", token: str = None):
         addrState
         venueAddress
         isOnline
+        numAttendees
+        stations {
+          nodes {
+            id
+            number
+            prefix
+            enabled
+            state
+            numSetups
+            stream {
+              id
+              streamName
+              streamSource
+              isOnline
+              enabled
+              streamLogo
+            }
+          }
+        }
+        streamQueue {
+          id
+          stream {
+            id
+            streamName
+            streamSource
+            isOnline
+          }
+          sets {
+            id
+            fullRoundText
+          }
+        }
         events {
           id
           name

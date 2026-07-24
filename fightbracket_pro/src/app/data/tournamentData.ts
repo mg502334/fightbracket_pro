@@ -78,6 +78,11 @@ export interface Station {
   gameId: string | null;
   matchId: string | null;
   active: boolean;
+  number?: number;
+  prefix?: string;
+  streamName?: string;
+  numSetups?: number;
+  enabled?: boolean;
 }
 
 export interface SMSLog {
