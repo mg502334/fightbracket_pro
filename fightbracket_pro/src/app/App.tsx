@@ -468,17 +468,39 @@ export default function App() {
     `;
 
     for (const ev of tournament.events || []) {
-      const entRes = await fetch('https://api.start.gg/gql/alpha', {
-        method: 'POST', headers, body: JSON.stringify({ query: queryEntrants, variables: { eventId: ev.id, page: 1 } })
-      });
-      const entJson = await entRes.json().catch(() => ({}));
-      ev.entrants = entJson.data?.event?.entrants || { nodes: [] };
+      // Fetch all entrants (paginated)
+      let allEntrants: any[] = [];
+      let page = 1;
+      while (true) {
+        const entRes = await fetch('https://api.start.gg/gql/alpha', {
+          method: 'POST', headers, body: JSON.stringify({ query: queryEntrants, variables: { eventId: ev.id, page } })
+        });
+        const entJson = await entRes.json().catch(() => ({}));
+        const entrantsObj = entJson.data?.event?.entrants;
+        const nodes = entrantsObj?.nodes || [];
+        if (nodes.length > 0) allEntrants.push(...nodes);
+        const totalPages = entrantsObj?.pageInfo?.totalPages || 1;
+        if (page >= totalPages || nodes.length === 0) break;
+        page++;
+      }
+      ev.entrants = { nodes: allEntrants };
 
-      const setRes = await fetch('https://api.start.gg/gql/alpha', {
-        method: 'POST', headers, body: JSON.stringify({ query: querySets, variables: { eventId: ev.id, page: 1 } })
-      });
-      const setJson = await setRes.json().catch(() => ({}));
-      ev.sets = setJson.data?.event?.sets || { nodes: [] };
+      // Fetch all sets (paginated)
+      let allSets: any[] = [];
+      page = 1;
+      while (true) {
+        const setRes = await fetch('https://api.start.gg/gql/alpha', {
+          method: 'POST', headers, body: JSON.stringify({ query: querySets, variables: { eventId: ev.id, page } })
+        });
+        const setJson = await setRes.json().catch(() => ({}));
+        const setsObj = setJson.data?.event?.sets;
+        const nodes = setsObj?.nodes || [];
+        if (nodes.length > 0) allSets.push(...nodes);
+        const totalPages = setsObj?.pageInfo?.totalPages || 1;
+        if (page >= totalPages || nodes.length === 0) break;
+        page++;
+      }
+      ev.sets = { nodes: allSets };
     }
 
     return tournament;
