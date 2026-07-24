@@ -17,8 +17,11 @@ except ImportError:
 
 try:
     from api.db import get_db, DBPlayer, DBStation, DBSMSLog, DBTournament
-except ModuleNotFoundError:
-    from db import get_db, DBPlayer, DBStation, DBSMSLog, DBTournament
+except (ImportError, ModuleNotFoundError):
+    try:
+        from .db import get_db, DBPlayer, DBStation, DBSMSLog, DBTournament
+    except (ImportError, ModuleNotFoundError):
+        from db import get_db, DBPlayer, DBStation, DBSMSLog, DBTournament
 import jwt
 from fastapi import Header
 
