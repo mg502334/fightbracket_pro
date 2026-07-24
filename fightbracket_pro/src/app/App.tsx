@@ -551,24 +551,29 @@ export default function App() {
 
     events.forEach((ev: any) => {
       if (!ev.videogame) return; // Skip events without a videogame
-      const gameId = `startgg-${ev.videogame.id}`;
+      const gameId = `startgg-ev-${ev.id}`;
+      const evName = ev.name || ev.videogame.name;
+      const fullDisplayName = (ev.videogame?.name && !evName.toLowerCase().includes(ev.videogame.name.toLowerCase()))
+        ? `${ev.videogame.name} - ${evName}`.toUpperCase()
+        : evName.toUpperCase();
+
       if (!gameOrder.includes(gameId) && !newGameIds.includes(gameId)) {
         newGameIds.push(gameId);
         let hue = Math.floor(Math.random() * 360);
-        const gameName = ev.videogame.name.toLowerCase();
+        const gameName = (ev.videogame?.name || evName).toLowerCase();
         if (gameName.includes('tekken 8')) hue = 0;
         else if (gameName.includes('street fighter 6')) hue = 280;
         else if (gameName.includes('wolves') || gameName.includes('fatal fury')) hue = 50;
 
         newThemes[gameId] = {
           id: gameId,
-          displayName: ev.videogame.name.toUpperCase(),
-          shortName: ev.videogame.name.substring(0, 3).toUpperCase(),
+          displayName: fullDisplayName,
+          shortName: evName.substring(0, 3).toUpperCase(),
           primaryColor: `hsl(${hue}, 100%, 60%)`,
           secondaryColor: `hsl(${(hue + 45) % 360}, 100%, 60%)`,
           bgFrom: `hsl(${hue}, 80%, 10%)`,
           glowColor: `hsla(${hue}, 100%, 60%, 0.4)`,
-          description: tName,
+          description: `${tName} — ${evName}`,
           publisher: 'Start.gg',
         };
       }
