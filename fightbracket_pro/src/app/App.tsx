@@ -418,6 +418,17 @@ export default function App() {
       query TournamentQuery($slug: String!) {
         tournament(slug: $slug) {
           id name city addrState venueAddress isOnline
+          stations {
+            nodes {
+              id number prefix enabled state numSetups
+              stream { id streamName streamSource isOnline enabled streamLogo }
+            }
+          }
+          streamQueue {
+            id
+            stream { id streamName streamSource isOnline }
+            sets { id fullRoundText }
+          }
           events { id name videogame { id name } }
         }
       }
@@ -685,7 +696,8 @@ export default function App() {
 
     // Merge state for 100% accurate sync
     setPlayers(prev => {
-      const merged = [...prev];
+      const filteredPrev = prev.filter(p => !p.id.startsWith('tk') && !p.id.startsWith('sf') && !p.id.startsWith('ff'));
+      const merged = [...filteredPrev];
       newPlayers.forEach(np => {
         const idx = merged.findIndex(p => p.id === np.id);
         if (idx >= 0) merged[idx] = { ...merged[idx], ...np };
@@ -739,9 +751,10 @@ export default function App() {
     }
   };
 
-  const totalPlayers = players.length;
-  const totalCheckedIn = players.filter(p => p.checkedIn).length;
-  const totalActive = matches.filter(m => m.state === 'in_progress' || m.state === 'called').length;
+  const activeGamePlayersList = activeGame ? players.filter(p => p.gameId === activeGame) : players;
+  const totalPlayers = activeGamePlayersList.length;
+  const totalCheckedIn = activeGamePlayersList.filter(p => p.checkedIn).length;
+  const totalActive = matches.filter(m => (activeGame ? m.gameId === activeGame : true) && (m.state === 'in_progress' || m.state === 'called')).length;
   const totalStationsActive = stations.filter(s => s.active && s.matchId).length;
 
   return (
