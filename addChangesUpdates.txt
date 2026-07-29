@@ -1,0 +1,50 @@
+// start match times, int. "schedule"
+<div> slug "schedule"
+<ahref pull
+
+call "player" {B03}
+// add pending timers
+call "pending" {timer}
+add match timers
+call "pending" {timer}
+ <adlib "pool" 24
+	<any # "bracket" "pools" (top 8)
+		< (top 24)
+			< (top 8)
+// different pool assignment pool has 3 character name to  2 Alpha 1 Numerical 
+	// add to right of top 8 standings
+	<body 
+// pool shift (open)	
+
+//jump to "filter" ({bracket}
+
+// remove twitch restart restart ad
+remove adlid "ad" {twitch}
+
+<body> slug "start.gg"
+// debuff live matches
+"livematches"
+
+// recourse "sms" tab {remove}
+
+// DQ marks not checked in
+player "checked-in" {false} null?
+
+// completed marks checked in "autom"
+player "checked-in" {true}
+
+// StreamPanel.tsx missing ad remove
+L17 
+// vs "twitch" oppena. competitor assignment does not match due to mutli matches marked pending to stream via start.gg
+// 1. pull direct from twitch??
+// import adlib "twitch" for {true} null competitor assignment
+//moderator competitor assignment (manual{true}) 
+
+// twitch half removes comments
+"twitch" streamData
+// twitch import lag
+import 
+*app sends call pop-ups 60 set notification per vs till user clears notifications
+
+// remove "mobile" tab
+// improve mobile browser layout  

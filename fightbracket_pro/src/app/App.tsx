@@ -13,9 +13,7 @@ import { supabase } from "./supabaseClient";
 import { BracketView } from "./components/BracketView";
 import { CheckInPanel } from "./components/CheckInPanel";
 import { StationsPanel } from "./components/StationsPanel";
-import { SMSPanel } from "./components/SMSPanel";
 import { AnnouncementOverlay } from "./components/AnnouncementOverlay";
-import { MobileCompanion } from "./components/MobileCompanion";
 import { GameSelectionModal } from "./components/GameSelectionModal";
 import { ImportModal } from "./components/ImportModal";
 import { CallMatchModal } from "./components/CallMatchModal";
@@ -28,7 +26,7 @@ import {
   generateMockDataForGame, generateDynamicBracket, BracketType
 } from "./data/tournamentData";
 
-type Tab = 'overview' | 'bracket' | 'checkin' | 'stations' | 'sms' | 'streams' | 'vods' | 'mobile' | 'account';
+type Tab = 'overview' | 'bracket' | 'checkin' | 'stations' | 'streams' | 'vods' | 'account';
 
 const DEFAULT_GAME_ORDER: string[] = ['tekken8', 'sf6', 'fatalFury'];
 const TABS: { id: Tab; label: string; icon: React.ComponentType<{ size?: number }> }[] = [
@@ -36,10 +34,8 @@ const TABS: { id: Tab; label: string; icon: React.ComponentType<{ size?: number 
   { id: 'bracket', label: 'BRACKET', icon: GitBranch },
   { id: 'checkin', label: 'CHECK-IN', icon: UserCheck },
   { id: 'stations', label: 'STATIONS', icon: Monitor },
-  { id: 'sms', label: 'SMS', icon: MessageSquare },
   { id: 'streams', label: 'STREAMS', icon: Tv },
   { id: 'vods', label: 'EXHIBITIONS', icon: Play },
-  { id: 'mobile', label: 'MOBILE', icon: Smartphone },
   { id: 'account', label: 'ACCOUNT', icon: UserCheck },
 ];
 
@@ -286,9 +282,10 @@ export default function App() {
     }
     const sid = stationId;
 
-    setMatches(prev => prev.map(m => m.id === match.id ? { ...m, state: 'called', stationId: sid } : m));
+    const calledTime = Date.now();
+    setMatches(prev => prev.map(m => m.id === match.id ? { ...m, state: 'called', stationId: sid, calledAt: calledTime } : m));
     setStations(prev => prev.map(s => s.id === sid ? { ...s, matchId: match.id } : s));
-    const updatedMatch: BracketMatch = { ...match, state: 'called', stationId: sid };
+    const updatedMatch: BracketMatch = { ...match, state: 'called', stationId: sid, calledAt: calledTime };
     setAnnouncement(updatedMatch);
 
     const playerIds = [match.player1Id, match.player2Id].filter(Boolean) as string[];
@@ -646,6 +643,23 @@ export default function App() {
             if (!isNaN(ls)) p1Score = ls;
             if (!isNaN(rs)) p2Score = rs;
           }
+        } else if (set.displayScore === "DQ" && winnerId) {
+          const loserId = p1 === winnerId ? p2 : p1;
+          if (loserId) {
+            const loserPlayer = newPlayers.find(np => np.id === String(loserId));
+            if (loserPlayer) loserPlayer.checkedIn = false;
+          }
+        }
+
+        if (matchState === 'completed') {
+          if (p1) {
+            const p1Player = newPlayers.find(np => np.id === String(p1));
+            if (p1Player) p1Player.checkedIn = true;
+          }
+          if (p2) {
+            const p2Player = newPlayers.find(np => np.id === String(p2));
+            if (p2Player) p2Player.checkedIn = true;
+          }
         }
 
         const poolIdentifier = set.phaseGroup?.displayIdentifier;
@@ -927,7 +941,7 @@ export default function App() {
       )}
 
       {/* Main content */}
-      <main className="flex-1 overflow-auto p-5 relative">
+      <main className="flex-1 overflow-auto p-3 md:p-5 relative">
         {activeTab === 'account' ? (
           <div className="h-full">
             <AccountDashboard
@@ -1004,30 +1018,6 @@ export default function App() {
                   />
                 </div>
               )}
-              {activeTab === 'sms' && (
-                <div>
-                  <SectionHeader title="SMS NOTIFICATIONS" subtitle="Send match calls & announcements via Twilio" theme={theme} />
-                  <SMSPanel
-                    players={gamePlayers}
-                    matches={gameMatches}
-                    theme={theme}
-                    smsLogs={smsLogs.filter(l => gamePlayers.some(p => p.id === l.playerId))}
-                    onSendSMS={handleSendSMS}
-                  />
-                </div>
-              )}
-              {activeTab === 'mobile' && (
-                <div>
-                  <SectionHeader title="MOBILE COMPANION" subtitle="Preview the player-facing companion app" theme={theme} />
-                  <MobileCompanion players={players} matches={matches} theme={theme} />
-                </div>
-              )}
-              {activeTab === 'streams' && (
-                <div>
-                  <SectionHeader title="LIVE STREAMS" subtitle="Monitor active broadcast channels" theme={theme} />
-                  <StreamsPanel matches={gameMatches} players={gamePlayers} theme={theme} />
-                </div>
-              )}
               {activeTab === 'vods' && (
                 <div className="h-full">
                   <ExhibitionsPanel
@@ -1041,6 +1031,14 @@ export default function App() {
               )}
             </motion.div>
           </AnimatePresence>
+        )}
+        
+        {/* Render StreamsPanel outside AnimatePresence so it doesn't unmount, and control visibility via CSS */}
+        {activeGame && theme && (
+          <div style={{ display: activeTab === 'streams' ? 'block' : 'none' }}>
+            <SectionHeader title="LIVE STREAMS" subtitle="Monitor active broadcast channels" theme={theme} />
+            <StreamsPanel matches={gameMatches} players={gamePlayers} theme={theme} />
+          </div>
         )}
       </main>
 
@@ -1105,6 +1103,28 @@ export default function App() {
   );
 }
 
+// ── Match Timer ──
+function MatchTimer({ calledAt }: { calledAt: number }) {
+  const [timeLeft, setTimeLeft] = useState(() => Math.max(0, 10 * 60 * 1000 - (Date.now() - calledAt)));
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTimeLeft(Math.max(0, 10 * 60 * 1000 - (Date.now() - calledAt)));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [calledAt]);
+
+  const mins = Math.floor(timeLeft / 60000);
+  const secs = Math.floor((timeLeft % 60000) / 1000);
+  const isDanger = timeLeft < 60000;
+  
+  return (
+    <span className={`text-xs tabular-nums font-bold ${isDanger ? 'text-red-500 animate-pulse' : 'text-yellow-500'}`} style={{ fontFamily: 'JetBrains Mono, monospace' }}>
+      {mins}:{secs.toString().padStart(2, '0')}
+    </span>
+  );
+}
+
 // ── Overview Tab ──
 
 function OverviewTab({
@@ -1129,9 +1149,9 @@ function OverviewTab({
     : players;
 
   return (
-    <div className="grid gap-4" style={{ gridTemplateColumns: '1fr 1fr' }}>
+    <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
       {/* Live matches full width */}
-      <div className="col-span-2 rounded overflow-hidden" style={{ background: 'var(--card)', border: `1px solid rgba(0,229,255,0.12)` }}>
+      <div className="col-span-1 lg:col-span-2 rounded overflow-hidden" style={{ background: 'var(--card)', border: `1px solid rgba(0,229,255,0.12)` }}>
         <div className="px-5 py-3 border-b flex items-center gap-2" style={{ borderColor: 'var(--border)', background: 'var(--sidebar)' }}>
           <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: '#00FF88' }} />
           <span className="text-xs tracking-widest" style={{ fontFamily: 'JetBrains Mono, monospace', color: '#00FF88' }}>LIVE MATCHES</span>
@@ -1161,13 +1181,16 @@ function OverviewTab({
                     {m.player1Score} – {m.player2Score}
                   </span>
                   {m.state === 'called' && (
-                    <button
-                      onClick={() => onUndoCall(m.id)}
-                      className="px-2 py-1 rounded text-xs opacity-60 hover:opacity-100 transition-opacity ml-2"
-                      style={{ background: 'rgba(255,23,68,0.15)', color: '#FF1744', fontFamily: 'JetBrains Mono, monospace' }}
-                    >
-                      UNDO
-                    </button>
+                    <>
+                      {m.calledAt && <MatchTimer calledAt={m.calledAt} />}
+                      <button
+                        onClick={() => onUndoCall(m.id)}
+                        className="px-2 py-1 rounded text-xs opacity-60 hover:opacity-100 transition-opacity ml-2"
+                        style={{ background: 'rgba(255,23,68,0.15)', color: '#FF1744', fontFamily: 'JetBrains Mono, monospace' }}
+                      >
+                        UNDO
+                      </button>
+                    </>
                   )}
                 </div>
               </div>
@@ -1300,7 +1323,7 @@ function OverviewTab({
       </div>
 
       {/* Completed Matches */}
-      <div className="col-span-2 rounded overflow-hidden" style={{ background: 'var(--card)', border: '1px solid rgba(122,158,192,0.15)' }}>
+      <div className="col-span-1 lg:col-span-2 rounded overflow-hidden" style={{ background: 'var(--card)', border: '1px solid rgba(122,158,192,0.15)' }}>
         <div className="px-5 py-3 border-b flex flex-col gap-3" style={{ borderColor: 'rgba(122,158,192,0.1)', background: 'var(--sidebar)' }}>
           <div className="flex items-center gap-2">
             <span className="text-xs tracking-widest" style={{ fontFamily: 'JetBrains Mono, monospace', color: 'var(--foreground)' }}>RECENT RESULTS</span>

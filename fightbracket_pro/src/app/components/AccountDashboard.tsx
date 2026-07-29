@@ -50,6 +50,18 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
     }
   };
 
+  const handleResetPassword = async () => {
+    if (!email) {
+      toast.error('Please enter your email address first to reset your password.');
+      return;
+    }
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: window.location.origin,
+    });
+    if (error) toast.error(error.message);
+    else toast.success('Password reset email sent! Check your inbox.');
+  };
+
   const getHeaders = async () => {
     const { data: { session } } = await supabase.auth.getSession();
     return {
@@ -222,7 +234,14 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
                 className="w-full bg-[#111] border border-gray-800 rounded-lg p-3 text-white focus:border-[#00E5FF] outline-none transition-colors" />
             </div>
             <div>
-              <label className="block text-sm text-gray-400 mb-2" style={{ fontFamily: 'JetBrains Mono, monospace' }}>PASSWORD</label>
+              <div className="flex justify-between items-center mb-2">
+                <label className="block text-sm text-gray-400" style={{ fontFamily: 'JetBrains Mono, monospace' }}>PASSWORD</label>
+                {isLogin && (
+                  <button type="button" onClick={handleResetPassword} className="text-xs text-gray-500 hover:text-[#00E5FF] transition-colors" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
+                    Forgot Password?
+                  </button>
+                )}
+              </div>
               <input type="password" value={password} onChange={e => setPassword(e.target.value)} required
                 className="w-full bg-[#111] border border-gray-800 rounded-lg p-3 text-white focus:border-[#00E5FF] outline-none transition-colors" />
             </div>

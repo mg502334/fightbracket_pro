@@ -56,6 +56,7 @@ export interface BracketMatch {
   bestOf: number;
   pool?: string;
   phase?: string;
+  calledAt?: number;
 }
 
 export interface ExhibitionMatch {

@@ -21,12 +21,14 @@ export function ImportModal({ isOpen, onClose, onImport, theme }: ImportModalPro
     setLoading(true);
     setError(null);
     
-    // Extract slug from full url if pasted, e.g. https://www.start.gg/tournament/evo-2023/details -> evo-2023
+    // Extract slug from full url if pasted, e.g. https://www.start.gg/tournament/tns-tekken-8-126/events -> tns-tekken-8-126
     let slug = inputUrl.trim();
     if (slug.includes('start.gg/tournament/')) {
-      const match = slug.match(/start\.gg\/tournament\/([^\/]+)/);
-      if (match) slug = match[1];
+      slug = slug.split('start.gg/tournament/')[1];
+    } else if (slug.includes('tournament/')) {
+      slug = slug.split('tournament/')[1];
     }
+    slug = slug.split('/')[0].split('?')[0].trim();
     
     try {
       await onImport(slug);
@@ -74,7 +76,7 @@ export function ImportModal({ isOpen, onClose, onImport, theme }: ImportModalPro
               value={inputUrl}
               onChange={e => setInputUrl(e.target.value)}
               className="w-full px-3 py-2 text-sm rounded bg-black/20 outline-none focus:ring-1 transition-shadow"
-              style={{ border: '1px solid var(--border)', color: 'var(--foreground)', focusRingColor: theme.primaryColor }}
+              style={{ border: '1px solid var(--border)', color: 'var(--foreground)', '--tw-ring-color': theme.primaryColor } as React.CSSProperties}
             />
             {error && <div className="text-red-400 text-xs">{error}</div>}
             

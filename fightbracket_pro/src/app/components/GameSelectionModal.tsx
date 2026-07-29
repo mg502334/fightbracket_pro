@@ -52,7 +52,7 @@ export function GameSelectionModal({ isOpen, onClose, onSelectGame, theme }: Gam
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 className="w-full py-2 pl-10 pr-4 text-sm rounded bg-black/20 outline-none focus:ring-1 transition-shadow"
-                style={{ border: '1px solid var(--border)', color: 'var(--foreground)', focusRingColor: theme.primaryColor }}
+                style={{ border: '1px solid var(--border)', color: 'var(--foreground)', '--tw-ring-color': theme.primaryColor } as React.CSSProperties}
               />
             </div>
           </div>
