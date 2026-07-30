@@ -17,7 +17,7 @@ export function StreamsPanel({ matches, players, theme }: StreamsPanelProps) {
   // 2. Find the ACTIVE match for each channel (if any)
   const streamData = useMemo(() => {
     const channelsMap = new Map<string, BracketMatch | null>();
-    
+
     // First, find all channels so we never unmount the iframe
     matches.forEach(match => {
       if (match.streamUrl && match.streamUrl.includes('twitch.tv/')) {
@@ -38,7 +38,7 @@ export function StreamsPanel({ matches, players, theme }: StreamsPanelProps) {
     const activeMatches = [...matches]
       .filter(m => m.state !== 'completed' && m.streamUrl && m.streamUrl.includes('twitch.tv/'))
       .sort((a, b) => Math.abs(b.round) - Math.abs(a.round));
-      
+
     activeMatches.forEach(match => {
       const regexMatch = match.streamUrl?.match(/twitch\.tv\/([^/?]+)/i);
       if (regexMatch && regexMatch[1]) {
@@ -49,7 +49,7 @@ export function StreamsPanel({ matches, players, theme }: StreamsPanelProps) {
         }
       }
     });
-    
+
     return Array.from(channelsMap.entries()).map(([channel, activeMatch]) => ({ channel, match: activeMatch }));
   }, [matches]);
 
@@ -78,11 +78,21 @@ export function StreamsPanel({ matches, players, theme }: StreamsPanelProps) {
     }));
   };
 
+  const parentDomains = [
+    typeof window !== 'undefined' ? window.location.hostname : '',
+    'localhost',
+    '127.0.0.1',
+    'fightbracketpro.com',
+    'www.fightbracketpro.com',
+    'fightbracket-pro.vercel.app'
+  ].filter(Boolean);
+  const parentParams = Array.from(new Set(parentDomains)).map(d => `parent=${d}`).join('&');
+
   return (
     <div className="grid gap-6 p-2" style={{ gridTemplateColumns: '1fr' }}>
       {streamData.map(({ channel, match }, idx) => {
         const isSwapped = swappedChannels[channel] || false;
-        
+
         let leftPlayer = match ? getPlayerName(match.player1Id) : '';
         let leftScore = match ? (match.player1Score ?? 0) : 0;
         let rightPlayer = match ? getPlayerName(match.player2Id) : '';
@@ -96,14 +106,14 @@ export function StreamsPanel({ matches, players, theme }: StreamsPanelProps) {
         }
 
         return (
-          <motion.div 
+          <motion.div
             key={channel}
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: idx * 0.1 }}
             className="rounded-lg overflow-hidden flex flex-col"
-            style={{ 
-              background: 'var(--card)', 
+            style={{
+              background: 'var(--card)',
               border: `1px solid ${theme.primaryColor}30`,
               boxShadow: `0 8px 32px rgba(0,0,0,0.4), 0 0 15px ${theme.primaryColor}15`
             }}
@@ -116,9 +126,9 @@ export function StreamsPanel({ matches, players, theme }: StreamsPanelProps) {
                   {channel}
                 </span>
               </div>
-              <a 
-                href={`https://twitch.tv/${channel}`} 
-                target="_blank" 
+              <a
+                href={`https://twitch.tv/${channel}`}
+                target="_blank"
                 rel="noreferrer"
                 className="opacity-70 hover:opacity-100 transition-opacity flex items-center gap-1"
                 style={{ color: theme.primaryColor, fontFamily: 'JetBrains Mono, monospace', fontSize: 11 }}
@@ -132,7 +142,7 @@ export function StreamsPanel({ matches, players, theme }: StreamsPanelProps) {
               {/* Video Player */}
               <div className="flex-1 relative bg-black">
                 <iframe
-                  src={`https://player.twitch.tv/?channel=${channel}&parent=${window.location.hostname}&muted=true`}
+                  src={`https://player.twitch.tv/?channel=${channel}&${parentParams}&muted=true`}
                   height="100%"
                   width="100%"
                   allowFullScreen
@@ -140,11 +150,11 @@ export function StreamsPanel({ matches, players, theme }: StreamsPanelProps) {
                   title={`Twitch Stream - ${channel}`}
                 />
               </div>
-              
+
               {/* Chat Panel */}
               <div className="w-full lg:w-[350px] border-t lg:border-t-0 lg:border-l bg-black" style={{ borderColor: `${theme.primaryColor}20` }}>
-                 <iframe 
-                  src={`https://www.twitch.tv/embed/${channel}/chat?parent=${window.location.hostname}&darkpopout`}
+                <iframe
+                  src={`https://www.twitch.tv/embed/${channel}/chat?${parentParams}&darkpopout`}
                   height="100%"
                   width="100%"
                   className="border-0"
@@ -165,10 +175,10 @@ export function StreamsPanel({ matches, players, theme }: StreamsPanelProps) {
                       {leftScore}
                     </span>
                   </div>
-                  
+
                   <div className="flex flex-col items-center justify-center px-4">
                     <span className="text-sm opacity-50 text-white font-bold mb-1" style={{ fontFamily: 'Rajdhani, sans-serif' }}>VS</span>
-                    <button 
+                    <button
                       onClick={() => toggleSwap(channel)}
                       className="p-1.5 rounded bg-white/5 hover:bg-white/10 transition-colors border border-white/10 text-white/50 hover:text-white"
                       title="Swap Left/Right Players"

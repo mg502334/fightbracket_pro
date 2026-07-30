@@ -72,7 +72,7 @@ export default function App() {
   // Dynamic games state
   const [gameThemes, setGameThemes] = useState<Record<string, GameTheme>>(() => safeParse('fb_themes', {}));
   const [gameOrder, setGameOrder] = useState<string[]>(() => safeParse('fb_gameOrder', []));
-  
+
   // Host & editing state
   const [tournamentOwnerId, setTournamentOwnerId] = useState<string | null>(() => safeParse('fb_tournamentOwnerId', null));
   const [pendingReportMatch, setPendingReportMatch] = useState<BracketMatch | null>(null);
@@ -111,25 +111,25 @@ export default function App() {
       if (id) {
         fetch(`/api/public/tournaments/${id}`)
           .then(r => {
-             if (!r.ok) throw new Error('Not found');
-             return r.json();
+            if (!r.ok) throw new Error('Not found');
+            return r.json();
           })
           .then(data => {
-             const parsed = JSON.parse(data.tournament.data);
-             setActiveGame(parsed.activeGame || null);
-             setPlayers(parsed.players || []);
-             setMatches(parsed.matches || []);
-             setStations(parsed.stations || []);
-             setGameThemes(parsed.gameThemes || {});
-             setGameOrder(parsed.gameOrder || []);
-             setAutoSyncSlug(parsed.autoSyncSlug || null);
-             setExhibitions(parsed.exhibitions || []);
-             setActiveTournament(parsed.activeTournament || null);
-             setTournamentOwnerId(data.tournament.user_id);
-             toast.success("Tournament loaded");
+            const parsed = JSON.parse(data.tournament.data);
+            setActiveGame(parsed.activeGame || null);
+            setPlayers(parsed.players || []);
+            setMatches(parsed.matches || []);
+            setStations(parsed.stations || []);
+            setGameThemes(parsed.gameThemes || {});
+            setGameOrder(parsed.gameOrder || []);
+            setAutoSyncSlug(parsed.autoSyncSlug || null);
+            setExhibitions(parsed.exhibitions || []);
+            setActiveTournament(parsed.activeTournament || null);
+            setTournamentOwnerId(data.tournament.user_id);
+            toast.success("Tournament loaded");
           })
           .catch(() => {
-             toast.error("Tournament not found");
+            toast.error("Tournament not found");
           });
       }
     }
@@ -424,10 +424,6 @@ export default function App() {
     setStations(prev => prev.map(s => s.id === stationId ? { ...s, name } : s));
   }, []);
 
-  const handleSetStationStream = useCallback((stationId: number, streamName: string) => {
-    setStations(prev => prev.map(s => s.id === stationId ? { ...s, streamName: streamName.trim() || undefined } : s));
-  }, []);
-
   const handleSendSMS = useCallback(async (playerIds: string[], message: string, matchId?: string) => {
     const phoneNumbers = playerIds.map(pid => players.find(p => p.id === pid)?.phone).filter(Boolean) as string[];
 
@@ -579,7 +575,7 @@ export default function App() {
     slug = slug.split('/')[0].split('?')[0].trim();
 
     const token = localStorage.getItem('startgg_access_token') || localStorage.getItem('fb_startggToken');
-    
+
     let tournamentData: any = null;
     try {
       const url = `/api/bracket/sync?slug=${encodeURIComponent(slug)}${token ? `&token=${token}` : ''}`;
@@ -822,14 +818,14 @@ export default function App() {
 
   const handleReportScore = (matchId: string, p1Score: number, p2Score: number, winnerId: string | null) => {
     setMatches(prev => {
-      const updated = prev.map(m => m.id === matchId ? { 
-        ...m, 
-        player1Score: p1Score, 
-        player2Score: p2Score, 
-        winnerId, 
-        state: 'completed' 
+      const updated = prev.map(m => m.id === matchId ? {
+        ...m,
+        player1Score: p1Score,
+        player2Score: p2Score,
+        winnerId,
+        state: 'completed'
       } : m);
-      
+
       // Advance winner to the next round if possible
       if (winnerId) {
         const match = updated.find(m => m.id === matchId);
@@ -848,7 +844,7 @@ export default function App() {
       }
       return updated as BracketMatch[];
     });
-    
+
     // Auto-free station
     setStations(prev => prev.map(s => s.matchId === matchId ? { ...s, matchId: null } : s));
   };
@@ -906,7 +902,7 @@ export default function App() {
             </div>
           )}
           {tournamentOwnerId && isHost && (
-            <button 
+            <button
               onClick={() => {
                 navigator.clipboard.writeText(window.location.origin + '/t/' + activeTournament?.slug);
                 toast.success('Share link copied to clipboard!');
@@ -1135,7 +1131,6 @@ export default function App() {
                     onAddStation={handleAddStation}
                     onRemoveStation={handleRemoveStation}
                     onRenameStation={handleRenameStation}
-                    onSetStationStream={handleSetStationStream}
                   />
                 </div>
               )}
@@ -1145,7 +1140,7 @@ export default function App() {
                     exhibitions={exhibitions}
                     setExhibitions={setExhibitions}
                     theme={theme}
-                    userId={userId}
+                    userId={supabaseUser?.id || null}
                     activeGameId={activeGame}
                   />
                 </div>
@@ -1153,7 +1148,7 @@ export default function App() {
             </motion.div>
           </AnimatePresence>
         )}
-        
+
         {/* Render StreamsPanel outside AnimatePresence so it doesn't unmount, and control visibility via CSS */}
         {activeGame && theme && (
           <div style={{ display: activeTab === 'streams' ? 'block' : 'none' }}>
@@ -1251,7 +1246,7 @@ function MatchTimer({ calledAt }: { calledAt: number }) {
   const mins = Math.floor(timeLeft / 60000);
   const secs = Math.floor((timeLeft % 60000) / 1000);
   const isDanger = timeLeft < 60000;
-  
+
   return (
     <span className={`text-xs tabular-nums font-bold ${isDanger ? 'text-red-500 animate-pulse' : 'text-yellow-500'}`} style={{ fontFamily: 'JetBrains Mono, monospace' }}>
       {mins}:{secs.toString().padStart(2, '0')}
@@ -1356,13 +1351,13 @@ function OverviewTab({
                     {gt.shortName} · {m.roundName}
                   </div>
                 </div>
-                  <button
-                    onClick={() => onCallMatch(m, availStation.id)}
-                    className="shrink-0 px-2.5 py-1 rounded text-xs tracking-wider hover:opacity-80 transition-opacity"
-                    style={{ background: `${gt.primaryColor}15`, border: `1px solid ${gt.primaryColor}30`, color: gt.primaryColor, fontFamily: 'JetBrains Mono, monospace', fontSize: 10 }}
-                  >
-                    CALL
-                  </button>
+                <button
+                  onClick={() => onCallMatch(m, availStation.id)}
+                  className="shrink-0 px-2.5 py-1 rounded text-xs tracking-wider hover:opacity-80 transition-opacity"
+                  style={{ background: `${gt.primaryColor}15`, border: `1px solid ${gt.primaryColor}30`, color: gt.primaryColor, fontFamily: 'JetBrains Mono, monospace', fontSize: 10 }}
+                >
+                  CALL
+                </button>
                 )}
                 {isHost && (m.state === 'in_progress' || m.state === 'called') && (
                   <button

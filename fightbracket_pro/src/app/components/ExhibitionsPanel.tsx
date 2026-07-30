@@ -27,8 +27,8 @@ export function ExhibitionsPanel({ exhibitions, setExhibitions, theme, userId, a
 
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!userId) return toast.error("Must be logged in to create an exhibition.");
     if (!activeGameId) return toast.error("Select a game first.");
-    if (!userId) return toast.error("User ID not available.");
 
     const newExhibition: ExhibitionMatch = {
       id: `exh-${Date.now()}`,
@@ -71,47 +71,56 @@ export function ExhibitionsPanel({ exhibitions, setExhibitions, theme, userId, a
 
   const renderVideoPlayer = (url: string) => {
     if (!url) return <div className="flex items-center justify-center h-full text-gray-500 font-mono">No Video URL Provided</div>;
-    
+
     // TikTok URL
     if (url.includes('tiktok.com')) {
       const videoIdMatch = url.match(/video\/(\d+)/);
       const videoId = videoIdMatch ? videoIdMatch[1] : '';
       if (videoId) {
         return (
-          <iframe 
+          <iframe
             src={`https://www.tiktok.com/embed/v2/${videoId}?lang=en-US`}
             className="w-full h-full border-none rounded-xl"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
             allowFullScreen
           />
         );
       }
     }
-    
+
     // YouTube URL
     if (url.includes('youtube.com') || url.includes('youtu.be')) {
       let videoId = '';
       if (url.includes('youtu.be/')) videoId = url.split('youtu.be/')[1].split('?')[0];
       else if (url.includes('v=')) videoId = url.split('v=')[1].split('&')[0];
-      
+
       if (videoId) {
         return (
-          <iframe 
+          <iframe
             src={`https://www.youtube.com/embed/${videoId}`}
             className="w-full h-full border-none rounded-xl"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
             allowFullScreen
           />
         );
       }
     }
-    
+
     // Twitch URL
     if (url.includes('twitch.tv/videos/')) {
       const videoId = url.split('videos/')[1].split('?')[0];
+      const parentDomains = [
+        typeof window !== 'undefined' ? window.location.hostname : '',
+        'localhost',
+        '127.0.0.1',
+        'fightbracketpro.com',
+        'www.fightbracketpro.com',
+        'fightbracket-pro.vercel.app'
+      ].filter(Boolean);
+      const parentParams = Array.from(new Set(parentDomains)).map(d => `parent=${d}`).join('&');
       return (
-        <iframe 
-          src={`https://player.twitch.tv/?video=${videoId}&parent=${window.location.hostname}`}
+        <iframe
+          src={`https://player.twitch.tv/?video=${videoId}&${parentParams}`}
           className="w-full h-full border-none rounded-xl"
           allowFullScreen
         />
@@ -137,7 +146,7 @@ export function ExhibitionsPanel({ exhibitions, setExhibitions, theme, userId, a
         {/* Left Side: Video Player */}
         <div className="flex-1 bg-black/40 border rounded-xl relative overflow-hidden" style={{ borderColor: 'rgba(122,158,192,0.2)' }}>
           {renderVideoPlayer(activeExhibition.videoUrl)}
-          <button 
+          <button
             onClick={() => setActiveExhibitionId(null)}
             className="absolute top-4 left-4 bg-black/60 hover:bg-black text-white px-3 py-1 rounded backdrop-blur font-rajdhani border border-white/10"
           >
@@ -151,7 +160,7 @@ export function ExhibitionsPanel({ exhibitions, setExhibitions, theme, userId, a
             <div className="text-center mb-6">
               <h2 className="text-2xl font-bold font-rajdhani" style={{ color: theme.primaryColor }}>EXHIBITION SET</h2>
               <p className="text-sm text-gray-400 font-mono">FIRST TO {activeExhibition.firstTo} WINS</p>
-              {isOver && <div className="mt-2 inline-flex items-center gap-1 bg-[#00FF88] text-black px-2 py-0.5 rounded font-bold text-xs"><CheckCircle size={12}/> MATCH COMPLETE</div>}
+              {isOver && <div className="mt-2 inline-flex items-center gap-1 bg-[#00FF88] text-black px-2 py-0.5 rounded font-bold text-xs"><CheckCircle size={12} /> MATCH COMPLETE</div>}
             </div>
 
             <div className="space-y-8">
@@ -201,7 +210,7 @@ export function ExhibitionsPanel({ exhibitions, setExhibitions, theme, userId, a
                 )}
               </div>
             </div>
-            
+
             {!isHost && (
               <div className="mt-8 text-center text-xs text-gray-500 font-mono border-t border-gray-800 pt-4">
                 Score tracking is locked to the host.
@@ -217,12 +226,12 @@ export function ExhibitionsPanel({ exhibitions, setExhibitions, theme, userId, a
     <div className="p-4 h-full overflow-auto">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold font-rajdhani tracking-widest" style={{ color: theme.primaryColor }}>EXHIBITIONS & VODS</h2>
-        <button 
+        <button
           onClick={() => setShowCreate(!showCreate)}
           className="flex items-center gap-2 px-4 py-2 rounded text-black font-bold font-rajdhani tracking-widest hover:brightness-125 transition-all"
           style={{ background: theme.primaryColor }}
         >
-          {showCreate ? 'CANCEL' : <><Plus size={16}/> NEW MATCH</>}
+          {showCreate ? 'CANCEL' : <><Plus size={16} /> NEW MATCH</>}
         </button>
       </div>
 
@@ -275,19 +284,19 @@ export function ExhibitionsPanel({ exhibitions, setExhibitions, theme, userId, a
                   <span className="text-xs font-mono bg-white/10 px-2 py-0.5 rounded text-white">FT{ex.firstTo}</span>
                 </div>
               </div>
-              
+
               <div className="flex justify-between items-center mb-2">
                 <div className="font-rajdhani text-lg font-bold truncate flex-1">{ex.player1Name}</div>
                 <div className="font-mono text-2xl font-bold ml-2" style={{ color: theme.primaryColor }}>{ex.player1Score}</div>
               </div>
-              
+
               <div className="flex justify-between items-center">
                 <div className="font-rajdhani text-lg font-bold truncate flex-1">{ex.player2Name}</div>
                 <div className="font-mono text-2xl font-bold ml-2" style={{ color: theme.primaryColor }}>{ex.player2Score}</div>
               </div>
 
               {ex.hostId === userId && (
-                <button 
+                <button
                   onClick={(e) => { e.stopPropagation(); deleteExhibition(ex.id); }}
                   className="absolute top-4 right-4 text-red-500 opacity-0 group-hover:opacity-100 hover:text-red-400 transition-opacity"
                 >
