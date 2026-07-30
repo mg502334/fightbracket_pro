@@ -3,7 +3,7 @@ import { Toaster, toast } from "sonner";
 import { motion, AnimatePresence } from "motion/react";
 import {
   Trophy, GitBranch, UserCheck, Monitor, MessageSquare, Smartphone,
-  ExternalLink, RefreshCw, Zap, MapPin, Globe, Moon, Sun, X, Tv, Cloud, Play
+  ExternalLink, RefreshCw, Zap, MapPin, Globe, Moon, Sun, X, Tv, Cloud, Play, LayoutGrid
 } from "lucide-react";
 import { useTheme } from "next-themes";
 
@@ -20,17 +20,20 @@ import { CallMatchModal } from "./components/CallMatchModal";
 import { StreamsPanel } from "./components/StreamsPanel";
 import { ExhibitionsPanel } from "./components/ExhibitionsPanel";
 import { AccountDashboard } from "./components/AccountDashboard";
+import { PoolsPanel } from "./components/PoolsPanel";
+import { ReportScoreModal } from "./components/ReportScoreModal";
 
 import {
   type BracketMatch, type Player, type Station, type SMSLog, type GameTheme, type ExhibitionMatch,
   generateMockDataForGame, generateDynamicBracket, BracketType
 } from "./data/tournamentData";
 
-type Tab = 'overview' | 'bracket' | 'checkin' | 'stations' | 'streams' | 'vods' | 'account';
+type Tab = 'overview' | 'bracket' | 'checkin' | 'stations' | 'streams' | 'vods' | 'pools' | 'account';
 
 const DEFAULT_GAME_ORDER: string[] = ['tekken8', 'sf6', 'fatalFury'];
 const TABS: { id: Tab; label: string; icon: React.ComponentType<{ size?: number }> }[] = [
   { id: 'overview', label: 'OVERVIEW', icon: Trophy },
+  { id: 'pools', label: 'POOLS', icon: LayoutGrid },
   { id: 'bracket', label: 'BRACKET', icon: GitBranch },
   { id: 'checkin', label: 'CHECK-IN', icon: UserCheck },
   { id: 'stations', label: 'STATIONS', icon: Monitor },
@@ -69,6 +72,13 @@ export default function App() {
   // Dynamic games state
   const [gameThemes, setGameThemes] = useState<Record<string, GameTheme>>(() => safeParse('fb_themes', {}));
   const [gameOrder, setGameOrder] = useState<string[]>(() => safeParse('fb_gameOrder', []));
+  
+  // Host & editing state
+  const [tournamentOwnerId, setTournamentOwnerId] = useState<string | null>(() => safeParse('fb_tournamentOwnerId', null));
+  const [pendingReportMatch, setPendingReportMatch] = useState<BracketMatch | null>(null);
+
+  // Determine if the current user is the host
+  const isHost = !tournamentOwnerId || (supabaseUser?.id === tournamentOwnerId) || (startggUser?.id === tournamentOwnerId);
 
   useEffect(() => {
     localStorage.setItem('fb_activeGame', JSON.stringify(activeGame));
@@ -81,7 +91,8 @@ export default function App() {
     localStorage.setItem('fb_gameOrder', JSON.stringify(gameOrder));
     localStorage.setItem('fb_autoSyncSlug', JSON.stringify(autoSyncSlug));
     localStorage.setItem('fb_exhibitions', JSON.stringify(exhibitions));
-  }, [activeGame, players, matches, stations, smsLogs, activeTournament, gameThemes, gameOrder, autoSyncSlug, exhibitions]);
+    localStorage.setItem('fb_tournamentOwnerId', JSON.stringify(tournamentOwnerId));
+  }, [activeGame, players, matches, stations, smsLogs, activeTournament, gameThemes, gameOrder, autoSyncSlug, exhibitions, tournamentOwnerId]);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }: any) => {
@@ -91,6 +102,37 @@ export default function App() {
       setSupabaseUser(session?.user ?? null);
     });
     return () => subscription.unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    const path = window.location.pathname;
+    if (path.startsWith('/t/')) {
+      const id = path.split('/t/')[1];
+      if (id) {
+        fetch(`/api/public/tournaments/${id}`)
+          .then(r => {
+             if (!r.ok) throw new Error('Not found');
+             return r.json();
+          })
+          .then(data => {
+             const parsed = JSON.parse(data.tournament.data);
+             setActiveGame(parsed.activeGame || null);
+             setPlayers(parsed.players || []);
+             setMatches(parsed.matches || []);
+             setStations(parsed.stations || []);
+             setGameThemes(parsed.gameThemes || {});
+             setGameOrder(parsed.gameOrder || []);
+             setAutoSyncSlug(parsed.autoSyncSlug || null);
+             setExhibitions(parsed.exhibitions || []);
+             setActiveTournament(parsed.activeTournament || null);
+             setTournamentOwnerId(data.tournament.user_id);
+             toast.success("Tournament loaded");
+          })
+          .catch(() => {
+             toast.error("Tournament not found");
+          });
+      }
+    }
   }, []);
 
   useEffect(() => {
@@ -765,6 +807,51 @@ export default function App() {
     }
   };
 
+  const handleReportScore = (matchId: string, p1Score: number, p2Score: number, winnerId: string | null) => {
+    setMatches(prev => {
+      const updated = prev.map(m => m.id === matchId ? { 
+        ...m, 
+        player1Score: p1Score, 
+        player2Score: p2Score, 
+        winnerId, 
+        state: 'completed' 
+      } : m);
+      
+      // Advance winner to the next round if possible
+      if (winnerId) {
+        const match = updated.find(m => m.id === matchId);
+        if (match && match.round >= 0) {
+          const nextRound = match.round + 1;
+          const nextMatchNum = Math.floor(match.matchNumber / 2);
+          const nextMatchIdx = updated.findIndex(m => m.round === nextRound && m.matchNumber === nextMatchNum);
+          if (nextMatchIdx >= 0) {
+            if (match.matchNumber % 2 === 0) {
+              updated[nextMatchIdx].player1Id = winnerId;
+            } else {
+              updated[nextMatchIdx].player2Id = winnerId;
+            }
+          }
+        }
+      }
+      return updated as BracketMatch[];
+    });
+    
+    // Auto-free station
+    setStations(prev => prev.map(s => s.matchId === matchId ? { ...s, matchId: null } : s));
+  };
+
+  const handleRemovePlayer = (playerId: string) => {
+    if (!confirm('Remove this player from the tournament?')) return;
+    setPlayers(prev => prev.filter(p => p.id !== playerId));
+    // Optionally unassign them from pending matches
+    setMatches(prev => prev.map(m => {
+      if (m.state === 'completed' || m.state === 'in_progress') return m;
+      if (m.player1Id === playerId) return { ...m, player1Id: null };
+      if (m.player2Id === playerId) return { ...m, player2Id: null };
+      return m;
+    }));
+  };
+
   const activeGamePlayersList = activeGame ? players.filter(p => p.gameId === activeGame) : players;
   const totalPlayers = activeGamePlayersList.length;
   const totalCheckedIn = activeGamePlayersList.filter(p => p.checkedIn).length;
@@ -804,6 +891,17 @@ export default function App() {
               <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: '#00FF88' }} />
               <span className="text-xs font-bold tracking-widest" style={{ fontFamily: 'JetBrains Mono, monospace', color: '#00FF88' }}>LIVE</span>
             </div>
+          )}
+          {tournamentOwnerId && isHost && (
+            <button 
+              onClick={() => {
+                navigator.clipboard.writeText(window.location.origin + '/t/' + activeTournament?.slug);
+                toast.success('Share link copied to clipboard!');
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs tracking-wider hover:opacity-80 transition-opacity bg-white/10 text-white font-mono"
+            >
+              SHARE LINK
+            </button>
           )}
           <a href="https://start.gg" target="_blank" rel="noreferrer"
             className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs tracking-wider hover:opacity-80 transition-opacity"
@@ -998,8 +1096,17 @@ export default function App() {
               {activeTab === 'checkin' && (
                 <div>
                   <SectionHeader title="PARTICIPANT CHECK-IN" subtitle={`${checkedInCount} of ${gamePlayers.length} checked in`} theme={theme} />
-                  <CheckInPanel players={gamePlayers} theme={theme} onCheckIn={handleCheckIn} />
+                  <CheckInPanel players={gamePlayers} theme={theme} onCheckIn={handleCheckIn} onRemovePlayer={isHost ? handleRemovePlayer : undefined} />
                 </div>
+              )}
+              {activeTab === 'pools' && (
+                <PoolsPanel
+                  matches={gameMatches}
+                  players={gamePlayers}
+                  theme={theme}
+                  isHost={isHost}
+                  onUpdateMatches={setMatches}
+                />
               )}
               {activeTab === 'stations' && (
                 <div>
@@ -1068,6 +1175,19 @@ export default function App() {
             setPendingCallMatch(null);
           }}
           onCancel={() => setPendingCallMatch(null)}
+        />
+      )}
+
+      {pendingReportMatch && theme && (
+        <ReportScoreModal
+          match={pendingReportMatch}
+          players={Object.fromEntries(players.map(p => [p.id, p]))}
+          theme={theme}
+          onConfirm={(matchId, p1Score, p2Score, winnerId) => {
+            handleReportScore(matchId, p1Score, p2Score, winnerId);
+            setPendingReportMatch(null);
+          }}
+          onCancel={() => setPendingReportMatch(null)}
         />
       )}
 
@@ -1222,13 +1342,21 @@ function OverviewTab({
                     {gt.shortName} · {m.roundName}
                   </div>
                 </div>
-                {availStation && (
                   <button
                     onClick={() => onCallMatch(m, availStation.id)}
                     className="shrink-0 px-2.5 py-1 rounded text-xs tracking-wider hover:opacity-80 transition-opacity"
                     style={{ background: `${gt.primaryColor}15`, border: `1px solid ${gt.primaryColor}30`, color: gt.primaryColor, fontFamily: 'JetBrains Mono, monospace', fontSize: 10 }}
                   >
                     CALL
+                  </button>
+                )}
+                {isHost && (m.state === 'in_progress' || m.state === 'called') && (
+                  <button
+                    onClick={() => setPendingReportMatch(m)}
+                    className="shrink-0 px-2.5 py-1 rounded text-xs tracking-wider hover:opacity-80 transition-opacity bg-white/10 text-white font-mono"
+                    style={{ fontSize: 10 }}
+                  >
+                    REPORT
                   </button>
                 )}
               </div>
@@ -1279,6 +1407,11 @@ function OverviewTab({
                   <span className="text-xs tabular-nums font-bold" style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10, color: isEliminated ? '#FF1744' : '#00FF88' }}>
                     {isEliminated ? 'ELIMINATED' : 'ACTIVE'}
                   </span>
+                  {isHost && (
+                    <button onClick={() => handleRemovePlayer(p.id)} className="opacity-50 hover:opacity-100 hover:text-[#FF1744] transition-all ml-2">
+                      <Trash2 size={12} />
+                    </button>
+                  )}
                 </div>
               );
             })
@@ -1318,6 +1451,40 @@ function OverviewTab({
                   </div>
                 );
               })
+          )}
+          )}
+        </div>
+      </div>
+
+      {/* Pools Summary */}
+      <div className="rounded overflow-hidden" style={{ background: 'var(--card)', border: '1px solid rgba(122,158,192,0.15)' }}>
+        <div className="px-5 py-3 border-b flex flex-col gap-3" style={{ borderColor: 'rgba(122,158,192,0.1)', background: 'var(--sidebar)' }}>
+          <div className="flex items-center gap-2">
+            <LayoutGrid size={13} style={{ color: '#00E5FF' }} />
+            <span className="text-xs tracking-widest" style={{ fontFamily: 'JetBrains Mono, monospace', color: 'var(--foreground)' }}>POOLS SUMMARY</span>
+          </div>
+        </div>
+        <div className="overflow-y-auto p-4 space-y-4" style={{ maxHeight: 300 }}>
+          {Array.from(new Set(matches.map(m => m.pool).filter(Boolean))).length === 0 ? (
+            <div className="py-6 text-center text-xs opacity-40" style={{ fontFamily: 'JetBrains Mono, monospace' }}>No pools created</div>
+          ) : (
+            Array.from(new Set(matches.map(m => m.pool).filter(Boolean))).sort().map(pool => {
+              const poolMatches = matches.filter(m => m.pool === pool);
+              const completed = poolMatches.filter(m => m.state === 'completed').length;
+              const total = poolMatches.length;
+              const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
+              return (
+                <div key={pool as string} className="space-y-1.5">
+                  <div className="flex justify-between items-center text-xs font-mono">
+                    <span className="font-bold">POOL {pool as string}</span>
+                    <span className="opacity-60">{completed}/{total}</span>
+                  </div>
+                  <div className="h-1 bg-black w-full rounded overflow-hidden">
+                    <div className="h-full bg-[#00E5FF]" style={{ width: `${percent}%` }} />
+                  </div>
+                </div>
+              );
+            })
           )}
         </div>
       </div>

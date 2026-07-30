@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, Request
 from fastapi.responses import RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
@@ -17,9 +17,9 @@ except ImportError:
 
 try:
     try:
-        from api.db import get_db, DBPlayer, DBStation, DBSMSLog, DBTournament
+        from api.db import get_db, DBPlayer, DBStation, DBSMSLog, DBTournament, DBUser
     except Exception:
-        from db import get_db, DBPlayer, DBStation, DBSMSLog, DBTournament
+        from db import get_db, DBPlayer, DBStation, DBSMSLog, DBTournament, DBUser
 except Exception as _db_err:
     print(f"DB import warning: {_db_err}")
     def get_db():
@@ -82,9 +82,67 @@ class TournamentSaveRequest(BaseModel):
     name: str
     data: str
 
+class VerifyRequest(BaseModel):
+    token: str
+
+@app.post("/api/auth/verify")
+def verify_auth_turnstile(req: VerifyRequest, request: Request):
+    client_ip = request.headers.get("x-forwarded-for")
+    if client_ip:
+        client_ip = client_ip.split(",")[0].strip()
+    else:
+        client_ip = request.client.host if request.client else None
+        
+    secret = os.environ.get("TURNSTILE_SECRET")
+    if not secret:
+        # Fail closed if env secret is not configured
+        raise HTTPException(status_code=500, detail="TURNSTILE_SECRET environment variable is not configured.")
+        
+    try:
+        resp = requests.post("https://challenges.cloudflare.com/turnstile/v0/siteverify", data={
+            "secret": secret,
+            "response": req.token,
+            "remoteip": client_ip
+        })
+        if resp.status_code != 200:
+            raise HTTPException(status_code=403, detail="Turnstile verification request failed.")
+        result = resp.json()
+    except Exception as e:
+        raise HTTPException(status_code=403, detail="Forbidden - Turnstile verification failed.")
+        
+    if not result.get("success"):
+        raise HTTPException(status_code=403, detail="Forbidden - Turnstile verification failed.")
+        
+    return {"status": "success"}
+
 @app.get("/api/health")
 def health_check():
     return {"status": "ok"}
+
+@app.get("/api/user/profile")
+def get_user_profile(user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    if not db:
+        raise HTTPException(status_code=404, detail="Database not available")
+    
+    import random
+    import string
+    
+    user = db.query(DBUser).filter(DBUser.id == user_id).first()
+    if not user:
+        # Generate an 8-char unique identifier (e.g. EG-XXXX)
+        while True:
+            unique_part = ''.join(random.choices(string.ascii_uppercase + string.digits, k=4))
+            unique_part2 = ''.join(random.choices(string.ascii_uppercase + string.digits, k=4))
+            unique_id = f"FB-{unique_part}-{unique_part2}"
+            if not db.query(DBUser).filter(DBUser.unique_id == unique_id).first():
+                break
+        
+        user = DBUser(id=user_id, unique_id=unique_id)
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+        
+    return {"user": {"id": user.id, "unique_id": user.unique_id, "created_at": user.created_at.isoformat()}}
 
 @app.get("/api/tournaments")
 def get_tournaments(user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
@@ -101,6 +159,16 @@ def get_tournament(tournament_id: str, user_id: str = Depends(get_current_user_i
     if not tournament:
         raise HTTPException(status_code=404, detail="Tournament not found")
     return {"tournament": {"id": tournament.id, "name": tournament.name, "data": tournament.data, "updated_at": tournament.updated_at.isoformat()}}
+
+@app.get("/api/public/tournaments/{tournament_id}")
+def get_public_tournament(tournament_id: str, db: Session = Depends(get_db)):
+    if not db:
+        raise HTTPException(status_code=404, detail="Database not available")
+    tournament = db.query(DBTournament).filter(DBTournament.id == tournament_id).first()
+    if not tournament:
+        raise HTTPException(status_code=404, detail="Tournament not found")
+    return {"tournament": {"id": tournament.id, "user_id": tournament.user_id, "name": tournament.name, "data": tournament.data, "updated_at": tournament.updated_at.isoformat()}}
+
 
 @app.post("/api/tournaments")
 def save_tournament(req: TournamentSaveRequest, user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):

@@ -1,9 +1,15 @@
 import os
 from sqlalchemy import create_engine, Column, String, Boolean, Integer, DateTime, Text
 from sqlalchemy.orm import declarative_base, sessionmaker
-from datetime import datetime
+from datetime import datetime, timezone
 
 Base = declarative_base()
+
+class DBUser(Base):
+    __tablename__ = "users"
+    id = Column(String, primary_key=True, index=True) # This is the Supabase user ID
+    unique_id = Column(String, unique=True, index=True, nullable=False) # The 8-char unique identifier
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 class DBPlayer(Base):
     __tablename__ = "players"
@@ -25,7 +31,7 @@ class DBSMSLog(Base):
     user_id = Column(String, index=True, nullable=False)
     player_id = Column(String, index=True)
     message = Column(String)
-    sent_at = Column(DateTime, default=datetime.utcnow)
+    sent_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     status = Column(String)
     match_id = Column(String, nullable=True)
 
@@ -35,7 +41,7 @@ class DBTournament(Base):
     user_id = Column(String, index=True, nullable=False)
     name = Column(String)
     data = Column(Text)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
 # Lazy engine — only created when first needed, prevents cold-start crash on Vercel
 _engine = None

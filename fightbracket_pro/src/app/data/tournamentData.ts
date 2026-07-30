@@ -57,6 +57,17 @@ export interface BracketMatch {
   pool?: string;
   phase?: string;
   calledAt?: number;
+  identifier?: string;
+}
+
+export function getMatchIdentifier(index: number): string {
+  let id = '';
+  let n = index;
+  while (n >= 0) {
+    id = String.fromCharCode(65 + (n % 26)) + id;
+    n = Math.floor(n / 26) - 1;
+  }
+  return id;
 }
 
 export interface ExhibitionMatch {
@@ -208,6 +219,7 @@ export function gen16Bracket(gameId: string, playerIds: string[]): BracketMatch[
       player2Score: i < 2 ? 1 : i === 2 ? 0 : 0,
       winnerId: i < 2 ? playerIds[a] : null,
       bestOf: 3,
+      identifier: getMatchIdentifier(matches.length),
     });
   });
 
@@ -227,6 +239,7 @@ export function gen16Bracket(gameId: string, playerIds: string[]): BracketMatch[
       player2Score: 0,
       winnerId: null,
       bestOf: 3,
+      identifier: getMatchIdentifier(matches.length),
     });
   });
 
@@ -246,6 +259,7 @@ export function gen16Bracket(gameId: string, playerIds: string[]): BracketMatch[
       player2Score: 0,
       winnerId: null,
       bestOf: 5,
+      identifier: getMatchIdentifier(matches.length),
     });
   });
 
@@ -264,6 +278,7 @@ export function gen16Bracket(gameId: string, playerIds: string[]): BracketMatch[
     player2Score: 0,
     winnerId: null,
     bestOf: 5,
+    identifier: getMatchIdentifier(matches.length),
   });
 
   return matches;
@@ -289,6 +304,7 @@ function gen8Bracket(gameId: string, playerIds: string[]): BracketMatch[] {
       player2Score: i === 0 ? 0 : 0,
       winnerId: i === 0 ? playerIds[a] : null,
       bestOf: 3,
+      identifier: getMatchIdentifier(matches.length),
     });
   });
 
@@ -307,6 +323,7 @@ function gen8Bracket(gameId: string, playerIds: string[]): BracketMatch[] {
       player2Score: 0,
       winnerId: null,
       bestOf: 3,
+      identifier: getMatchIdentifier(matches.length),
     });
   });
 
@@ -324,6 +341,7 @@ function gen8Bracket(gameId: string, playerIds: string[]): BracketMatch[] {
     player2Score: 0,
     winnerId: null,
     bestOf: 5,
+    identifier: getMatchIdentifier(matches.length),
   });
 
   return matches;
@@ -408,7 +426,10 @@ export function generateDynamicBracket(gameId: string, playerIds: string[], type
         player2Score: isBye && p2 ? 2 : 0,
         winnerId: winner,
         bestOf: isFinals ? 5 : 3,
+        identifier: getMatchIdentifier(matchCounter),
       });
+
+      matchCounter++;
 
       if (i % 2 !== 0) {
         // We just completed a pair of matches (i-1 and i), their winners go to next round

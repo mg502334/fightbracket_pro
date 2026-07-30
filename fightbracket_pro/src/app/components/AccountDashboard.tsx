@@ -25,6 +25,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
 
   // Profile state
   const [displayName, setDisplayName] = useState(user?.user_metadata?.displayName || '');
+  const [userProfile, setUserProfile] = useState<{ id: string, unique_id: string } | null>(null);
 
   // Start.gg state
   const [startggToken, setStartggToken] = useState(() => {
@@ -34,19 +35,81 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
   const [fetchingStartgg, setFetchingStartgg] = useState(false);
 
   useEffect(() => {
-    if (user) fetchCloudTournaments();
+    if (user) {
+      fetchCloudTournaments();
+      fetchUserProfile();
+    }
   }, [user]);
+
+  const fetchUserProfile = async () => {
+    try {
+      const headers = await getHeaders();
+      const res = await fetch('/api/user/profile', { headers });
+      if (res.ok) {
+        const data = await res.json();
+        setUserProfile(data.user);
+      }
+    } catch (err) {
+      console.error('Failed to fetch user profile', err);
+    }
+  };
+
+  const verifyTurnstile = async (): Promise<boolean> => {
+    const token = window.turnstile?.getResponse();
+    if (!token) {
+      toast.error('Please complete the CAPTCHA verification.');
+      return false;
+    }
+    
+    try {
+      const res = await fetch('/api/auth/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token })
+      });
+      if (!res.ok) {
+        toast.error('CAPTCHA verification failed. Please try again.');
+        window.turnstile?.reset();
+        return false;
+      }
+      return true;
+    } catch (err) {
+      toast.error('Verification server connection error. Please try again.');
+      window.turnstile?.reset();
+      return false;
+    }
+  };
 
   const handleAuthSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const verified = await verifyTurnstile();
+    if (!verified) return;
+
+    const getFriendlyError = (err: any) => {
+      if (!err) return '';
+      const msg = err.message;
+      if (!msg || msg === '{}' || typeof msg !== 'string') {
+        return 'Supabase server error (500). Please check your Supabase dashboard logs and SMTP configuration.';
+      }
+      return msg;
+    };
+
     if (isLogin) {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) toast.error(error.message);
-      else toast.success('Logged in successfully');
+      if (error) {
+        toast.error(getFriendlyError(error));
+        window.turnstile?.reset();
+      } else {
+        toast.success('Logged in successfully');
+      }
     } else {
       const { error } = await supabase.auth.signUp({ email, password });
-      if (error) toast.error(error.message);
-      else toast.success('Signed up successfully. If email confirmation is off, you are logged in.');
+      if (error) {
+        toast.error(getFriendlyError(error));
+        window.turnstile?.reset();
+      } else {
+        toast.success('Signed up successfully. If email confirmation is off, you are logged in.');
+      }
     }
   };
 
@@ -55,11 +118,22 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
       toast.error('Please enter your email address first to reset your password.');
       return;
     }
+    const verified = await verifyTurnstile();
+    if (!verified) return;
+
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: window.location.origin,
     });
-    if (error) toast.error(error.message);
-    else toast.success('Password reset email sent! Check your inbox.');
+    if (error) {
+      const errMsg = error.message && error.message !== '{}' && typeof error.message === 'string'
+        ? error.message
+        : 'Failed to send recovery email (HTTP 500). This usually means your Supabase project SMTP/email provider settings are not configured or have hit their rate limit.';
+      toast.error(errMsg);
+      window.turnstile?.reset();
+    } else {
+      toast.success('Password reset email sent! Check your inbox.');
+      window.turnstile?.reset();
+    }
   };
 
   const getHeaders = async () => {
@@ -245,6 +319,14 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
               <input type="password" value={password} onChange={e => setPassword(e.target.value)} required
                 className="w-full bg-[#111] border border-gray-800 rounded-lg p-3 text-white focus:border-[#00E5FF] outline-none transition-colors" />
             </div>
+            <div className="flex justify-center mt-4">
+              <div 
+                className="cf-turnstile" 
+                data-sitekey="0x4AAAAAAEBO-v0nV0L1u4Sv" 
+                data-action="turnstile-spin-v2"
+                data-theme="dark"
+              ></div>
+            </div>
             <button type="submit" className="w-full bg-[#00E5FF] hover:bg-[#00E5FF]/80 text-black font-bold py-3 rounded-lg text-xl transition-all tracking-widest mt-4" style={{ fontFamily: 'Rajdhani, sans-serif' }}>
               {isLogin ? 'SIGN IN' : 'REGISTER'}
             </button>
@@ -285,6 +367,12 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
         <div className="space-y-6">
           <div className="bg-[#050A14] border border-[#00FF88]/30 p-6 rounded-xl shadow-lg">
             <h3 className="text-xl font-bold font-rajdhani text-[#00FF88] tracking-widest mb-4">PROFILE</h3>
+            {userProfile?.unique_id && (
+              <div className="mb-4 bg-black/40 border border-[#00FF88]/20 p-3 rounded flex justify-between items-center">
+                <span className="text-xs text-[#00FF88] font-mono tracking-wider opacity-80">USER ID</span>
+                <span className="font-mono font-bold tracking-widest bg-[#00FF88]/10 px-2 py-1 rounded text-[#00FF88]">{userProfile.unique_id}</span>
+              </div>
+            )}
             <div className="flex gap-2">
               <input 
                 type="text" 

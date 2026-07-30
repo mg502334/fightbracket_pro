@@ -201,7 +201,7 @@ function BracketSection({
                           style={{ background: 'rgba(0,0,0,0.3)', borderBottom: '1px solid rgba(122,158,192,0.1)' }}
                         >
                           <span className="text-xs opacity-50" style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10 }}>
-                            BO{match.bestOf} {match.stationId ? `· STN ${match.stationId}` : ''}
+                            {match.identifier ? `MATCH ${match.identifier} · ` : ''}BO{match.bestOf} {match.stationId ? `· STN ${match.stationId}` : ''}
                           </span>
                           <div className="flex items-center gap-1">
                             <Icon size={10} style={{ color: cfg.color }} />

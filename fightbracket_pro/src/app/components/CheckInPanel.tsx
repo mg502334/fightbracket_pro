@@ -1,16 +1,17 @@
 import { useState } from "react";
-import { Search, CheckCircle2, XCircle, Smartphone } from "lucide-react";
+import { Search, CheckCircle2, XCircle, Smartphone, Trash2 } from "lucide-react";
 import type { Player, GameTheme } from "../data/tournamentData";
 
 interface CheckInPanelProps {
   players: Player[];
   theme: GameTheme;
   onCheckIn: (playerId: string, checked: boolean) => void;
+  onRemovePlayer?: (playerId: string) => void;
 }
 
 type FilterMode = 'all' | 'checked' | 'unchecked';
 
-export function CheckInPanel({ players, theme, onCheckIn }: CheckInPanelProps) {
+export function CheckInPanel({ players, theme, onCheckIn, onRemovePlayer }: CheckInPanelProps) {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<FilterMode>('all');
 
@@ -119,7 +120,7 @@ export function CheckInPanel({ players, theme, onCheckIn }: CheckInPanelProps) {
             </div>
           ) : (
             filtered.map(player => (
-              <PlayerRow key={player.id} player={player} theme={theme} onToggle={onCheckIn} />
+              <PlayerRow key={player.id} player={player} theme={theme} onToggle={onCheckIn} onRemove={onRemovePlayer} />
             ))
           )}
         </div>
@@ -128,7 +129,7 @@ export function CheckInPanel({ players, theme, onCheckIn }: CheckInPanelProps) {
   );
 }
 
-function PlayerRow({ player, theme, onToggle }: { player: Player; theme: GameTheme; onToggle: (id: string, v: boolean) => void }) {
+function PlayerRow({ player, theme, onToggle, onRemove }: { player: Player; theme: GameTheme; onToggle: (id: string, v: boolean) => void; onRemove?: (id: string) => void }) {
   const [hovering, setHovering] = useState(false);
 
   return (
@@ -169,7 +170,7 @@ function PlayerRow({ player, theme, onToggle }: { player: Player; theme: GameThe
         </span>
       </div>
 
-      <div className="flex justify-end">
+      <div className="flex justify-end gap-2 items-center">
         <button
           onClick={() => onToggle(player.id, !player.checkedIn)}
           className="flex items-center gap-1.5 px-2.5 py-1 rounded text-xs tracking-wider transition-all"
@@ -185,6 +186,15 @@ function PlayerRow({ player, theme, onToggle }: { player: Player; theme: GameThe
             : <><XCircle size={11} /> OUT</>
           }
         </button>
+        {onRemove && (
+          <button 
+            onClick={() => onRemove(player.id)}
+            className="p-1 rounded text-white/30 hover:text-red-500 hover:bg-white/5 transition-all"
+            title="Remove Player"
+          >
+            <Trash2 size={14} />
+          </button>
+        )}
       </div>
     </div>
   );
