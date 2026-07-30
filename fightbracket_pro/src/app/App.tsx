@@ -51,6 +51,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<Tab>('overview');
   const [players, setPlayers] = useState<Player[]>(() => safeParse('fb_players', []));
   const [matches, setMatches] = useState<BracketMatch[]>(() => safeParse('fb_matches', []));
+  const [selectedPool, setSelectedPool] = useState<string>('ALL');
 
   // Generating default stations
   const [stations, setStations] = useState<Station[]>(() => safeParse('fb_stations',
@@ -1110,6 +1111,8 @@ export default function App() {
                       else toast.error('No available stations', { style: { background: 'var(--card)', color: 'var(--foreground)' } });
                     }}
                     onGenerateBracket={handleGenerateBracket}
+                    selectedPool={selectedPool}
+                    onSelectPool={setSelectedPool}
                   />
                 </div>
               )}
@@ -1126,6 +1129,10 @@ export default function App() {
                   theme={theme}
                   isHost={isHost}
                   onUpdateMatches={setMatches}
+                  onSelectPool={(p) => {
+                    setSelectedPool(p);
+                    setActiveTab('bracket');
+                  }}
                 />
               )}
               {activeTab === 'stations' && (

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Swords, Clock, CheckCircle2, AlertCircle, ChevronRight } from "lucide-react";
+import { Swords, Clock, CheckCircle2, AlertCircle, ChevronRight, Search, X, Layers, Filter, Sparkles } from "lucide-react";
 import { BracketType, type BracketMatch, type Player, type GameTheme } from "../data/tournamentData";
 
 interface BracketViewProps {
@@ -8,6 +8,8 @@ interface BracketViewProps {
   theme: GameTheme;
   onCallMatch: (match: BracketMatch) => void;
   onGenerateBracket?: (type: BracketType) => void;
+  selectedPool?: string;
+  onSelectPool?: (pool: string) => void;
 }
 
 const STATE_CONFIG = {
@@ -17,10 +19,29 @@ const STATE_CONFIG = {
   completed: { label: 'DONE', color: '#3A5A7A', bg: 'rgba(58,90,122,0.1)', icon: CheckCircle2 },
 };
 
-export function BracketView({ matches, players, theme, onCallMatch, onGenerateBracket }: BracketViewProps) {
+type Phase = 'ALL' | 'POOLS' | 'TOP_24' | 'TOP_8';
+
+export function BracketView({
+  matches,
+  players,
+  theme,
+  onCallMatch,
+  onGenerateBracket,
+  selectedPool: externalSelectedPool,
+  onSelectPool: externalOnSelectPool,
+}: BracketViewProps) {
   const [hoveredMatchId, setHoveredMatchId] = useState<string | null>(null);
   const [selectedFormat, setSelectedFormat] = useState<BracketType>(BracketType.SINGLE_ELIMINATION);
-  const [selectedPool, setSelectedPool] = useState<string>('ALL');
+  const [internalPool, setInternalPool] = useState<string>('ALL');
+  const [selectedPhase, setSelectedPhase] = useState<Phase>('ALL');
+  const [playerSearch, setPlayerSearch] = useState<string>('');
+  const [filterMatchesOnly, setFilterMatchesOnly] = useState<boolean>(false);
+
+  const selectedPool = externalSelectedPool !== undefined ? externalSelectedPool : internalPool;
+  const setSelectedPool = (p: string) => {
+    setInternalPool(p);
+    externalOnSelectPool?.(p);
+  };
 
   if (matches.length === 0) {
     return (
@@ -59,40 +80,160 @@ export function BracketView({ matches, players, theme, onCallMatch, onGenerateBr
 
   // Extract unique pools if present
   const availablePools = Array.from(new Set(matches.map(m => m.pool).filter(Boolean))) as string[];
+  availablePools.sort();
 
-  // Filter matches by selected pool if a pool is picked
-  const filteredMatches = selectedPool === 'ALL' 
-    ? matches 
-    : matches.filter(m => m.pool === selectedPool);
+  // Filter matches by Phase & Pool & Search
+  let processedMatches = matches;
 
-  // Categorize matches cleanly
-  const losersMatches = filteredMatches.filter(m => m.round < 0 || m.roundName.toLowerCase().includes('loser'));
-  const grandFinalsMatches = filteredMatches.filter(m => m.roundName.toLowerCase().includes('grand final'));
-  const winnersMatches = filteredMatches.filter(m => !losersMatches.includes(m) && !grandFinalsMatches.includes(m));
+  if (selectedPhase === 'POOLS') {
+    processedMatches = processedMatches.filter(m => m.pool !== undefined || m.round <= 3);
+  } else if (selectedPhase === 'TOP_24') {
+    processedMatches = processedMatches.filter(m => Math.abs(m.round) >= 2 && Math.abs(m.round) <= 5);
+  } else if (selectedPhase === 'TOP_8') {
+    processedMatches = processedMatches.filter(m => Math.abs(m.round) >= 4 || m.roundName.toLowerCase().includes('final'));
+  }
+
+  if (selectedPool !== 'ALL') {
+    processedMatches = processedMatches.filter(m => m.pool === selectedPool);
+  }
+
+  // Handle Player Search
+  const query = playerSearch.trim().toLowerCase();
+  const searchMatchingPlayerIds = new Set<string>();
+
+  if (query) {
+    players.forEach(p => {
+      if (p.tag.toLowerCase().includes(query) || (p.realName && p.realName.toLowerCase().includes(query))) {
+        searchMatchingPlayerIds.add(p.id);
+      }
+    });
+  }
+
+  const isMatchFoundBySearch = (m: BracketMatch) => {
+    if (!query) return false;
+    return (m.player1Id && searchMatchingPlayerIds.has(m.player1Id)) ||
+           (m.player2Id && searchMatchingPlayerIds.has(m.player2Id));
+  };
+
+  const matchingMatchesCount = query
+    ? processedMatches.filter(m => isMatchFoundBySearch(m)).length
+    : 0;
+
+  if (query && filterMatchesOnly) {
+    processedMatches = processedMatches.filter(m => isMatchFoundBySearch(m));
+  }
+
+  // Categorize matches
+  const losersMatches = processedMatches.filter(m => m.round < 0 || m.roundName.toLowerCase().includes('loser'));
+  const grandFinalsMatches = processedMatches.filter(m => m.roundName.toLowerCase().includes('grand final'));
+  const winnersMatches = processedMatches.filter(m => !losersMatches.includes(m) && !grandFinalsMatches.includes(m));
 
   return (
-    <div className="overflow-auto pb-8 h-full space-y-12 p-4">
-      {availablePools.length > 0 && (
-        <div className="flex items-center gap-3 pb-2 border-b border-white/10">
-          <span className="text-xs font-mono font-bold opacity-60 tracking-wider">FILTER POOL:</span>
-          <button
-            onClick={() => setSelectedPool('ALL')}
-            className={`px-3 py-1 rounded text-xs font-mono font-bold transition-all ${selectedPool === 'ALL' ? 'bg-[#00E5FF] text-black' : 'bg-white/5 hover:bg-white/10 text-white'}`}
-          >
-            ALL POOLS
-          </button>
-          {availablePools.map(pool => (
-            <button
-              key={pool}
-              onClick={() => setSelectedPool(pool)}
-              className={`px-3 py-1 rounded text-xs font-mono font-bold transition-all ${selectedPool === pool ? 'bg-[#00E5FF] text-black' : 'bg-white/5 hover:bg-white/10 text-white'}`}
-            >
-              POOL {pool}
-            </button>
-          ))}
-        </div>
-      )}
+    <div className="overflow-auto pb-8 h-full space-y-6 p-4">
+      {/* Start.gg Style Navigation & Search Controls Bar */}
+      <div
+        className="flex flex-wrap items-center justify-between gap-4 p-4 rounded-xl border"
+        style={{
+          background: `linear-gradient(135deg, rgba(5,10,20,0.9) 0%, rgba(10,20,40,0.8) 100%)`,
+          borderColor: `${theme.primaryColor}30`,
+        }}
+      >
+        {/* Left: Phase & Pool Selectors */}
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Phase Selector */}
+          <div className="flex items-center gap-1.5 bg-black/40 p-1 rounded-lg border border-white/10">
+            <Layers size={14} className="ml-2 opacity-50" style={{ color: theme.primaryColor }} />
+            <span className="text-[10px] font-mono tracking-widest opacity-50 mr-1">PHASE:</span>
+            {[
+              { id: 'ALL', label: 'ALL PHASES' },
+              { id: 'POOLS', label: 'POOLS' },
+              { id: 'TOP_24', label: 'TOP 24' },
+              { id: 'TOP_8', label: 'TOP 8' },
+            ].map(p => (
+              <button
+                key={p.id}
+                onClick={() => setSelectedPhase(p.id as Phase)}
+                className={`px-2.5 py-1 rounded text-xs font-bold transition-all ${
+                  selectedPhase === p.id
+                    ? 'text-black'
+                    : 'text-white/70 hover:text-white hover:bg-white/10'
+                }`}
+                style={{
+                  fontFamily: 'Rajdhani, sans-serif',
+                  background: selectedPhase === p.id ? theme.primaryColor : 'transparent',
+                }}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
 
+          {/* Pool Dropdown Selector */}
+          {availablePools.length > 0 && (
+            <div className="flex items-center gap-2 bg-black/40 px-3 py-1.5 rounded-lg border border-white/10">
+              <span className="text-xs font-mono font-bold opacity-60 tracking-wider">POOL:</span>
+              <select
+                value={selectedPool}
+                onChange={e => setSelectedPool(e.target.value)}
+                className="bg-transparent text-xs font-bold font-mono outline-none cursor-pointer"
+                style={{ color: theme.primaryColor }}
+              >
+                <option value="ALL" className="bg-[#050A14] text-white">ALL POOLS ({availablePools.length})</option>
+                {availablePools.map(pool => (
+                  <option key={pool} value={pool} className="bg-[#050A14] text-white">
+                    POOL {pool}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+        </div>
+
+        {/* Right: Player Search & Match Highlight Tool */}
+        <div className="flex items-center gap-3 w-full sm:w-auto">
+          <div className="relative flex-1 sm:w-64">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 opacity-40" />
+            <input
+              type="text"
+              placeholder="Search player in bracket..."
+              value={playerSearch}
+              onChange={e => setPlayerSearch(e.target.value)}
+              className="w-full py-1.5 pl-9 pr-8 text-xs rounded-lg bg-black/50 border border-white/15 outline-none focus:border-cyan-400 transition-colors"
+              style={{ fontFamily: 'JetBrains Mono, monospace', color: 'var(--foreground)' }}
+            />
+            {playerSearch && (
+              <button
+                onClick={() => setPlayerSearch('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 opacity-50 hover:opacity-100"
+              >
+                <X size={12} />
+              </button>
+            )}
+          </div>
+
+          {query && (
+            <button
+              onClick={() => setFilterMatchesOnly(!filterMatchesOnly)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono font-bold border transition-all ${
+                filterMatchesOnly
+                  ? 'bg-cyan-500/20 text-cyan-400 border-cyan-400/50'
+                  : 'bg-white/5 text-white/70 border-white/10 hover:bg-white/10'
+              }`}
+            >
+              <Filter size={12} />
+              {filterMatchesOnly ? 'SHOW ALL' : 'FILTER MATCHES'}
+            </button>
+          )}
+
+          {query && (
+            <div className="text-[11px] font-mono px-2.5 py-1 rounded bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 shrink-0">
+              {matchingMatchesCount} {matchingMatchesCount === 1 ? 'match' : 'matches'}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Bracket Sections */}
       <BracketSection 
         title="WINNERS BRACKET" 
         matches={winnersMatches} 
@@ -101,6 +242,8 @@ export function BracketView({ matches, players, theme, onCallMatch, onGenerateBr
         hoveredMatchId={hoveredMatchId} 
         setHoveredMatchId={setHoveredMatchId} 
         onCallMatch={onCallMatch} 
+        searchMatchingPlayerIds={searchMatchingPlayerIds}
+        selectedPool={selectedPool}
       />
       <BracketSection 
         title="LOSERS BRACKET" 
@@ -110,6 +253,8 @@ export function BracketView({ matches, players, theme, onCallMatch, onGenerateBr
         hoveredMatchId={hoveredMatchId} 
         setHoveredMatchId={setHoveredMatchId} 
         onCallMatch={onCallMatch} 
+        searchMatchingPlayerIds={searchMatchingPlayerIds}
+        selectedPool={selectedPool}
       />
       <BracketSection 
         title="GRAND FINALS" 
@@ -119,13 +264,15 @@ export function BracketView({ matches, players, theme, onCallMatch, onGenerateBr
         hoveredMatchId={hoveredMatchId} 
         setHoveredMatchId={setHoveredMatchId} 
         onCallMatch={onCallMatch} 
+        searchMatchingPlayerIds={searchMatchingPlayerIds}
+        selectedPool={selectedPool}
       />
     </div>
   );
 }
 
 function BracketSection({ 
-  title, matches, playerMap, theme, hoveredMatchId, setHoveredMatchId, onCallMatch 
+  title, matches, playerMap, theme, hoveredMatchId, setHoveredMatchId, onCallMatch, searchMatchingPlayerIds, selectedPool
 }: { 
   title: string; 
   matches: BracketMatch[]; 
@@ -134,32 +281,29 @@ function BracketSection({
   hoveredMatchId: string | null;
   setHoveredMatchId: (id: string | null) => void;
   onCallMatch: (match: BracketMatch) => void;
+  searchMatchingPlayerIds: Set<string>;
+  selectedPool?: string;
 }) {
   if (matches.length === 0) return null;
 
-  // Sort rounds. For losers, rounds are usually negative (-1, -2, -3), we want them to render left-to-right from largest negative to closest to 0.
-  // Start.gg uses -1 for Losers Round 1. Wait, -1 is Losers R1. So we want to sort ascending.
-  // Actually, sometimes it's sorted 1, 2, 3. So just sort by absolute value if negative?
-  // Start.gg Losers bracket rounds: Losers R1 is -1. Losers R2 is -2. Wait, actually, Start.gg rounds for losers go -1, -2, -3...
-  // Wait, if Losers R1 is -1 and Losers R2 is -2, then sorting mathematically puts -8 before -1. 
-  // Let's sort based on the string name or just round number. Start.gg usually means smaller absolute value is earlier, wait!
-  // Start.gg assigns Losers R1 = -1. Losers R2 = -2.
-  // We want to render -1, then -2, then -3. So we should sort by absolute value, or descending for negative numbers.
   const isLosers = matches[0]?.round < 0;
   const rounds = Array.from(new Set(matches.map(m => m.round))).sort((a, b) => isLosers ? b - a : a - b);
 
   return (
     <div>
-      <div className="text-xl tracking-widest mb-6 border-b pb-2" style={{ fontFamily: 'Rajdhani, sans-serif', fontWeight: 700, color: theme.primaryColor, borderColor: `${theme.primaryColor}30` }}>
-        {title}
+      <div className="text-xl tracking-widest mb-6 border-b pb-2 flex items-center justify-between" style={{ fontFamily: 'Rajdhani, sans-serif', fontWeight: 700, color: theme.primaryColor, borderColor: `${theme.primaryColor}30` }}>
+        <span>{title}</span>
+        {selectedPool && selectedPool !== 'ALL' && (
+          <span className="text-xs font-mono opacity-50 font-normal">POOL {selectedPool}</span>
+        )}
       </div>
-      <div className="flex gap-12 min-w-max">
+      <div className="flex gap-12 min-w-max pb-4 overflow-x-auto custom-scrollbar">
         {rounds.map((round, rIdx) => {
           const roundMatches = matches.filter(m => m.round === round);
           const isLast = rIdx === rounds.length - 1;
 
           return (
-            <div key={round} className="flex flex-col min-w-[240px]">
+            <div key={round} className="flex flex-col min-w-[250px]">
               <div
                 className="text-center text-xs tracking-widest truncate mb-6"
                 style={{ fontFamily: 'JetBrains Mono, monospace', color: theme.primaryColor, opacity: 0.7 }}
@@ -176,31 +320,56 @@ function BracketSection({
                   const canCall = match.state === 'pending' && p1 && p2;
                   const isLive = match.state === 'in_progress' || match.state === 'called';
 
+                  const matchesSearch = (p1 && searchMatchingPlayerIds.has(p1.id)) ||
+                                       (p2 && searchMatchingPlayerIds.has(p2.id));
+
                   return (
                     <div key={match.id} className="relative w-full">
                       {/* Connection Line */}
                       {!isLast && (
                         <div 
                           className="absolute top-1/2 -right-6 h-px w-6" 
-                          style={{ background: isLive ? theme.primaryColor : 'rgba(122,158,192,0.2)' }} 
+                          style={{ background: isLive || matchesSearch ? theme.primaryColor : 'rgba(122,158,192,0.2)' }} 
                         />
                       )}
+
+                      {/* Start.gg Style Progression Destination Pill for Pool Finals */}
+                      {isLast && selectedPool && selectedPool !== 'ALL' && (
+                        <div className="absolute top-1/2 -right-28 -translate-y-1/2 flex flex-col gap-1 z-10 pointer-events-none">
+                          <div className="flex items-center gap-1 text-[10px] font-mono font-bold px-2 py-1 rounded-full bg-cyan-500/20 text-cyan-400 border border-cyan-500/40 shadow-lg whitespace-nowrap">
+                            <span>→</span> T8 Top 24 [W]
+                          </div>
+                          <div className="flex items-center gap-1 text-[10px] font-mono font-bold px-2 py-1 rounded-full bg-slate-800 text-slate-400 border border-slate-700 whitespace-nowrap opacity-60">
+                            <span>→</span> T8 Top 24 [L]
+                          </div>
+                        </div>
+                      )}
+
                       <div
-                        className="rounded overflow-hidden cursor-pointer transition-all duration-150 w-full"
+                        className={`rounded-lg overflow-hidden cursor-pointer transition-all duration-200 w-full ${
+                          matchesSearch ? 'ring-2 ring-cyan-400 shadow-[0_0_20px_rgba(0,229,255,0.4)] scale-[1.02]' : ''
+                        }`}
                         style={{
                           background: isHovered ? `${theme.primaryColor}12` : cfg.bg,
-                          border: `1px solid ${isLive ? theme.primaryColor : isHovered ? `${theme.primaryColor}40` : 'rgba(122,158,192,0.15)'}`,
-                          boxShadow: isLive ? `0 0 12px ${theme.glowColor}` : 'none',
+                          border: `1px solid ${
+                            matchesSearch ? theme.primaryColor : isLive ? theme.primaryColor : isHovered ? `${theme.primaryColor}40` : 'rgba(122,158,192,0.15)'
+                          }`,
+                          boxShadow: isLive ? `0 0 12px ${theme.glowColor}` : matchesSearch ? `0 0 20px ${theme.primaryColor}` : 'none',
                         }}
                         onMouseEnter={() => setHoveredMatchId(match.id)}
                         onMouseLeave={() => setHoveredMatchId(null)}
                         onClick={() => canCall && onCallMatch(match)}
                       >
                         <div
-                          className="flex items-center justify-between px-2 py-1"
-                          style={{ background: 'rgba(0,0,0,0.3)', borderBottom: '1px solid rgba(122,158,192,0.1)' }}
+                          className="flex items-center justify-between px-2.5 py-1"
+                          style={{ background: 'rgba(0,0,0,0.4)', borderBottom: '1px solid rgba(122,158,192,0.1)' }}
                         >
-                          <span className="text-xs opacity-50" style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10 }}>
+                          <span className="text-xs opacity-60 flex items-center gap-1" style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10 }}>
+                            {match.pool && (
+                              <span className="px-1 py-0.5 rounded bg-cyan-500/10 text-cyan-400 font-bold mr-1">
+                                POOL {match.pool}
+                              </span>
+                            )}
                             {match.identifier ? `MATCH ${match.identifier} · ` : ''}BO{match.bestOf} {match.stationId ? `· STN ${match.stationId}` : ''}
                           </span>
                           <div className="flex items-center gap-1">
@@ -217,6 +386,7 @@ function BracketSection({
                           isWinner={match.winnerId === match.player1Id}
                           isCompleted={match.state === 'completed'}
                           theme={theme}
+                          isSearched={Boolean(p1 && searchMatchingPlayerIds.has(p1.id))}
                         />
                         <div className="h-px" style={{ background: 'var(--border)' }} />
                         <PlayerSlot
@@ -225,6 +395,7 @@ function BracketSection({
                           isWinner={match.winnerId === match.player2Id}
                           isCompleted={match.state === 'completed'}
                           theme={theme}
+                          isSearched={Boolean(p2 && searchMatchingPlayerIds.has(p2.id))}
                         />
 
                         {canCall && isHovered && (
@@ -278,12 +449,14 @@ function PlayerSlot({
   isWinner,
   isCompleted,
   theme,
+  isSearched,
 }: {
   player: Player | null;
   score: number;
   isWinner: boolean;
   isCompleted: boolean;
   theme: GameTheme;
+  isSearched?: boolean;
 }) {
   if (!player) {
     return (
@@ -295,15 +468,25 @@ function PlayerSlot({
 
   return (
     <div
-      className="flex items-center justify-between px-3 py-2"
+      className={`flex items-center justify-between px-3 py-2 transition-colors ${
+        isSearched ? 'bg-cyan-500/15' : ''
+      }`}
       style={{ opacity: isCompleted && !isWinner ? 0.4 : 1 }}
     >
       <div className="flex items-center gap-2 min-w-0">
         <span className="text-xs opacity-40 tabular-nums w-4 shrink-0" style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10 }}>
           {player.seed}
         </span>
-        <span className="text-sm truncate" style={{ fontFamily: 'Rajdhani, sans-serif', fontWeight: isWinner ? 700 : 500, color: isWinner ? theme.primaryColor : 'var(--foreground)' }}>
+        <span
+          className="text-sm truncate flex items-center gap-1"
+          style={{
+            fontFamily: 'Rajdhani, sans-serif',
+            fontWeight: isWinner || isSearched ? 700 : 500,
+            color: isSearched ? '#00FF88' : isWinner ? theme.primaryColor : 'var(--foreground)',
+          }}
+        >
           {player.countryFlag} {player.tag}
+          {isSearched && <Sparkles size={10} className="text-cyan-400 animate-pulse" />}
         </span>
       </div>
       <span

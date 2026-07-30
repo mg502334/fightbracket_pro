@@ -8,11 +8,12 @@ interface PoolsPanelProps {
   theme: GameTheme;
   isHost: boolean;
   onUpdateMatches?: (matches: BracketMatch[]) => void;
+  onSelectPool?: (pool: string) => void;
 }
 
 const POOL_LABELS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
 
-export function PoolsPanel({ matches, players, theme, isHost, onUpdateMatches }: PoolsPanelProps) {
+export function PoolsPanel({ matches, players, theme, isHost, onUpdateMatches, onSelectPool }: PoolsPanelProps) {
   const [poolCount, setPoolCount] = useState(4);
   const [draggingPlayer, setDraggingPlayer] = useState<string | null>(null);
   const [expandedPool, setExpandedPool] = useState<string | null>(null);
@@ -301,6 +302,19 @@ export function PoolsPanel({ matches, players, theme, isHost, onUpdateMatches }:
                       onClick={() => setExpandedPool(pool)}
                     >
                       +{poolPlayers.length - 4} more
+                    </button>
+                  )}
+                  {onSelectPool && (
+                    <button
+                      onClick={() => onSelectPool(pool)}
+                      className="w-full mt-2 py-2 flex items-center justify-center gap-1 text-xs font-bold font-mono rounded transition-all hover:brightness-125"
+                      style={{
+                        background: `${theme.primaryColor}18`,
+                        color: theme.primaryColor,
+                        border: `1px solid ${theme.primaryColor}35`,
+                      }}
+                    >
+                      VIEW POOL BRACKET <ArrowRight size={12} />
                     </button>
                   )}
                 </div>
