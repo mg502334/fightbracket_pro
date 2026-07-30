@@ -347,12 +347,23 @@ function gen8Bracket(gameId: string, playerIds: string[]): BracketMatch[] {
   return matches;
 }
 
+export function getChronologicalRoundName(rIndex: number, totalRounds: number, isLosers: boolean = false, isGrandFinals: boolean = false): string {
+  if (isGrandFinals) return rIndex === 0 ? "Grand Final" : "Grand Final Reset";
+  
+  const dist = totalRounds - 1 - rIndex;
+  const prefix = isLosers ? "Losers" : "Winners";
+
+  if (dist === 0) return `${prefix} Final`;
+  if (dist === 1) return `${prefix} Semi-Final`;
+  if (dist === 2) return `${prefix} Quarter-Final`;
+  return `${prefix} Round ${rIndex + 1}`;
+}
+
 // Generate dynamic single elimination bracket
 export function generateDynamicBracket(gameId: string, playerIds: string[], type: BracketType = BracketType.SINGLE_ELIMINATION): BracketMatch[] {
   if (playerIds.length === 0) return [];
   
   if (type !== BracketType.SINGLE_ELIMINATION) {
-    // For now, fallback to single elimination for unsupported types until fully implemented
     console.warn(`Bracket type ${type} not fully implemented yet. Falling back to single elimination.`);
   }
 
@@ -361,16 +372,11 @@ export function generateDynamicBracket(gameId: string, playerIds: string[], type
   let p = 1;
   while (p < n) p *= 2;
   
-  // Create an array of size p, filled with nulls (byes)
-  // Simple seeding: we won't do full perfect 1v16, 8v9 seeding for simplicity here,
-  // but we can try to do basic top vs bottom.
-  // A standard way is to place seeds. Let's assume playerIds is already sorted by seed.
   const seeds = Array(p).fill(null);
   for (let i = 0; i < n; i++) {
     seeds[i] = playerIds[i];
   }
   
-  // Actually, standard seeding order for power of 2:
   const getSeedingOrder = (power: number): number[] => {
     if (power === 1) return [0];
     const prev = getSeedingOrder(power / 2);
@@ -390,25 +396,27 @@ export function generateDynamicBracket(gameId: string, playerIds: string[], type
 
   let currentRoundPairings = paired;
   let roundNum = 0;
-  let totalMatches = p - 1;
   let matchCounter = 0;
-  
-  const getRoundName = (matchesInRound: number) => {
-    if (matchesInRound === 1) return 'Grand Finals';
-    if (matchesInRound === 2) return 'Semifinals';
-    if (matchesInRound === 4) return 'Quarterfinals';
-    return `Round of ${matchesInRound * 2}`;
-  };
+
+  // Total rounds in Winners bracket excluding Grand Finals
+  let totalWinnersRounds = 0;
+  let tempCount = currentRoundPairings.length;
+  while (tempCount > 1) {
+    totalWinnersRounds++;
+    tempCount = Math.ceil(tempCount / 2);
+  }
+  if (totalWinnersRounds === 0) totalWinnersRounds = 1;
 
   while (currentRoundPairings.length > 0) {
     const nextRoundPairings = [];
     const isFinals = currentRoundPairings.length === 1;
     const matchesInRound = currentRoundPairings.length;
-    const roundName = getRoundName(matchesInRound);
+    const roundName = isFinals 
+      ? 'Grand Final'
+      : getChronologicalRoundName(roundNum, totalWinnersRounds, false, false);
 
     for (let i = 0; i < matchesInRound; i++) {
       const [p1, p2] = currentRoundPairings[i];
-      // If one is null, it's a bye. The other automatically wins.
       const isBye = p1 === null || p2 === null;
       const winner = isBye ? (p1 || p2) : null;
       
@@ -432,8 +440,6 @@ export function generateDynamicBracket(gameId: string, playerIds: string[], type
       matchCounter++;
 
       if (i % 2 !== 0) {
-        // We just completed a pair of matches (i-1 and i), their winners go to next round
-        // Wait, for next round, we don't know the winners yet. We just put null.
         nextRoundPairings.push([null, null]);
       }
     }

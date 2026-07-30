@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Swords, Clock, CheckCircle2, AlertCircle, ChevronRight, Search, X, Layers, Filter, Sparkles } from "lucide-react";
-import { BracketType, type BracketMatch, type Player, type GameTheme } from "../data/tournamentData";
+import { BracketType, type BracketMatch, type Player, type GameTheme, getChronologicalRoundName } from "../data/tournamentData";
 
 interface BracketViewProps {
   matches: BracketMatch[];
@@ -10,6 +10,7 @@ interface BracketViewProps {
   onGenerateBracket?: (type: BracketType) => void;
   selectedPool?: string;
   onSelectPool?: (pool: string) => void;
+  isImported?: boolean;
 }
 
 const STATE_CONFIG = {
@@ -29,6 +30,7 @@ export function BracketView({
   onGenerateBracket,
   selectedPool: externalSelectedPool,
   onSelectPool: externalOnSelectPool,
+  isImported = false,
 }: BracketViewProps) {
   const [hoveredMatchId, setHoveredMatchId] = useState<string | null>(null);
   const [selectedFormat, setSelectedFormat] = useState<BracketType>(BracketType.SINGLE_ELIMINATION);
@@ -51,27 +53,33 @@ export function BracketView({
         <p className="text-sm opacity-60 mb-6 text-center max-w-sm" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
           {players.length === 0 ? "Add players first, then generate the bracket to begin the tournament." : `${players.length} players added. Ready to generate bracket.`}
         </p>
-        <div className="flex flex-col items-center gap-4 w-full max-w-xs">
-          <select 
-            value={selectedFormat}
-            onChange={(e) => setSelectedFormat(e.target.value as BracketType)}
-            className="w-full bg-black/40 border rounded px-3 py-2.5 text-sm focus:outline-none transition-colors"
-            style={{ borderColor: 'rgba(122,158,192,0.3)', fontFamily: 'JetBrains Mono, monospace' }}
-            disabled={players.length === 0}
-          >
-            {Object.values(BracketType).map(format => (
-              <option key={format} value={format}>{format.replace(/_/g, ' ')}</option>
-            ))}
-          </select>
-          <button 
-            disabled={players.length === 0}
-            onClick={() => onGenerateBracket?.(selectedFormat)} 
-            className="w-full px-6 py-2.5 rounded text-sm tracking-widest font-bold text-black hover:brightness-125 transition-all disabled:opacity-30 disabled:cursor-not-allowed" 
-            style={{ background: theme.primaryColor, fontFamily: 'Rajdhani, sans-serif' }}
-          >
-            GENERATE BRACKET
-          </button>
-        </div>
+        {isImported ? (
+          <div className="flex items-center gap-2 px-4 py-2 rounded bg-amber-500/10 text-amber-400 border border-amber-500/30 text-xs font-mono">
+            <span>Pool configuration and bracket generation is locked for imported tournaments.</span>
+          </div>
+        ) : (
+          <div className="flex flex-col items-center gap-4 w-full max-w-xs">
+            <select 
+              value={selectedFormat}
+              onChange={(e) => setSelectedFormat(e.target.value as BracketType)}
+              className="w-full bg-black/40 border rounded px-3 py-2.5 text-sm focus:outline-none transition-colors"
+              style={{ borderColor: 'rgba(122,158,192,0.3)', fontFamily: 'JetBrains Mono, monospace' }}
+              disabled={players.length === 0}
+            >
+              {Object.values(BracketType).map(format => (
+                <option key={format} value={format}>{format.replace(/_/g, ' ')}</option>
+              ))}
+            </select>
+            <button 
+              disabled={players.length === 0}
+              onClick={() => onGenerateBracket?.(selectedFormat)} 
+              className="w-full px-6 py-2.5 rounded text-sm tracking-widest font-bold text-black hover:brightness-125 transition-all disabled:opacity-30 disabled:cursor-not-allowed" 
+              style={{ background: theme.primaryColor, fontFamily: 'Rajdhani, sans-serif' }}
+            >
+              GENERATE BRACKET
+            </button>
+          </div>
+        )}
       </div>
     );
   }
@@ -301,14 +309,17 @@ function BracketSection({
         {rounds.map((round, rIdx) => {
           const roundMatches = matches.filter(m => m.round === round);
           const isLast = rIdx === rounds.length - 1;
+          const totalRounds = rounds.length;
+          const isGrandFinals = title.includes("GRAND");
+          const roundName = getChronologicalRoundName(rIdx, totalRounds, isLosers, isGrandFinals);
 
           return (
             <div key={round} className="flex flex-col min-w-[250px]">
               <div
-                className="text-center text-xs tracking-widest truncate mb-6"
-                style={{ fontFamily: 'JetBrains Mono, monospace', color: theme.primaryColor, opacity: 0.7 }}
+                className="text-center text-xs tracking-widest truncate mb-6 font-bold"
+                style={{ fontFamily: 'JetBrains Mono, monospace', color: theme.primaryColor, opacity: 0.85 }}
               >
-                {roundMatches[0]?.roundName}
+                {roundName}
               </div>
               <div className="flex flex-col justify-around flex-1 gap-6 relative">
                 {roundMatches.map(match => {
