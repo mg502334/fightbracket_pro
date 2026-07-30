@@ -3,7 +3,7 @@ import { Toaster, toast } from "sonner";
 import { motion, AnimatePresence } from "motion/react";
 import {
   Trophy, GitBranch, UserCheck, Monitor, MessageSquare, Smartphone,
-  ExternalLink, RefreshCw, Zap, MapPin, Globe, Moon, Sun, X, Tv, Cloud, Play, LayoutGrid
+  ExternalLink, RefreshCw, Zap, MapPin, Globe, Moon, Sun, X, Tv, Cloud, Play, LayoutGrid, Trash2
 } from "lucide-react";
 import { useTheme } from "next-themes";
 
@@ -65,7 +65,7 @@ export default function App() {
   const [pendingCallMatch, setPendingCallMatch] = useState<BracketMatch | null>(null);
   const [startggUser, setStartggUser] = useState<{ id: string; name: string } | null>(null);
   const [supabaseUser, setSupabaseUser] = useState<any>(null);
-  const [activeTournament, setActiveTournament] = useState<{ name: string, location: string, numAttendees?: number } | null>(() => safeParse('fb_tournament', null));
+  const [activeTournament, setActiveTournament] = useState<{ name: string, location: string, slug?: string, numAttendees?: number } | null>(() => safeParse('fb_tournament', null));
   const [autoSyncSlug, setAutoSyncSlug] = useState<string | null>(() => safeParse('fb_autoSyncSlug', null));
   const [exhibitions, setExhibitions] = useState<ExhibitionMatch[]>(() => safeParse('fb_exhibitions', []));
 
@@ -1084,7 +1084,18 @@ export default function App() {
           <AnimatePresence mode="wait">
             <motion.div key={`${activeGame}-${activeTab}`} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}>
               {activeTab === 'overview' && (
-                <OverviewTab players={gamePlayers} matches={gameMatches} stations={stations} onCallMatch={(m) => setPendingCallMatch(m)} onUndoCall={handleUndoCall} gameThemes={gameThemes} onOpenAddPlayer={() => setShowAddPlayerModal(true)} />
+                <OverviewTab
+                  players={gamePlayers}
+                  matches={gameMatches}
+                  stations={stations}
+                  onCallMatch={(m) => setPendingCallMatch(m)}
+                  onUndoCall={handleUndoCall}
+                  gameThemes={gameThemes}
+                  onOpenAddPlayer={() => setShowAddPlayerModal(true)}
+                  isHost={isHost}
+                  onReportScore={setPendingReportMatch}
+                  onRemovePlayer={handleRemovePlayer}
+                />
               )}
               {activeTab === 'bracket' && (
                 <div>
@@ -1257,7 +1268,8 @@ function MatchTimer({ calledAt }: { calledAt: number }) {
 // ── Overview Tab ──
 
 function OverviewTab({
-  players, matches, stations, onCallMatch, onUndoCall, gameThemes, onOpenAddPlayer
+  players, matches, stations, onCallMatch, onUndoCall, gameThemes, onOpenAddPlayer,
+  isHost, onReportScore, onRemovePlayer
 }: {
   players: Player[];
   matches: BracketMatch[];
@@ -1266,6 +1278,9 @@ function OverviewTab({
   onUndoCall: (matchId: string) => void;
   gameThemes: Record<string, GameTheme>;
   onOpenAddPlayer?: () => void;
+  isHost: boolean;
+  onReportScore: (match: BracketMatch) => void;
+  onRemovePlayer: (playerId: string) => void;
 }) {
   const playerMap = Object.fromEntries(players.map(p => [p.id, p]));
   const activeMatches = matches.filter(m => m.state === 'in_progress' || m.state === 'called');
@@ -1321,6 +1336,14 @@ function OverviewTab({
                       </button>
                     </>
                   )}
+                  {isHost && (
+                    <button
+                      onClick={() => onReportScore(m)}
+                      className="px-2 py-1 rounded text-xs hover:opacity-80 transition-opacity bg-[#00FF88]/20 text-[#00FF88] border border-[#00FF88]/30 font-mono ml-2"
+                    >
+                      REPORT
+                    </button>
+                  )}
                 </div>
               </div>
             );
@@ -1351,21 +1374,13 @@ function OverviewTab({
                     {gt.shortName} · {m.roundName}
                   </div>
                 </div>
-                <button
-                  onClick={() => onCallMatch(m, availStation.id)}
-                  className="shrink-0 px-2.5 py-1 rounded text-xs tracking-wider hover:opacity-80 transition-opacity"
-                  style={{ background: `${gt.primaryColor}15`, border: `1px solid ${gt.primaryColor}30`, color: gt.primaryColor, fontFamily: 'JetBrains Mono, monospace', fontSize: 10 }}
-                >
-                  CALL
-                </button>
-                )}
-                {isHost && (m.state === 'in_progress' || m.state === 'called') && (
+                {availStation && (
                   <button
-                    onClick={() => setPendingReportMatch(m)}
-                    className="shrink-0 px-2.5 py-1 rounded text-xs tracking-wider hover:opacity-80 transition-opacity bg-white/10 text-white font-mono"
-                    style={{ fontSize: 10 }}
+                    onClick={() => onCallMatch(m, availStation.id)}
+                    className="shrink-0 px-2.5 py-1 rounded text-xs tracking-wider hover:opacity-80 transition-opacity"
+                    style={{ background: `${gt.primaryColor}15`, border: `1px solid ${gt.primaryColor}30`, color: gt.primaryColor, fontFamily: 'JetBrains Mono, monospace', fontSize: 10 }}
                   >
-                    REPORT
+                    CALL
                   </button>
                 )}
               </div>
@@ -1460,7 +1475,6 @@ function OverviewTab({
                   </div>
                 );
               })
-          )}
           )}
         </div>
       </div>
