@@ -67,10 +67,29 @@ export function GameSelectionModal({ isOpen, onClose, onSelectGame, theme }: Gam
               >
                 <div className="aspect-[3/4] w-full bg-black/40 relative overflow-hidden">
                   {game.imageUrl ? (
-                    <img src={game.imageUrl} alt={game.name} className="object-cover w-full h-full opacity-80 group-hover:opacity-100 transition-opacity" />
-                  ) : (
-                    <div className="flex items-center justify-center w-full h-full text-xs opacity-30">No Image</div>
-                  )}
+                    <img
+                      src={game.imageUrl}
+                      alt={game.name}
+                      className="object-cover w-full h-full opacity-80 group-hover:opacity-100 transition-opacity"
+                      onError={(e) => {
+                        const target = e.currentTarget;
+                        target.style.display = 'none';
+                        const fallback = target.nextElementSibling as HTMLElement;
+                        if (fallback) fallback.style.display = 'flex';
+                      }}
+                    />
+                  ) : null}
+                  <div
+                    className="items-center justify-center w-full h-full text-2xl font-bold absolute inset-0"
+                    style={{
+                      display: game.imageUrl ? 'none' : 'flex',
+                      background: `linear-gradient(135deg, ${theme?.primaryColor || '#00E5FF'}22, #050A14)`,
+                      color: theme?.primaryColor || '#00E5FF',
+                      fontFamily: 'Rajdhani, sans-serif',
+                    }}
+                  >
+                    {game.name.substring(0, 2).toUpperCase()}
+                  </div>
                 </div>
                 <div className="p-2 truncate text-xs" style={{ fontFamily: 'Rajdhani, sans-serif', fontWeight: 600 }}>
                   {game.name}
