@@ -1466,7 +1466,7 @@ function OverviewTab({
                     {isEliminated ? 'ELIMINATED' : 'ACTIVE'}
                   </span>
                   {isHost && (
-                    <button onClick={() => handleRemovePlayer(p.id)} className="opacity-50 hover:opacity-100 hover:text-[#FF1744] transition-all ml-2">
+                    <button onClick={() => onRemovePlayer(p.id)} className="opacity-50 hover:opacity-100 hover:text-[#FF1744] transition-all ml-2">
                       <Trash2 size={12} />
                     </button>
                   )}
