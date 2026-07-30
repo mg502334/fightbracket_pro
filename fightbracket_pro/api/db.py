@@ -7,9 +7,33 @@ Base = declarative_base()
 
 class DBUser(Base):
     __tablename__ = "users"
-    id = Column(String, primary_key=True, index=True) # This is the Supabase user ID
-    unique_id = Column(String, unique=True, index=True, nullable=False) # The 8-char unique identifier
+    id = Column(String, primary_key=True, index=True) # Supabase user ID
+    unique_id = Column(String, unique=True, index=True, nullable=False) # FB-XXXX-YYYY
+    gamer_tag = Column(String, nullable=True)
+    bio = Column(String, nullable=True)
+    avatar_url = Column(String, nullable=True)
+    startgg_slug = Column(String, nullable=True)
+    startgg_data = Column(Text, nullable=True) # Stored JSON string of Start.gg events & stats
+    is_public = Column(Boolean, default=True) # Publicly viewable vs hidden
+    friends_only = Column(Boolean, default=False) # Only friends can view Start.gg stats
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+class DBFriendship(Base):
+    __tablename__ = "friendships"
+    id = Column(String, primary_key=True, index=True)
+    user_id = Column(String, index=True, nullable=False) # Sender or Requester
+    friend_id = Column(String, index=True, nullable=False) # Target user ID
+    status = Column(String, default="pending") # pending | accepted | declined
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+class DBDirectMessage(Base):
+    __tablename__ = "direct_messages"
+    id = Column(String, primary_key=True, index=True)
+    sender_id = Column(String, index=True, nullable=False)
+    recipient_id = Column(String, index=True, nullable=False)
+    message = Column(Text, nullable=False)
+    read = Column(Boolean, default=False)
+    sent_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 class DBPlayer(Base):
     __tablename__ = "players"

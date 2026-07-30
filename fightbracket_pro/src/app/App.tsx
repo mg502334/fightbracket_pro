@@ -22,6 +22,9 @@ import { ExhibitionsPanel } from "./components/ExhibitionsPanel";
 import { AccountDashboard } from "./components/AccountDashboard";
 import { PoolsPanel } from "./components/PoolsPanel";
 import { ReportScoreModal } from "./components/ReportScoreModal";
+import { FriendsModal } from "./components/FriendsModal";
+import { UserProfileModal } from "./components/UserProfileModal";
+import { Users } from "lucide-react";
 
 import {
   type BracketMatch, type Player, type Station, type SMSLog, type GameTheme, type ExhibitionMatch,
@@ -66,6 +69,10 @@ export default function App() {
   const [pendingCallMatch, setPendingCallMatch] = useState<BracketMatch | null>(null);
   const [startggUser, setStartggUser] = useState<{ id: string; name: string } | null>(null);
   const [supabaseUser, setSupabaseUser] = useState<any>(null);
+  const [supabaseToken, setSupabaseToken] = useState<string | null>(null);
+  const [showFriendsModal, setShowFriendsModal] = useState(false);
+  const [targetProfileUserId, setTargetProfileUserId] = useState<string | null>(null);
+
   const [activeTournament, setActiveTournament] = useState<{ name: string, location: string, slug?: string, numAttendees?: number } | null>(() => safeParse('fb_tournament', null));
   const [autoSyncSlug, setAutoSyncSlug] = useState<string | null>(() => safeParse('fb_autoSyncSlug', null));
   const [exhibitions, setExhibitions] = useState<ExhibitionMatch[]>(() => safeParse('fb_exhibitions', []));
@@ -98,9 +105,11 @@ export default function App() {
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }: any) => {
       setSupabaseUser(session?.user ?? null);
+      setSupabaseToken(session?.access_token ?? null);
     });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: any, session: any) => {
       setSupabaseUser(session?.user ?? null);
+      setSupabaseToken(session?.access_token ?? null);
     });
     return () => subscription.unsubscribe();
   }, []);
@@ -1071,6 +1080,7 @@ export default function App() {
                 if (data.exhibitions) setExhibitions(data.exhibitions);
               }}
               onStartggImport={(slug) => handleLiveImport(slug)}
+              onOpenFriendsModal={() => setShowFriendsModal(true)}
             />
           </div>
         ) : !activeGame || !theme ? (
@@ -1133,6 +1143,7 @@ export default function App() {
                     setSelectedPool(p);
                     setActiveTab('bracket');
                   }}
+                  isImported={Boolean(autoSyncSlug || activeTournament)}
                 />
               )}
               {activeTab === 'stations' && (
@@ -1241,6 +1252,22 @@ export default function App() {
           nextSeed={players.filter(p => p.gameId === activeGame).length + 1}
         />
       )}
+
+      <FriendsModal
+        isOpen={showFriendsModal}
+        onClose={() => setShowFriendsModal(false)}
+        theme={theme || { id: 'default', displayName: 'FightBracket', shortName: 'FB', primaryColor: '#00E5FF', secondaryColor: '#FF006E', bgFrom: '#050A14', glowColor: 'rgba(0,229,255,0.4)', description: '', publisher: '' }}
+        currentUserId={supabaseUser?.id ?? null}
+        supabaseToken={supabaseToken}
+      />
+
+      <UserProfileModal
+        isOpen={Boolean(targetProfileUserId)}
+        onClose={() => setTargetProfileUserId(null)}
+        targetUserId={targetProfileUserId}
+        supabaseToken={supabaseToken}
+        theme={theme || { id: 'default', displayName: 'FightBracket', shortName: 'FB', primaryColor: '#00E5FF', secondaryColor: '#FF006E', bgFrom: '#050A14', glowColor: 'rgba(0,229,255,0.4)', description: '', publisher: '' }}
+      />
 
       <Toaster position="bottom-right" />
       <footer className="text-center py-4 border-t shrink-0 text-xs opacity-50" style={{ background: 'var(--sidebar)', borderColor: 'var(--border)', fontFamily: 'JetBrains Mono, monospace' }}>

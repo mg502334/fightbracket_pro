@@ -9,13 +9,13 @@ interface PoolsPanelProps {
   isHost: boolean;
   onUpdateMatches?: (matches: BracketMatch[]) => void;
   onSelectPool?: (pool: string) => void;
+  isImported?: boolean;
 }
 
 const POOL_LABELS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
 
-export function PoolsPanel({ matches, players, theme, isHost, onUpdateMatches, onSelectPool }: PoolsPanelProps) {
+export function PoolsPanel({ matches, players, theme, isHost, onUpdateMatches, onSelectPool, isImported }: PoolsPanelProps) {
   const [poolCount, setPoolCount] = useState(4);
-  const [draggingPlayer, setDraggingPlayer] = useState<string | null>(null);
   const [expandedPool, setExpandedPool] = useState<string | null>(null);
 
   // Extract unique pools from matches
@@ -27,7 +27,22 @@ export function PoolsPanel({ matches, players, theme, isHost, onUpdateMatches, o
     }
   });
 
-  const availablePools = Array.from(new Set(matches.map(m => m.pool).filter(Boolean))) as string[];
+  // For imported events where pool is not explicitly assigned per match, derive pool groups from player seeds
+  let availablePools = Array.from(new Set(matches.map(m => m.pool).filter(Boolean))) as string[];
+  
+  if (availablePools.length === 0 && isImported && players.length > 0) {
+    const numPools = Math.min(8, Math.max(2, Math.ceil(players.length / 16)));
+    for (let i = 0; i < numPools; i++) {
+      const poolLabel = POOL_LABELS[i] ?? `Pool ${i + 1}`;
+      availablePools.push(poolLabel);
+    }
+    // Auto map players to derived pools
+    players.forEach((p, idx) => {
+      const poolLabel = POOL_LABELS[idx % numPools] ?? `Pool ${idx % numPools + 1}`;
+      poolsByMatch.set(p.id, poolLabel);
+    });
+  }
+
   availablePools.sort();
 
   const unassignedPlayers = players.filter(p => !poolsByMatch.has(p.id));

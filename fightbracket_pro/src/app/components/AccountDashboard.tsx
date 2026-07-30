@@ -9,9 +9,10 @@ interface AccountDashboardProps {
   currentTournamentData: any;
   onLoad: (data: any) => void;
   onStartggImport: (slug: string) => void;
+  onOpenFriendsModal?: () => void;
 }
 
-export function AccountDashboard({ user, theme, currentTournamentData, onLoad, onStartggImport }: AccountDashboardProps) {
+export function AccountDashboard({ user, theme, currentTournamentData, onLoad, onStartggImport, onOpenFriendsModal }: AccountDashboardProps) {
   // Auth state
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -25,7 +26,19 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
 
   // Profile state
   const [displayName, setDisplayName] = useState(user?.user_metadata?.displayName || '');
-  const [userProfile, setUserProfile] = useState<{ id: string, unique_id: string } | null>(null);
+  const [userProfile, setUserProfile] = useState<{
+    id: string;
+    unique_id: string;
+    gamer_tag?: string;
+    bio?: string;
+    startgg_slug?: string;
+    startgg_data?: string;
+    is_public?: boolean;
+    friends_only?: boolean;
+  } | null>(null);
+
+  const [userStartggInput, setUserStartggInput] = useState('');
+  const [importingUserStartgg, setImportingUserStartgg] = useState(false);
 
   // Start.gg state
   const [startggToken, setStartggToken] = useState(() => {
@@ -48,9 +61,50 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
       if (res.ok) {
         const data = await res.json();
         setUserProfile(data.user);
+        if (data.user?.startgg_slug) setUserStartggInput(data.user.startgg_slug);
       }
     } catch (err) {
       console.error('Failed to fetch user profile', err);
+    }
+  };
+
+  const handleImportCareerStats = async () => {
+    if (!userStartggInput.trim()) return;
+    setImportingUserStartgg(true);
+    try {
+      const headers = await getHeaders();
+      const res = await fetch('/api/user/startgg-import', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ startgg_slug_or_url: userStartggInput.trim() })
+      });
+      if (res.ok) {
+        toast.success('Start.gg career profile imported!');
+        fetchUserProfile();
+      } else {
+        toast.error('Failed to import Start.gg profile');
+      }
+    } catch (err) {
+      toast.error('Error connecting to server');
+    } finally {
+      setImportingUserStartgg(false);
+    }
+  };
+
+  const handleTogglePrivacy = async (field: 'is_public' | 'friends_only', value: boolean) => {
+    try {
+      const headers = await getHeaders();
+      const res = await fetch('/api/user/profile', {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify({ [field]: value })
+      });
+      if (res.ok) {
+        toast.success('Privacy settings updated');
+        fetchUserProfile();
+      }
+    } catch (err) {
+      toast.error('Failed to update privacy settings');
     }
   };
 
@@ -353,24 +407,34 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
           <h2 className="text-3xl font-bold font-rajdhani text-white">ACCOUNT DASHBOARD</h2>
           <p className="text-[#00FF88] font-mono text-sm mt-1">Welcome, {user.user_metadata?.displayName || 'Host'}</p>
         </div>
-        <button 
-          onClick={() => supabase.auth.signOut()} 
-          className="flex items-center gap-2 px-4 py-2 rounded border border-[#FF006E]/30 text-[#FF006E] hover:bg-[#FF006E]/10 transition-colors font-rajdhani tracking-widest font-bold"
-        >
-          <LogOut size={16}/> LOGOUT
-        </button>
+        <div className="flex gap-3">
+          {onOpenFriendsModal && (
+            <button
+              onClick={onOpenFriendsModal}
+              className="flex items-center gap-2 px-4 py-2 rounded bg-cyan-500/20 text-cyan-400 border border-cyan-500/40 hover:bg-cyan-500/30 transition-all font-rajdhani tracking-widest font-bold"
+            >
+              FRIENDS & DMs
+            </button>
+          )}
+          <button 
+            onClick={() => supabase.auth.signOut()} 
+            className="flex items-center gap-2 px-4 py-2 rounded border border-[#FF006E]/30 text-[#FF006E] hover:bg-[#FF006E]/10 transition-colors font-rajdhani tracking-widest font-bold"
+          >
+            <LogOut size={16}/> LOGOUT
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         
-        {/* Left Column: Cloud Tournaments */}
+        {/* Left Column: Profile & Privacy & Cloud */}
         <div className="space-y-6">
-          <div className="bg-[#050A14] border border-[#00FF88]/30 p-6 rounded-xl shadow-lg">
-            <h3 className="text-xl font-bold font-rajdhani text-[#00FF88] tracking-widest mb-4">PROFILE</h3>
+          <div className="bg-[#050A14] border border-[#00FF88]/30 p-6 rounded-xl shadow-lg space-y-4">
+            <h3 className="text-xl font-bold font-rajdhani text-[#00FF88] tracking-widest">PROFILE & PRIVACY</h3>
             {userProfile?.unique_id && (
-              <div className="mb-4 bg-black/40 border border-[#00FF88]/20 p-3 rounded flex justify-between items-center">
-                <span className="text-xs text-[#00FF88] font-mono tracking-wider opacity-80">USER ID</span>
-                <span className="font-mono font-bold tracking-widest bg-[#00FF88]/10 px-2 py-1 rounded text-[#00FF88]">{userProfile.unique_id}</span>
+              <div className="bg-black/40 border border-[#00FF88]/20 p-3 rounded flex justify-between items-center">
+                <span className="text-xs text-[#00FF88] font-mono tracking-wider opacity-80">UNIQUE FB-ID</span>
+                <span className="font-mono font-bold tracking-widest bg-[#00FF88]/10 px-2.5 py-1 rounded text-[#00FF88]">{userProfile.unique_id}</span>
               </div>
             )}
             <div className="flex gap-2">
@@ -386,6 +450,58 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
                 className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded font-rajdhani font-bold tracking-wider transition-colors"
               >
                 SAVE
+              </button>
+            </div>
+
+            {/* Privacy Controls */}
+            <div className="pt-3 border-t border-white/10 space-y-3">
+              <div className="text-xs font-mono font-bold text-gray-400">PRIVACY CONTROLS</div>
+              <div className="flex items-center justify-between p-2.5 rounded bg-black/30 border border-white/5">
+                <span className="text-xs font-mono opacity-80">Publicly Searchable Profile</span>
+                <button
+                  onClick={() => handleTogglePrivacy('is_public', !(userProfile?.is_public ?? true))}
+                  className={`px-3 py-1 rounded text-xs font-mono font-bold transition-all ${
+                    (userProfile?.is_public ?? true) ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/40' : 'bg-white/5 text-gray-400'
+                  }`}
+                >
+                  {(userProfile?.is_public ?? true) ? 'PUBLIC' : 'HIDDEN'}
+                </button>
+              </div>
+
+              <div className="flex items-center justify-between p-2.5 rounded bg-black/30 border border-white/5">
+                <span className="text-xs font-mono opacity-80">Friends-Only Start.gg Stats</span>
+                <button
+                  onClick={() => handleTogglePrivacy('friends_only', !(userProfile?.friends_only ?? false))}
+                  className={`px-3 py-1 rounded text-xs font-mono font-bold transition-all ${
+                    (userProfile?.friends_only ?? false) ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40' : 'bg-white/5 text-gray-400'
+                  }`}
+                >
+                  {(userProfile?.friends_only ?? false) ? 'FRIENDS ONLY' : 'ANYONE'}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Start.gg Profile Importer Box */}
+          <div className="bg-[#050A14] border border-cyan-500/30 p-6 rounded-xl shadow-lg space-y-4">
+            <h3 className="text-xl font-bold font-rajdhani text-cyan-400 tracking-widest">START.GG CAREER IMPORTER</h3>
+            <p className="text-xs font-mono opacity-60">
+              Import your public Start.gg player profile URL/slug to showcase your tournament history & placements.
+            </p>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                placeholder="e.g. start.gg/user/azeemx or azeemx"
+                value={userStartggInput}
+                onChange={e => setUserStartggInput(e.target.value)}
+                className="flex-1 bg-[#111] border border-gray-800 rounded p-2 text-white focus:border-cyan-400 outline-none font-mono text-sm"
+              />
+              <button
+                onClick={handleImportCareerStats}
+                disabled={importingUserStartgg || !userStartggInput.trim()}
+                className="px-4 py-2 bg-cyan-500 text-black font-bold rounded font-rajdhani tracking-wider hover:brightness-125 disabled:opacity-40 transition-all text-sm"
+              >
+                {importingUserStartgg ? 'IMPORTING...' : 'IMPORT'}
               </button>
             </div>
           </div>

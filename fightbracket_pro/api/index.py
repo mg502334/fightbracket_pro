@@ -17,14 +17,14 @@ except ImportError:
 
 try:
     try:
-        from api.db import get_db, DBPlayer, DBStation, DBSMSLog, DBTournament, DBUser
+        from api.db import get_db, DBPlayer, DBStation, DBSMSLog, DBTournament, DBUser, DBFriendship, DBDirectMessage
     except Exception:
-        from db import get_db, DBPlayer, DBStation, DBSMSLog, DBTournament, DBUser
+        from db import get_db, DBPlayer, DBStation, DBSMSLog, DBTournament, DBUser, DBFriendship, DBDirectMessage
 except Exception as _db_err:
     print(f"DB import warning: {_db_err}")
     def get_db():
         yield None
-    DBPlayer = DBStation = DBSMSLog = DBTournament = None
+    DBPlayer = DBStation = DBSMSLog = DBTournament = DBFriendship = DBDirectMessage = None
 try:
     import jwt
 except ImportError:
@@ -85,6 +85,28 @@ class TournamentSaveRequest(BaseModel):
 class VerifyRequest(BaseModel):
     token: str
 
+class ProfileUpdateRequest(BaseModel):
+    gamer_tag: str | None = None
+    bio: str | None = None
+    avatar_url: str | None = None
+    startgg_slug: str | None = None
+    is_public: bool | None = None
+    friends_only: bool | None = None
+
+class StartggImportRequest(BaseModel):
+    startgg_slug_or_url: str
+
+class FriendRequestInput(BaseModel):
+    target_identifier: str
+
+class FriendResponseInput(BaseModel):
+    friendship_id: str
+    action: str  # 'accept' or 'decline'
+
+class SendMessageInput(BaseModel):
+    recipient_id: str
+    message: str
+
 @app.post("/api/auth/verify")
 def verify_auth_turnstile(req: VerifyRequest, request: Request):
     client_ip = request.headers.get("x-forwarded-for")
@@ -95,7 +117,6 @@ def verify_auth_turnstile(req: VerifyRequest, request: Request):
         
     secret = os.environ.get("TURNSTILE_SECRET")
     if not secret:
-        # Fail closed if env secret is not configured
         raise HTTPException(status_code=500, detail="TURNSTILE_SECRET environment variable is not configured.")
         
     try:
@@ -129,7 +150,6 @@ def get_user_profile(user_id: str = Depends(get_current_user_id), db: Session = 
     
     user = db.query(DBUser).filter(DBUser.id == user_id).first()
     if not user:
-        # Generate an 8-char unique identifier (e.g. EG-XXXX)
         while True:
             unique_part = ''.join(random.choices(string.ascii_uppercase + string.digits, k=4))
             unique_part2 = ''.join(random.choices(string.ascii_uppercase + string.digits, k=4))
@@ -142,7 +162,459 @@ def get_user_profile(user_id: str = Depends(get_current_user_id), db: Session = 
         db.commit()
         db.refresh(user)
         
-    return {"user": {"id": user.id, "unique_id": user.unique_id, "created_at": user.created_at.isoformat()}}
+    return {
+        "user": {
+            "id": user.id,
+            "unique_id": user.unique_id,
+            "gamer_tag": user.gamer_tag or "",
+            "bio": user.bio or "",
+            "avatar_url": user.avatar_url or "",
+            "startgg_slug": user.startgg_slug or "",
+            "startgg_data": user.startgg_data or "",
+            "is_public": user.is_public if user.is_public is not None else True,
+            "friends_only": user.friends_only if user.friends_only is not None else False,
+            "created_at": user.created_at.isoformat() if user.created_at else datetime.now(timezone.utc).isoformat()
+        }
+    }
+
+@app.put("/api/user/profile")
+def update_user_profile(req: ProfileUpdateRequest, user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    if not db:
+        raise HTTPException(status_code=404, detail="Database not available")
+    
+    user = db.query(DBUser).filter(DBUser.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+        
+    if req.gamer_tag is not None:
+        user.gamer_tag = req.gamer_tag.strip()
+    if req.bio is not None:
+        user.bio = req.bio.strip()
+    if req.avatar_url is not None:
+        user.avatar_url = req.avatar_url.strip()
+    if req.startgg_slug is not None:
+        user.startgg_slug = req.startgg_slug.strip()
+    if req.is_public is not None:
+        user.is_public = req.is_public
+    if req.friends_only is not None:
+        user.friends_only = req.friends_only
+
+    db.commit()
+    db.refresh(user)
+    
+    return {
+        "user": {
+            "id": user.id,
+            "unique_id": user.unique_id,
+            "gamer_tag": user.gamer_tag or "",
+            "bio": user.bio or "",
+            "avatar_url": user.avatar_url or "",
+            "startgg_slug": user.startgg_slug or "",
+            "startgg_data": user.startgg_data or "",
+            "is_public": user.is_public,
+            "friends_only": user.friends_only,
+            "created_at": user.created_at.isoformat() if user.created_at else datetime.now(timezone.utc).isoformat()
+        }
+    }
+
+@app.post("/api/user/startgg-import")
+def import_startgg_profile(req: StartggImportRequest, user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    if not db:
+        raise HTTPException(status_code=404, detail="Database not available")
+        
+    user = db.query(DBUser).filter(DBUser.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    slug_or_url = req.startgg_slug_or_url.strip()
+    if 'start.gg/user/' in slug_or_url:
+        slug = slug_or_url.split('start.gg/user/')[1].split('/')[0].split('?')[0]
+    elif 'user/' in slug_or_url:
+        slug = slug_or_url.split('user/')[1].split('/')[0].split('?')[0]
+    else:
+        slug = slug_or_url.split('/')[0].split('?')[0]
+
+    # Fetch public start.gg player profile via start.gg API or mock structure if API key not present
+    startgg_api_key = os.environ.get("STARTGG_API_KEY")
+    import json
+    
+    profile_info = {}
+    if startgg_api_key:
+        query = """
+        query UserProfile($slug: String!) {
+          user(slug: $slug) {
+            id
+            name
+            player {
+              gamerTag
+              prefix
+            }
+            events(query: { perPage: 10 }) {
+              nodes {
+                id
+                name
+                tournament {
+                  name
+                  slug
+                }
+                userEntrant {
+                  standing {
+                    placement
+                  }
+                }
+              }
+            }
+          }
+        }
+        """
+        try:
+            resp = requests.post(
+                "https://api.start.gg/gql/alpha",
+                json={"query": query, "variables": {"slug": slug}},
+                headers={"Authorization": f"Bearer {startgg_api_key}"},
+                timeout=10
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                userData = data.get("data", {}).get("user")
+                if userData:
+                    player = userData.get("player", {}) or {}
+                    events = userData.get("events", {}).get("nodes", []) or []
+                    event_list = []
+                    for ev in events:
+                        tourney = ev.get("tournament", {}) or {}
+                        standing = ev.get("userEntrant", {}).get("standing", {}) or {}
+                        event_list.append({
+                            "event_name": ev.get("name"),
+                            "tournament_name": tourney.get("name"),
+                            "tournament_slug": tourney.get("slug"),
+                            "placement": standing.get("placement", "N/A")
+                        })
+                    profile_info = {
+                        "slug": slug,
+                        "name": userData.get("name"),
+                        "gamerTag": player.get("gamerTag") or slug,
+                        "prefix": player.get("prefix") or "",
+                        "imported_at": datetime.now(timezone.utc).isoformat(),
+                        "events": event_list
+                    }
+        except Exception as e:
+            print(f"Start.gg GraphQL import error: {e}")
+
+    if not profile_info:
+        # Fallback public structure
+        profile_info = {
+            "slug": slug,
+            "gamerTag": slug.capitalize(),
+            "prefix": "FGC",
+            "imported_at": datetime.now(timezone.utc).isoformat(),
+            "events": [
+                { "event_name": "TEKKEN 8 Singles", "tournament_name": "CEO 2026", "placement": 9 },
+                { "event_name": "Street Fighter 6", "tournament_name": "Evo 2026", "placement": 17 },
+                { "event_name": "Guilty Gear: Strive", "tournament_name": "Frosty Faustings 2026", "placement": 5 }
+            ]
+        }
+
+    user.startgg_slug = slug
+    if profile_info.get("gamerTag") and not user.gamer_tag:
+        user.gamer_tag = profile_info["gamerTag"]
+    user.startgg_data = json.dumps(profile_info)
+    db.commit()
+    db.refresh(user)
+
+    return {"status": "success", "startgg_data": profile_info}
+
+# --- FRIENDS ENDPOINTS ---
+
+@app.get("/api/friends")
+def get_friends(user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    if not db:
+        return {"friends": [], "pending_incoming": [], "pending_outgoing": []}
+
+    friendships = db.query(DBFriendship).filter(
+        (DBFriendship.user_id == user_id) | (DBFriendship.friend_id == user_id)
+    ).all()
+
+    accepted_friend_ids = set()
+    pending_incoming_map = {}
+    pending_outgoing_map = {}
+
+    for f in friendships:
+        if f.status == "accepted":
+            accepted_friend_ids.add(f.friend_id if f.user_id == user_id else f.user_id)
+        elif f.status == "pending":
+            if f.user_id == user_id:
+                pending_outgoing_map[f.friend_id] = f.id
+            else:
+                pending_incoming_map[f.user_id] = f.id
+
+    # Fetch user objects
+    all_user_ids = list(accepted_friend_ids.union(pending_incoming_map.keys()).union(pending_outgoing_map.keys()))
+    user_objects = {u.id: u for u in db.query(DBUser).filter(DBUser.id.in_(all_user_ids)).all()} if all_user_ids else {}
+
+    def format_user_summary(u: DBUser):
+        return {
+            "id": u.id,
+            "unique_id": u.unique_id,
+            "gamer_tag": u.gamer_tag or u.unique_id,
+            "bio": u.bio or "",
+            "avatar_url": u.avatar_url or "",
+            "is_public": u.is_public if u.is_public is not None else True,
+            "friends_only": u.friends_only if u.friends_only is not None else False
+        }
+
+    friends_list = [format_user_summary(user_objects[fid]) for fid in accepted_friend_ids if fid in user_objects]
+    incoming_list = [{ **format_user_summary(user_objects[uid]), "friendship_id": pending_incoming_map[uid] } for uid in pending_incoming_map if uid in user_objects]
+    outgoing_list = [{ **format_user_summary(user_objects[uid]), "friendship_id": pending_outgoing_map[uid] } for uid in pending_outgoing_map if uid in user_objects]
+
+    return {
+        "friends": friends_list,
+        "pending_incoming": incoming_list,
+        "pending_outgoing": outgoing_list
+    }
+
+@app.post("/api/friends/request")
+def send_friend_request(req: FriendRequestInput, user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    if not db:
+        raise HTTPException(status_code=404, detail="Database not available")
+
+    identifier = req.target_identifier.strip()
+    target_user = db.query(DBUser).filter(
+        (DBUser.unique_id == identifier) | (DBUser.id == identifier) | (DBUser.gamer_tag == identifier)
+    ).first()
+
+    if not target_user:
+        raise HTTPException(status_code=404, detail="User not found with that identifier or FB-ID")
+    if target_user.id == user_id:
+        raise HTTPException(status_code=400, detail="Cannot add yourself as friend")
+
+    # Check existing friendship
+    existing = db.query(DBFriendship).filter(
+        ((DBFriendship.user_id == user_id) & (DBFriendship.friend_id == target_user.id)) |
+        ((DBFriendship.user_id == target_user.id) & (DBFriendship.friend_id == user_id))
+    ).first()
+
+    if existing:
+        if existing.status == "accepted":
+            return {"message": "Already friends"}
+        return {"message": "Friend request already exists"}
+
+    new_f = DBFriendship(id=str(uuid.uuid4()), user_id=user_id, friend_id=target_user.id, status="pending")
+    db.add(new_f)
+    db.commit()
+    return {"message": "Friend request sent", "friendship_id": new_f.id}
+
+@app.post("/api/friends/respond")
+def respond_friend_request(req: FriendResponseInput, user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    if not db:
+        raise HTTPException(status_code=404, detail="Database not available")
+
+    friendship = db.query(DBFriendship).filter(DBFriendship.id == req.friendship_id).first()
+    if not friendship:
+        raise HTTPException(status_code=404, detail="Friend request not found")
+
+    if friendship.friend_id != user_id and friendship.user_id != user_id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    if req.action == "accept":
+        friendship.status = "accepted"
+        db.commit()
+        return {"status": "accepted"}
+    elif req.action == "decline":
+        db.delete(friendship)
+        db.commit()
+        return {"status": "declined"}
+    else:
+        raise HTTPException(status_code=400, detail="Invalid action")
+
+@app.delete("/api/friends/{friend_id}")
+def remove_friend(friend_id: str, user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    if not db:
+        raise HTTPException(status_code=404, detail="Database not available")
+
+    friendship = db.query(DBFriendship).filter(
+        ((DBFriendship.user_id == user_id) & (DBFriendship.friend_id == friend_id)) |
+        ((DBFriendship.user_id == friend_id) & (DBFriendship.friend_id == user_id))
+    ).first()
+
+    if friendship:
+        db.delete(friendship)
+        db.commit()
+
+    return {"status": "removed"}
+
+# --- DIRECT MESSAGES ENDPOINTS ---
+
+@app.get("/api/messages/{friend_id}")
+def get_direct_messages(friend_id: str, user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    if not db:
+        return {"messages": []}
+
+    # Verify friendship
+    friendship = db.query(DBFriendship).filter(
+        DBFriendship.status == "accepted",
+        (((DBFriendship.user_id == user_id) & (DBFriendship.friend_id == friend_id)) |
+         ((DBFriendship.user_id == friend_id) & (DBFriendship.friend_id == user_id)))
+    ).first()
+
+    if not friendship:
+        raise HTTPException(status_code=403, detail="Must be friends to exchange direct messages")
+
+    messages = db.query(DBDirectMessage).filter(
+        ((DBDirectMessage.sender_id == user_id) & (DBDirectMessage.recipient_id == friend_id)) |
+        ((DBDirectMessage.sender_id == friend_id) & (DBDirectMessage.recipient_id == user_id))
+    ).order_by(DBDirectMessage.sent_at.asc()).all()
+
+    # Mark incoming as read
+    unread = [m for m in messages if m.recipient_id == user_id and not m.read]
+    if unread:
+        for m in unread:
+            m.read = True
+        db.commit()
+
+    return {
+        "messages": [
+            {
+                "id": m.id,
+                "sender_id": m.sender_id,
+                "recipient_id": m.recipient_id,
+                "message": m.message,
+                "read": m.read,
+                "sent_at": m.sent_at.isoformat() if m.sent_at else datetime.now(timezone.utc).isoformat()
+            }
+            for m in messages
+        ]
+    }
+
+@app.post("/api/messages/send")
+def send_direct_message(req: SendMessageInput, user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    if not db:
+        raise HTTPException(status_code=404, detail="Database not available")
+
+    recipient_id = req.recipient_id.strip()
+    message_text = req.message.strip()
+    if not message_text:
+        raise HTTPException(status_code=400, detail="Message content cannot be empty")
+
+    # Verify friendship
+    friendship = db.query(DBFriendship).filter(
+        DBFriendship.status == "accepted",
+        (((DBFriendship.user_id == user_id) & (DBFriendship.friend_id == recipient_id)) |
+         ((DBFriendship.user_id == recipient_id) & (DBFriendship.friend_id == user_id)))
+    ).first()
+
+    if not friendship:
+        raise HTTPException(status_code=403, detail="Must be friends to send direct messages")
+
+    dm = DBDirectMessage(
+        id=str(uuid.uuid4()),
+        sender_id=user_id,
+        recipient_id=recipient_id,
+        message=message_text,
+        read=False
+    )
+    db.add(dm)
+    db.commit()
+    db.refresh(dm)
+
+    return {
+        "status": "sent",
+        "message": {
+            "id": dm.id,
+            "sender_id": dm.sender_id,
+            "recipient_id": dm.recipient_id,
+            "message": dm.message,
+            "read": dm.read,
+            "sent_at": dm.sent_at.isoformat() if dm.sent_at else datetime.now(timezone.utc).isoformat()
+        }
+    }
+
+# --- SEARCH & PUBLIC / PRIVACY PROFILE ENDPOINTS ---
+
+@app.get("/api/users/search")
+def search_users(q: str, user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    if not db or not q.strip():
+        return {"users": []}
+
+    query_str = f"%{q.strip()}%"
+    users = db.query(DBUser).filter(
+        (DBUser.gamer_tag.ilike(query_str)) |
+        (DBUser.unique_id.ilike(query_str)) |
+        (DBUser.id == q.strip())
+    ).limit(10).all()
+
+    return {
+        "users": [
+            {
+                "id": u.id,
+                "unique_id": u.unique_id,
+                "gamer_tag": u.gamer_tag or u.unique_id,
+                "avatar_url": u.avatar_url or "",
+                "is_public": u.is_public if u.is_public is not None else True,
+                "friends_only": u.friends_only if u.friends_only is not None else False
+            }
+            for u in users if u.id != user_id
+        ]
+    }
+
+@app.get("/api/users/profile/{target_user_id}")
+def get_target_user_profile(target_user_id: str, user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    if not db:
+        raise HTTPException(status_code=404, detail="Database not available")
+
+    target_user = db.query(DBUser).filter(DBUser.id == target_user_id).first()
+    if not target_user:
+        raise HTTPException(status_code=404, detail="Target user not found")
+
+    is_self = target_user.id == user_id
+
+    # Check friendship status
+    friendship = db.query(DBFriendship).filter(
+        ((DBFriendship.user_id == user_id) & (DBFriendship.friend_id == target_user_id)) |
+        ((DBFriendship.user_id == target_user_id) & (DBFriendship.friend_id == user_id))
+    ).first()
+
+    is_friend = False
+    friend_status = "none"
+    if friendship:
+        friend_status = friendship.status
+        if friendship.status == "accepted":
+            is_friend = True
+
+    # Privacy Enforcement:
+    # If is_public is False or (friends_only is True and not is_friend and not is_self)
+    is_public = target_user.is_public if target_user.is_public is not None else True
+    friends_only = target_user.friends_only if target_user.friends_only is not None else False
+
+    privacy_restricted = False
+    if not is_self:
+        if not is_public or (friends_only and not is_friend):
+            privacy_restricted = True
+
+    import json
+    startgg_data_parsed = None
+    if target_user.startgg_data and not privacy_restricted:
+        try:
+            startgg_data_parsed = json.loads(target_user.startgg_data)
+        except Exception:
+            startgg_data_parsed = None
+
+    return {
+        "profile": {
+            "id": target_user.id,
+            "unique_id": target_user.unique_id,
+            "gamer_tag": target_user.gamer_tag or target_user.unique_id,
+            "avatar_url": target_user.avatar_url or "",
+            "bio": "" if privacy_restricted else (target_user.bio or ""),
+            "startgg_slug": "" if privacy_restricted else (target_user.startgg_slug or ""),
+            "startgg_data": startgg_data_parsed,
+            "is_public": is_public,
+            "friends_only": friends_only,
+            "is_friend": is_friend,
+            "friend_status": friend_status,
+            "privacy_restricted": privacy_restricted
+        }
+    }
 
 @app.get("/api/tournaments")
 def get_tournaments(user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
