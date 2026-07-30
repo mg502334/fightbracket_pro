@@ -24,6 +24,7 @@ import { PoolsPanel } from "./components/PoolsPanel";
 import { ReportScoreModal } from "./components/ReportScoreModal";
 import { FriendsModal } from "./components/FriendsModal";
 import { UserProfileModal } from "./components/UserProfileModal";
+import { StaticPageModal, type StaticPageId } from "./components/StaticPageModal";
 import { Users } from "lucide-react";
 
 import {
@@ -72,6 +73,7 @@ export default function App() {
   const [supabaseToken, setSupabaseToken] = useState<string | null>(null);
   const [showFriendsModal, setShowFriendsModal] = useState(false);
   const [targetProfileUserId, setTargetProfileUserId] = useState<string | null>(null);
+  const [showStaticPage, setShowStaticPage] = useState<StaticPageId | null>(null);
 
   const [activeTournament, setActiveTournament] = useState<{ name: string, location: string, slug?: string, numAttendees?: number } | null>(() => safeParse('fb_tournament', null));
   const [autoSyncSlug, setAutoSyncSlug] = useState<string | null>(() => safeParse('fb_autoSyncSlug', null));
@@ -1269,9 +1271,38 @@ export default function App() {
         theme={theme || { id: 'default', displayName: 'FightBracket', shortName: 'FB', primaryColor: '#00E5FF', secondaryColor: '#FF006E', bgFrom: '#050A14', glowColor: 'rgba(0,229,255,0.4)', description: '', publisher: '' }}
       />
 
+      <StaticPageModal
+        pageId={showStaticPage}
+        onClose={() => setShowStaticPage(null)}
+        theme={theme || { id: 'default', displayName: 'FightBracket', shortName: 'FB', primaryColor: '#00E5FF', secondaryColor: '#FF006E', bgFrom: '#050A14', glowColor: 'rgba(0,229,255,0.4)', description: '', publisher: '' }}
+      />
+
       <Toaster position="bottom-right" />
-      <footer className="text-center py-4 border-t shrink-0 text-xs opacity-50" style={{ background: 'var(--sidebar)', borderColor: 'var(--border)', fontFamily: 'JetBrains Mono, monospace' }}>
-        Developed and Powered by &copy; 2026 Ender Gaming Core Hosting. All rights reserved.
+      <footer
+        className="shrink-0 border-t px-6 py-3"
+        style={{ background: 'var(--sidebar)', borderColor: 'var(--border)', fontFamily: 'JetBrains Mono, monospace' }}
+      >
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-2">
+          <span className="text-[11px] opacity-40">
+            &copy; 2026 Ender Gaming Core Hosting &mdash; All rights reserved.
+          </span>
+          <div className="flex items-center gap-4 text-[11px] opacity-50">
+            {([
+              { id: 'help', label: 'Help' },
+              { id: 'privacy', label: 'Privacy Policy' },
+              { id: 'terms', label: 'Terms of Use' },
+              { id: 'disclaimer', label: 'Non-Affiliation' },
+            ] as { id: StaticPageId; label: string }[]).map(link => (
+              <button
+                key={link.id}
+                onClick={() => setShowStaticPage(link.id)}
+                className="hover:opacity-100 hover:text-cyan-400 transition-colors underline-offset-2 hover:underline"
+              >
+                {link.label}
+              </button>
+            ))}
+          </div>
+        </div>
       </footer>
     </div>
   );
