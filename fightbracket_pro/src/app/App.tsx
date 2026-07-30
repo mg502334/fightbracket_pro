@@ -325,9 +325,18 @@ export default function App() {
     const sid = stationId;
 
     const calledTime = Date.now();
-    setMatches(prev => prev.map(m => m.id === match.id ? { ...m, state: 'called', stationId: sid, calledAt: calledTime } : m));
+
+    // Find the station so we can pull its stream name into the match
+    const station = stations.find(s => s.id === sid);
+    const streamUrl = station?.streamName
+      ? station.streamName.includes('twitch.tv')
+        ? station.streamName
+        : `https://twitch.tv/${station.streamName}`
+      : match.streamUrl;
+
+    setMatches(prev => prev.map(m => m.id === match.id ? { ...m, state: 'called', stationId: sid, calledAt: calledTime, streamUrl: streamUrl || m.streamUrl } : m));
     setStations(prev => prev.map(s => s.id === sid ? { ...s, matchId: match.id } : s));
-    const updatedMatch: BracketMatch = { ...match, state: 'called', stationId: sid, calledAt: calledTime };
+    const updatedMatch: BracketMatch = { ...match, state: 'called', stationId: sid, calledAt: calledTime, streamUrl: streamUrl || match.streamUrl };
     setAnnouncement(updatedMatch);
 
     const playerIds = [match.player1Id, match.player2Id].filter(Boolean) as string[];
@@ -354,7 +363,7 @@ export default function App() {
         onClick: () => handleUndoCall(match.id),
       },
     });
-  }, [theme?.primaryColor, players, gameThemes]);
+  }, [theme?.primaryColor, players, gameThemes, stations]);
 
   const handleUndoCall = useCallback((matchId: string) => {
     setMatches(prev => prev.map(m => m.id === matchId ? { ...m, state: 'pending', stationId: null } : m));
@@ -413,6 +422,10 @@ export default function App() {
 
   const handleRenameStation = useCallback((stationId: number, name: string) => {
     setStations(prev => prev.map(s => s.id === stationId ? { ...s, name } : s));
+  }, []);
+
+  const handleSetStationStream = useCallback((stationId: number, streamName: string) => {
+    setStations(prev => prev.map(s => s.id === stationId ? { ...s, streamName: streamName.trim() || undefined } : s));
   }, []);
 
   const handleSendSMS = useCallback(async (playerIds: string[], message: string, matchId?: string) => {
@@ -1122,6 +1135,7 @@ export default function App() {
                     onAddStation={handleAddStation}
                     onRemoveStation={handleRemoveStation}
                     onRenameStation={handleRenameStation}
+                    onSetStationStream={handleSetStationStream}
                   />
                 </div>
               )}
@@ -1131,7 +1145,7 @@ export default function App() {
                     exhibitions={exhibitions}
                     setExhibitions={setExhibitions}
                     theme={theme}
-                    userId={supabaseUser?.id || null}
+                    userId={userId}
                     activeGameId={activeGame}
                   />
                 </div>

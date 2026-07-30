@@ -132,7 +132,7 @@ export function StreamsPanel({ matches, players, theme }: StreamsPanelProps) {
               {/* Video Player */}
               <div className="flex-1 relative bg-black">
                 <iframe
-                  src={`https://player.twitch.tv/?channel=${channel}&parent=localhost&parent=fightbracketpro.com&parent=www.fightbracketpro.com&muted=true`}
+                  src={`https://player.twitch.tv/?channel=${channel}&parent=${window.location.hostname}&muted=true`}
                   height="100%"
                   width="100%"
                   allowFullScreen
@@ -144,7 +144,7 @@ export function StreamsPanel({ matches, players, theme }: StreamsPanelProps) {
               {/* Chat Panel */}
               <div className="w-full lg:w-[350px] border-t lg:border-t-0 lg:border-l bg-black" style={{ borderColor: `${theme.primaryColor}20` }}>
                  <iframe 
-                  src={`https://www.twitch.tv/embed/${channel}/chat?parent=localhost&parent=fightbracketpro.com&parent=www.fightbracketpro.com&darkpopout`}
+                  src={`https://www.twitch.tv/embed/${channel}/chat?parent=${window.location.hostname}&darkpopout`}
                   height="100%"
                   width="100%"
                   className="border-0"

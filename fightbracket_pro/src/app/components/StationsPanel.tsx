@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Monitor, Swords, Plus, X, ChevronRight, Circle } from "lucide-react";
+import { Monitor, Swords, Plus, X, ChevronRight, Circle, Tv } from "lucide-react";
 import type { Station, BracketMatch, Player, GameTheme } from "../data/tournamentData";
 import { GAME_THEMES } from "../data/tournamentData";
 
@@ -14,12 +14,15 @@ interface StationsPanelProps {
   onAddStation: () => void;
   onRemoveStation: (stationId: number) => void;
   onRenameStation: (stationId: number, name: string) => void;
+  onSetStationStream?: (stationId: number, streamName: string) => void;
 }
 
-export function StationsPanel({ stations, matches, players, theme, onAssignMatch, onCallMatch, onClearStation, onAddStation, onRemoveStation, onRenameStation }: StationsPanelProps) {
+export function StationsPanel({ stations, matches, players, theme, onAssignMatch, onCallMatch, onClearStation, onAddStation, onRemoveStation, onRenameStation, onSetStationStream }: StationsPanelProps) {
   const [selectedStation, setSelectedStation] = useState<number | null>(null);
   const [editingStation, setEditingStation] = useState<number | null>(null);
   const [editName, setEditName] = useState('');
+  const [editingStream, setEditingStream] = useState<number | null>(null);
+  const [editStreamName, setEditStreamName] = useState('');
 
   const playerMap = Object.fromEntries(players.map(p => [p.id, p]));
 
@@ -122,6 +125,40 @@ export function StationsPanel({ stations, matches, players, theme, onAssignMatch
                   {isLive ? 'LIVE' : match ? 'ASSIGNED' : isActive ? 'OPEN' : 'OFFLINE'}
                 </span>
               </div>
+            </div>
+
+            {/* Twitch stream name row */}
+            <div className="flex items-center gap-2 px-4 py-1.5 border-b" style={{ borderColor: 'rgba(122,158,192,0.08)', background: 'rgba(0,0,0,0.2)' }}>
+              <Tv size={10} style={{ color: '#9147FF', flexShrink: 0 }} />
+              {editingStream === station.id ? (
+                <input
+                  type="text"
+                  value={editStreamName}
+                  autoFocus
+                  placeholder="twitch channel (e.g. ninja)"
+                  onBlur={() => {
+                    onSetStationStream?.(station.id, editStreamName);
+                    setEditingStream(null);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === 'Escape') {
+                      if (e.key === 'Enter') onSetStationStream?.(station.id, editStreamName);
+                      setEditingStream(null);
+                    }
+                  }}
+                  className="flex-1 bg-transparent border-b border-purple-500/40 text-xs focus:outline-none text-purple-300 placeholder-purple-900"
+                  style={{ fontFamily: 'JetBrains Mono, monospace' }}
+                />
+              ) : (
+                <button
+                  onClick={() => { setEditingStream(station.id); setEditStreamName(station.streamName || ''); }}
+                  className="text-xs flex-1 text-left truncate transition-colors"
+                  style={{ fontFamily: 'JetBrains Mono, monospace', color: station.streamName ? '#9147FF' : 'rgba(122,158,192,0.3)' }}
+                  title={station.streamName ? `Twitch: ${station.streamName}` : 'Click to link Twitch channel'}
+                >
+                  {station.streamName ? `twitch/${station.streamName}` : '+ link twitch stream'}
+                </button>
+              )}
             </div>
 
             {/* Station body */}

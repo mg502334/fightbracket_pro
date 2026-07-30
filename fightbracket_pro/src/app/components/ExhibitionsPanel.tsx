@@ -27,8 +27,8 @@ export function ExhibitionsPanel({ exhibitions, setExhibitions, theme, userId, a
 
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!userId) return toast.error("Must be logged in to create an exhibition.");
     if (!activeGameId) return toast.error("Select a game first.");
+    if (!userId) return toast.error("User ID not available.");
 
     const newExhibition: ExhibitionMatch = {
       id: `exh-${Date.now()}`,
