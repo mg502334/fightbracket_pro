@@ -491,7 +491,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
             <div className="flex gap-2">
               <input
                 type="text"
-                placeholder="e.g. start.gg/user/azeemx or azeemx"
+                placeholder="e.g. start.gg/user/mang0 or mang0"
                 value={userStartggInput}
                 onChange={e => setUserStartggInput(e.target.value)}
                 className="flex-1 bg-[#111] border border-gray-800 rounded p-2 text-white focus:border-cyan-400 outline-none font-mono text-sm"
