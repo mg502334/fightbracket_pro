@@ -8,7 +8,6 @@ Base = declarative_base()
 class DBUser(Base):
     __tablename__ = "users"
     id = Column(String, primary_key=True, index=True) # Supabase user ID
-    unique_id = Column(String, unique=True, index=True, nullable=False) # FB-XXXX-YYYY
     gamer_tag = Column(String, nullable=True)
     bio = Column(String, nullable=True)
     avatar_url = Column(String, nullable=True)
@@ -25,6 +24,12 @@ class DBFriendship(Base):
     friend_id = Column(String, index=True, nullable=False) # Target user ID
     status = Column(String, default="pending") # pending | accepted | declined
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+class DBUserIdentifier(Base):
+    __tablename__ = "user_identifiers"
+    user_id = Column(String, primary_key=True, index=True) # Matches Supabase user ID
+    unique_id = Column(String, unique=True, index=True, nullable=False) # FB-XXXX-YYYY
+
 
 class DBDirectMessage(Base):
     __tablename__ = "direct_messages"

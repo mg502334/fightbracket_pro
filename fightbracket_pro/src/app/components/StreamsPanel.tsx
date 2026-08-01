@@ -65,7 +65,7 @@ export function StreamsPanel({ matches, players, theme }: StreamsPanelProps) {
     );
   }
 
-  const getPlayerName = (id?: string) => {
+  const getPlayerName = (id?: string | null) => {
     if (!id) return 'TBD';
     const player = players.find(p => p.id === id);
     return player ? player.tag : 'TBD';

@@ -3,6 +3,12 @@ import { supabase } from '../supabaseClient';
 import { Trash2, Save, Download, RefreshCw, Key, LogOut } from 'lucide-react';
 import { toast } from 'sonner';
 
+declare global {
+  interface Window {
+    turnstile?: any;
+  }
+}
+
 interface AccountDashboardProps {
   user: any;
   theme: any;

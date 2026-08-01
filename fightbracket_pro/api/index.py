@@ -7,6 +7,9 @@ import requests
 import os
 import uuid
 import urllib.parse
+from datetime import datetime, timezone
+import random
+import string
 
 # Load dotenv if running locally
 try:
@@ -15,16 +18,22 @@ try:
 except ImportError:
     pass
 
-try:
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from api.db import get_db, DBPlayer, DBStation, DBSMSLog, DBTournament, DBUser, DBFriendship, DBDirectMessage, DBUserIdentifier
+
+else:
     try:
-        from api.db import get_db, DBPlayer, DBStation, DBSMSLog, DBTournament, DBUser, DBFriendship, DBDirectMessage
-    except Exception:
-        from db import get_db, DBPlayer, DBStation, DBSMSLog, DBTournament, DBUser, DBFriendship, DBDirectMessage
-except Exception as _db_err:
-    print(f"DB import warning: {_db_err}")
-    def get_db():
-        yield None
-    DBPlayer = DBStation = DBSMSLog = DBTournament = DBFriendship = DBDirectMessage = None
+        try:
+            from api.db import get_db, DBPlayer, DBStation, DBSMSLog, DBTournament, DBUser, DBFriendship, DBDirectMessage, DBUserIdentifier
+        except Exception:
+            from db import get_db, DBPlayer, DBStation, DBSMSLog, DBTournament, DBUser, DBFriendship, DBDirectMessage, DBUserIdentifier  # type: ignore
+    except Exception as _db_err:
+        print(f"DB import warning: {_db_err}")
+        def get_db():
+            yield None
+        class _DummyModel: pass
+        DBPlayer = DBStation = DBSMSLog = DBTournament = DBFriendship = DBDirectMessage = DBUser = DBUserIdentifier = _DummyModel # type: ignore
 try:
     import jwt
 except ImportError:
@@ -150,22 +159,29 @@ def get_user_profile(user_id: str = Depends(get_current_user_id), db: Session = 
     
     user = db.query(DBUser).filter(DBUser.id == user_id).first()
     if not user:
+        user = DBUser(id=user_id)
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+    identifier = db.query(DBUserIdentifier).filter(DBUserIdentifier.user_id == user_id).first()
+    if not identifier:
         while True:
             unique_part = ''.join(random.choices(string.ascii_uppercase + string.digits, k=4))
             unique_part2 = ''.join(random.choices(string.ascii_uppercase + string.digits, k=4))
             unique_id = f"FB-{unique_part}-{unique_part2}"
-            if not db.query(DBUser).filter(DBUser.unique_id == unique_id).first():
+            if not db.query(DBUserIdentifier).filter(DBUserIdentifier.unique_id == unique_id).first():
                 break
         
-        user = DBUser(id=user_id, unique_id=unique_id)
-        db.add(user)
+        identifier = DBUserIdentifier(user_id=user_id, unique_id=unique_id)
+        db.add(identifier)
         db.commit()
-        db.refresh(user)
+        db.refresh(identifier)
         
     return {
         "user": {
             "id": user.id,
-            "unique_id": user.unique_id,
+            "unique_id": identifier.unique_id,
             "gamer_tag": user.gamer_tag or "",
             "bio": user.bio or "",
             "avatar_url": user.avatar_url or "",
@@ -187,17 +203,17 @@ def update_user_profile(req: ProfileUpdateRequest, user_id: str = Depends(get_cu
         raise HTTPException(status_code=404, detail="User not found")
         
     if req.gamer_tag is not None:
-        user.gamer_tag = req.gamer_tag.strip()
+        user.gamer_tag = req.gamer_tag.strip() # type: ignore
     if req.bio is not None:
-        user.bio = req.bio.strip()
+        user.bio = req.bio.strip() # type: ignore
     if req.avatar_url is not None:
-        user.avatar_url = req.avatar_url.strip()
+        user.avatar_url = req.avatar_url.strip() # type: ignore
     if req.startgg_slug is not None:
-        user.startgg_slug = req.startgg_slug.strip()
+        user.startgg_slug = req.startgg_slug.strip() # type: ignore
     if req.is_public is not None:
-        user.is_public = req.is_public
+        user.is_public = req.is_public # type: ignore
     if req.friends_only is not None:
-        user.friends_only = req.friends_only
+        user.friends_only = req.friends_only # type: ignore
 
     db.commit()
     db.refresh(user)
@@ -315,10 +331,10 @@ def import_startgg_profile(req: StartggImportRequest, user_id: str = Depends(get
             ]
         }
 
-    user.startgg_slug = slug
+    user.startgg_slug = slug  # type: ignore
     if profile_info.get("gamerTag") and not user.gamer_tag:
-        user.gamer_tag = profile_info["gamerTag"]
-    user.startgg_data = json.dumps(profile_info)
+        user.gamer_tag = profile_info["gamerTag"]  # type: ignore
+    user.startgg_data = json.dumps(profile_info)  # type: ignore
     db.commit()
     db.refresh(user)
 
@@ -348,15 +364,20 @@ def get_friends(user_id: str = Depends(get_current_user_id), db: Session = Depen
             else:
                 pending_incoming_map[f.user_id] = f.id
 
-    # Fetch user objects
+    # Fetch user objects and their identifiers
     all_user_ids = list(accepted_friend_ids.union(pending_incoming_map.keys()).union(pending_outgoing_map.keys()))
-    user_objects = {u.id: u for u in db.query(DBUser).filter(DBUser.id.in_(all_user_ids)).all()} if all_user_ids else {}
+    user_objects = {}
+    if all_user_ids:
+        users_with_ids = db.query(DBUser, DBUserIdentifier).outerjoin(DBUserIdentifier, DBUser.id == DBUserIdentifier.user_id).filter(DBUser.id.in_(all_user_ids)).all()
+        for u, ui in users_with_ids:
+            user_objects[u.id] = (u, ui.unique_id if ui else "FB-MISSING")
 
-    def format_user_summary(u: DBUser):
+    def format_user_summary(u_tuple):
+        u, uid_str = u_tuple
         return {
             "id": u.id,
-            "unique_id": u.unique_id,
-            "gamer_tag": u.gamer_tag or u.unique_id,
+            "unique_id": uid_str,
+            "gamer_tag": u.gamer_tag or uid_str,
             "bio": u.bio or "",
             "avatar_url": u.avatar_url or "",
             "is_public": u.is_public if u.is_public is not None else True,
@@ -379,12 +400,14 @@ def send_friend_request(req: FriendRequestInput, user_id: str = Depends(get_curr
         raise HTTPException(status_code=404, detail="Database not available")
 
     identifier = req.target_identifier.strip()
-    target_user = db.query(DBUser).filter(
-        (DBUser.unique_id == identifier) | (DBUser.id == identifier) | (DBUser.gamer_tag == identifier)
+    target = db.query(DBUser, DBUserIdentifier).outerjoin(DBUserIdentifier, DBUser.id == DBUserIdentifier.user_id).filter(
+        (DBUserIdentifier.unique_id == identifier) | (DBUser.id == identifier) | (DBUser.gamer_tag == identifier)
     ).first()
 
-    if not target_user:
+    if not target:
         raise HTTPException(status_code=404, detail="User not found with that identifier or FB-ID")
+    
+    target_user, target_ui = target
     if target_user.id == user_id:
         raise HTTPException(status_code=400, detail="Cannot add yourself as friend")
 
@@ -444,6 +467,49 @@ def remove_friend(friend_id: str, user_id: str = Depends(get_current_user_id), d
     return {"status": "removed"}
 
 # --- DIRECT MESSAGES ENDPOINTS ---
+
+@app.get("/api/messages/inbox")
+def get_inbox_conversations(user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    if not db:
+        return {"conversations": []}
+
+    # Fetch all messages where user is sender or recipient
+    messages = db.query(DBDirectMessage).filter(
+        (DBDirectMessage.sender_id == user_id) | (DBDirectMessage.recipient_id == user_id)
+    ).order_by(DBDirectMessage.sent_at.desc()).all()
+
+    # Group by conversation partner
+    convos = {}
+    for m in messages:
+        partner_id = m.recipient_id if m.sender_id == user_id else m.sender_id
+        if partner_id not in convos:
+            convos[partner_id] = {
+                "partner_id": partner_id,
+                "latest_message": m.message,
+                "sent_at": m.sent_at.isoformat() if m.sent_at else datetime.now(timezone.utc).isoformat(),
+                "unread_count": 0
+            }
+        
+        # Count unread messages sent to current user
+        if m.recipient_id == user_id and not m.read:
+            convos[partner_id]["unread_count"] += 1
+
+    # Fetch partner user objects
+    partner_ids = list(convos.keys())
+    if partner_ids:
+        partners_with_ids = db.query(DBUser, DBUserIdentifier).outerjoin(DBUserIdentifier, DBUser.id == DBUserIdentifier.user_id).filter(DBUser.id.in_(partner_ids)).all()
+        
+        for u, ui in partners_with_ids:
+            uid_str = ui.unique_id if ui else "FB-MISSING"
+            convos[u.id].update({
+                "gamer_tag": u.gamer_tag or uid_str,
+                "unique_id": uid_str,
+                "avatar_url": u.avatar_url or ""
+            })
+
+    # Return as list, sorted by latest message
+    sorted_convos = sorted(convos.values(), key=lambda x: x["sent_at"], reverse=True)
+    return {"conversations": sorted_convos}
 
 @app.get("/api/messages/{friend_id}")
 def get_direct_messages(friend_id: str, user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
@@ -537,9 +603,9 @@ def search_users(q: str, user_id: str = Depends(get_current_user_id), db: Sessio
         return {"users": []}
 
     query_str = f"%{q.strip()}%"
-    users = db.query(DBUser).filter(
+    users_with_ids = db.query(DBUser, DBUserIdentifier).outerjoin(DBUserIdentifier, DBUser.id == DBUserIdentifier.user_id).filter(
         (DBUser.gamer_tag.ilike(query_str)) |
-        (DBUser.unique_id.ilike(query_str)) |
+        (DBUserIdentifier.unique_id.ilike(query_str)) |
         (DBUser.id == q.strip())
     ).limit(10).all()
 
@@ -547,13 +613,13 @@ def search_users(q: str, user_id: str = Depends(get_current_user_id), db: Sessio
         "users": [
             {
                 "id": u.id,
-                "unique_id": u.unique_id,
-                "gamer_tag": u.gamer_tag or u.unique_id,
+                "unique_id": ui.unique_id if ui else "FB-MISSING",
+                "gamer_tag": u.gamer_tag or (ui.unique_id if ui else "FB-MISSING"),
                 "avatar_url": u.avatar_url or "",
                 "is_public": u.is_public if u.is_public is not None else True,
                 "friends_only": u.friends_only if u.friends_only is not None else False
             }
-            for u in users if u.id != user_id
+            for u, ui in users_with_ids if u.id != user_id
         ]
     }
 
@@ -562,9 +628,11 @@ def get_target_user_profile(target_user_id: str, user_id: str = Depends(get_curr
     if not db:
         raise HTTPException(status_code=404, detail="Database not available")
 
-    target_user = db.query(DBUser).filter(DBUser.id == target_user_id).first()
-    if not target_user:
+    target = db.query(DBUser, DBUserIdentifier).outerjoin(DBUserIdentifier, DBUser.id == DBUserIdentifier.user_id).filter(DBUser.id == target_user_id).first()
+    if not target:
         raise HTTPException(status_code=404, detail="Target user not found")
+        
+    target_user, target_ui = target
 
     is_self = target_user.id == user_id
 
@@ -599,11 +667,12 @@ def get_target_user_profile(target_user_id: str, user_id: str = Depends(get_curr
         except Exception:
             startgg_data_parsed = None
 
+    uid_str = target_ui.unique_id if target_ui else "FB-MISSING"
     return {
         "profile": {
             "id": target_user.id,
-            "unique_id": target_user.unique_id,
-            "gamer_tag": target_user.gamer_tag or target_user.unique_id,
+            "unique_id": uid_str,
+            "gamer_tag": target_user.gamer_tag or uid_str,
             "avatar_url": target_user.avatar_url or "",
             "bio": "" if privacy_restricted else (target_user.bio or ""),
             "startgg_slug": "" if privacy_restricted else (target_user.startgg_slug or ""),

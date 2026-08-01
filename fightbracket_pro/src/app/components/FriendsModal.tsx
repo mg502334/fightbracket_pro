@@ -26,6 +26,17 @@ interface DirectMessage {
   sent_at: string;
 }
 
+interface InboxConversation {
+  partner_id: string;
+  gamer_tag: string;
+  unique_id: string;
+  avatar_url: string;
+  latest_message: string;
+  sent_at: string;
+  unread_count: number;
+}
+
+
 interface FriendsModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -35,10 +46,11 @@ interface FriendsModalProps {
 }
 
 export function FriendsModal({ isOpen, onClose, theme, currentUserId, supabaseToken }: FriendsModalProps) {
-  const [activeTab, setActiveTab] = useState<'friends' | 'pending' | 'add'>('friends');
+  const [activeTab, setActiveTab] = useState<'friends' | 'pending' | 'add' | 'inbox'>('inbox');
   const [friends, setFriends] = useState<Friend[]>([]);
   const [pendingIncoming, setPendingIncoming] = useState<PendingRequest[]>([]);
   const [pendingOutgoing, setPendingOutgoing] = useState<PendingRequest[]>([]);
+  const [inboxConversations, setInboxConversations] = useState<InboxConversation[]>([]);
   const [addIdentifier, setAddIdentifier] = useState('');
   const [loading, setLoading] = useState(false);
   const [statusMsg, setStatusMsg] = useState<{ text: string; isError: boolean } | null>(null);
@@ -65,9 +77,25 @@ export function FriendsModal({ isOpen, onClose, theme, currentUserId, supabaseTo
     }
   };
 
+  const fetchInbox = async () => {
+    if (!supabaseToken) return;
+    try {
+      const res = await fetch('/api/messages/inbox', {
+        headers: { Authorization: `Bearer ${supabaseToken}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setInboxConversations(data.conversations || []);
+      }
+    } catch (e) {
+      console.error('Error fetching inbox:', e);
+    }
+  };
+
   useEffect(() => {
     if (isOpen) {
       fetchFriends();
+      fetchInbox();
     }
   }, [isOpen, supabaseToken]);
 
@@ -215,6 +243,20 @@ export function FriendsModal({ isOpen, onClose, theme, currentUserId, supabaseTo
             {/* Left Nav / Tabs */}
             <div className="w-48 border-r bg-black/40 p-3 space-y-2 shrink-0" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
               <button
+                onClick={() => { setActiveTab('inbox'); setActiveChatFriend(null); }}
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-mono font-bold transition-all ${
+                  activeTab === 'inbox' && !activeChatFriend ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' : 'text-white/70 hover:bg-white/5'
+                }`}
+              >
+                <span className="flex items-center gap-2"><MessageSquare size={14} /> INBOX</span>
+                {inboxConversations.some(c => c.unread_count > 0) && (
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-cyan-500 text-black font-bold animate-pulse">
+                    {inboxConversations.filter(c => c.unread_count > 0).length}
+                  </span>
+                )}
+              </button>
+
+              <button
                 onClick={() => { setActiveTab('friends'); setActiveChatFriend(null); }}
                 className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-mono font-bold transition-all ${
                   activeTab === 'friends' && !activeChatFriend ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' : 'text-white/70 hover:bg-white/5'
@@ -319,6 +361,47 @@ export function FriendsModal({ isOpen, onClose, theme, currentUserId, supabaseTo
                       <Send size={12} />
                     </button>
                   </div>
+                </div>
+              ) : activeTab === 'inbox' ? (
+                /* Inbox List */
+                <div className="p-4 flex-1 overflow-y-auto custom-scrollbar space-y-3">
+                  {inboxConversations.length === 0 ? (
+                    <div className="text-center py-16 opacity-40 text-xs font-mono space-y-2">
+                      <MessageSquare size={32} className="mx-auto opacity-30" />
+                      <p>No messages yet.</p>
+                      <p className="text-[11px] opacity-60">Message a friend to start a conversation!</p>
+                    </div>
+                  ) : (
+                    inboxConversations.map(convo => (
+                      <div
+                        key={convo.partner_id}
+                        onClick={() => openChat({ id: convo.partner_id, gamer_tag: convo.gamer_tag, unique_id: convo.unique_id, avatar_url: convo.avatar_url })}
+                        className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5 hover:border-white/15 cursor-pointer transition-all"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-cyan-500/20 border border-cyan-400/40 flex items-center justify-center font-bold text-cyan-400 text-sm">
+                            {convo.gamer_tag.substring(0, 2).toUpperCase()}
+                          </div>
+                          <div>
+                            <div className="font-bold text-sm font-rajdhani text-white flex items-center gap-2">
+                              {convo.gamer_tag}
+                              {convo.unread_count > 0 && (
+                                <span className="bg-cyan-500 text-black text-[9px] px-1.5 py-0.5 rounded-full font-bold">
+                                  {convo.unread_count} NEW
+                               </span>
+                              )}
+                            </div>
+                            <div className="text-xs font-mono opacity-50 truncate max-w-[200px]">
+                              {convo.latest_message}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="text-[9px] font-mono opacity-40">
+                          {new Date(convo.sent_at).toLocaleDateString()}
+                        </div>
+                      </div>
+                    ))
+                  )}
                 </div>
               ) : activeTab === 'friends' ? (
                 /* Friends List */

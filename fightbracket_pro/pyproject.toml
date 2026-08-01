@@ -8,3 +8,4 @@ requires-python = "~=3.13.0"
 include = ["api"]
 venvPath = "."
 venv = ".venv"
+extraPaths = ["."]
