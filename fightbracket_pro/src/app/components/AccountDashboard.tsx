@@ -601,9 +601,8 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
             </div>
           </div>
 
-          {/* Start.gg Career Profile Importer */}
+          {/* Start.gg Career Profile Importer — self-contained with inline token step */}
           <div className="bg-[#050A14] border border-cyan-500/40 p-6 rounded-xl shadow-lg space-y-4 relative overflow-hidden">
-            {/* Subtle glow accent */}
             <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(ellipse at top left, rgba(0,229,255,0.06) 0%, transparent 70%)' }} />
             <div className="relative">
               <div className="flex items-center gap-2 mb-1">
@@ -611,43 +610,97 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
                 <h3 className="text-xl font-bold font-rajdhani text-cyan-400 tracking-widest">START.GG CAREER STATS</h3>
               </div>
               <p className="text-xs font-mono text-gray-400 leading-relaxed">
-                Paste your <span className="text-cyan-300">start.gg profile URL or slug</span> below to pull in your public tournament placements and career history. Your API token (entered on the right) is used automatically.
+                Import your public Start.gg profile to showcase tournament placements and career history on your FightBracket profile.
               </p>
             </div>
-            {/* Current linked slug badge */}
-            {userProfile?.startgg_slug && (
-              <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-cyan-500/10 border border-cyan-500/20">
-                <span className="text-[10px] font-mono text-gray-400">LINKED:</span>
-                <a
-                  href={`https://start.gg/user/${userProfile.startgg_slug}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-xs font-mono font-bold text-cyan-400 hover:underline flex items-center gap-1"
-                >
-                  start.gg/user/{userProfile.startgg_slug} <ExternalLink size={10} />
-                </a>
+
+            {/* Step 1: API Token */}
+            <div className={`space-y-2 p-3 rounded-lg border ${startggToken ? 'border-cyan-500/20 bg-cyan-500/5' : 'border-amber-500/40 bg-amber-500/5'}`}>
+              <div className="flex items-center justify-between">
+                <span className={`text-[10px] font-mono tracking-widest font-bold ${startggToken ? 'text-cyan-400' : 'text-amber-400'}`}>
+                  {startggToken ? '✓ STEP 1 — API TOKEN SAVED' : '⚠ STEP 1 — API TOKEN REQUIRED'}
+                </span>
+                {startggToken && (
+                  <button
+                    onClick={() => { setStartggToken(''); localStorage.removeItem('fb_startggToken'); }}
+                    className="text-[10px] font-mono text-gray-600 hover:text-red-400 transition-colors"
+                  >
+                    CLEAR
+                  </button>
+                )}
               </div>
-            )}
-            <div className="flex gap-2">
-              <input
-                type="text"
-                placeholder="e.g. start.gg/user/mang0  or just  mang0"
-                value={userStartggInput}
-                onChange={e => setUserStartggInput(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && !importingUserStartgg && userStartggInput.trim() && handleImportCareerStats()}
-                className="flex-1 bg-[#0a0a1a] border border-cyan-500/30 rounded-lg p-3 text-white focus:border-cyan-400 outline-none font-mono text-sm placeholder:text-gray-600 transition-colors"
-              />
-              <button
-                onClick={handleImportCareerStats}
-                disabled={importingUserStartgg || !userStartggInput.trim()}
-                className="px-5 py-2 rounded-lg bg-cyan-500/20 border border-cyan-500/50 text-cyan-400 hover:bg-cyan-500/30 font-rajdhani font-bold tracking-wider transition-all text-sm disabled:opacity-40 shrink-0"
-              >
-                {importingUserStartgg ? 'IMPORTING...' : 'IMPORT'}
-              </button>
+              {!startggToken ? (
+                <>
+                  <p className="text-[11px] font-mono text-amber-300/80">
+                    A Start.gg Developer API token is required.{' '}
+                    <a
+                      href="https://developer.start.gg/docs/authentication"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="underline hover:text-cyan-400 transition-colors"
+                    >
+                      Get your free token here ↗
+                    </a>
+                  </p>
+                  <div className="flex gap-2">
+                    <input
+                      type="password"
+                      placeholder="Paste your Start.gg API token..."
+                      value={startggToken}
+                      onChange={e => setStartggToken(e.target.value)}
+                      className="flex-1 bg-[#0a0a1a] border border-amber-500/40 rounded-lg p-2.5 text-white focus:border-cyan-400 outline-none font-mono text-sm placeholder:text-gray-600 transition-colors"
+                    />
+                    <button
+                      onClick={() => { localStorage.setItem('fb_startggToken', startggToken); toast.success('API token saved!'); }}
+                      disabled={!startggToken.trim()}
+                      className="px-4 py-2 rounded-lg bg-amber-500/20 border border-amber-500/50 text-amber-300 hover:bg-amber-500/30 font-rajdhani font-bold tracking-wider transition-all text-sm disabled:opacity-40 shrink-0"
+                    >
+                      SAVE TOKEN
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <p className="text-[11px] font-mono text-gray-500">Token is saved. Continue below to import your profile.</p>
+              )}
             </div>
-            <p className="text-[10px] font-mono text-gray-600">
-              ⓘ Supports full URLs (start.gg/user/…) or just the slug. Press Enter or click Import.
-            </p>
+
+            {/* Step 2: Slug / URL — disabled until token is present */}
+            <div className={`space-y-2 ${!startggToken ? 'opacity-40 pointer-events-none select-none' : ''}`}>
+              <span className="text-[10px] font-mono tracking-widest font-bold text-cyan-400">STEP 2 — ENTER YOUR PROFILE URL OR SLUG</span>
+              {userProfile?.startgg_slug && (
+                <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-cyan-500/10 border border-cyan-500/20">
+                  <span className="text-[10px] font-mono text-gray-400">CURRENTLY LINKED:</span>
+                  <a
+                    href={`https://start.gg/user/${userProfile.startgg_slug}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-xs font-mono font-bold text-cyan-400 hover:underline flex items-center gap-1"
+                  >
+                    start.gg/user/{userProfile.startgg_slug} <ExternalLink size={10} />
+                  </a>
+                </div>
+              )}
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="e.g. start.gg/user/mang0  or just  mang0"
+                  value={userStartggInput}
+                  onChange={e => setUserStartggInput(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && !importingUserStartgg && userStartggInput.trim() && handleImportCareerStats()}
+                  className="flex-1 bg-[#0a0a1a] border border-cyan-500/30 rounded-lg p-3 text-white focus:border-cyan-400 outline-none font-mono text-sm placeholder:text-gray-600 transition-colors"
+                />
+                <button
+                  onClick={handleImportCareerStats}
+                  disabled={importingUserStartgg || !userStartggInput.trim() || !startggToken}
+                  className="px-5 py-2 rounded-lg bg-cyan-500/20 border border-cyan-500/50 text-cyan-400 hover:bg-cyan-500/30 font-rajdhani font-bold tracking-wider transition-all text-sm disabled:opacity-40 shrink-0"
+                >
+                  {importingUserStartgg ? 'IMPORTING...' : 'IMPORT'}
+                </button>
+              </div>
+              <p className="text-[10px] font-mono text-gray-600">
+                ⓘ Supports full URLs (start.gg/user/…) or just the slug. Press Enter or click Import.
+              </p>
+            </div>
           </div>
 
           {/* Tekken 8 Importer Box */}
