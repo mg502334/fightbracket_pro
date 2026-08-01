@@ -3,7 +3,7 @@ import { Toaster, toast } from "sonner";
 import { motion, AnimatePresence } from "motion/react";
 import {
   Trophy, GitBranch, UserCheck, Monitor, MessageSquare, Smartphone,
-  ExternalLink, RefreshCw, Zap, MapPin, Globe, Moon, Sun, X, Tv, Cloud, Play, LayoutGrid, Trash2
+  ExternalLink, RefreshCw, Zap, MapPin, Globe, Moon, Sun, X, Tv, Cloud, Play, LayoutGrid, Trash2, Megaphone
 } from "lucide-react";
 import { useTheme } from "next-themes";
 
@@ -25,6 +25,7 @@ import { ReportScoreModal } from "./components/ReportScoreModal";
 import { FriendsModal } from "./components/FriendsModal";
 import { UserProfileModal } from "./components/UserProfileModal";
 import { StaticPageModal, type StaticPageId } from "./components/StaticPageModal";
+import { NewsPage } from "./components/NewsPage";
 import { Users } from "lucide-react";
 
 import {
@@ -968,6 +969,18 @@ export default function App() {
               LOGIN
             </button>
           )}
+          <button
+            onClick={() => setActiveTab('news')}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs tracking-wider hover:opacity-80 transition-opacity"
+            style={{
+              background: activeTab === 'news' ? '#a78bfa18' : 'var(--border)',
+              border: activeTab === 'news' ? '1px solid rgba(167,139,250,0.5)' : '1px solid rgba(167,139,250,0.2)',
+              color: '#a78bfa',
+              fontFamily: 'JetBrains Mono, monospace'
+            }}>
+            <Megaphone size={11} />
+            NEWS
+          </button>
           <ThemeToggleButton />
         </div>
       </header>
@@ -1061,7 +1074,9 @@ export default function App() {
 
       {/* Main content */}
       <main className="flex-1 overflow-auto p-3 md:p-5 relative">
-        {activeTab === 'account' ? (
+        {activeTab === 'news' ? (
+          <NewsPage onNavigateHome={() => setActiveTab('overview')} />
+        ) : activeTab === 'account' ? (
           <div className="h-full">
             <AccountDashboard
               user={supabaseUser}
@@ -1280,14 +1295,22 @@ export default function App() {
 
       <Toaster position="bottom-right" />
       <footer
-        className="shrink-0 border-t px-6 py-3"
+        className="shrink-0 border-t px-6 py-5"
         style={{ background: 'var(--sidebar)', borderColor: 'var(--border)', fontFamily: 'JetBrains Mono, monospace' }}
       >
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-2">
-          <span className="text-[11px] opacity-40">
+        <div className="flex flex-col items-center gap-2 text-center">
+          <div className="text-[12px] font-bold tracking-widest" style={{ fontFamily: 'Rajdhani, sans-serif', color: '#00E5FF' }}>
+            FIGHTBRACKET PRO
+          </div>
+          <div className="text-[10px] opacity-40 space-x-2">
+            <span>Developed and Hosted by <span className="opacity-80 text-white">Ender Gaming Core Hosting</span></span>
+            <span>&middot;</span>
+            <span>Powered by <span className="opacity-80 text-white">Start.gg</span></span>
+          </div>
+          <div className="text-[10px] opacity-30">
             &copy; 2026 Ender Gaming Core Hosting &mdash; All rights reserved.
-          </span>
-          <div className="flex items-center gap-4 text-[11px] opacity-50">
+          </div>
+          <div className="flex items-center gap-5 text-[10px] opacity-40 mt-1">
             {([
               { id: 'help', label: 'Help' },
               { id: 'privacy', label: 'Privacy Policy' },

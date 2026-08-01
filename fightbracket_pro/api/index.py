@@ -99,11 +99,13 @@ class ProfileUpdateRequest(BaseModel):
     bio: str | None = None
     avatar_url: str | None = None
     startgg_slug: str | None = None
+    tekken_id: str | None = None
     is_public: bool | None = None
     friends_only: bool | None = None
 
 class StartggImportRequest(BaseModel):
     startgg_slug_or_url: str
+    api_token: str | None = None
 
 class FriendRequestInput(BaseModel):
     target_identifier: str
@@ -196,6 +198,7 @@ def get_user_profile(user_id: str = Depends(get_current_user_id), db: Session = 
                 "avatar_url": user.avatar_url or "",
                 "startgg_slug": user.startgg_slug or "",
                 "startgg_data": user.startgg_data or "",
+                "tekken_id": user.tekken_id or "",
                 "is_public": user.is_public if user.is_public is not None else True,
                 "friends_only": user.friends_only if user.friends_only is not None else False,
                 "created_at": created_at_str
@@ -223,6 +226,8 @@ def update_user_profile(req: ProfileUpdateRequest, user_id: str = Depends(get_cu
         user.avatar_url = req.avatar_url.strip() # type: ignore
     if req.startgg_slug is not None:
         user.startgg_slug = req.startgg_slug.strip() # type: ignore
+    if req.tekken_id is not None:
+        user.tekken_id = req.tekken_id.strip() # type: ignore
     if req.is_public is not None:
         user.is_public = req.is_public # type: ignore
     if req.friends_only is not None:
@@ -240,6 +245,7 @@ def update_user_profile(req: ProfileUpdateRequest, user_id: str = Depends(get_cu
             "avatar_url": user.avatar_url or "",
             "startgg_slug": user.startgg_slug or "",
             "startgg_data": user.startgg_data or "",
+            "tekken_id": user.tekken_id or "",
             "is_public": user.is_public,
             "friends_only": user.friends_only,
             "created_at": user.created_at.isoformat() if user.created_at else datetime.now(timezone.utc).isoformat()
@@ -263,8 +269,10 @@ def import_startgg_profile(req: StartggImportRequest, user_id: str = Depends(get
     else:
         slug = slug_or_url.split('/')[0].split('?')[0]
 
-    # Fetch public start.gg player profile via start.gg API or mock structure if API key not present
-    startgg_api_key = os.environ.get("STARTGG_API_KEY")
+    # Fetch public start.gg player profile via start.gg API
+    startgg_api_key = os.environ.get("STARTGG_API_KEY") or req.api_token
+    if not startgg_api_key:
+        raise HTTPException(status_code=500, detail="Server Configuration Error: The server is missing the STARTGG_API_KEY environment variable. Please contact the administrator.")
     import json
     
     profile_info = {}
@@ -329,20 +337,10 @@ def import_startgg_profile(req: StartggImportRequest, user_id: str = Depends(get
                     }
         except Exception as e:
             print(f"Start.gg GraphQL import error: {e}")
+            raise HTTPException(status_code=500, detail=f"Failed to fetch from Start.gg API: {str(e)}")
 
     if not profile_info:
-        # Fallback public structure
-        profile_info = {
-            "slug": slug,
-            "gamerTag": slug.capitalize(),
-            "prefix": "FGC",
-            "imported_at": datetime.now(timezone.utc).isoformat(),
-            "events": [
-                { "event_name": "TEKKEN 8 Singles", "tournament_name": "CEO 2026", "placement": 9 },
-                { "event_name": "Street Fighter 6", "tournament_name": "Evo 2026", "placement": 17 },
-                { "event_name": "Guilty Gear: Strive", "tournament_name": "Frosty Faustings 2026", "placement": 5 }
-            ]
-        }
+        raise HTTPException(status_code=404, detail="Start.gg profile not found or could not be parsed.")
 
     user.startgg_slug = slug  # type: ignore
     if profile_info.get("gamerTag") and not user.gamer_tag:
@@ -352,6 +350,37 @@ def import_startgg_profile(req: StartggImportRequest, user_id: str = Depends(get
     db.refresh(user)
 
     return {"status": "success", "startgg_data": profile_info}
+
+@app.get("/api/users/search")
+def search_users(q: str = "", db: Session = Depends(get_db)):
+    if not db:
+        raise HTTPException(status_code=404, detail="Database not available")
+        
+    query = q.strip().lower()
+    if not query or len(query) < 2:
+        return {"users": []}
+        
+    # Search by gamer_tag (case-insensitive) or by unique_id (via user_identifiers)
+    results = db.query(DBUser, DBUserIdentifier).outerjoin(
+        DBUserIdentifier, DBUser.id == DBUserIdentifier.id
+    ).filter(
+        DBUser.is_public == True,
+        (DBUser.gamer_tag.ilike(f"%{query}%")) | (DBUserIdentifier.unique_id.ilike(f"%{query}%"))
+    ).limit(20).all()
+    
+    users_list = []
+    for user, identifier in results:
+        users_list.append({
+            "id": user.id,
+            "unique_id": identifier.unique_id if identifier else "",
+            "gamer_tag": user.gamer_tag or "",
+            "avatar_url": user.avatar_url or "",
+            "bio": user.bio or "",
+            "startgg_slug": user.startgg_slug or "",
+            "tekken_id": user.tekken_id or ""
+        })
+        
+    return {"users": users_list}
 
 # --- FRIENDS ENDPOINTS ---
 

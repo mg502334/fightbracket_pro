@@ -23,6 +23,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
   // Auth state
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [isLogin, setIsLogin] = useState(true);
 
   // Cloud state
@@ -40,6 +41,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
     bio?: string;
     startgg_slug?: string;
     startgg_data?: string;
+    tekken_id?: string;
     is_public?: boolean;
     friends_only?: boolean;
   } | null>(null);
@@ -47,6 +49,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
   const [profileError, setProfileError] = useState<string | null>(null);
 
   const [userStartggInput, setUserStartggInput] = useState('');
+  const [userTekkenId, setUserTekkenId] = useState('');
   const [importingUserStartgg, setImportingUserStartgg] = useState(false);
 
   // Start.gg state
@@ -78,6 +81,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
         }
         setUserProfile(data.user);
         if (data.user?.startgg_slug) setUserStartggInput(data.user.startgg_slug);
+        if (data.user?.tekken_id) setUserTekkenId(data.user.tekken_id);
       } else {
         const errText = await res.text().catch(() => res.statusText);
         setProfileError(`HTTP ${res.status}: ${errText}`);
@@ -98,7 +102,10 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
       const res = await fetch('/api/user/startgg-import', {
         method: 'POST',
         headers,
-        body: JSON.stringify({ startgg_slug_or_url: userStartggInput.trim() })
+        body: JSON.stringify({ 
+          startgg_slug_or_url: userStartggInput.trim(),
+          api_token: startggToken 
+        })
       });
       if (res.ok) {
         toast.success('Start.gg career profile imported!');
@@ -127,6 +134,24 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
       }
     } catch (err) {
       toast.error('Failed to update privacy settings');
+    }
+  };
+
+  const saveTekkenId = async () => {
+    if (!userTekkenId.trim()) return;
+    try {
+      const headers = await getHeaders();
+      const res = await fetch('/api/user/profile', {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify({ tekken_id: userTekkenId.trim() })
+      });
+      if (res.ok) {
+        toast.success('Tekken ID saved successfully');
+        fetchUserProfile();
+      }
+    } catch (err) {
+      toast.error('Failed to save Tekken ID');
     }
   };
 
@@ -179,6 +204,10 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
         toast.success('Logged in successfully');
       }
     } else {
+      if (password !== confirmPassword) {
+        toast.error('Passwords do not match');
+        return;
+      }
       const { error } = await supabase.auth.signUp({ email, password });
       if (error) {
         toast.error(getFriendlyError(error));
@@ -194,8 +223,6 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
       toast.error('Please enter your email address first to reset your password.');
       return;
     }
-    const verified = await verifyTurnstile();
-    if (!verified) return;
 
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: window.location.origin,
@@ -365,10 +392,13 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
           </div>
         )}
         <div className="flex-1 flex items-center justify-center">
-        <div className="bg-[#050A14] border border-[#00E5FF] p-10 rounded-xl shadow-2xl w-full max-w-lg">
-          <h2 className="text-3xl font-bold mb-8 text-[#00E5FF] text-center" style={{ fontFamily: 'Rajdhani, sans-serif' }}>
-            {isLogin ? 'FIGHTBRACKET ACCOUNT' : 'CREATE ACCOUNT'}
+        <div className={`bg-[#050A14] border p-10 rounded-xl shadow-2xl w-full max-w-lg transition-colors duration-300 ${isLogin ? 'border-[#00E5FF]' : 'border-[#FF006E]'}`}>
+          <h2 className={`text-3xl font-bold mb-2 text-center transition-colors duration-300 ${isLogin ? 'text-[#00E5FF]' : 'text-[#FF006E]'}`} style={{ fontFamily: 'Rajdhani, sans-serif' }}>
+            {isLogin ? 'SIGN IN' : 'CREATE ACCOUNT'}
           </h2>
+          <p className="text-center text-gray-400 text-sm mb-8 font-mono">
+            {isLogin ? 'Welcome back to FightBracket' : 'Join the next generation of bracket management'}
+          </p>
 
           {/* Discord OAuth */}
           <button
@@ -376,8 +406,8 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
             className="w-full flex items-center justify-center gap-3 py-3 rounded-lg text-white font-bold text-lg tracking-widest mb-6 transition-all hover:brightness-110"
             style={{ background: '#5865F2', fontFamily: 'Rajdhani, sans-serif' }}
           >
-            <svg width="20" height="20" viewBox="0 0 71 55" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M60.1045 4.8978C55.5792 2.8214 50.7265 1.2916 45.6527 0.41542C45.5603 0.39851 45.468 0.440769 45.4204 0.525289C44.7963 1.6353 44.105 3.0834 43.6209 4.2216C38.1637 3.4046 32.7345 3.4046 27.3892 4.2216C26.905 3.0581 26.1886 1.6353 25.5617 0.525289C25.5141 0.443589 25.4218 0.40133 25.3294 0.41542C20.2584 1.2888 15.4057 2.8186 10.8776 4.8978C10.8384 4.9147 10.8048 4.9429 10.7825 4.9795C1.57795 18.7309 -0.943561 32.1443 0.293408 45.3914C0.299005 45.4562 0.335386 45.5182 0.385761 45.5576C6.45866 50.0174 12.3413 52.7249 18.1147 54.5195C18.2071 54.5477 18.305 54.5139 18.3638 54.4378C19.7295 52.5728 20.9469 50.6063 21.9907 48.5383C22.0523 48.4172 21.9935 48.2735 21.8676 48.2256C19.9366 47.4931 18.0979 46.6 16.3292 45.5858C16.1893 45.5041 16.1781 45.304 16.3068 45.2082C16.679 44.9293 17.0513 44.6391 17.4067 44.3461C17.471 44.2926 17.5606 44.2813 17.6362 44.3151C29.2558 49.6202 41.8354 49.6202 53.3179 44.3151C53.3## 44.2785 53.4831 44.2898 53.5502 44.3433C53.9057 44.6363 54.2779 44.9293 54.6529 45.2082C54.7816 45.304 54.7732 45.5041 54.6333 45.5858C52.8646 46.6197 51.0259 47.4931 49.0921 48.2228C48.9662 48.2707 48.9102 48.4172 48.9718 48.5383C50.038 50.6034 51.2554 52.5699 52.5959 54.435C52.6519 54.5139 52.7526 54.5477 52.845 54.5195C58.6464 52.7249 64.529 50.0174 70.6019 45.5576C70.6551 45.5182 70.6887 45.459 70.6943 45.3942C72.1747 30.0791 68.2147 16.7757 60.1968 4.9823C60.1772 4.9429 60.1437 4.9147 60.1045 4.8978Z" fill="white"/>
+            <svg width="24" height="24" viewBox="0 0 127.14 96.36" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36,77.7,77.7,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.66,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1A105.25,105.25,0,0,0,126.6,80.22h0C129.24,52.84,122.09,29.11,107.7,8.07ZM42.45,65.69C36.18,65.69,31,60,31,53s5-12.74,11.43-12.74S54,46,53.89,53,48.84,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.31,60,73.31,53s5-12.74,11.43-12.74S96.33,46,96.22,53,91.08,65.69,84.69,65.69Z" fill="white"/>
             </svg>
             SIGN IN WITH DISCORD
           </button>
@@ -392,7 +422,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
             <div>
               <label className="block text-sm text-gray-400 mb-2" style={{ fontFamily: 'JetBrains Mono, monospace' }}>EMAIL</label>
               <input type="email" value={email} onChange={e => setEmail(e.target.value)} required
-                className="w-full bg-[#111] border border-gray-800 rounded-lg p-3 text-white focus:border-[#00E5FF] outline-none transition-colors" />
+                className={`w-full bg-[#111] border border-gray-800 rounded-lg p-3 text-white outline-none transition-colors ${isLogin ? 'focus:border-[#00E5FF]' : 'focus:border-[#FF006E]'}`} />
             </div>
             <div>
               <div className="flex justify-between items-center mb-2">
@@ -404,8 +434,15 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
                 )}
               </div>
               <input type="password" value={password} onChange={e => setPassword(e.target.value)} required
-                className="w-full bg-[#111] border border-gray-800 rounded-lg p-3 text-white focus:border-[#00E5FF] outline-none transition-colors" />
+                className={`w-full bg-[#111] border border-gray-800 rounded-lg p-3 text-white outline-none transition-colors ${isLogin ? 'focus:border-[#00E5FF]' : 'focus:border-[#FF006E]'}`} />
             </div>
+            {!isLogin && (
+              <div>
+                <label className="block text-sm text-gray-400 mb-2" style={{ fontFamily: 'JetBrains Mono, monospace' }}>CONFIRM PASSWORD</label>
+                <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} required
+                  className="w-full bg-[#111] border border-gray-800 rounded-lg p-3 text-white outline-none transition-colors focus:border-[#FF006E]" />
+              </div>
+            )}
             <div className="flex justify-center mt-4">
               <div 
                 className="cf-turnstile" 
@@ -414,8 +451,8 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
                 data-theme="dark"
               ></div>
             </div>
-            <button type="submit" className="w-full bg-[#00E5FF] hover:bg-[#00E5FF]/80 text-black font-bold py-3 rounded-lg text-xl transition-all tracking-widest mt-4" style={{ fontFamily: 'Rajdhani, sans-serif' }}>
-              {isLogin ? 'SIGN IN' : 'REGISTER'}
+            <button type="submit" className={`w-full font-bold py-3 rounded-lg text-xl transition-all tracking-widest mt-4 ${isLogin ? 'bg-[#00E5FF] hover:bg-[#00E5FF]/80 text-black' : 'bg-[#FF006E] hover:bg-[#FF006E]/80 text-white'}`} style={{ fontFamily: 'Rajdhani, sans-serif' }}>
+              {isLogin ? 'SIGN IN' : 'REGISTER NOW'}
             </button>
           </form>
           <div className="mt-8 text-center border-t border-gray-800 pt-6">
@@ -455,16 +492,16 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
           {onOpenFriendsModal && (
             <button
               onClick={onOpenFriendsModal}
-              className="flex items-center gap-2 px-4 py-2 rounded bg-cyan-500/20 text-cyan-400 border border-cyan-500/40 hover:bg-cyan-500/30 transition-all font-rajdhani tracking-widest font-bold"
+              className="flex items-center gap-2 px-5 py-2 rounded-lg border border-[#00E5FF]/50 text-[#00E5FF] hover:bg-[#00E5FF]/10 transition-all font-rajdhani tracking-widest font-bold text-sm"
             >
-              FRIENDS & DMs
+              FRIENDS &amp; DMs
             </button>
           )}
           <button 
             onClick={() => supabase.auth.signOut()} 
-            className="flex items-center gap-2 px-4 py-2 rounded border border-[#FF006E]/30 text-[#FF006E] hover:bg-[#FF006E]/10 transition-colors font-rajdhani tracking-widest font-bold"
+            className="flex items-center gap-2 px-5 py-2 rounded-lg border border-[#FF006E]/50 text-[#FF006E] hover:bg-[#FF006E]/10 transition-all font-rajdhani tracking-widest font-bold text-sm"
           >
-            <LogOut size={16}/> LOGOUT
+            <LogOut size={15}/> LOGOUT
           </button>
         </div>
       </div>
@@ -515,11 +552,11 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
                 value={displayName} 
                 onChange={e => setDisplayName(e.target.value)} 
                 placeholder="Gamertag or Channel Name" 
-                className="flex-1 bg-[#111] border border-gray-800 rounded p-2 text-white focus:border-[#00FF88] outline-none font-mono text-sm" 
+                className="flex-1 bg-[#111] border border-gray-800 rounded-lg p-2.5 text-white focus:border-[#00FF88] outline-none font-mono text-sm" 
               />
               <button 
                 onClick={saveDisplayName} 
-                className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded font-rajdhani font-bold tracking-wider transition-colors"
+                className="px-5 py-2 rounded-lg border border-[#00FF88]/50 text-[#00FF88] hover:bg-[#00FF88]/10 font-rajdhani font-bold tracking-wider transition-all text-sm"
               >
                 SAVE
               </button>
@@ -566,14 +603,38 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
                 placeholder="e.g. start.gg/user/mang0 or mang0"
                 value={userStartggInput}
                 onChange={e => setUserStartggInput(e.target.value)}
-                className="flex-1 bg-[#111] border border-gray-800 rounded p-2 text-white focus:border-cyan-400 outline-none font-mono text-sm"
+                className="flex-1 bg-[#111] border border-gray-800 rounded-lg p-2.5 text-white focus:border-cyan-400 outline-none font-mono text-sm"
               />
               <button
                 onClick={handleImportCareerStats}
                 disabled={importingUserStartgg || !userStartggInput.trim()}
-                className="px-4 py-2 bg-cyan-500 text-black font-bold rounded font-rajdhani tracking-wider hover:brightness-125 disabled:opacity-40 transition-all text-sm"
+                className="px-5 py-2 rounded-lg border border-cyan-500/50 text-cyan-400 hover:bg-cyan-500/10 font-rajdhani font-bold tracking-wider transition-all text-sm disabled:opacity-40"
               >
                 {importingUserStartgg ? 'IMPORTING...' : 'IMPORT'}
+              </button>
+            </div>
+          </div>
+
+          {/* Tekken 8 Importer Box */}
+          <div className="bg-[#050A14] border border-[#ff003c]/30 p-6 rounded-xl shadow-lg space-y-4">
+            <h3 className="text-xl font-bold font-rajdhani text-[#ff003c] tracking-widest">TEKKEN 8 POLARIS ID</h3>
+            <p className="text-xs font-mono opacity-60">
+              Add your Tekken 8 Polaris ID to fetch live game stats and player metrics.
+            </p>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                placeholder="e.g. 1234-5678-9012"
+                value={userTekkenId}
+                onChange={e => setUserTekkenId(e.target.value)}
+                className="flex-1 bg-[#111] border border-gray-800 rounded-lg p-2.5 text-white focus:border-[#ff003c] outline-none font-mono text-sm"
+              />
+              <button
+                onClick={saveTekkenId}
+                disabled={!userTekkenId.trim()}
+                className="px-5 py-2 rounded-lg border border-[#ff003c]/50 text-[#ff003c] hover:bg-[#ff003c]/10 font-rajdhani font-bold tracking-wider transition-all text-sm disabled:opacity-40"
+              >
+                SAVE
               </button>
             </div>
           </div>
@@ -581,10 +642,12 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
           <div className="bg-[#050A14] border border-[#00E5FF]/30 p-6 rounded-xl shadow-lg">
             <div className="flex justify-between items-center mb-6 border-b border-gray-800 pb-4">
               <h3 className="text-xl font-bold font-rajdhani text-[#00E5FF] tracking-widest">CLOUD SAVES</h3>
-              <div className="flex gap-2">
-                <button onClick={fetchCloudTournaments} className="p-2 bg-white/5 hover:bg-white/10 rounded text-white transition-colors"><RefreshCw size={16} /></button>
-                <button onClick={saveToCloud} disabled={saving} className="flex items-center gap-2 px-3 py-2 bg-[#00E5FF] hover:bg-[#00E5FF]/80 text-black font-bold rounded transition-colors font-rajdhani tracking-wider disabled:opacity-50">
-                  <Save size={16} /> {saving ? 'SAVING...' : 'SAVE CURRENT'}
+          <div className="flex gap-2">
+                <button onClick={fetchCloudTournaments} className="p-2 rounded-lg border border-white/10 text-white hover:border-white/30 hover:bg-white/5 transition-all" title="Refresh">
+                  <RefreshCw size={15} />
+                </button>
+                <button onClick={saveToCloud} disabled={saving} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#00E5FF] hover:bg-[#00E5FF]/80 text-black font-bold transition-all font-rajdhani tracking-wider text-sm disabled:opacity-50">
+                  <Save size={15} /> {saving ? 'SAVING...' : 'SAVE CURRENT'}
                 </button>
               </div>
             </div>
@@ -633,9 +696,9 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
                 value={startggToken} 
                 onChange={e => setStartggToken(e.target.value)} 
                 placeholder="Paste Start.gg API Token..." 
-                className="flex-1 bg-[#111] border border-gray-800 rounded p-2 text-white focus:border-[#FF006E] outline-none font-mono text-sm" 
+                className="flex-1 bg-[#111] border border-gray-800 rounded-lg p-2.5 text-white focus:border-[#FF006E] outline-none font-mono text-sm" 
               />
-              <button onClick={saveStartggToken} className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded font-rajdhani font-bold tracking-wider transition-colors">
+              <button onClick={saveStartggToken} className="px-5 py-2 rounded-lg border border-[#FF006E]/50 text-[#FF006E] hover:bg-[#FF006E]/10 font-rajdhani font-bold tracking-wider transition-all text-sm">
                 SAVE
               </button>
             </div>
