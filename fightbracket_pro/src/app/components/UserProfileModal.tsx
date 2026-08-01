@@ -176,52 +176,89 @@ export function UserProfileModal({ isOpen, onClose, targetUserId, supabaseToken,
                   </div>
                 )}
 
-                {/* Start.gg Imported History */}
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-xs font-mono font-bold tracking-widest text-cyan-400 flex items-center gap-2">
-                      <Trophy size={14} /> START.GG CAREER STATS
-                    </h3>
+                {/* ── Start.gg Career Stats Panel ── */}
+                <div className="rounded-xl border bg-[#050A14] space-y-4 p-4 overflow-hidden relative" style={{ borderColor: 'rgba(0,229,255,0.25)' }}>
+                  {/* Glow */}
+                  <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(ellipse at top left, rgba(0,229,255,0.07) 0%, transparent 65%)' }} />
+
+                  {/* Header */}
+                  <div className="relative flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Trophy size={15} style={{ color: '#00E5FF' }} />
+                      <h3 className="text-base font-bold font-rajdhani tracking-widest text-[#00E5FF]">
+                        START.GG CAREER
+                      </h3>
+                    </div>
                     {profile?.startgg_slug && (
                       <a
                         href={`https://start.gg/user/${profile.startgg_slug}`}
                         target="_blank"
                         rel="noreferrer"
-                        className="text-[11px] font-mono text-white/50 hover:text-cyan-400 flex items-center gap-1"
+                        className="text-[10px] font-mono text-white/40 hover:text-cyan-400 flex items-center gap-1 transition-colors"
                       >
-                        Start.gg <ExternalLink size={10} />
+                        View Profile <ExternalLink size={9} />
                       </a>
                     )}
                   </div>
 
                   {profile?.startgg_data?.events && profile.startgg_data.events.length > 0 ? (
-                    <div className="space-y-2">
-                      {profile.startgg_data.events.map((ev, i) => (
-                        <div
-                          key={i}
-                          className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5"
-                        >
-                          <div>
-                            <div className="font-bold text-xs font-rajdhani text-white">{ev.event_name}</div>
-                            <div className="text-[10px] font-mono opacity-40">{ev.tournament_name}</div>
-                          </div>
-                          <div className="text-xs font-mono font-bold px-2.5 py-1 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/30">
-                            #{ev.placement}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+                    <>
+                      {/* Summary pill */}
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-mono px-2.5 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-400">
+                          {profile.startgg_data.events.length} event{profile.startgg_data.events.length !== 1 ? 's' : ''} recorded
+                        </span>
+                        {profile.startgg_data.gamerTag && (
+                          <span className="text-[10px] font-mono text-gray-500">{profile.startgg_data.gamerTag}</span>
+                        )}
+                      </div>
+
+                      {/* Event rows */}
+                      <div className="space-y-1.5">
+                        {profile.startgg_data.events.map((ev, i) => {
+                          const place = Number(ev.placement);
+                          const medalColor =
+                            place === 1 ? '#FFD700' :
+                            place === 2 ? '#C0C0C0' :
+                            place === 3 ? '#CD7F32' :
+                            place <= 8  ? '#00E5FF' : '#6B7280';
+                          const medalBg =
+                            place === 1 ? 'rgba(255,215,0,0.1)' :
+                            place === 2 ? 'rgba(192,192,192,0.08)' :
+                            place === 3 ? 'rgba(205,127,50,0.1)' :
+                            place <= 8  ? 'rgba(0,229,255,0.08)' : 'rgba(255,255,255,0.04)';
+
+                          return (
+                            <div
+                              key={i}
+                              className="flex items-center justify-between px-3 py-2 rounded-lg border border-white/5 hover:border-white/10 transition-colors"
+                              style={{ background: medalBg }}
+                            >
+                              <div className="min-w-0 pr-2">
+                                <div className="font-bold text-xs font-rajdhani text-white truncate">{ev.event_name}</div>
+                                <div className="text-[10px] font-mono text-gray-500 truncate">{ev.tournament_name}</div>
+                              </div>
+                              <div
+                                className="text-xs font-mono font-bold px-2.5 py-1 rounded shrink-0"
+                                style={{ color: medalColor, background: `${medalColor}15`, border: `1px solid ${medalColor}30` }}
+                              >
+                                {place === 1 ? '🥇' : place === 2 ? '🥈' : place === 3 ? '🥉' : `#${ev.placement}`}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </>
                   ) : (
-                    <div className="p-6 rounded-xl border border-white/5 bg-white/5 text-center text-xs font-mono opacity-40">
-                      No public Start.gg event history synced yet.
+                    <div className="py-6 text-center text-xs font-mono text-gray-600">
+                      No Start.gg event history imported yet.
                     </div>
                   )}
                 </div>
 
-                {/* Tekken 8 Live Stats */}
-                <div className="space-y-2">
-                  <TekkenStatsPanel tekkenId={profile?.tekken_id} compact />
-                </div>
+                {/* ── Tekken 8 Live Stats Panel ── */}
+                <TekkenStatsPanel tekkenId={profile?.tekken_id} compact />
+
 
                 {/* Friend / DM Actions */}
                 <div className="pt-2 flex gap-3">
