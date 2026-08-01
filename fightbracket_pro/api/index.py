@@ -255,7 +255,7 @@ def update_user_profile(req: ProfileUpdateRequest, user_id: str = Depends(get_cu
 @app.post("/api/user/startgg-import")
 def import_startgg_profile(req: StartggImportRequest, user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
     if not db:
-        raise HTTPException(status_code=404, detail="Database not available")
+        raise HTTPException(status_code=503, detail="Database unavailable — check server configuration")
         
     user = db.query(DBUser).filter(DBUser.id == user_id).first()
     if not user:
@@ -269,10 +269,18 @@ def import_startgg_profile(req: StartggImportRequest, user_id: str = Depends(get
     else:
         slug = slug_or_url.split('/')[0].split('?')[0]
 
-    # Fetch public start.gg player profile via start.gg API
-    startgg_api_key = os.environ.get("STARTGG_API_KEY") or req.api_token
+    # Accept either env var name, or the token passed directly from the frontend
+    startgg_api_key = (
+        os.environ.get("STARTGG_API_KEY")
+        or os.environ.get("STARTGG_API_TOKEN")
+        or os.environ.get("STARTGG_3RD_PARTY_TOKEN")
+        or req.api_token
+    )
     if not startgg_api_key:
-        raise HTTPException(status_code=500, detail="Server Configuration Error: The server is missing the STARTGG_API_KEY environment variable. Please contact the administrator.")
+        raise HTTPException(
+            status_code=400,
+            detail="A Start.gg API token is required. Paste your token in the Start.gg Career Stats box and click 'Save Token'."
+        )
     import json
     
     profile_info = {}
@@ -340,7 +348,11 @@ def import_startgg_profile(req: StartggImportRequest, user_id: str = Depends(get
             raise HTTPException(status_code=500, detail=f"Failed to fetch from Start.gg API: {str(e)}")
 
     if not profile_info:
-        raise HTTPException(status_code=404, detail="Start.gg profile not found or could not be parsed.")
+        # Try to surface a helpful error: check if the slug lookup returned errors
+        raise HTTPException(
+            status_code=404,
+            detail=f"Start.gg profile '{slug}' not found. Double-check your slug (e.g. 'mang0' not the full URL) and that the profile is public."
+        )
 
     user.startgg_slug = slug  # type: ignore
     if profile_info.get("gamerTag") and not user.gamer_tag:

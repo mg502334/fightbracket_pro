@@ -113,14 +113,21 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
         toast.success('Start.gg career profile imported!');
         fetchUserProfile();
       } else {
-        toast.error('Failed to import Start.gg profile');
+        // Surface the actual server error so user knows what to fix
+        let detail = 'Failed to import Start.gg profile';
+        try {
+          const errData = await res.json();
+          if (errData?.detail) detail = errData.detail;
+        } catch {}
+        toast.error(detail, { duration: 6000 });
       }
     } catch (err) {
-      toast.error('Error connecting to server');
+      toast.error('Error connecting to server — check your internet connection');
     } finally {
       setImportingUserStartgg(false);
     }
   };
+
 
   const handleTogglePrivacy = async (field: 'is_public' | 'friends_only', value: boolean) => {
     try {
