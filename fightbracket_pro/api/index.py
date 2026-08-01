@@ -157,41 +157,54 @@ def get_user_profile(user_id: str = Depends(get_current_user_id), db: Session = 
     import random
     import string
     
-    user = db.query(DBUser).filter(DBUser.id == user_id).first()
-    if not user:
-        user = DBUser(id=user_id)
-        db.add(user)
-        db.commit()
-        db.refresh(user)
+    try:
+        user = db.query(DBUser).filter(DBUser.id == user_id).first()
+        if not user:
+            user = DBUser(id=user_id)
+            db.add(user)
+            db.commit()
+            db.refresh(user)
 
-    identifier = db.query(DBUserIdentifier).filter(DBUserIdentifier.user_id == user_id).first()
-    if not identifier:
-        while True:
-            unique_part = ''.join(random.choices(string.ascii_uppercase + string.digits, k=4))
-            unique_part2 = ''.join(random.choices(string.ascii_uppercase + string.digits, k=4))
-            unique_id = f"FB-{unique_part}-{unique_part2}"
-            if not db.query(DBUserIdentifier).filter(DBUserIdentifier.unique_id == unique_id).first():
-                break
-        
-        identifier = DBUserIdentifier(user_id=user_id, unique_id=unique_id)
-        db.add(identifier)
-        db.commit()
-        db.refresh(identifier)
-        
-    return {
-        "user": {
-            "id": user.id,
-            "unique_id": identifier.unique_id,
-            "gamer_tag": user.gamer_tag or "",
-            "bio": user.bio or "",
-            "avatar_url": user.avatar_url or "",
-            "startgg_slug": user.startgg_slug or "",
-            "startgg_data": user.startgg_data or "",
-            "is_public": user.is_public if user.is_public is not None else True,
-            "friends_only": user.friends_only if user.friends_only is not None else False,
-            "created_at": user.created_at.isoformat() if user.created_at else datetime.now(timezone.utc).isoformat()
+        identifier = db.query(DBUserIdentifier).filter(DBUserIdentifier.id == user_id).first()
+        if not identifier:
+            while True:
+                unique_part = ''.join(random.choices(string.ascii_uppercase + string.digits, k=4))
+                unique_part2 = ''.join(random.choices(string.ascii_uppercase + string.digits, k=4))
+                unique_id = f"FB-{unique_part}-{unique_part2}"
+                if not db.query(DBUserIdentifier).filter(DBUserIdentifier.unique_id == unique_id).first():
+                    break
+            
+            identifier = DBUserIdentifier(id=user_id, unique_id=unique_id)
+            db.add(identifier)
+            db.commit()
+            db.refresh(identifier)
+            
+        created_at_val = user.created_at
+        if hasattr(created_at_val, "isoformat"):
+            created_at_str = created_at_val.isoformat()
+        elif created_at_val:
+            created_at_str = str(created_at_val)
+        else:
+            created_at_str = datetime.now(timezone.utc).isoformat()
+
+        return {
+            "user": {
+                "id": user.id,
+                "unique_id": identifier.unique_id,
+                "gamer_tag": user.gamer_tag or "",
+                "bio": user.bio or "",
+                "avatar_url": user.avatar_url or "",
+                "startgg_slug": user.startgg_slug or "",
+                "startgg_data": user.startgg_data or "",
+                "is_public": user.is_public if user.is_public is not None else True,
+                "friends_only": user.friends_only if user.friends_only is not None else False,
+                "created_at": created_at_str
+            }
         }
-    }
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return {"error": str(e), "user": None}
 
 @app.put("/api/user/profile")
 def update_user_profile(req: ProfileUpdateRequest, user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
@@ -368,7 +381,7 @@ def get_friends(user_id: str = Depends(get_current_user_id), db: Session = Depen
     all_user_ids = list(accepted_friend_ids.union(pending_incoming_map.keys()).union(pending_outgoing_map.keys()))
     user_objects = {}
     if all_user_ids:
-        users_with_ids = db.query(DBUser, DBUserIdentifier).outerjoin(DBUserIdentifier, DBUser.id == DBUserIdentifier.user_id).filter(DBUser.id.in_(all_user_ids)).all()
+        users_with_ids = db.query(DBUser, DBUserIdentifier).outerjoin(DBUserIdentifier, DBUser.id == DBUserIdentifier.id).filter(DBUser.id.in_(all_user_ids)).all()
         for u, ui in users_with_ids:
             user_objects[u.id] = (u, ui.unique_id if ui else "FB-MISSING")
 
@@ -400,7 +413,7 @@ def send_friend_request(req: FriendRequestInput, user_id: str = Depends(get_curr
         raise HTTPException(status_code=404, detail="Database not available")
 
     identifier = req.target_identifier.strip()
-    target = db.query(DBUser, DBUserIdentifier).outerjoin(DBUserIdentifier, DBUser.id == DBUserIdentifier.user_id).filter(
+    target = db.query(DBUser, DBUserIdentifier).outerjoin(DBUserIdentifier, DBUser.id == DBUserIdentifier.id).filter(
         (DBUserIdentifier.unique_id == identifier) | (DBUser.id == identifier) | (DBUser.gamer_tag == identifier)
     ).first()
 
@@ -440,7 +453,7 @@ def respond_friend_request(req: FriendResponseInput, user_id: str = Depends(get_
         raise HTTPException(status_code=403, detail="Not authorized")
 
     if req.action == "accept":
-        friendship.status = "accepted"
+        friendship.status = "accepted" # type: ignore
         db.commit()
         return {"status": "accepted"}
     elif req.action == "decline":
@@ -497,7 +510,7 @@ def get_inbox_conversations(user_id: str = Depends(get_current_user_id), db: Ses
     # Fetch partner user objects
     partner_ids = list(convos.keys())
     if partner_ids:
-        partners_with_ids = db.query(DBUser, DBUserIdentifier).outerjoin(DBUserIdentifier, DBUser.id == DBUserIdentifier.user_id).filter(DBUser.id.in_(partner_ids)).all()
+        partners_with_ids = db.query(DBUser, DBUserIdentifier).outerjoin(DBUserIdentifier, DBUser.id == DBUserIdentifier.id).filter(DBUser.id.in_(partner_ids)).all()
         
         for u, ui in partners_with_ids:
             uid_str = ui.unique_id if ui else "FB-MISSING"
@@ -603,7 +616,7 @@ def search_users(q: str, user_id: str = Depends(get_current_user_id), db: Sessio
         return {"users": []}
 
     query_str = f"%{q.strip()}%"
-    users_with_ids = db.query(DBUser, DBUserIdentifier).outerjoin(DBUserIdentifier, DBUser.id == DBUserIdentifier.user_id).filter(
+    users_with_ids = db.query(DBUser, DBUserIdentifier).outerjoin(DBUserIdentifier, DBUser.id == DBUserIdentifier.id).filter(
         (DBUser.gamer_tag.ilike(query_str)) |
         (DBUserIdentifier.unique_id.ilike(query_str)) |
         (DBUser.id == q.strip())
@@ -628,7 +641,7 @@ def get_target_user_profile(target_user_id: str, user_id: str = Depends(get_curr
     if not db:
         raise HTTPException(status_code=404, detail="Database not available")
 
-    target = db.query(DBUser, DBUserIdentifier).outerjoin(DBUserIdentifier, DBUser.id == DBUserIdentifier.user_id).filter(DBUser.id == target_user_id).first()
+    target = db.query(DBUser, DBUserIdentifier).outerjoin(DBUserIdentifier, DBUser.id == DBUserIdentifier.id).filter(DBUser.id == target_user_id).first()
     if not target:
         raise HTTPException(status_code=404, detail="Target user not found")
         

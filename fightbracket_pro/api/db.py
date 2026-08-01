@@ -27,8 +27,9 @@ class DBFriendship(Base):
 
 class DBUserIdentifier(Base):
     __tablename__ = "user_identifiers"
-    user_id = Column(String, primary_key=True, index=True) # Matches Supabase user ID
+    id = Column(String, primary_key=True, index=True) # Matches Supabase user ID (stored as 'id' in Neon)
     unique_id = Column(String, unique=True, index=True, nullable=False) # FB-XXXX-YYYY
+    created_at = Column(DateTime, nullable=True)
 
 
 class DBDirectMessage(Base):
@@ -87,11 +88,16 @@ def _get_engine():
         try:
             _engine = create_engine(DATABASE_URL)
             _SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=_engine)
-            Base.metadata.create_all(bind=_engine)
         except Exception as e:
             print(f"DB connection failed: {e}")
             _engine = None
             _SessionLocal = None
+            return None, None
+    # Always run create_all so new tables are created even if engine was already cached
+    try:
+        Base.metadata.create_all(bind=_engine)
+    except Exception as e:
+        print(f"DB schema sync warning: {e}")
     return _engine, _SessionLocal
 
 def get_db():

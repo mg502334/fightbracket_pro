@@ -1083,6 +1083,7 @@ export default function App() {
               }}
               onStartggImport={(slug) => handleLiveImport(slug)}
               onOpenFriendsModal={() => setShowFriendsModal(true)}
+              onNavigateHome={() => setActiveTab('overview')}
             />
           </div>
         ) : !activeGame || !theme ? (

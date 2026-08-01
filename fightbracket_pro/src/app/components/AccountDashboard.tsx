@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
-import { Trash2, Save, Download, RefreshCw, Key, LogOut } from 'lucide-react';
+import { Trash2, Save, Download, RefreshCw, Key, LogOut, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 
 declare global {
@@ -16,9 +16,10 @@ interface AccountDashboardProps {
   onLoad: (data: any) => void;
   onStartggImport: (slug: string) => void;
   onOpenFriendsModal?: () => void;
+  onNavigateHome?: () => void;
 }
 
-export function AccountDashboard({ user, theme, currentTournamentData, onLoad, onStartggImport, onOpenFriendsModal }: AccountDashboardProps) {
+export function AccountDashboard({ user, theme, currentTournamentData, onLoad, onStartggImport, onOpenFriendsModal, onNavigateHome }: AccountDashboardProps) {
   // Auth state
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -42,6 +43,8 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
     is_public?: boolean;
     friends_only?: boolean;
   } | null>(null);
+  const [profileLoading, setProfileLoading] = useState(true);
+  const [profileError, setProfileError] = useState<string | null>(null);
 
   const [userStartggInput, setUserStartggInput] = useState('');
   const [importingUserStartgg, setImportingUserStartgg] = useState(false);
@@ -61,16 +64,29 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
   }, [user]);
 
   const fetchUserProfile = async () => {
+    setProfileLoading(true);
+    setProfileError(null);
     try {
       const headers = await getHeaders();
       const res = await fetch('/api/user/profile', { headers });
       if (res.ok) {
         const data = await res.json();
+        if (data.error) {
+          setProfileError(data.error);
+          console.error('Profile API error:', data.error);
+          return;
+        }
         setUserProfile(data.user);
         if (data.user?.startgg_slug) setUserStartggInput(data.user.startgg_slug);
+      } else {
+        const errText = await res.text().catch(() => res.statusText);
+        setProfileError(`HTTP ${res.status}: ${errText}`);
       }
-    } catch (err) {
+    } catch (err: any) {
+      setProfileError(err?.message || 'Network error');
       console.error('Failed to fetch user profile', err);
+    } finally {
+      setProfileLoading(false);
     }
   };
 
@@ -337,7 +353,18 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
     };
 
     return (
-      <div className="flex items-center justify-center h-full p-4">
+      <div className="flex flex-col h-full p-4">
+        {onNavigateHome && (
+          <div className="mb-4">
+            <button
+              onClick={onNavigateHome}
+              className="flex items-center gap-2 px-3 py-1.5 rounded text-xs font-mono tracking-wider text-gray-400 hover:text-white border border-white/10 hover:border-white/30 bg-white/5 hover:bg-white/10 transition-all"
+            >
+              <ArrowLeft size={12} /> BACK TO HOME
+            </button>
+          </div>
+        )}
+        <div className="flex-1 flex items-center justify-center">
         <div className="bg-[#050A14] border border-[#00E5FF] p-10 rounded-xl shadow-2xl w-full max-w-lg">
           <h2 className="text-3xl font-bold mb-8 text-[#00E5FF] text-center" style={{ fontFamily: 'Rajdhani, sans-serif' }}>
             {isLogin ? 'FIGHTBRACKET ACCOUNT' : 'CREATE ACCOUNT'}
@@ -400,6 +427,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
             </p>
           </div>
         </div>
+        </div>
       </div>
     );
   }
@@ -409,9 +437,19 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
       
       {/* Top Bar: Account Info */}
       <div className="flex justify-between items-center bg-[#050A14]/80 border border-[#00FF88]/20 p-6 rounded-xl">
-        <div>
-          <h2 className="text-3xl font-bold font-rajdhani text-white">ACCOUNT DASHBOARD</h2>
-          <p className="text-[#00FF88] font-mono text-sm mt-1">Welcome, {user.user_metadata?.displayName || 'Host'}</p>
+        <div className="flex items-center gap-4">
+          {onNavigateHome && (
+            <button
+              onClick={onNavigateHome}
+              className="flex items-center gap-2 px-3 py-2 rounded text-xs font-mono tracking-wider text-gray-400 hover:text-white border border-white/10 hover:border-white/30 bg-white/5 hover:bg-white/10 transition-all shrink-0"
+            >
+              <ArrowLeft size={14} /> HOME
+            </button>
+          )}
+          <div>
+            <h2 className="text-3xl font-bold font-rajdhani text-white">ACCOUNT DASHBOARD</h2>
+            <p className="text-[#00FF88] font-mono text-sm mt-1">Welcome, {user.user_metadata?.displayName || 'Host'}</p>
+          </div>
         </div>
         <div className="flex gap-3">
           {onOpenFriendsModal && (
@@ -437,12 +475,40 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
         <div className="space-y-6">
           <div className="bg-[#050A14] border border-[#00FF88]/30 p-6 rounded-xl shadow-lg space-y-4">
             <h3 className="text-xl font-bold font-rajdhani text-[#00FF88] tracking-widest">PROFILE & PRIVACY</h3>
-            {userProfile?.unique_id && (
-              <div className="bg-black/40 border border-[#00FF88]/20 p-3 rounded flex justify-between items-center">
+            {/* Always-visible FB-ID row */}
+            <div className="bg-black/40 border border-[#00FF88]/20 p-3 rounded">
+              <div className="flex justify-between items-center">
                 <span className="text-xs text-[#00FF88] font-mono tracking-wider opacity-80">UNIQUE FB-ID</span>
-                <span className="font-mono font-bold tracking-widest bg-[#00FF88]/10 px-2.5 py-1 rounded text-[#00FF88]">{userProfile.unique_id}</span>
+                <button
+                  onClick={fetchUserProfile}
+                  className="text-xs text-gray-500 hover:text-white font-mono transition-colors"
+                  title="Refresh"
+                >
+                  ↻
+                </button>
               </div>
-            )}
+              {profileLoading ? (
+                <div className="text-xs font-mono text-gray-500 mt-1 animate-pulse">Loading...</div>
+              ) : profileError ? (
+                <div className="text-xs font-mono text-red-400 mt-1 break-all" title={profileError}>
+                  Error: {profileError.slice(0, 120)}
+                </div>
+              ) : userProfile?.unique_id ? (
+                <div className="flex items-center justify-between mt-1">
+                  <span className="font-mono font-bold tracking-widest bg-[#00FF88]/10 px-2.5 py-1 rounded text-[#00FF88] text-sm">
+                    {userProfile.unique_id}
+                  </span>
+                  <button
+                    onClick={() => { navigator.clipboard.writeText(userProfile.unique_id!); toast.success('FB-ID copied!'); }}
+                    className="text-xs text-gray-400 hover:text-white font-mono ml-2 transition-colors"
+                  >
+                    COPY
+                  </button>
+                </div>
+              ) : (
+                <div className="text-xs font-mono text-gray-500 mt-1">No identifier found — check server logs</div>
+              )}
+            </div>
             <div className="flex gap-2">
               <input 
                 type="text" 
