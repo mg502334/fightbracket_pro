@@ -719,6 +719,7 @@ def get_target_user_profile(target_user_id: str, user_id: str = Depends(get_curr
             "bio": "" if privacy_restricted else (target_user.bio or ""),
             "startgg_slug": "" if privacy_restricted else (target_user.startgg_slug or ""),
             "startgg_data": startgg_data_parsed,
+            "tekken_id": "" if privacy_restricted else (target_user.tekken_id or ""),
             "is_public": is_public,
             "friends_only": friends_only,
             "is_friend": is_friend,
@@ -1176,3 +1177,92 @@ def get_current_user(token: str):
         raise HTTPException(status_code=400, detail=str(data["errors"]))
         
     return {"status": "success", "user": data.get("data", {}).get("currentUser")}
+
+
+# ---------------------------------------------------------------------------
+# TEKKEN 8 / EWGF STATS PROXY
+# Server-side proxy so the EWGF API token is never exposed to the browser.
+# ---------------------------------------------------------------------------
+
+@app.get("/api/tekken/stats/{tekken_id}")
+def get_tekken_stats(tekken_id: str):
+    """
+    Public proxy endpoint — fetches the player's profile + recent battles
+    from api.ewgf.gg and returns a unified payload.
+    No auth required so public profiles can display Tekken stats.
+    """
+    if not tekken_id or not tekken_id.strip():
+        raise HTTPException(status_code=400, detail="tekken_id is required")
+
+    tekken_id = tekken_id.strip()
+
+    EWGF_BASE = "https://api.ewgf.gg"
+    EWGF_TOKEN = os.environ.get("EWGF_API_TOKEN", "ewgf_e146ff104fd149409abc02db98e24202")
+    headers = {
+        "Authorization": f"Bearer {EWGF_TOKEN}",
+        "Content-Type": "application/json",
+    }
+
+    try:
+        profile_resp = requests.get(
+            f"{EWGF_BASE}/external/profile/{tekken_id}",
+            headers=headers,
+            timeout=10,
+        )
+        battles_resp = requests.get(
+            f"{EWGF_BASE}/external/battles/{tekken_id}",
+            headers=headers,
+            timeout=10,
+        )
+    except requests.exceptions.Timeout:
+        raise HTTPException(status_code=504, detail="EWGF API timed out")
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"EWGF API request failed: {e}")
+
+    if profile_resp.status_code == 404 or battles_resp.status_code == 404:
+        raise HTTPException(status_code=404, detail="Tekken player not found in EWGF database")
+    if profile_resp.status_code == 401 or battles_resp.status_code == 401:
+        raise HTTPException(status_code=502, detail="EWGF API authentication error")
+    if profile_resp.status_code == 429 or battles_resp.status_code == 429:
+        raise HTTPException(status_code=429, detail="EWGF API rate limit exceeded — try again later")
+    if not profile_resp.ok:
+        raise HTTPException(status_code=502, detail=f"EWGF profile API error: {profile_resp.status_code}")
+    if not battles_resp.ok:
+        raise HTTPException(status_code=502, detail=f"EWGF battles API error: {battles_resp.status_code}")
+
+    try:
+        profile_data = profile_resp.json()
+        battles_data = battles_resp.json()
+    except Exception:
+        raise HTTPException(status_code=502, detail="Failed to parse EWGF API response")
+
+    profile = profile_data.get("data") or {}
+    matches = battles_data.get("data") or []
+    meta = battles_data.get("_metadata") or {}
+
+    # Compute derived stats from battle history
+    wins = sum(1 for m in matches if (m.get("result") or "").upper() == "WIN")
+    losses = sum(1 for m in matches if (m.get("result") or "").upper() == "LOSS")
+    total = wins + losses
+    win_rate = round((wins / total) * 100, 1) if total > 0 else 0.0
+
+    # Most-played characters
+    char_counts: dict = {}
+    for m in matches:
+        char = m.get("player_character") or m.get("character") or "Unknown"
+        char_counts[char] = char_counts.get(char, 0) + 1
+    top_characters = sorted(char_counts.items(), key=lambda x: x[1], reverse=True)[:3]
+
+    return {
+        "status": "ok",
+        "tekken_id": tekken_id,
+        "profile": profile,
+        "matches": matches[:10],  # Return latest 10 matches
+        "meta": meta,
+        "derived": {
+            "wins": wins,
+            "losses": losses,
+            "win_rate": win_rate,
+            "top_characters": [{"name": name, "count": count} for name, count in top_characters],
+        },
+    }

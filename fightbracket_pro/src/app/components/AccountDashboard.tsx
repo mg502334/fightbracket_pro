@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
-import { Trash2, Save, Download, RefreshCw, Key, LogOut, ArrowLeft } from 'lucide-react';
+import { Trash2, Save, Download, RefreshCw, Key, LogOut, ArrowLeft, Globe, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
+import { TekkenStatsPanel } from './TekkenStatsPanel';
 
 declare global {
   interface Window {
@@ -17,9 +18,10 @@ interface AccountDashboardProps {
   onStartggImport: (slug: string) => void;
   onOpenFriendsModal?: () => void;
   onNavigateHome?: () => void;
+  onViewOwnProfile?: () => void;
 }
 
-export function AccountDashboard({ user, theme, currentTournamentData, onLoad, onStartggImport, onOpenFriendsModal, onNavigateHome }: AccountDashboardProps) {
+export function AccountDashboard({ user, theme, currentTournamentData, onLoad, onStartggImport, onOpenFriendsModal, onNavigateHome, onViewOwnProfile }: AccountDashboardProps) {
   // Auth state
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -488,7 +490,15 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
             <p className="text-[#00FF88] font-mono text-sm mt-1">Welcome, {user.user_metadata?.displayName || 'Host'}</p>
           </div>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-3 justify-end">
+          {onViewOwnProfile && (
+            <button
+              onClick={onViewOwnProfile}
+              className="flex items-center gap-2 px-5 py-2 rounded-lg border border-[#00FF88]/50 text-[#00FF88] hover:bg-[#00FF88]/10 transition-all font-rajdhani tracking-widest font-bold text-sm"
+            >
+              <Globe size={15}/> MY PUBLIC PROFILE
+            </button>
+          )}
           {onOpenFriendsModal && (
             <button
               onClick={onOpenFriendsModal}
@@ -591,28 +601,53 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
             </div>
           </div>
 
-          {/* Start.gg Profile Importer Box */}
-          <div className="bg-[#050A14] border border-cyan-500/30 p-6 rounded-xl shadow-lg space-y-4">
-            <h3 className="text-xl font-bold font-rajdhani text-cyan-400 tracking-widest">START.GG CAREER IMPORTER</h3>
-            <p className="text-xs font-mono opacity-60">
-              Import your public Start.gg player profile URL/slug to showcase your tournament history & placements.
-            </p>
+          {/* Start.gg Career Profile Importer */}
+          <div className="bg-[#050A14] border border-cyan-500/40 p-6 rounded-xl shadow-lg space-y-4 relative overflow-hidden">
+            {/* Subtle glow accent */}
+            <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(ellipse at top left, rgba(0,229,255,0.06) 0%, transparent 70%)' }} />
+            <div className="relative">
+              <div className="flex items-center gap-2 mb-1">
+                <ExternalLink size={16} className="text-cyan-400" />
+                <h3 className="text-xl font-bold font-rajdhani text-cyan-400 tracking-widest">START.GG CAREER STATS</h3>
+              </div>
+              <p className="text-xs font-mono text-gray-400 leading-relaxed">
+                Paste your <span className="text-cyan-300">start.gg profile URL or slug</span> below to pull in your public tournament placements and career history. Your API token (entered on the right) is used automatically.
+              </p>
+            </div>
+            {/* Current linked slug badge */}
+            {userProfile?.startgg_slug && (
+              <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-cyan-500/10 border border-cyan-500/20">
+                <span className="text-[10px] font-mono text-gray-400">LINKED:</span>
+                <a
+                  href={`https://start.gg/user/${userProfile.startgg_slug}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-xs font-mono font-bold text-cyan-400 hover:underline flex items-center gap-1"
+                >
+                  start.gg/user/{userProfile.startgg_slug} <ExternalLink size={10} />
+                </a>
+              </div>
+            )}
             <div className="flex gap-2">
               <input
                 type="text"
-                placeholder="e.g. start.gg/user/mang0 or mang0"
+                placeholder="e.g. start.gg/user/mang0  or just  mang0"
                 value={userStartggInput}
                 onChange={e => setUserStartggInput(e.target.value)}
-                className="flex-1 bg-[#111] border border-gray-800 rounded-lg p-2.5 text-white focus:border-cyan-400 outline-none font-mono text-sm"
+                onKeyDown={e => e.key === 'Enter' && !importingUserStartgg && userStartggInput.trim() && handleImportCareerStats()}
+                className="flex-1 bg-[#0a0a1a] border border-cyan-500/30 rounded-lg p-3 text-white focus:border-cyan-400 outline-none font-mono text-sm placeholder:text-gray-600 transition-colors"
               />
               <button
                 onClick={handleImportCareerStats}
                 disabled={importingUserStartgg || !userStartggInput.trim()}
-                className="px-5 py-2 rounded-lg border border-cyan-500/50 text-cyan-400 hover:bg-cyan-500/10 font-rajdhani font-bold tracking-wider transition-all text-sm disabled:opacity-40"
+                className="px-5 py-2 rounded-lg bg-cyan-500/20 border border-cyan-500/50 text-cyan-400 hover:bg-cyan-500/30 font-rajdhani font-bold tracking-wider transition-all text-sm disabled:opacity-40 shrink-0"
               >
                 {importingUserStartgg ? 'IMPORTING...' : 'IMPORT'}
               </button>
             </div>
+            <p className="text-[10px] font-mono text-gray-600">
+              ⓘ Supports full URLs (start.gg/user/…) or just the slug. Press Enter or click Import.
+            </p>
           </div>
 
           {/* Tekken 8 Importer Box */}
@@ -680,7 +715,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
           </div>
         </div>
 
-        {/* Right Column: Start.gg Hosted */}
+        {/* Right Column: Start.gg Hosted + Tekken Stats */}
         <div className="space-y-6">
           <div className="bg-[#050A14] border border-[#FF006E]/30 p-6 rounded-xl shadow-lg">
             <div className="border-b border-gray-800 pb-4 mb-6">
@@ -730,6 +765,18 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
                 ))}
               </div>
             )}
+          </div>
+
+          {/* Tekken 8 Live Stats — shown once user has saved a Tekken ID */}
+          <div className="bg-[#050A14] border border-[#ff003c]/30 rounded-xl shadow-lg overflow-hidden">
+            <div className="px-6 pt-5 pb-1">
+              <p className="text-[10px] font-mono text-gray-500 tracking-wider">
+                Live stats synced from EWGF · updates on demand
+              </p>
+            </div>
+            <div className="p-4">
+              <TekkenStatsPanel tekkenId={userProfile?.tekken_id} />
+            </div>
           </div>
         </div>
 

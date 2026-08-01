@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Shield, Lock, Globe, UserPlus, MessageSquare, Check, X, Trophy, ExternalLink, Sparkles } from 'lucide-react';
+import { TekkenStatsPanel } from './TekkenStatsPanel';
 
 interface UserProfileData {
   id: string;
@@ -9,6 +10,7 @@ interface UserProfileData {
   avatar_url?: string;
   bio?: string;
   startgg_slug?: string;
+  tekken_id?: string;
   startgg_data?: {
     slug?: string;
     gamerTag?: string;
@@ -214,6 +216,11 @@ export function UserProfileModal({ isOpen, onClose, targetUserId, supabaseToken,
                       No public Start.gg event history synced yet.
                     </div>
                   )}
+                </div>
+
+                {/* Tekken 8 Live Stats */}
+                <div className="space-y-2">
+                  <TekkenStatsPanel tekkenId={profile?.tekken_id} compact />
                 </div>
 
                 {/* Friend / DM Actions */}

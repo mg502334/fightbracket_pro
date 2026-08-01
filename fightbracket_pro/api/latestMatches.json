@@ -1,0 +1,46 @@
+import React, { useState, useEffect } from 'react';
+
+export default function LatestMatchesDashboard() {
+  const [matches, setMatches] = useState([]);
+  const [rateLimit, setRateLimit] = useState(null);
+  const [error, setError] = useState(null);
+  
+  const TEKKEN_ID = "3YrtMtjNqqBn"; // Your target player ID
+
+  useEffect(() => {
+    async function loadDashboard() {
+      try {
+        // Fetch raw data from corrected endpoint wrapper
+        const responseData = await fetchFromEwgf(`/external/battles/${TEKKEN_ID}`);
+        
+        setMatches(responseData.data); // Update match UI state
+        setRateLimit(responseData._metadata.rate_limit_remaining); // Track free tier usage
+      } catch (err) {
+        setError(err.message);
+      }
+    }
+    
+    loadDashboard();
+  }, []);
+
+  if (error) return <div className="error-alert">Error: {error}</div>;
+  if (matches.length === 0) return <div>Loading latest matches...</div>;
+
+  return (
+    <div className="dashboard-widget">
+      <h3>Latest Matches</h3>
+      <p className="tier-tag">API Calls Left Today: {rateLimit}</p>
+      
+      <div className="match-list">
+        {matches.map((match) => (
+          <div key={match.id} className="match-row">
+            <span>{match.player_character} vs {match.opponent_character}</span>
+            <span className={match.result === 'WIN' ? 'win-text' : 'loss-text'}>
+              {match.result}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
