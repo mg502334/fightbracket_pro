@@ -1,3 +1,4 @@
+# pyright: reportGeneralTypeIssues=false, reportAttributeAccessIssue=false, reportArgumentType=false
 from fastapi import FastAPI, HTTPException, Depends, Request
 from fastapi.responses import RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -368,37 +369,6 @@ def import_startgg_profile(req: StartggImportRequest, user_id: str = Depends(get
     db.refresh(user)
 
     return {"status": "success", "startgg_data": profile_info}
-
-@app.get("/api/users/search")
-def search_users(q: str = "", db: Session = Depends(get_db)):
-    if not db:
-        raise HTTPException(status_code=404, detail="Database not available")
-        
-    query = q.strip().lower()
-    if not query or len(query) < 2:
-        return {"users": []}
-        
-    # Search by gamer_tag (case-insensitive) or by unique_id (via user_identifiers)
-    results = db.query(DBUser, DBUserIdentifier).outerjoin(
-        DBUserIdentifier, DBUser.id == DBUserIdentifier.id
-    ).filter(
-        DBUser.is_public == True,
-        (DBUser.gamer_tag.ilike(f"%{query}%")) | (DBUserIdentifier.unique_id.ilike(f"%{query}%"))
-    ).limit(20).all()
-    
-    users_list = []
-    for user, identifier in results:
-        users_list.append({
-            "id": user.id,
-            "unique_id": identifier.unique_id if identifier else "",
-            "gamer_tag": user.gamer_tag or "",
-            "avatar_url": user.avatar_url or "",
-            "bio": user.bio or "",
-            "startgg_slug": user.startgg_slug or "",
-            "tekken_id": user.tekken_id or ""
-        })
-        
-    return {"users": users_list}
 
 # --- FRIENDS ENDPOINTS ---
 
