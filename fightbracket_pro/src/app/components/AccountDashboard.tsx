@@ -668,6 +668,12 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
             </button>
           )}
           <button
+            onClick={() => setShowAccountSettingsModal(true)}
+            className="flex items-center gap-2 px-5 py-2 rounded-lg border border-[#FF006E]/50 text-[#FF006E] hover:bg-[#FF006E]/10 transition-all font-rajdhani tracking-widest font-bold text-sm"
+          >
+            <Settings size={15} /> SETTINGS
+          </button>
+          <button
             onClick={() => supabase.auth.signOut()}
             className="flex items-center gap-2 px-5 py-2 rounded-lg border border-[#FF006E]/50 text-[#FF006E] hover:bg-[#FF006E]/10 transition-all font-rajdhani tracking-widest font-bold text-sm"
           >
@@ -759,19 +765,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
             </div>
           </div>
 
-          {/* Account Settings Button */}
-          <button
-            onClick={() => setShowAccountSettingsModal(true)}
-            className="w-full bg-[#050A14] border border-[#FF006E]/30 p-6 rounded-xl shadow-lg hover:bg-[#FF006E]/5 hover:border-[#FF006E]/50 transition-all flex items-center justify-between group mt-6"
-          >
-            <div>
-              <h3 className="text-xl font-bold font-rajdhani text-[#FF006E] tracking-widest text-left group-hover:text-white transition-colors">ACCOUNT SETTINGS</h3>
-              <p className="text-xs font-mono opacity-60 text-left mt-1">Manage integrations, email, password, avatar, and danger zone.</p>
-            </div>
-            <div className="text-[#FF006E] opacity-50 group-hover:opacity-100 transition-opacity">
-              <Settings size={24} />
-            </div>
-          </button>
+
 
           <div className="bg-[#050A14] border border-[#00E5FF]/30 p-6 rounded-xl shadow-lg">
             <div className="flex justify-between items-center mb-6 border-b border-gray-800 pb-4">
@@ -925,7 +919,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
                       <button
                         onClick={() => { localStorage.setItem('fb_startggToken', startggToken); toast.success('API token saved!'); }}
                         disabled={!startggToken.trim()}
-                        className="px-5 py-2 rounded-lg border border-cyan-500/50 text-cyan-400 hover:bg-cyan-500/10 font-rajdhani font-bold tracking-wider transition-all text-sm disabled:opacity-40 shrink-0"
+                        className="px-5 py-2 rounded-lg border border-[#FF006E]/50 text-[#FF006E] hover:bg-[#FF006E]/10 font-rajdhani font-bold tracking-wider transition-all text-sm disabled:opacity-40 shrink-0"
                       >
                         SAVE TOKEN
                       </button>
@@ -942,7 +936,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
                       <button
                         onClick={handleImportCareerStats}
                         disabled={importingUserStartgg || !userStartggInput.trim() || !startggToken}
-                        className="px-5 py-2 rounded-lg bg-cyan-500/20 border border-cyan-500/50 text-cyan-400 hover:bg-cyan-500/30 font-rajdhani font-bold tracking-wider transition-all text-sm disabled:opacity-40 shrink-0"
+                        className="px-5 py-2 rounded-lg bg-[#FF006E]/20 border border-[#FF006E]/50 text-[#FF006E] hover:bg-[#FF006E]/30 font-rajdhani font-bold tracking-wider transition-all text-sm disabled:opacity-40 shrink-0"
                       >
                         {importingUserStartgg ? 'IMPORTING...' : 'IMPORT'}
                       </button>
@@ -963,7 +957,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
                       <button
                         onClick={saveTekkenId}
                         disabled={!userTekkenId.trim()}
-                        className="px-5 py-2 rounded-lg border border-[#ff003c]/50 text-[#ff003c] hover:bg-[#ff003c]/10 font-rajdhani font-bold tracking-wider transition-all text-sm disabled:opacity-40 shrink-0"
+                        className="px-5 py-2 rounded-lg border border-[#FF006E]/50 text-[#FF006E] hover:bg-[#FF006E]/10 font-rajdhani font-bold tracking-wider transition-all text-sm disabled:opacity-40 shrink-0"
                       >
                         SAVE ID
                       </button>
