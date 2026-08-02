@@ -6,9 +6,28 @@ import { TekkenStatsPanel } from './TekkenStatsPanel';
 
 declare global {
   interface Window {
-    turnstile?: any;
+    turnstile?: {
+      render: (container: string | HTMLElement, params: any) => string;
+      reset: (target?: string | HTMLElement) => void;
+      getResponse: (widgetId?: string) => string | undefined;
+    };
   }
 }
+
+const safeResetTurnstile = (): void => {
+  if (window.turnstile) {
+    try {
+      const container = document.querySelector('.cf-turnstile'); // or '#cf-turnstile' depending on your setup
+      const hasWidget = container?.querySelector('iframe');
+      if (hasWidget) window.turnstile.reset(container);
+    } catch {
+      // silently ignore reset errors
+    }
+  }
+};
+
+
+
 
 interface AccountDashboardProps {
   user: any;
@@ -59,7 +78,41 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
     try { return localStorage.getItem('fb_startggToken') || ''; } catch { return ''; }
   });
   const [startggTournaments, setStartggTournaments] = useState<any[]>([]);
+  const [startggTournaments, setStartggTournaments] = useState<any[]>([]);
   const [fetchingStartgg, setFetchingStartgg] = useState(false);
+
+  useEffect(() => {
+    let checkInterval: any;
+    const renderWidget = () => {
+      if (!user && window.turnstile) {
+        const container = document.getElementById('turnstile-widget');
+        if (container && container.innerHTML === '') {
+          try {
+            window.turnstile.render(container, {
+              sitekey: '0x4AAAAAAEBO-v0nV0L1u4Sv',
+              action: 'turnstile-spin-v2',
+              theme: 'dark'
+            });
+          } catch (e) {}
+        }
+      }
+    };
+    
+    if (!user) {
+      if (window.turnstile) {
+        renderWidget();
+      } else {
+        checkInterval = setInterval(() => {
+          if (window.turnstile) {
+            clearInterval(checkInterval);
+            renderWidget();
+          }
+        }, 500);
+      }
+    }
+    
+    return () => clearInterval(checkInterval);
+  }, [user, isLogin]);
 
   useEffect(() => {
     if (user) {
@@ -104,9 +157,9 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
       const res = await fetch('/api/user/startgg-import', {
         method: 'POST',
         headers,
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           startgg_slug_or_url: userStartggInput.trim(),
-          api_token: startggToken 
+          api_token: startggToken
         })
       });
       if (res.ok) {
@@ -118,7 +171,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
         try {
           const errData = await res.json();
           if (errData?.detail) detail = errData.detail;
-        } catch {}
+        } catch { }
         toast.error(detail, { duration: 6000 });
       }
     } catch (err) {
@@ -170,7 +223,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
       toast.error('Please complete the CAPTCHA verification.');
       return false;
     }
-    
+
     try {
       const res = await fetch('/api/auth/verify', {
         method: 'POST',
@@ -179,13 +232,13 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
       });
       if (!res.ok) {
         toast.error('CAPTCHA verification failed. Please try again.');
-        window.turnstile?.reset();
+        safeResetTurnstile();
         return false;
       }
       return true;
     } catch (err) {
       toast.error('Verification server connection error. Please try again.');
-      window.turnstile?.reset();
+      safeResetTurnstile();
       return false;
     }
   };
@@ -208,7 +261,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) {
         toast.error(getFriendlyError(error));
-        window.turnstile?.reset();
+        safeResetTurnstile();
       } else {
         toast.success('Logged in successfully');
       }
@@ -220,7 +273,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
       const { error } = await supabase.auth.signUp({ email, password });
       if (error) {
         toast.error(getFriendlyError(error));
-        window.turnstile?.reset();
+        safeResetTurnstile();
       } else {
         toast.success('Signed up successfully. If email confirmation is off, you are logged in.');
       }
@@ -241,10 +294,10 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
         ? error.message
         : 'Failed to send recovery email (HTTP 500). This usually means your Supabase project SMTP/email provider settings are not configured or have hit their rate limit.';
       toast.error(errMsg);
-      window.turnstile?.reset();
+      safeResetTurnstile();
     } else {
       toast.success('Password reset email sent! Check your inbox.');
-      window.turnstile?.reset();
+      safeResetTurnstile();
     }
   };
 
@@ -401,78 +454,83 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
           </div>
         )}
         <div className="flex-1 flex items-center justify-center">
-        <div className={`bg-[#050A14] border p-10 rounded-xl shadow-2xl w-full max-w-lg transition-colors duration-300 ${isLogin ? 'border-[#00E5FF]' : 'border-[#FF006E]'}`}>
-          <h2 className={`text-3xl font-bold mb-2 text-center transition-colors duration-300 ${isLogin ? 'text-[#00E5FF]' : 'text-[#FF006E]'}`} style={{ fontFamily: 'Rajdhani, sans-serif' }}>
-            {isLogin ? 'SIGN IN' : 'CREATE ACCOUNT'}
-          </h2>
-          <p className="text-center text-gray-400 text-sm mb-8 font-mono">
-            {isLogin ? 'Welcome back to FightBracket' : 'Join the next generation of bracket management'}
-          </p>
-
-          {/* Discord OAuth */}
-          <button
-            onClick={handleDiscordLogin}
-            className="w-full flex items-center justify-center gap-3 py-3 rounded-lg text-white font-bold text-lg tracking-widest mb-6 transition-all hover:brightness-110"
-            style={{ background: '#5865F2', fontFamily: 'Rajdhani, sans-serif' }}
-          >
-            <svg width="24" height="24" viewBox="0 0 127.14 96.36" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36,77.7,77.7,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.66,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1A105.25,105.25,0,0,0,126.6,80.22h0C129.24,52.84,122.09,29.11,107.7,8.07ZM42.45,65.69C36.18,65.69,31,60,31,53s5-12.74,11.43-12.74S54,46,53.89,53,48.84,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.31,60,73.31,53s5-12.74,11.43-12.74S96.33,46,96.22,53,91.08,65.69,84.69,65.69Z" fill="white"/>
-            </svg>
-            SIGN IN WITH DISCORD
-          </button>
-
-          <div className="flex items-center gap-4 mb-6">
-            <div className="flex-1 h-px bg-gray-800"></div>
-            <span className="text-xs text-gray-500 font-mono tracking-wider">OR USE EMAIL</span>
-            <div className="flex-1 h-px bg-gray-800"></div>
-          </div>
-
-          <form onSubmit={handleAuthSubmit} className="space-y-6">
-            <div>
-              <label className="block text-sm text-gray-400 mb-2" style={{ fontFamily: 'JetBrains Mono, monospace' }}>EMAIL</label>
-              <input type="email" value={email} onChange={e => setEmail(e.target.value)} required
-                className={`w-full bg-[#111] border border-gray-800 rounded-lg p-3 text-white outline-none transition-colors ${isLogin ? 'focus:border-[#00E5FF]' : 'focus:border-[#FF006E]'}`} />
-            </div>
-            <div>
-              <div className="flex justify-between items-center mb-2">
-                <label className="block text-sm text-gray-400" style={{ fontFamily: 'JetBrains Mono, monospace' }}>PASSWORD</label>
-                {isLogin && (
-                  <button type="button" onClick={handleResetPassword} className="text-xs text-gray-500 hover:text-[#00E5FF] transition-colors" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
-                    Forgot Password?
-                  </button>
-                )}
-              </div>
-              <input type="password" value={password} onChange={e => setPassword(e.target.value)} required
-                className={`w-full bg-[#111] border border-gray-800 rounded-lg p-3 text-white outline-none transition-colors ${isLogin ? 'focus:border-[#00E5FF]' : 'focus:border-[#FF006E]'}`} />
-            </div>
-            {!isLogin && (
-              <div>
-                <label className="block text-sm text-gray-400 mb-2" style={{ fontFamily: 'JetBrains Mono, monospace' }}>CONFIRM PASSWORD</label>
-                <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} required
-                  className="w-full bg-[#111] border border-gray-800 rounded-lg p-3 text-white outline-none transition-colors focus:border-[#FF006E]" />
-              </div>
-            )}
-            <div className="flex justify-center mt-4">
-              <div 
-                className="cf-turnstile" 
-                data-sitekey="0x4AAAAAAEBO-v0nV0L1u4Sv" 
-                data-action="turnstile-spin-v2"
-                data-theme="dark"
-              ></div>
-            </div>
-            <button type="submit" className={`w-full font-bold py-3 rounded-lg text-xl transition-all tracking-widest mt-4 ${isLogin ? 'bg-[#00E5FF] hover:bg-[#00E5FF]/80 text-black' : 'bg-[#FF006E] hover:bg-[#FF006E]/80 text-white'}`} style={{ fontFamily: 'Rajdhani, sans-serif' }}>
-              {isLogin ? 'SIGN IN' : 'REGISTER NOW'}
-            </button>
-          </form>
-          <div className="mt-8 text-center border-t border-gray-800 pt-6">
-            <p className="text-sm text-gray-400" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
-              {isLogin ? "Don't have an account? " : "Already have an account? "}
-              <button onClick={() => setIsLogin(!isLogin)} className="text-[#FF006E] hover:text-[#FF006E]/80 font-bold ml-2 transition-colors">
-                {isLogin ? 'Register Now' : 'Log In Here'}
-              </button>
+          <div className={`bg-[#050A14] border p-10 rounded-xl shadow-2xl w-full max-w-lg transition-colors duration-300 ${isLogin ? 'border-[#00E5FF]' : 'border-[#FF006E]'}`}>
+            <h2 className={`text-3xl font-bold mb-2 text-center transition-colors duration-300 ${isLogin ? 'text-[#00E5FF]' : 'text-[#FF006E]'}`} style={{ fontFamily: 'Rajdhani, sans-serif' }}>
+              {isLogin ? 'SIGN IN' : 'CREATE ACCOUNT'}
+            </h2>
+            <p className="text-center text-gray-400 text-sm mb-8 font-mono">
+              {isLogin ? 'Welcome back to FightBracket' : 'Join the next generation of bracket management'}
             </p>
+
+            {/* Discord OAuth */}
+            {isLogin && (
+              <>
+                <button
+                  onClick={handleDiscordLogin}
+                  className="w-full flex items-center justify-center gap-3 py-3 rounded-lg text-white font-bold text-lg tracking-widest mb-6 transition-all hover:brightness-110"
+                  style={{ background: '#5865F2', fontFamily: 'Rajdhani, sans-serif' }}
+                >
+                  <svg width="24" height="24" viewBox="0 0 127.14 96.36" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36,77.7,77.7,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.66,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1A105.25,105.25,0,0,0,126.6,80.22h0C129.24,52.84,122.09,29.11,107.7,8.07ZM42.45,65.69C36.18,65.69,31,60,31,53s5-12.74,11.43-12.74S54,46,53.89,53,48.84,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.31,60,73.31,53s5-12.74,11.43-12.74S96.33,46,96.22,53,91.08,65.69,84.69,65.69Z" fill="white" />
+                  </svg>
+                  SIGN IN WITH DISCORD
+                </button>
+
+                <div className="flex items-center gap-4 mb-6">
+                  <div className="flex-1 h-px bg-gray-800"></div>
+                  <span className="text-xs text-gray-500 font-mono tracking-wider">OR USE EMAIL</span>
+                  <div className="flex-1 h-px bg-gray-800"></div>
+                </div>
+              </>
+            )}
+
+            <form onSubmit={handleAuthSubmit} className="space-y-6">
+              <div>
+                <label className="block text-sm text-gray-400 mb-2" style={{ fontFamily: 'JetBrains Mono, monospace' }}>EMAIL</label>
+                <input type="email" value={email} onChange={e => setEmail(e.target.value)} required
+                  className={`w-full bg-[#111] border border-gray-800 rounded-lg p-3 text-white outline-none transition-colors ${isLogin ? 'focus:border-[#00E5FF]' : 'focus:border-[#FF006E]'}`} />
+              </div>
+              <div>
+                <div className="flex justify-between items-center mb-2">
+                  <label className="block text-sm text-gray-400" style={{ fontFamily: 'JetBrains Mono, monospace' }}>PASSWORD</label>
+                  {isLogin && (
+                    <button type="button" onClick={handleResetPassword} className="text-xs text-gray-500 hover:text-[#00E5FF] transition-colors" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
+                      Forgot Password?
+                    </button>
+                  )}
+                </div>
+                <input type="password" value={password} onChange={e => setPassword(e.target.value)} required
+                  className={`w-full bg-[#111] border border-gray-800 rounded-lg p-3 text-white outline-none transition-colors ${isLogin ? 'focus:border-[#00E5FF]' : 'focus:border-[#FF006E]'}`} />
+              </div>
+              {!isLogin && (
+                <div>
+                  <label className="block text-sm text-gray-400 mb-2" style={{ fontFamily: 'JetBrains Mono, monospace' }}>CONFIRM PASSWORD</label>
+                  <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} required
+                    className="w-full bg-[#111] border border-gray-800 rounded-lg p-3 text-white outline-none transition-colors focus:border-[#FF006E]" />
+                </div>
+              )}
+              <div className="flex justify-center mt-4">
+                <div
+                  id="turnstile-widget"
+                  className="cf-turnstile"
+                  data-sitekey="0x4AAAAAAEBO-v0nV0L1u4Sv"
+                  data-action="turnstile-spin-v2"
+                  data-theme="dark"
+                ></div>
+              </div>
+              <button type="submit" className={`w-full font-bold py-3 rounded-lg text-xl transition-all tracking-widest mt-4 ${isLogin ? 'bg-[#00E5FF] hover:bg-[#00E5FF]/80 text-black' : 'bg-[#FF006E] hover:bg-[#FF006E]/80 text-white'}`} style={{ fontFamily: 'Rajdhani, sans-serif' }}>
+                {isLogin ? 'SIGN IN' : 'REGISTER NOW'}
+              </button>
+            </form>
+            <div className="mt-8 text-center border-t border-gray-800 pt-6">
+              <p className="text-sm text-gray-400" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
+                {isLogin ? "Don't have an account? " : "Already have an account? "}
+                <button onClick={() => setIsLogin(!isLogin)} className="text-[#FF006E] hover:text-[#FF006E]/80 font-bold ml-2 transition-colors">
+                  {isLogin ? 'Register Now' : 'Log In Here'}
+                </button>
+              </p>
+            </div>
           </div>
-        </div>
         </div>
       </div>
     );
@@ -480,7 +538,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
 
   return (
     <div className="p-6 h-full overflow-auto max-w-6xl mx-auto space-y-8 animate-in fade-in duration-300">
-      
+
       {/* Top Bar: Account Info */}
       <div className="flex justify-between items-center bg-[#050A14]/80 border border-[#00FF88]/20 p-6 rounded-xl">
         <div className="flex items-center gap-4">
@@ -503,7 +561,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
               onClick={onViewOwnProfile}
               className="flex items-center gap-2 px-5 py-2 rounded-lg border border-[#00FF88]/50 text-[#00FF88] hover:bg-[#00FF88]/10 transition-all font-rajdhani tracking-widest font-bold text-sm"
             >
-              <Globe size={15}/> MY PUBLIC PROFILE
+              <Globe size={15} /> MY PUBLIC PROFILE
             </button>
           )}
           {onOpenFriendsModal && (
@@ -514,17 +572,17 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
               FRIENDS &amp; DMs
             </button>
           )}
-          <button 
-            onClick={() => supabase.auth.signOut()} 
+          <button
+            onClick={() => supabase.auth.signOut()}
             className="flex items-center gap-2 px-5 py-2 rounded-lg border border-[#FF006E]/50 text-[#FF006E] hover:bg-[#FF006E]/10 transition-all font-rajdhani tracking-widest font-bold text-sm"
           >
-            <LogOut size={15}/> LOGOUT
+            <LogOut size={15} /> LOGOUT
           </button>
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        
+
         {/* Left Column: Profile & Privacy & Cloud */}
         <div className="space-y-6">
           <div className="bg-[#050A14] border border-[#00FF88]/30 p-6 rounded-xl shadow-lg space-y-4">
@@ -564,15 +622,15 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
               )}
             </div>
             <div className="flex gap-2">
-              <input 
-                type="text" 
-                value={displayName} 
-                onChange={e => setDisplayName(e.target.value)} 
-                placeholder="Gamertag or Channel Name" 
-                className="flex-1 bg-[#111] border border-gray-800 rounded-lg p-2.5 text-white focus:border-[#00FF88] outline-none font-mono text-sm" 
+              <input
+                type="text"
+                value={displayName}
+                onChange={e => setDisplayName(e.target.value)}
+                placeholder="Gamertag or Channel Name"
+                className="flex-1 bg-[#111] border border-gray-800 rounded-lg p-2.5 text-white focus:border-[#00FF88] outline-none font-mono text-sm"
               />
-              <button 
-                onClick={saveDisplayName} 
+              <button
+                onClick={saveDisplayName}
                 className="px-5 py-2 rounded-lg border border-[#00FF88]/50 text-[#00FF88] hover:bg-[#00FF88]/10 font-rajdhani font-bold tracking-wider transition-all text-sm"
               >
                 SAVE
@@ -586,9 +644,8 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
                 <span className="text-xs font-mono opacity-80">Publicly Searchable Profile</span>
                 <button
                   onClick={() => handleTogglePrivacy('is_public', !(userProfile?.is_public ?? true))}
-                  className={`px-3 py-1 rounded text-xs font-mono font-bold transition-all ${
-                    (userProfile?.is_public ?? true) ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/40' : 'bg-white/5 text-gray-400'
-                  }`}
+                  className={`px-3 py-1 rounded text-xs font-mono font-bold transition-all ${(userProfile?.is_public ?? true) ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/40' : 'bg-white/5 text-gray-400'
+                    }`}
                 >
                   {(userProfile?.is_public ?? true) ? 'PUBLIC' : 'HIDDEN'}
                 </button>
@@ -598,9 +655,8 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
                 <span className="text-xs font-mono opacity-80">Friends-Only Start.gg Stats</span>
                 <button
                   onClick={() => handleTogglePrivacy('friends_only', !(userProfile?.friends_only ?? false))}
-                  className={`px-3 py-1 rounded text-xs font-mono font-bold transition-all ${
-                    (userProfile?.friends_only ?? false) ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40' : 'bg-white/5 text-gray-400'
-                  }`}
+                  className={`px-3 py-1 rounded text-xs font-mono font-bold transition-all ${(userProfile?.friends_only ?? false) ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40' : 'bg-white/5 text-gray-400'
+                    }`}
                 >
                   {(userProfile?.friends_only ?? false) ? 'FRIENDS ONLY' : 'ANYONE'}
                 </button>
@@ -737,7 +793,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
           <div className="bg-[#050A14] border border-[#00E5FF]/30 p-6 rounded-xl shadow-lg">
             <div className="flex justify-between items-center mb-6 border-b border-gray-800 pb-4">
               <h3 className="text-xl font-bold font-rajdhani text-[#00E5FF] tracking-widest">CLOUD SAVES</h3>
-          <div className="flex gap-2">
+              <div className="flex gap-2">
                 <button onClick={fetchCloudTournaments} className="p-2 rounded-lg border border-white/10 text-white hover:border-white/30 hover:bg-white/5 transition-all" title="Refresh">
                   <RefreshCw size={15} />
                 </button>
@@ -780,30 +836,30 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
           <div className="bg-[#050A14] border border-[#FF006E]/30 p-6 rounded-xl shadow-lg">
             <div className="border-b border-gray-800 pb-4 mb-6">
               <h3 className="text-xl font-bold font-rajdhani text-[#FF006E] tracking-widest flex items-center gap-2">
-                <Key size={20}/> START.GG INTEGRATION
+                <Key size={20} /> START.GG INTEGRATION
               </h3>
               <p className="text-xs text-gray-400 font-mono mt-2">Connect your Developer API Token to view and instantly import tournaments you have hosted.</p>
             </div>
 
             <div className="flex gap-2 mb-6">
-              <input 
-                type="password" 
-                value={startggToken} 
-                onChange={e => setStartggToken(e.target.value)} 
-                placeholder="Paste Start.gg API Token..." 
-                className="flex-1 bg-[#111] border border-gray-800 rounded-lg p-2.5 text-white focus:border-[#FF006E] outline-none font-mono text-sm" 
+              <input
+                type="password"
+                value={startggToken}
+                onChange={e => setStartggToken(e.target.value)}
+                placeholder="Paste Start.gg API Token..."
+                className="flex-1 bg-[#111] border border-gray-800 rounded-lg p-2.5 text-white focus:border-[#FF006E] outline-none font-mono text-sm"
               />
               <button onClick={saveStartggToken} className="px-5 py-2 rounded-lg border border-[#FF006E]/50 text-[#FF006E] hover:bg-[#FF006E]/10 font-rajdhani font-bold tracking-wider transition-all text-sm">
                 SAVE
               </button>
             </div>
 
-            <button 
-              onClick={fetchStartggHosted} 
-              disabled={fetchingStartgg || !startggToken} 
+            <button
+              onClick={fetchStartggHosted}
+              disabled={fetchingStartgg || !startggToken}
               className="w-full flex items-center justify-center gap-2 py-3 bg-[#FF006E] hover:bg-[#FF006E]/80 disabled:opacity-50 text-white font-bold rounded-lg transition-colors font-rajdhani tracking-widest mb-6"
             >
-              <RefreshCw size={16} className={fetchingStartgg ? "animate-spin" : ""} /> 
+              <RefreshCw size={16} className={fetchingStartgg ? "animate-spin" : ""} />
               {fetchingStartgg ? 'FETCHING...' : 'FETCH MY HOSTED TOURNAMENTS'}
             </button>
 
@@ -814,7 +870,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
                     <div className="font-bold text-white font-rajdhani text-lg truncate mb-1">{t.name}</div>
                     <div className="flex justify-between items-center mt-2">
                       <span className="text-xs font-mono bg-white/10 px-2 py-0.5 rounded text-gray-300">State: {t.state === 1 ? 'Published' : 'Draft'}</span>
-                      <button 
+                      <button
                         onClick={() => onStartggImport(t.slug)}
                         className="text-xs font-bold font-rajdhani tracking-widest text-[#00E5FF] hover:underline"
                       >

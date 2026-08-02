@@ -26,6 +26,7 @@ import { FriendsModal } from "./components/FriendsModal";
 import { UserProfileModal } from "./components/UserProfileModal";
 import { StaticPageModal, type StaticPageId } from "./components/StaticPageModal";
 import { NewsPage } from "./components/NewsPage";
+import { PasswordResetModal } from "./components/PasswordResetModal";
 import { Users } from "lucide-react";
 
 import {
@@ -75,6 +76,7 @@ export default function App() {
   const [showFriendsModal, setShowFriendsModal] = useState(false);
   const [targetProfileUserId, setTargetProfileUserId] = useState<string | null>(null);
   const [showStaticPage, setShowStaticPage] = useState<StaticPageId | null>(null);
+  const [showPasswordReset, setShowPasswordReset] = useState(false);
 
   const [activeTournament, setActiveTournament] = useState<{ name: string, location: string, slug?: string, numAttendees?: number } | null>(() => safeParse('fb_tournament', null));
   const [autoSyncSlug, setAutoSyncSlug] = useState<string | null>(() => safeParse('fb_autoSyncSlug', null));
@@ -110,9 +112,12 @@ export default function App() {
       setSupabaseUser(session?.user ?? null);
       setSupabaseToken(session?.access_token ?? null);
     });
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: any, session: any) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event: any, session: any) => {
       setSupabaseUser(session?.user ?? null);
       setSupabaseToken(session?.access_token ?? null);
+      if (event === 'PASSWORD_RECOVERY') {
+        setShowPasswordReset(true);
+      }
     });
     return () => subscription.unsubscribe();
   }, []);
@@ -1292,6 +1297,11 @@ export default function App() {
         pageId={showStaticPage}
         onClose={() => setShowStaticPage(null)}
         theme={theme || { id: 'default', displayName: 'FightBracket', shortName: 'FB', primaryColor: '#00E5FF', secondaryColor: '#FF006E', bgFrom: '#050A14', glowColor: 'rgba(0,229,255,0.4)', description: '', publisher: '' }}
+      />
+
+      <PasswordResetModal
+        isOpen={showPasswordReset}
+        onClose={() => setShowPasswordReset(false)}
       />
 
       <Toaster position="bottom-right" />

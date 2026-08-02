@@ -162,24 +162,30 @@ def get_user_profile(user_id: str = Depends(get_current_user_id), db: Session = 
     try:
         user = db.query(DBUser).filter(DBUser.id == user_id).first()
         if not user:
-            user = DBUser(id=user_id)
-            db.add(user)
-            db.commit()
-            db.refresh(user)
-
-        identifier = db.query(DBUserIdentifier).filter(DBUserIdentifier.id == user_id).first()
-        if not identifier:
+            # Generate unique ID first since it's NOT NULL in DB
             while True:
                 unique_part = ''.join(random.choices(string.ascii_uppercase + string.digits, k=4))
                 unique_part2 = ''.join(random.choices(string.ascii_uppercase + string.digits, k=4))
                 unique_id = f"FB-{unique_part}-{unique_part2}"
-                if not db.query(DBUserIdentifier).filter(DBUserIdentifier.unique_id == unique_id).first():
+                if not db.query(DBUser).filter(DBUser.unique_id == unique_id).first():
                     break
+
+            user = DBUser(id=user_id, unique_id=unique_id)
+            db.add(user)
             
+            # Also sync to user_identifiers table to keep it consistent
             identifier = DBUserIdentifier(id=user_id, unique_id=unique_id)
             db.add(identifier)
+            
             db.commit()
-            db.refresh(identifier)
+            db.refresh(user)
+
+        # In case the user exists but user_identifiers doesn't (legacy)
+        identifier = db.query(DBUserIdentifier).filter(DBUserIdentifier.id == user_id).first()
+        if not identifier and hasattr(user, 'unique_id') and user.unique_id:
+            identifier = DBUserIdentifier(id=user_id, unique_id=user.unique_id)
+            db.add(identifier)
+            db.commit()
             
         created_at_val = user.created_at
         if hasattr(created_at_val, "isoformat"):
@@ -192,7 +198,7 @@ def get_user_profile(user_id: str = Depends(get_current_user_id), db: Session = 
         return {
             "user": {
                 "id": user.id,
-                "unique_id": identifier.unique_id,
+                "unique_id": getattr(user, 'unique_id', identifier.unique_id if identifier else "FB-UNKNOWN"),
                 "gamer_tag": user.gamer_tag or "",
                 "bio": user.bio or "",
                 "avatar_url": user.avatar_url or "",
