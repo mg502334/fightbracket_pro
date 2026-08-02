@@ -17,9 +17,9 @@ declare global {
 const safeResetTurnstile = (): void => {
   if (window.turnstile) {
     try {
-      const container = document.querySelector('.cf-turnstile'); // or '#cf-turnstile' depending on your setup
+      const container = document.querySelector('.cf-turnstile') as HTMLElement | null;
       const hasWidget = container?.querySelector('iframe');
-      if (hasWidget) window.turnstile.reset(container);
+      if (hasWidget && container) window.turnstile.reset(container);
     } catch {
       // silently ignore reset errors
     }
