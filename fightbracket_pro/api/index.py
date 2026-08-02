@@ -421,20 +421,25 @@ def import_startgg_profile(req: StartggImportRequest, user_id: str = Depends(get
                 timeout=10
             )
             if resp.status_code == 200:
-                data = resp.json()
-                userData = data.get("data", {}).get("user")
+                data = resp.json() or {}
+                data_dict = data.get("data") or {}
+                userData = data_dict.get("user") or {}
                 if userData:
-                    player = userData.get("player", {}) or {}
-                    events = userData.get("events", {}).get("nodes", []) or []
+                    player = userData.get("player") or {}
+                    events_dict = userData.get("events") or {}
+                    events = events_dict.get("nodes") or []
                     event_list = []
-                    for ev in events:
-                        tourney = ev.get("tournament", {}) or {}
-                        standing = ev.get("userEntrant", {}).get("standing", {}) or {}
+                    for ev in (events or []):
+                        if not ev:
+                            continue
+                        tourney = ev.get("tournament") or {}
+                        user_entrant = ev.get("userEntrant") or {}
+                        standing = user_entrant.get("standing") or {} if isinstance(user_entrant, dict) else {}
                         event_list.append({
                             "event_name": ev.get("name"),
-                            "tournament_name": tourney.get("name"),
-                            "tournament_slug": tourney.get("slug"),
-                            "placement": standing.get("placement", "N/A")
+                            "tournament_name": tourney.get("name") if isinstance(tourney, dict) else "",
+                            "tournament_slug": tourney.get("slug") if isinstance(tourney, dict) else "",
+                            "placement": standing.get("placement", "N/A") if isinstance(standing, dict) else "N/A"
                         })
                     profile_info = {
                         "slug": slug,
@@ -722,23 +727,29 @@ def send_direct_message(req: SendMessageInput, user_id: str = Depends(get_curren
 # --- SEARCH & PUBLIC / PRIVACY PROFILE ENDPOINTS ---
 
 @app.get("/api/users/search")
-def search_users(q: str, user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
-    if not db or not q.strip():
+def search_users(q: str = "", user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    if not db:
         return {"users": []}
 
-    query_str = f"%{q.strip()}%"
-    users_with_ids = db.query(DBUser, DBUserIdentifier).outerjoin(DBUserIdentifier, DBUser.id == DBUserIdentifier.id).filter(
-        (DBUser.gamer_tag.ilike(query_str)) |
-        (DBUserIdentifier.unique_id.ilike(query_str)) |
-        (DBUser.id == q.strip())
-    ).limit(10).all()
+    query = db.query(DBUser, DBUserIdentifier).outerjoin(DBUserIdentifier, DBUser.id == DBUserIdentifier.id)
+    if q and q.strip():
+        query_str = f"%{q.strip()}%"
+        query = query.filter(
+            (DBUser.gamer_tag.ilike(query_str)) |
+            (DBUserIdentifier.unique_id.ilike(query_str)) |
+            (DBUser.id == q.strip())
+        )
+    else:
+        query = query.filter(DBUser.is_public != False)
+
+    users_with_ids = query.limit(25).all()
 
     return {
         "users": [
             {
                 "id": u.id,
                 "unique_id": ui.unique_id if ui else "FB-MISSING",
-                "gamer_tag": u.gamer_tag or (ui.unique_id if ui else "FB-MISSING"),
+                "gamer_tag": u.gamer_tag or (ui.unique_id if ui else "Player"),
                 "avatar_url": u.avatar_url or "",
                 "is_public": u.is_public if u.is_public is not None else True,
                 "friends_only": u.friends_only if u.friends_only is not None else False

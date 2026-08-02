@@ -630,54 +630,71 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
     <div className="p-6 h-full overflow-auto max-w-6xl mx-auto space-y-8 animate-in fade-in duration-300">
 
       {/* Top Bar: Account Info */}
-      <div className="flex justify-between items-center bg-[#050A14]/80 border border-[#00FF88]/20 p-6 rounded-xl">
+      <div className="bg-[#050A14]/90 border border-[#00FF88]/30 p-5 rounded-2xl shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
+        {/* Left Side: Navigation + Title + User Greeting */}
         <div className="flex items-center gap-4">
           {onNavigateHome && (
             <button
               onClick={onNavigateHome}
-              className="flex items-center gap-2 px-3 py-2 rounded text-xs font-mono tracking-wider text-gray-400 hover:text-white border border-white/10 hover:border-white/30 bg-white/5 hover:bg-white/10 transition-all shrink-0"
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-mono tracking-wider text-gray-300 hover:text-white border border-white/15 hover:border-white/40 bg-white/5 hover:bg-white/10 transition-all shrink-0"
+              title="Return to Home"
             >
-              <ArrowLeft size={14} /> HOME
+              <ArrowLeft size={14} />
+              <span>HOME</span>
             </button>
           )}
+
           <div>
-            <h2 className="text-3xl font-bold font-rajdhani text-white">ACCOUNT DASHBOARD</h2>
-            <p className="text-[#00FF88] font-mono text-sm mt-1 mb-3">Welcome, {user.user_metadata?.displayName || 'Host'}</p>
-            <button
-              onClick={() => setShowAccountSettingsModal(true)}
-              className="flex items-center gap-2 px-4 py-1.5 rounded-lg border border-[#FF006E]/50 text-[#FF006E] hover:bg-[#FF006E]/10 transition-all font-rajdhani tracking-widest font-bold text-xs w-max"
-            >
-              <Settings size={14} /> SETTINGS
-            </button>
+            <h2 className="text-2xl md:text-3xl font-extrabold font-rajdhani text-white tracking-wide">
+              ACCOUNT DASHBOARD
+            </h2>
+            <p className="text-[#00FF88] font-mono text-xs md:text-sm mt-0.5">
+              Welcome, <span className="text-white font-semibold">{user.user_metadata?.displayName || 'Host'}</span>
+            </p>
           </div>
         </div>
-        <div className="flex flex-wrap gap-3 justify-end">
+
+        {/* Right Side: Action Buttons */}
+        <div className="flex flex-wrap items-center gap-2.5">
+          <button
+            onClick={() => setShowAccountSettingsModal(true)}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-white/20 hover:border-[#FF006E]/60 text-gray-200 hover:text-[#FF006E] bg-white/5 hover:bg-[#FF006E]/10 transition-all font-rajdhani tracking-wider font-semibold text-xs"
+          >
+            <Settings size={14} />
+            <span>SETTINGS</span>
+          </button>
+
           {onViewOwnProfile && (
             <button
               onClick={onViewOwnProfile}
-              className="flex items-center gap-2 px-5 py-2 rounded-lg border border-[#00FF88]/50 text-[#00FF88] hover:bg-[#00FF88]/10 transition-all font-rajdhani tracking-widest font-bold text-sm"
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-[#00FF88]/40 text-[#00FF88] hover:bg-[#00FF88]/10 transition-all font-rajdhani tracking-wider font-semibold text-xs"
             >
-              <Globe size={15} /> MY PUBLIC PROFILE
+              <Globe size={14} />
+              <span>PUBLIC PROFILE</span>
             </button>
           )}
+
           {onOpenFriendsModal && (
             <button
               onClick={onOpenFriendsModal}
-              className="relative flex items-center gap-2 px-5 py-2 rounded-lg border border-[#00E5FF]/50 text-[#00E5FF] hover:bg-[#00E5FF]/10 transition-all font-rajdhani tracking-widest font-bold text-sm"
+              className="relative flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-[#00E5FF]/40 text-[#00E5FF] hover:bg-[#00E5FF]/10 transition-all font-rajdhani tracking-wider font-semibold text-xs"
             >
-              FRIENDS &amp; DMs
+              <Users size={14} />
+              <span>FRIENDS &amp; DMs</span>
               {userProfile?.unread_messages_count ? (
-                <span className="absolute -top-2 -right-2 bg-red-600 text-white text-[10px] px-1.5 py-0.5 rounded-full font-sans">
+                <span className="absolute -top-1.5 -right-1.5 bg-[#FF006E] text-white text-[10px] w-4.5 h-4.5 rounded-full flex items-center justify-center font-bold shadow-md">
                   {userProfile.unread_messages_count}
                 </span>
               ) : null}
             </button>
           )}
+
           <button
             onClick={() => supabase.auth.signOut()}
-            className="flex items-center gap-2 px-5 py-2 rounded-lg border border-[#FF006E]/50 text-[#FF006E] hover:bg-[#FF006E]/10 transition-all font-rajdhani tracking-widest font-bold text-sm"
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-red-500/40 text-red-400 hover:bg-red-500/10 transition-all font-rajdhani tracking-wider font-semibold text-xs"
           >
-            <LogOut size={15} /> LOGOUT
+            <LogOut size={14} />
+            <span>LOGOUT</span>
           </button>
         </div>
       </div>

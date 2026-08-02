@@ -3,7 +3,7 @@ import { Toaster, toast } from "sonner";
 import { motion, AnimatePresence } from "motion/react";
 import {
   Trophy, GitBranch, UserCheck, Monitor, MessageSquare, Smartphone,
-  ExternalLink, RefreshCw, Zap, MapPin, Globe, Moon, Sun, X, Tv, Cloud, Play, LayoutGrid, Trash2, Megaphone
+  ExternalLink, RefreshCw, Zap, MapPin, Globe, Moon, Sun, X, Tv, Cloud, Play, LayoutGrid, Trash2, Megaphone, Search
 } from "lucide-react";
 import { useTheme } from "next-themes";
 
@@ -24,6 +24,7 @@ import { PoolsPanel } from "./components/PoolsPanel";
 import { ReportScoreModal } from "./components/ReportScoreModal";
 import { FriendsModal } from "./components/FriendsModal";
 import { UserProfileModal } from "./components/UserProfileModal";
+import { UserDirectoryModal } from "./components/UserDirectoryModal";
 import { StaticPageModal, type StaticPageId } from "./components/StaticPageModal";
 import { NewsPage } from "./components/NewsPage";
 import { PasswordResetModal } from "./components/PasswordResetModal";
@@ -74,6 +75,7 @@ export default function App() {
   const [supabaseUser, setSupabaseUser] = useState<any>(null);
   const [supabaseToken, setSupabaseToken] = useState<string | null>(null);
   const [showFriendsModal, setShowFriendsModal] = useState(false);
+  const [showDirectoryModal, setShowDirectoryModal] = useState(false);
   const [targetProfileUserId, setTargetProfileUserId] = useState<string | null>(null);
   const [showStaticPage, setShowStaticPage] = useState<StaticPageId | null>(null);
   const [showPasswordReset, setShowPasswordReset] = useState(false);
@@ -976,6 +978,18 @@ export default function App() {
             </button>
           )}
           <button
+            onClick={() => setShowDirectoryModal(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs tracking-wider hover:opacity-80 transition-opacity"
+            style={{
+              background: 'var(--border)',
+              border: '1px solid rgba(0,229,255,0.3)',
+              color: '#00E5FF',
+              fontFamily: 'JetBrains Mono, monospace'
+            }}>
+            <Search size={11} />
+            DIRECTORY
+          </button>
+          <button
             onClick={() => setActiveTab('news')}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs tracking-wider hover:opacity-80 transition-opacity"
             style={{
@@ -1292,6 +1306,16 @@ export default function App() {
         targetUserId={targetProfileUserId}
         supabaseToken={supabaseToken}
         theme={theme || { id: 'default', displayName: 'FightBracket', shortName: 'FB', primaryColor: '#00E5FF', secondaryColor: '#FF006E', bgFrom: '#050A14', glowColor: 'rgba(0,229,255,0.4)', description: '', publisher: '' }}
+      />
+
+      <UserDirectoryModal
+        isOpen={showDirectoryModal}
+        onClose={() => setShowDirectoryModal(false)}
+        supabaseToken={supabaseToken}
+        currentUserId={supabaseUser?.id ?? null}
+        onSelectUser={(userId) => {
+          setTargetProfileUserId(userId);
+        }}
       />
 
       <StaticPageModal
