@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
-import { Trash2, Save, Download, RefreshCw, Key, LogOut, ArrowLeft, Globe, ExternalLink, Settings, X, AlertTriangle, User, Shield } from 'lucide-react';
+import { Trash2, Save, Download, RefreshCw, Key, LogOut, ArrowLeft, Globe, ExternalLink, Settings, X, AlertTriangle, User, Shield, Swords, Sparkles, Cloud, Users } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
 import { TekkenStatsPanel } from './TekkenStatsPanel';
@@ -64,12 +64,18 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
     startgg_slug?: string;
     startgg_data?: string;
     tekken_id?: string;
+    games_data?: string;
     is_public?: boolean;
     friends_only?: boolean;
     unread_messages_count?: number;
   } | null>(null);
   const [profileLoading, setProfileLoading] = useState(true);
   const [profileError, setProfileError] = useState<string | null>(null);
+
+  // Main games & characters state
+  const [gamesList, setGamesList] = useState<{ game: string; main: string }[]>([]);
+  const [newGameName, setNewGameName] = useState('Tekken 8');
+  const [newMainChar, setNewMainChar] = useState('');
 
   const [userStartggInput, setUserStartggInput] = useState('');
   const [userTekkenId, setUserTekkenId] = useState('');
@@ -149,6 +155,13 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
         setUserProfile(data.user);
         if (data.user?.startgg_slug) setUserStartggInput(data.user.startgg_slug);
         if (data.user?.tekken_id) setUserTekkenId(data.user.tekken_id);
+        if (data.user?.gamer_tag && !displayName) setDisplayName(data.user.gamer_tag);
+        if (data.user?.games_data) {
+          try {
+            const parsed = JSON.parse(data.user.games_data);
+            if (Array.isArray(parsed)) setGamesList(parsed);
+          } catch {}
+        }
       } else {
         const errText = await res.text().catch(() => res.statusText);
         setProfileError(`HTTP ${res.status}: ${errText}`);
@@ -515,9 +528,52 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
   };
 
   const saveDisplayName = async () => {
-    const { error } = await supabase.auth.updateUser({ data: { displayName } });
-    if (error) toast.error(error.message);
-    else toast.success('Profile updated! Changes will reflect globally.');
+    if (!displayName.trim()) return;
+    const { error } = await supabase.auth.updateUser({ data: { displayName: displayName.trim() } });
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    try {
+      const headers = await getHeaders();
+      await fetch('/api/user/profile', {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify({ gamer_tag: displayName.trim() })
+      });
+      toast.success('Gamer Tag saved!');
+      fetchUserProfile();
+    } catch {
+      toast.success('Profile updated!');
+    }
+  };
+
+  const saveGamesList = async (updatedList: { game: string; main: string }[]) => {
+    setGamesList(updatedList);
+    try {
+      const headers = await getHeaders();
+      await fetch('/api/user/profile', {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify({ games_data: JSON.stringify(updatedList) })
+      });
+      toast.success('Fighter Mains updated!');
+      fetchUserProfile();
+    } catch {
+      toast.error('Failed to save mains');
+    }
+  };
+
+  const handleAddGameMain = () => {
+    if (!newMainChar.trim()) return toast.error('Please enter your main character');
+    const updated = [...gamesList.filter(g => g.game !== newGameName), { game: newGameName, main: newMainChar.trim() }];
+    saveGamesList(updated);
+    setNewMainChar('');
+  };
+
+  const handleRemoveGameMain = (gameName: string) => {
+    const updated = gamesList.filter(g => g.game !== gameName);
+    saveGamesList(updated);
   };
 
   if (!user) {
@@ -699,94 +755,110 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
         </div>
       </div>
 
+      {/* Full Width Tekken 8 Live Stats Box */}
+      <div className="bg-[#050A14] border border-[#ff003c]/30 rounded-2xl shadow-2xl overflow-hidden w-full">
+        <div className="px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/10 bg-black/40">
+          <div>
+            <h3 className="text-xl font-bold font-rajdhani text-[#ff003c] tracking-widest flex items-center gap-2">
+              <Swords size={20} /> TEKKEN 8 LIVE STATS & RANKING
+            </h3>
+            <p className="text-[11px] font-mono text-gray-400 tracking-wider mt-0.5">
+              Live ranking & battle history synced from EWGF · updates on demand
+            </p>
+          </div>
+          {!userProfile?.tekken_id && (
+            <button
+              onClick={() => setShowAccountSettingsModal(true)}
+              className="text-xs font-mono text-[#ff003c] bg-[#ff003c]/10 border border-[#ff003c]/30 px-3 py-1.5 rounded-lg hover:bg-[#ff003c]/20 transition-all shrink-0"
+            >
+              + SET POLARIS ID IN SETTINGS
+            </button>
+          )}
+        </div>
+        <div className="p-6">
+          <TekkenStatsPanel tekkenId={userProfile?.tekken_id} />
+        </div>
+      </div>
+
+      {/* 2-Column Grid for Games & Mains + Start.gg Past Events & Cloud Saves */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-
-        {/* Left Column: Profile & Privacy & Cloud */}
+        
+        {/* Left Column: Main Games & Characters */}
         <div className="space-y-6">
-          <div className="bg-[#050A14] border border-[#00FF88]/30 p-6 rounded-xl shadow-lg space-y-4">
-            <h3 className="text-xl font-bold font-rajdhani text-[#00FF88] tracking-widest">PROFILE & PRIVACY</h3>
-            {/* Always-visible FB-ID row */}
-            <div className="bg-black/40 border border-[#00FF88]/20 p-3 rounded">
-              <div className="flex justify-between items-center">
-                <span className="text-xs text-[#00FF88] font-mono tracking-wider opacity-80">UNIQUE FB-ID</span>
-                <button
-                  onClick={fetchUserProfile}
-                  className="text-xs text-gray-500 hover:text-white font-mono transition-colors"
-                  title="Refresh"
+          <div className="bg-[#050A14] border border-[#FF006E]/30 p-6 rounded-2xl shadow-xl space-y-4">
+            <div className="flex justify-between items-center border-b border-white/10 pb-4">
+              <h3 className="text-xl font-bold font-rajdhani text-[#FF006E] tracking-widest flex items-center gap-2">
+                <Sparkles size={20} /> MAIN GAMES & CHARACTERS
+              </h3>
+            </div>
+            
+            {/* Quick Add */}
+            <div className="bg-black/40 border border-white/10 p-3.5 rounded-xl space-y-3">
+              <div className="text-xs font-mono text-gray-400 font-bold">ADD OR UPDATE YOUR MAIN</div>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <select
+                  value={newGameName}
+                  onChange={e => setNewGameName(e.target.value)}
+                  className="bg-[#111] border border-gray-800 rounded-lg px-3 py-2 text-white font-mono text-xs outline-none focus:border-[#FF006E]"
                 >
-                  ↻
+                  <option value="Tekken 8">Tekken 8</option>
+                  <option value="Street Fighter 6">Street Fighter 6</option>
+                  <option value="Guilty Gear Strive">Guilty Gear Strive</option>
+                  <option value="Fatal Fury: CotW">Fatal Fury: CotW</option>
+                  <option value="Smash Ultimate">Smash Ultimate</option>
+                  <option value="Mortal Kombat 1">Mortal Kombat 1</option>
+                  <option value="GBVSR">GBVSR</option>
+                  <option value="UNI2">UNI2</option>
+                  <option value="DBFZ">DBFZ</option>
+                </select>
+                <input
+                  type="text"
+                  placeholder="Main Character (e.g. Kazuya)"
+                  value={newMainChar}
+                  onChange={e => setNewMainChar(e.target.value)}
+                  className="flex-1 bg-[#111] border border-gray-800 rounded-lg px-3 py-2 text-white font-mono text-xs outline-none focus:border-[#FF006E]"
+                />
+                <button
+                  onClick={handleAddGameMain}
+                  className="px-4 py-2 bg-[#FF006E] text-white font-bold font-rajdhani tracking-wider rounded-lg text-xs hover:bg-[#FF006E]/80 transition-all shrink-0"
+                >
+                  ADD
                 </button>
               </div>
-              {profileLoading ? (
-                <div className="text-xs font-mono text-gray-500 mt-1 animate-pulse">Loading...</div>
-              ) : profileError ? (
-                <div className="text-xs font-mono text-red-400 mt-1 break-all" title={profileError}>
-                  Error: {profileError.slice(0, 120)}
-                </div>
-              ) : userProfile?.unique_id ? (
-                <div className="flex items-center justify-between mt-1">
-                  <span className="font-mono font-bold tracking-widest bg-[#00FF88]/10 px-2.5 py-1 rounded text-[#00FF88] text-sm">
-                    {userProfile.unique_id}
-                  </span>
-                  <button
-                    onClick={() => { navigator.clipboard.writeText(userProfile.unique_id!); toast.success('FB-ID copied!'); }}
-                    className="text-xs text-gray-400 hover:text-white font-mono ml-2 transition-colors"
-                  >
-                    COPY
-                  </button>
-                </div>
-              ) : (
-                <div className="text-xs font-mono text-gray-500 mt-1">No identifier found — check server logs</div>
-              )}
-            </div>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={displayName}
-                onChange={e => setDisplayName(e.target.value)}
-                placeholder="Gamertag or Channel Name"
-                className="flex-1 bg-[#111] border border-gray-800 rounded-lg p-2.5 text-white focus:border-[#00FF88] outline-none font-mono text-sm"
-              />
-              <button
-                onClick={saveDisplayName}
-                className="px-5 py-2 rounded-lg border border-[#00FF88]/50 text-[#00FF88] hover:bg-[#00FF88]/10 font-rajdhani font-bold tracking-wider transition-all text-sm"
-              >
-                SAVE
-              </button>
             </div>
 
-            {/* Privacy Controls */}
-            <div className="pt-3 border-t border-white/10 space-y-3">
-              <div className="text-xs font-mono font-bold text-gray-400">PRIVACY CONTROLS</div>
-              <div className="flex items-center justify-between p-2.5 rounded bg-black/30 border border-white/5">
-                <span className="text-xs font-mono opacity-80">Publicly Searchable Profile</span>
-                <button
-                  onClick={() => handleTogglePrivacy('is_public', !(userProfile?.is_public ?? true))}
-                  className={`px-3 py-1 rounded text-xs font-mono font-bold transition-all ${(userProfile?.is_public ?? true) ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/40' : 'bg-white/5 text-gray-400'
-                    }`}
-                >
-                  {(userProfile?.is_public ?? true) ? 'PUBLIC' : 'HIDDEN'}
-                </button>
+            {/* List of games & mains */}
+            {gamesList.length === 0 ? (
+              <div className="text-center py-8 text-xs font-mono text-gray-500">
+                No main games added yet. Add your main characters above to display them on your profile!
               </div>
-
-              <div className="flex items-center justify-between p-2.5 rounded bg-black/30 border border-white/5">
-                <span className="text-xs font-mono opacity-80">Friends-Only Start.gg Stats</span>
-                <button
-                  onClick={() => handleTogglePrivacy('friends_only', !(userProfile?.friends_only ?? false))}
-                  className={`px-3 py-1 rounded text-xs font-mono font-bold transition-all ${(userProfile?.friends_only ?? false) ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40' : 'bg-white/5 text-gray-400'
-                    }`}
-                >
-                  {(userProfile?.friends_only ?? false) ? 'FRIENDS ONLY' : 'ANYONE'}
-                </button>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                {gamesList.map(item => (
+                  <div key={item.game} className="p-3 rounded-xl bg-black/40 border border-white/10 flex items-center justify-between group">
+                    <div>
+                      <div className="font-bold text-xs font-mono text-[#00E5FF]">{item.game}</div>
+                      <div className="text-sm font-bold font-rajdhani text-white mt-0.5">{item.main}</div>
+                    </div>
+                    <button
+                      onClick={() => handleRemoveGameMain(item.game)}
+                      className="text-gray-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all p-1"
+                      title="Remove"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                ))}
               </div>
-            </div>
+            )}
           </div>
 
-
-
-          <div className="bg-[#050A14] border border-[#00E5FF]/30 p-6 rounded-xl shadow-lg">
+          {/* Cloud Saves */}
+          <div className="bg-[#050A14] border border-[#00E5FF]/30 p-6 rounded-2xl shadow-xl">
             <div className="flex justify-between items-center mb-6 border-b border-gray-800 pb-4">
-              <h3 className="text-xl font-bold font-rajdhani text-[#00E5FF] tracking-widest">CLOUD SAVES</h3>
+              <h3 className="text-xl font-bold font-rajdhani text-[#00E5FF] tracking-widest flex items-center gap-2">
+                <Cloud size={20} /> CLOUD SAVES
+              </h3>
               <div className="flex gap-2">
                 <button onClick={fetchCloudTournaments} className="p-2 rounded-lg border border-white/10 text-white hover:border-white/30 hover:bg-white/5 transition-all" title="Refresh">
                   <RefreshCw size={15} />
@@ -808,7 +880,6 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
                     <div>
                       <div className="font-bold text-white font-rajdhani text-lg">{t.name}</div>
                       <div className="text-xs text-gray-500 font-mono">ID: {t.id}</div>
-                      <div className="text-xs text-gray-500 font-mono mt-1">Updated: {new Date(t.updated_at).toLocaleString()}</div>
                     </div>
                     <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button onClick={() => loadTournament(t.id)} className="flex items-center gap-1 px-3 py-1.5 bg-[#00FF88]/10 text-[#00FF88] hover:bg-[#00FF88]/20 border border-[#00FF88]/30 rounded font-rajdhani font-bold tracking-wider transition-colors text-sm">
@@ -825,9 +896,9 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
           </div>
         </div>
 
-        {/* Right Column: Start.gg Past Events + Tekken Stats */}
+        {/* Right Column: Start.gg Past Events */}
         <div className="space-y-6">
-          <div className="bg-[#050A14] border border-[#FF006E]/30 p-6 rounded-xl shadow-lg">
+          <div className="bg-[#050A14] border border-[#FF006E]/30 p-6 rounded-2xl shadow-xl">
             <div className="border-b border-gray-800 pb-4 mb-6">
               <h3 className="text-xl font-bold font-rajdhani text-[#FF006E] tracking-widest flex items-center gap-2">
                 <Key size={20} /> START.GG PAST EVENTS
@@ -869,18 +940,6 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
               </div>
             )}
           </div>
-
-          {/* Tekken 8 Live Stats — shown once user has saved a Tekken ID */}
-          <div className="bg-[#050A14] border border-[#ff003c]/30 rounded-xl shadow-lg overflow-hidden">
-            <div className="px-6 pt-5 pb-1">
-              <p className="text-[10px] font-mono text-gray-500 tracking-wider">
-                Live stats synced from EWGF · updates on demand
-              </p>
-            </div>
-            <div className="p-4">
-              <TekkenStatsPanel tekkenId={userProfile?.tekken_id} />
-            </div>
-          </div>
         </div>
 
       </div>
@@ -913,6 +972,88 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
               </div>
               
               <div className="p-6 space-y-6 overflow-y-auto custom-scrollbar">
+                
+                {/* === PROFILE & PRIVACY SECTION === */}
+                <div className="space-y-4 mb-6">
+                  <h4 className="text-sm font-bold font-rajdhani text-[#00FF88] tracking-widest border-b border-[#00FF88]/30 pb-2 flex items-center gap-2">
+                    <Shield size={16} /> PROFILE & PRIVACY
+                  </h4>
+
+                  {/* Always-visible FB-ID row */}
+                  <div className="bg-black/40 border border-[#00FF88]/20 p-3.5 rounded-xl">
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs text-[#00FF88] font-mono tracking-wider opacity-80">UNIQUE FB-ID</span>
+                      <button
+                        onClick={fetchUserProfile}
+                        className="text-xs text-gray-500 hover:text-white font-mono transition-colors"
+                        title="Refresh"
+                      >
+                        ↻
+                      </button>
+                    </div>
+                    {userProfile?.unique_id ? (
+                      <div className="flex items-center justify-between mt-1.5">
+                        <span className="font-mono font-bold tracking-widest bg-[#00FF88]/10 px-2.5 py-1 rounded text-[#00FF88] text-sm">
+                          {userProfile.unique_id}
+                        </span>
+                        <button
+                          onClick={() => { navigator.clipboard.writeText(userProfile.unique_id!); toast.success('FB-ID copied!'); }}
+                          className="text-xs text-gray-400 hover:text-white font-mono ml-2 transition-colors px-2.5 py-1 bg-white/5 rounded border border-white/10 hover:bg-white/10"
+                        >
+                          COPY
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="text-xs font-mono text-gray-500 mt-1">Loading FB-ID...</div>
+                    )}
+                  </div>
+
+                  {/* Gamer Tag */}
+                  <div className="space-y-2">
+                    <div className="text-xs font-mono font-bold text-gray-400">GAMER TAG / DISPLAY NAME</div>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={displayName}
+                        onChange={e => setDisplayName(e.target.value)}
+                        placeholder="Gamertag or Channel Name"
+                        className="flex-1 bg-[#111] border border-gray-800 rounded-lg p-2.5 text-white focus:border-[#00FF88] outline-none font-mono text-sm"
+                      />
+                      <button
+                        onClick={saveDisplayName}
+                        className="px-5 py-2 rounded-lg border border-[#00FF88]/50 text-[#00FF88] hover:bg-[#00FF88]/10 font-rajdhani font-bold tracking-wider transition-all text-sm shrink-0"
+                      >
+                        SAVE
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Privacy Controls */}
+                  <div className="pt-2 space-y-2.5">
+                    <div className="text-xs font-mono font-bold text-gray-400">PRIVACY CONTROLS</div>
+                    <div className="flex items-center justify-between p-2.5 rounded-lg bg-black/30 border border-white/5">
+                      <span className="text-xs font-mono opacity-80">Publicly Searchable Profile</span>
+                      <button
+                        onClick={() => handleTogglePrivacy('is_public', !(userProfile?.is_public ?? true))}
+                        className={`px-3 py-1 rounded text-xs font-mono font-bold transition-all ${(userProfile?.is_public ?? true) ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/40' : 'bg-white/5 text-gray-400'
+                          }`}
+                      >
+                        {(userProfile?.is_public ?? true) ? 'PUBLIC' : 'HIDDEN'}
+                      </button>
+                    </div>
+
+                    <div className="flex items-center justify-between p-2.5 rounded-lg bg-black/30 border border-white/5">
+                      <span className="text-xs font-mono opacity-80">Friends-Only Start.gg Stats</span>
+                      <button
+                        onClick={() => handleTogglePrivacy('friends_only', !(userProfile?.friends_only ?? false))}
+                        className={`px-3 py-1 rounded text-xs font-mono font-bold transition-all ${(userProfile?.friends_only ?? false) ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40' : 'bg-white/5 text-gray-400'
+                          }`}
+                      >
+                        {(userProfile?.friends_only ?? false) ? 'FRIENDS ONLY' : 'ANYONE'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
                 
                 {/* === INTEGRATIONS SECTION === */}
                 <div className="space-y-4 mb-8">

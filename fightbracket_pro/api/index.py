@@ -101,6 +101,7 @@ class ProfileUpdateRequest(BaseModel):
     avatar_url: str | None = None
     startgg_slug: str | None = None
     tekken_id: str | None = None
+    games_data: str | None = None
     is_public: bool | None = None
     friends_only: bool | None = None
 
@@ -263,6 +264,7 @@ def get_user_profile(user_id: str = Depends(get_current_user_id), db: Session = 
                 "startgg_slug": user.startgg_slug or "",
                 "startgg_data": user.startgg_data or "",
                 "tekken_id": user.tekken_id or "",
+                "games_data": getattr(user, 'games_data', '') or "",
                 "is_public": user.is_public if user.is_public is not None else True,
                 "friends_only": user.friends_only if user.friends_only is not None else False,
                 "created_at": created_at_str,
@@ -284,7 +286,14 @@ def update_user_profile(req: ProfileUpdateRequest, user_id: str = Depends(get_cu
         raise HTTPException(status_code=404, detail="User not found")
         
     if req.gamer_tag is not None:
-        user.gamer_tag = req.gamer_tag.strip() # type: ignore
+        tag_clean = req.gamer_tag.strip()
+        if tag_clean:
+            existing = db.query(DBUser).filter(DBUser.gamer_tag.ilike(tag_clean), DBUser.id != user_id).first()
+            if existing:
+                raise HTTPException(status_code=400, detail=f"Gamer Tag '{tag_clean}' is already taken by another player. Please choose a unique Gamer Tag.")
+            user.gamer_tag = tag_clean # type: ignore
+        else:
+            user.gamer_tag = "" # type: ignore
     if req.bio is not None:
         user.bio = req.bio.strip() # type: ignore
     if req.avatar_url is not None:
@@ -293,6 +302,8 @@ def update_user_profile(req: ProfileUpdateRequest, user_id: str = Depends(get_cu
         user.startgg_slug = req.startgg_slug.strip() # type: ignore
     if req.tekken_id is not None:
         user.tekken_id = req.tekken_id.strip() # type: ignore
+    if req.games_data is not None:
+        user.games_data = req.games_data # type: ignore
     if req.is_public is not None:
         user.is_public = req.is_public # type: ignore
     if req.friends_only is not None:
@@ -813,6 +824,7 @@ def get_target_user_profile(target_user_id: str, user_id: str = Depends(get_curr
             "startgg_slug": "" if privacy_restricted else (target_user.startgg_slug or ""),
             "startgg_data": startgg_data_parsed,
             "tekken_id": "" if privacy_restricted else (target_user.tekken_id or ""),
+            "games_data": "" if privacy_restricted else (getattr(target_user, 'games_data', '') or ""),
             "is_public": is_public,
             "friends_only": friends_only,
             "is_friend": is_friend,
@@ -1314,15 +1326,15 @@ def get_tekken_stats(tekken_id: str):
         raise HTTPException(status_code=502, detail=f"EWGF API request failed: {e}")
 
     if profile_resp.status_code == 404 or battles_resp.status_code == 404:
-        raise HTTPException(status_code=404, detail="Tekken player not found in EWGF database")
+        raise HTTPException(status_code=404, detail="Tekken 8 player not found in EWGF database. Verify your Polaris ID in Account Settings.")
     if profile_resp.status_code == 401 or battles_resp.status_code == 401:
-        raise HTTPException(status_code=502, detail="EWGF API authentication error")
+        raise HTTPException(status_code=502, detail="EWGF API key or authentication error.")
     if profile_resp.status_code == 429 or battles_resp.status_code == 429:
-        raise HTTPException(status_code=429, detail="EWGF API rate limit exceeded — try again later")
+        raise HTTPException(status_code=429, detail="EWGF API rate limit exceeded — try again in a few moments.")
     if not profile_resp.ok:
-        raise HTTPException(status_code=502, detail=f"EWGF profile API error: {profile_resp.status_code}")
+        raise HTTPException(status_code=502, detail=f"Could not retrieve Tekken 8 stats for Polaris ID '{tekken_id}'. Please check that the ID is formatted correctly.")
     if not battles_resp.ok:
-        raise HTTPException(status_code=502, detail=f"EWGF battles API error: {battles_resp.status_code}")
+        raise HTTPException(status_code=502, detail=f"Could not retrieve Tekken 8 match history for Polaris ID '{tekken_id}'.")
 
     try:
         profile_data = profile_resp.json()

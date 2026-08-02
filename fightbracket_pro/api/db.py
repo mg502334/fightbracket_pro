@@ -15,6 +15,7 @@ class DBUser(Base):
     startgg_slug = Column(String, nullable=True)
     startgg_data = Column(Text, nullable=True) # Stored JSON string of Start.gg events & stats
     tekken_id = Column(String, nullable=True) # Tekken 8 / Polaris ID
+    games_data = Column(Text, nullable=True) # Stored JSON string of main games & characters
     is_public = Column(Boolean, default=True) # Publicly viewable vs hidden
     friends_only = Column(Boolean, default=False) # Only friends can view Start.gg stats
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))

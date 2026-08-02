@@ -21,6 +21,7 @@ interface UserProfileData {
       placement: string | number;
     }>;
   };
+  games_data?: string;
   is_public: boolean;
   friends_only: boolean;
   is_friend: boolean;
@@ -174,6 +175,32 @@ export function UserProfileModal({ isOpen, onClose, targetUserId, supabaseToken,
             ) : (
               /* Full Profile View */
               <div className="space-y-6">
+                {/* Main Games & Characters */}
+                {(() => {
+                  if (!profile?.games_data) return null;
+                  try {
+                    const parsed = JSON.parse(profile.games_data);
+                    if (!Array.isArray(parsed) || parsed.length === 0) return null;
+                    return (
+                      <div className="p-4 rounded-xl bg-[#050A14] border border-[#FF006E]/30 space-y-3">
+                        <div className="text-xs font-mono font-bold text-[#FF006E] tracking-widest flex items-center gap-2">
+                          <Sparkles size={14} /> MAIN GAMES & CHARACTERS
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          {parsed.map((item: any, idx: number) => (
+                            <div key={idx} className="p-2.5 rounded bg-black/40 border border-white/10 flex items-center justify-between text-xs font-mono">
+                              <span className="font-bold text-cyan-400">{item.game}</span>
+                              <span className="text-white bg-white/10 px-2 py-0.5 rounded text-[11px]">{item.main}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  } catch {
+                    return null;
+                  }
+                })()}
+
                 {/* Bio */}
                 {profile?.bio && (
                   <div className="p-4 rounded-xl bg-white/5 border border-white/5 text-xs font-mono opacity-80">
