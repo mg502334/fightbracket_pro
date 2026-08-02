@@ -176,6 +176,11 @@ export function UserDirectoryModal({
                     <div>
                       <div className="flex items-center gap-2">
                         <span className="font-bold text-base text-white font-rajdhani">{u.gamer_tag}</span>
+                        {currentUserId === u.id && (
+                          <span className="text-[10px] bg-[#00E5FF]/20 text-[#00E5FF] border border-[#00E5FF]/40 px-2 py-0.5 rounded font-mono font-bold">
+                            YOU
+                          </span>
+                        )}
                         {u.is_public && (
                           <span className="text-[10px] bg-green-500/10 text-green-400 border border-green-500/30 px-2 py-0.5 rounded">
                             PUBLIC

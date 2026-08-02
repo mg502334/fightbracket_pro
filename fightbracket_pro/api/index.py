@@ -804,24 +804,28 @@ def search_users(q: str = "", user_id: str = Depends(get_current_user_id), db: S
         query = query.filter(
             (DBUser.gamer_tag.ilike(query_str)) |
             (DBUserIdentifier.unique_id.ilike(query_str)) |
+            (DBUser.unique_id.ilike(query_str)) |
             (DBUser.id == q.strip())
         )
     else:
-        query = query.filter(DBUser.is_public != False)
+        if user_id:
+            query = query.filter((DBUser.is_public != False) | (DBUser.id == user_id))
+        else:
+            query = query.filter(DBUser.is_public != False)
 
-    users_with_ids = query.limit(25).all()
+    users_with_ids = query.limit(50).all()
 
     return {
         "users": [
             {
                 "id": u.id,
-                "unique_id": ui.unique_id if ui else "FB-MISSING",
-                "gamer_tag": u.gamer_tag or (ui.unique_id if ui else "Player"),
+                "unique_id": (ui.unique_id if ui and ui.unique_id else (u.unique_id if hasattr(u, 'unique_id') and u.unique_id else "FB-MISSING")),
+                "gamer_tag": u.gamer_tag or ((ui.unique_id if ui and ui.unique_id else u.unique_id) if hasattr(u, 'unique_id') and u.unique_id else "Player"),
                 "avatar_url": u.avatar_url or "",
                 "is_public": u.is_public if u.is_public is not None else True,
                 "friends_only": u.friends_only if u.friends_only is not None else False
             }
-            for u, ui in users_with_ids if u.id != user_id
+            for u, ui in users_with_ids
         ]
     }
 
