@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FunStreams - Video Component</title>
+  <script src="https://extension-files.twitch.tv/helper/v1/twitch-ext.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@700;800&family=JetBrains+Mono:wght@600;800&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: transparent;
+      color: #fff;
+      font-family: 'JetBrains Mono', monospace;
+      overflow: hidden;
+      width: 100vw;
+      height: 100vh;
+      pointer-events: none;
+    }
+    .hud-container {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      pointer-events: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .match-card {
+      background: rgba(5, 10, 20, 0.88);
+      border: 1px solid rgba(0, 229, 255, 0.4);
+      border-radius: 12px;
+      padding: 12px 18px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6), 0 0 20px rgba(0, 229, 255, 0.15);
+      backdrop-filter: blur(8px);
+      min-width: 320px;
+      transition: all 0.3s ease;
+    }
+    .badge {
+      display: inline-block;
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 11px;
+      font-weight: 800;
+      color: #00e5ff;
+      letter-spacing: 1.5px;
+      margin-bottom: 6px;
+    }
+    .players-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .player {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 18px;
+      font-weight: 800;
+      letter-spacing: 1px;
+    }
+    .score {
+      font-size: 20px;
+      font-weight: 800;
+      color: #ff006e;
+      background: rgba(255, 0, 110, 0.15);
+      padding: 2px 10px;
+      border-radius: 6px;
+      border: 1px solid rgba(255, 0, 110, 0.3);
+    }
+    .versus {
+      font-size: 11px;
+      color: #64748b;
+    }
+    .next-up {
+      background: rgba(5, 10, 20, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      padding: 6px 12px;
+      font-size: 10px;
+      color: #94a3b8;
+      display: flex;
+      justify-content: space-between;
+    }
+    .tekken-badge {
+      color: #ff003c;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <div class="hud-container">
+    <div class="match-card" id="matchCard">
+      <div class="badge">⚔️ FIGHTBRACKET PRO // NOW PLAYING</div>
+      <div class="players-row">
+        <div class="player text-cyan" id="p1Name">PLAYER 1</div>
+        <div class="score" id="score">0 - 0</div>
+        <div class="player" id="p2Name">PLAYER 2</div>
+      </div>
+    </div>
+    <div class="next-up" id="nextUp">
+      <span>UP NEXT: Match #4</span>
+      <span class="tekken-badge">TEKKEN 8 / SF6</span>
+    </div>
+  </div>
+
+  <script>
+    window.Twitch.ext.onAuthorized(function(auth) {
+      console.log('Video component authorized');
+    });
+
+    window.Twitch.ext.configuration.onChanged(function() {
+      if (window.Twitch.ext.configuration.broadcaster) {
+        try {
+          const cfg = JSON.parse(window.Twitch.ext.configuration.broadcaster.content);
+          if (cfg.tournamentId) {
+            fetchLiveData(cfg.tournamentId);
+          }
+        } catch(e) {}
+      }
+    });
+
+    function fetchLiveData(tourneyId) {
+      fetch(`/api/tournaments/${tourneyId}`)
+        .then(r => r.json())
+        .then(data => {
+          if (data.tournament && data.tournament.active_match) {
+            const m = data.tournament.active_match;
+            document.getElementById('p1Name').textContent = m.player1 || 'P1';
+            document.getElementById('p2Name').textContent = m.player2 || 'P2';
+            document.getElementById('score').textContent = `${m.score1 || 0} - ${m.score2 || 0}`;
+          }
+        })
+        .catch(() => {});
+    }
+  </script>
+</body>
+</html>
