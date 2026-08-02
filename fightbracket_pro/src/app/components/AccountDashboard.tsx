@@ -760,7 +760,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
         <div className="px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/10 bg-black/40">
           <div>
             <h3 className="text-xl font-bold font-rajdhani text-[#ff003c] tracking-widest flex items-center gap-2">
-              <Swords size={20} /> TEKKEN 8 LIVE STATS & RANKING
+              TEKKEN 8 LIVE STATS & RANKING
             </h3>
             <p className="text-[11px] font-mono text-gray-400 tracking-wider mt-0.5">
               Live ranking & battle history synced from EWGF · updates on demand
@@ -788,7 +788,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
           <div className="bg-[#050A14] border border-[#FF006E]/30 p-6 rounded-2xl shadow-xl space-y-4">
             <div className="flex justify-between items-center border-b border-white/10 pb-4">
               <h3 className="text-xl font-bold font-rajdhani text-[#FF006E] tracking-widest flex items-center gap-2">
-                <Sparkles size={20} /> MAIN GAMES & CHARACTERS
+                MAIN GAMES & CHARACTERS
               </h3>
             </div>
             
@@ -796,21 +796,41 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
             <div className="bg-black/40 border border-white/10 p-3.5 rounded-xl space-y-3">
               <div className="text-xs font-mono text-gray-400 font-bold">ADD OR UPDATE YOUR MAIN</div>
               <div className="flex flex-col sm:flex-row gap-2">
-                <select
+                <input
+                  list="games-datalist"
                   value={newGameName}
                   onChange={e => setNewGameName(e.target.value)}
-                  className="bg-[#111] border border-gray-800 rounded-lg px-3 py-2 text-white font-mono text-xs outline-none focus:border-[#FF006E]"
-                >
-                  <option value="Tekken 8">Tekken 8</option>
-                  <option value="Street Fighter 6">Street Fighter 6</option>
-                  <option value="Guilty Gear Strive">Guilty Gear Strive</option>
-                  <option value="Fatal Fury: CotW">Fatal Fury: CotW</option>
-                  <option value="Smash Ultimate">Smash Ultimate</option>
-                  <option value="Mortal Kombat 1">Mortal Kombat 1</option>
-                  <option value="GBVSR">GBVSR</option>
-                  <option value="UNI2">UNI2</option>
-                  <option value="DBFZ">DBFZ</option>
-                </select>
+                  placeholder="Game Name (e.g. Tekken 8)"
+                  className="bg-[#111] border border-gray-800 rounded-lg px-3 py-2 text-white font-mono text-xs outline-none focus:border-[#FF006E] min-w-[150px]"
+                />
+                <datalist id="games-datalist">
+                  <option value="Tekken 8" />
+                  <option value="Tekken 7" />
+                  <option value="Tekken 6" />
+                  <option value="Tekken 5" />
+                  <option value="Street Fighter 6" />
+                  <option value="Street Fighter V" />
+                  <option value="Street Fighter IV" />
+                  <option value="Street Fighter III: 3rd Strike" />
+                  <option value="Soul Calibur VI" />
+                  <option value="Soul Calibur V" />
+                  <option value="Guilty Gear Strive" />
+                  <option value="Guilty Gear Xrd" />
+                  <option value="Fatal Fury: City of the Wolves" />
+                  <option value="2XKO" />
+                  <option value="Avatar: The Last Airbender" />
+                  <option value="Smash Ultimate" />
+                  <option value="Smash Melee" />
+                  <option value="Mortal Kombat 1" />
+                  <option value="Mortal Kombat 11" />
+                  <option value="GBVSR" />
+                  <option value="UNI2" />
+                  <option value="DBFZ" />
+                  <option value="KOF XV" />
+                  <option value="Marvel vs. Capcom 3" />
+                  <option value="Marvel vs. Capcom 2" />
+                  <option value="BlazBlue: Central Fiction" />
+                </datalist>
                 <input
                   type="text"
                   placeholder="Main Character (e.g. Kazuya)"

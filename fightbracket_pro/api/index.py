@@ -223,8 +223,8 @@ def get_user_profile(user_id: str = Depends(get_current_user_id), db: Session = 
             db.commit()
 
         existing_friendship = db.query(DBFriendship).filter(
-            DBFriendship.user_id == user_id, 
-            DBFriendship.friend_id == bot_id
+            ((DBFriendship.user_id == user_id) & (DBFriendship.friend_id == bot_id)) |
+            ((DBFriendship.user_id == bot_id) & (DBFriendship.friend_id == user_id))
         ).first()
 
         if not existing_friendship:
@@ -595,13 +595,15 @@ def remove_friend(friend_id: str, user_id: str = Depends(get_current_user_id), d
     if not db:
         raise HTTPException(status_code=404, detail="Database not available")
 
-    friendship = db.query(DBFriendship).filter(
+    # Delete all friendship rows in both directions (two rows are created per friendship)
+    friendships = db.query(DBFriendship).filter(
         ((DBFriendship.user_id == user_id) & (DBFriendship.friend_id == friend_id)) |
         ((DBFriendship.user_id == friend_id) & (DBFriendship.friend_id == user_id))
-    ).first()
+    ).all()
 
-    if friendship:
+    for friendship in friendships:
         db.delete(friendship)
+    if friendships:
         db.commit()
 
     return {"status": "removed"}
@@ -640,15 +642,16 @@ def get_inbox_conversations(user_id: str = Depends(get_current_user_id), db: Ses
         partners_with_ids = db.query(DBUser, DBUserIdentifier).outerjoin(DBUserIdentifier, DBUser.id == DBUserIdentifier.id).filter(DBUser.id.in_(partner_ids)).all()
         
         for u, ui in partners_with_ids:
-            uid_str = ui.unique_id if ui else "FB-MISSING"
+            uid_str = (ui.unique_id if ui else None) or getattr(u, 'unique_id', None) or "FB-MISSING"
             convos[u.id].update({
                 "gamer_tag": u.gamer_tag or uid_str,
                 "unique_id": uid_str,
                 "avatar_url": u.avatar_url or ""
             })
 
-    # Return as list, sorted by latest message
-    sorted_convos = sorted(convos.values(), key=lambda x: x["sent_at"], reverse=True)
+    # Filter out conversations missing required fields (partner user may have been deleted)
+    valid_convos = [c for c in convos.values() if c.get("gamer_tag")]
+    sorted_convos = sorted(valid_convos, key=lambda x: x["sent_at"], reverse=True)
     return {"conversations": sorted_convos}
 
 @app.get("/api/messages/{friend_id}")
@@ -734,6 +737,43 @@ def send_direct_message(req: SendMessageInput, user_id: str = Depends(get_curren
             "sent_at": dm.sent_at.isoformat() if dm.sent_at else datetime.now(timezone.utc).isoformat()
         }
     }
+
+@app.delete("/api/messages/{message_id}")
+def delete_direct_message(message_id: str, user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    if not db:
+        raise HTTPException(status_code=404, detail="Database not available")
+
+    msg = db.query(DBDirectMessage).filter(DBDirectMessage.id == message_id).first()
+    if not msg:
+        raise HTTPException(status_code=404, detail="Message not found")
+
+    # Only the sender can delete their own message
+    if msg.sender_id != user_id:
+        raise HTTPException(status_code=403, detail="You can only delete your own messages")
+
+    db.delete(msg)
+    db.commit()
+    return {"status": "deleted", "message_id": message_id}
+
+@app.post("/api/messages/mark-read/{partner_id}")
+def mark_messages_read(partner_id: str, user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    """Mark all messages from partner_id to current user as read. Future: RCS delivery receipts."""
+    if not db:
+        raise HTTPException(status_code=404, detail="Database not available")
+
+    unread = db.query(DBDirectMessage).filter(
+        DBDirectMessage.sender_id == partner_id,
+        DBDirectMessage.recipient_id == user_id,
+        DBDirectMessage.read == False
+    ).all()
+
+    count = len(unread)
+    for m in unread:
+        m.read = True  # type: ignore
+    if unread:
+        db.commit()
+
+    return {"status": "ok", "marked_read": count}
 
 # --- SEARCH & PUBLIC / PRIVACY PROFILE ENDPOINTS ---
 
@@ -1301,69 +1341,146 @@ def get_tekken_stats(tekken_id: str):
         raise HTTPException(status_code=400, detail="tekken_id is required")
 
     tekken_id = tekken_id.strip()
+    # EWGF URL format uses no hyphens (e.g. 5b6yhDee7fTd not 5b6y-hDee-7fTd)
+    api_id = tekken_id.replace("-", "")
 
     EWGF_BASE = "https://api.ewgf.gg"
-    EWGF_TOKEN = os.environ.get("EWGF_API_TOKEN", "ewgf_e146ff104fd149409abc02db98e24202")
+    raw_token = os.environ.get("EWGF_API_TOKEN", "ewgf_e146ff104fd149409abc02db98e24202")
+    if raw_token.lower().startswith("bearer "):
+        raw_token = raw_token[7:]
+    EWGF_TOKEN = raw_token.strip()
     headers = {
         "Authorization": f"Bearer {EWGF_TOKEN}",
         "Content-Type": "application/json",
     }
 
+    # Only use battles endpoint — EWGF profile endpoint returns 500 (their server bug).
+    # The battles response contains all needed fields: player name, character, rank, tekken power.
     try:
-        profile_resp = requests.get(
-            f"{EWGF_BASE}/external/profile/{tekken_id}",
-            headers=headers,
-            timeout=10,
-        )
         battles_resp = requests.get(
-            f"{EWGF_BASE}/external/battles/{tekken_id}",
+            f"{EWGF_BASE}/external/battles/{api_id}",
             headers=headers,
-            timeout=10,
+            timeout=15,
         )
     except requests.exceptions.Timeout:
         raise HTTPException(status_code=504, detail="EWGF API timed out")
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"EWGF API request failed: {e}")
 
-    if profile_resp.status_code == 404 or battles_resp.status_code == 404:
+    if battles_resp.status_code == 404:
         raise HTTPException(status_code=404, detail="Tekken 8 player not found in EWGF database. Verify your Polaris ID in Account Settings.")
-    if profile_resp.status_code == 401 or battles_resp.status_code == 401:
+    if battles_resp.status_code == 401:
         raise HTTPException(status_code=502, detail="EWGF API key or authentication error.")
-    if profile_resp.status_code == 429 or battles_resp.status_code == 429:
+    if battles_resp.status_code == 429:
         raise HTTPException(status_code=429, detail="EWGF API rate limit exceeded — try again in a few moments.")
-    if not profile_resp.ok:
-        raise HTTPException(status_code=502, detail=f"Could not retrieve Tekken 8 stats for Polaris ID '{tekken_id}'. Please check that the ID is formatted correctly.")
     if not battles_resp.ok:
         raise HTTPException(status_code=502, detail=f"Could not retrieve Tekken 8 match history for Polaris ID '{tekken_id}'.")
 
     try:
-        profile_data = profile_resp.json()
         battles_data = battles_resp.json()
     except Exception:
         raise HTTPException(status_code=502, detail="Failed to parse EWGF API response")
 
-    profile = profile_data.get("data") or {}
     matches = battles_data.get("data") or []
     meta = battles_data.get("_metadata") or {}
 
-    # Compute derived stats from battle history
-    wins = sum(1 for m in matches if (m.get("result") or "").upper() == "WIN")
-    losses = sum(1 for m in matches if (m.get("result") or "").upper() == "LOSS")
-    total = wins + losses
-    win_rate = round((wins / total) * 100, 1) if total > 0 else 0.0
+    # Build a profile from the first match record that belongs to this player
+    profile: dict = {}
+    for m in matches:
+        if (m.get("p1_tekken_id") or "").replace("-", "").lower() == api_id.lower():
+            profile = {
+                "playerName": m.get("p1_name", ""),
+                "player_name": m.get("p1_name", ""),
+                "rankName": m.get("p1_dan_rank", ""),
+                "rank_name": m.get("p1_dan_rank", ""),
+                "tekkenPower": m.get("p1_tekken_power"),
+                "rank_points": m.get("p1_tekken_power"),
+                "region": m.get("p1_region", ""),
+                "mainChar": m.get("p1_char", ""),
+            }
+            break
+        elif (m.get("p2_tekken_id") or "").replace("-", "").lower() == api_id.lower():
+            profile = {
+                "playerName": m.get("p2_name", ""),
+                "player_name": m.get("p2_name", ""),
+                "rankName": m.get("p2_dan_rank", ""),
+                "rank_name": m.get("p2_dan_rank", ""),
+                "tekkenPower": m.get("p2_tekken_power"),
+                "rank_points": m.get("p2_tekken_power"),
+                "region": m.get("p2_region", ""),
+                "mainChar": m.get("p2_char", ""),
+            }
+            break
 
-    # Most-played characters
+    # Compute win/loss from the battles (winner field: 1 = p1 wins, 2 = p2 wins)
+    wins = 0
+    losses = 0
     char_counts: dict = {}
     for m in matches:
-        char = m.get("player_character") or m.get("character") or "Unknown"
+        p1_id = (m.get("p1_tekken_id") or "").replace("-", "").lower()
+        p2_id = (m.get("p2_tekken_id") or "").replace("-", "").lower()
+        is_p1 = p1_id == api_id.lower()
+        is_p2 = p2_id == api_id.lower()
+        winner = m.get("winner")
+        if is_p1:
+            char = m.get("p1_char") or "Unknown"
+            if winner == 1:
+                wins += 1
+            elif winner == 2:
+                losses += 1
+        elif is_p2:
+            char = m.get("p2_char") or "Unknown"
+            if winner == 2:
+                wins += 1
+            elif winner == 1:
+                losses += 1
+        else:
+            continue
         char_counts[char] = char_counts.get(char, 0) + 1
+
+    total = wins + losses
+    win_rate = round((wins / total) * 100, 1) if total > 0 else 0.0
     top_characters = sorted(char_counts.items(), key=lambda x: x[1], reverse=True)[:3]
+
+    # Normalize match records to a consistent shape for the frontend
+    normalized_matches = []
+    for m in matches[:10]:
+        p1_id = (m.get("p1_tekken_id") or "").replace("-", "").lower()
+        is_p1 = p1_id == api_id.lower()
+        result = ""
+        winner = m.get("winner")
+        if is_p1:
+            result = "WIN" if winner == 1 else "LOSS"
+            player_char = m.get("p1_char", "?")
+            opp_char = m.get("p2_char", "?")
+            opp_name = m.get("p2_name", "?")
+            rounds_won = m.get("p1_rounds_won", 0)
+            rounds_lost = m.get("p2_rounds_won", 0)
+        else:
+            result = "WIN" if winner == 2 else "LOSS"
+            player_char = m.get("p2_char", "?")
+            opp_char = m.get("p1_char", "?")
+            opp_name = m.get("p1_name", "?")
+            rounds_won = m.get("p2_rounds_won", 0)
+            rounds_lost = m.get("p1_rounds_won", 0)
+        normalized_matches.append({
+            "id": m.get("battle_at", ""),
+            "result": result,
+            "player_character": player_char,
+            "opponent_character": opp_char,
+            "opponent_name": opp_name,
+            "battle_type": m.get("battle_type", ""),
+            "timestamp": m.get("battle_at", ""),
+            "rounds_won": rounds_won,
+            "rounds_lost": rounds_lost,
+            "stage_id": m.get("stage_id"),
+        })
 
     return {
         "status": "ok",
         "tekken_id": tekken_id,
         "profile": profile,
-        "matches": matches[:10],  # Return latest 10 matches
+        "matches": normalized_matches,
         "meta": meta,
         "derived": {
             "wins": wins,

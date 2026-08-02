@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Users, UserPlus, MessageSquare, X, Check, Trash2, Send, Shield, Lock, Search } from 'lucide-react';
+import { Users, UserPlus, MessageSquare, X, Check, CheckCheck, Trash2, Send, MailOpen } from 'lucide-react';
 
 interface Friend {
   id: string;
@@ -24,6 +24,7 @@ interface DirectMessage {
   recipient_id: string;
   message: string;
   sent_at: string;
+  read: boolean;
 }
 
 interface InboxConversation {
@@ -35,7 +36,6 @@ interface InboxConversation {
   sent_at: string;
   unread_count: number;
 }
-
 
 interface FriendsModalProps {
   isOpen: boolean;
@@ -59,6 +59,9 @@ export function FriendsModal({ isOpen, onClose, theme, currentUserId, supabaseTo
   const [activeChatFriend, setActiveChatFriend] = useState<Friend | null>(null);
   const [messages, setMessages] = useState<DirectMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
+  const [hoveredMsgId, setHoveredMsgId] = useState<string | null>(null);
+  const [deletingMsgId, setDeletingMsgId] = useState<string | null>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const fetchFriends = async () => {
     if (!supabaseToken) return;
@@ -98,6 +101,10 @@ export function FriendsModal({ isOpen, onClose, theme, currentUserId, supabaseTo
       fetchInbox();
     }
   }, [isOpen, supabaseToken]);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
 
   const handleSendRequest = async () => {
     if (!addIdentifier.trim() || !supabaseToken) return;
@@ -172,6 +179,8 @@ export function FriendsModal({ isOpen, onClose, theme, currentUserId, supabaseTo
       if (res.ok) {
         const data = await res.json();
         setMessages(data.messages || []);
+        // Mark messages as read after opening (also done server-side on fetch)
+        fetchInbox();
       }
     } catch (e) {
       console.error('Error fetching messages:', e);
@@ -197,6 +206,43 @@ export function FriendsModal({ isOpen, onClose, theme, currentUserId, supabaseTo
       }
     } catch (e) {
       console.error('Error sending DM:', e);
+    }
+  };
+
+  const handleDeleteMessage = async (messageId: string) => {
+    if (!supabaseToken) return;
+    setDeletingMsgId(messageId);
+    try {
+      const res = await fetch(`/api/messages/${messageId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${supabaseToken}` }
+      });
+      if (res.ok) {
+        setMessages(prev => prev.filter(m => m.id !== messageId));
+        // Refresh inbox in case it was the latest message
+        fetchInbox();
+      }
+    } catch (e) {
+      console.error('Error deleting message:', e);
+    } finally {
+      setDeletingMsgId(null);
+      setHoveredMsgId(null);
+    }
+  };
+
+  const handleMarkRead = async (partnerId: string) => {
+    if (!supabaseToken) return;
+    try {
+      await fetch(`/api/messages/mark-read/${partnerId}`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${supabaseToken}` }
+      });
+      // Optimistically update unread count
+      setInboxConversations(prev =>
+        prev.map(c => c.partner_id === partnerId ? { ...c, unread_count: 0 } : c)
+      );
+    } catch (e) {
+      console.error('Error marking as read:', e);
     }
   };
 
@@ -228,7 +274,7 @@ export function FriendsModal({ isOpen, onClose, theme, currentUserId, supabaseTo
               <Users size={22} style={{ color: theme.primaryColor }} />
               <div>
                 <h2 className="font-bold tracking-wider text-base" style={{ fontFamily: 'Rajdhani, sans-serif', color: theme.primaryColor }}>
-                  FRIENDS & DIRECT MESSAGES
+                  FRIENDS &amp; DIRECT MESSAGES
                 </h2>
                 <p className="text-[11px] opacity-50 font-mono">Connect and chat with FightBracket players.</p>
               </div>
@@ -315,7 +361,7 @@ export function FriendsModal({ isOpen, onClose, theme, currentUserId, supabaseTo
                   </div>
 
                   {/* Messages Feed */}
-                  <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
+                  <div className="flex-1 overflow-y-auto p-4 space-y-1 custom-scrollbar">
                     {messages.length === 0 ? (
                       <div className="text-center py-10 opacity-30 text-xs font-mono">
                         No messages yet. Say hi! 👋
@@ -323,24 +369,69 @@ export function FriendsModal({ isOpen, onClose, theme, currentUserId, supabaseTo
                     ) : (
                       messages.map(m => {
                         const isMe = m.sender_id === currentUserId;
+                        const isHovered = hoveredMsgId === m.id;
+                        const isDeleting = deletingMsgId === m.id;
                         return (
-                          <div key={m.id} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
-                            <div
-                              className={`max-w-[75%] px-3 py-2 rounded-xl text-xs ${
-                                isMe
-                                  ? 'bg-cyan-500 text-black font-medium rounded-tr-none'
-                                  : 'bg-white/10 text-white rounded-tl-none border border-white/10'
-                              }`}
-                            >
-                              {m.message}
+                          <motion.div
+                            key={m.id}
+                            initial={{ opacity: 0, y: 6 }}
+                            animate={{ opacity: isDeleting ? 0 : 1, y: 0, scale: isDeleting ? 0.9 : 1 }}
+                            transition={{ duration: 0.15 }}
+                            className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}
+                            onMouseEnter={() => setHoveredMsgId(m.id)}
+                            onMouseLeave={() => setHoveredMsgId(null)}
+                          >
+                            <div className={`flex items-end gap-1.5 ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
+                              {/* Delete button — only own messages, on hover */}
+                              {isMe && (
+                                <AnimatePresence>
+                                  {isHovered && (
+                                    <motion.button
+                                      initial={{ opacity: 0, scale: 0.7 }}
+                                      animate={{ opacity: 1, scale: 1 }}
+                                      exit={{ opacity: 0, scale: 0.7 }}
+                                      transition={{ duration: 0.12 }}
+                                      onClick={() => handleDeleteMessage(m.id)}
+                                      title="Delete message"
+                                      className="p-1 rounded-md bg-red-500/10 text-red-400 hover:bg-red-500/25 transition-colors shrink-0 mb-1"
+                                    >
+                                      <Trash2 size={11} />
+                                    </motion.button>
+                                  )}
+                                </AnimatePresence>
+                              )}
+
+                              <div
+                                className={`max-w-[75%] px-3 py-2 rounded-xl text-xs ${
+                                  isMe
+                                    ? 'bg-cyan-500 text-black font-medium rounded-tr-none'
+                                    : 'bg-white/10 text-white rounded-tl-none border border-white/10'
+                                }`}
+                              >
+                                {m.message}
+                              </div>
                             </div>
-                            <span className="text-[9px] font-mono opacity-30 mt-1 px-1">
-                              {new Date(m.sent_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                            </span>
-                          </div>
+
+                            {/* Timestamp + read receipt */}
+                            <div className={`flex items-center gap-1 mt-0.5 px-1 ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
+                              <span className="text-[9px] font-mono opacity-30">
+                                {new Date(m.sent_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                              {/* Read receipt icon — future RCS: shows checkmarks */}
+                              {isMe && (
+                                <span title={m.read ? 'Read' : 'Delivered'}>
+                                  {m.read
+                                    ? <CheckCheck size={10} className="text-cyan-400 opacity-70" />
+                                    : <Check size={10} className="opacity-25" />
+                                  }
+                                </span>
+                              )}
+                            </div>
+                          </motion.div>
                         );
                       })
                     )}
+                    <div ref={messagesEndRef} />
                   </div>
 
                   {/* Message Input */}
@@ -375,30 +466,47 @@ export function FriendsModal({ isOpen, onClose, theme, currentUserId, supabaseTo
                     inboxConversations.map(convo => (
                       <div
                         key={convo.partner_id}
-                        onClick={() => openChat({ id: convo.partner_id, gamer_tag: convo.gamer_tag, unique_id: convo.unique_id, avatar_url: convo.avatar_url })}
-                        className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5 hover:border-white/15 cursor-pointer transition-all"
+                        className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5 hover:border-white/15 transition-all group"
                       >
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-cyan-500/20 border border-cyan-400/40 flex items-center justify-center font-bold text-cyan-400 text-sm">
+                        {/* Clickable area — opens chat */}
+                        <div
+                          className="flex items-center gap-3 flex-1 min-w-0 cursor-pointer"
+                          onClick={() => openChat({ id: convo.partner_id, gamer_tag: convo.gamer_tag, unique_id: convo.unique_id, avatar_url: convo.avatar_url })}
+                        >
+                          <div className="w-10 h-10 rounded-full bg-cyan-500/20 border border-cyan-400/40 flex items-center justify-center font-bold text-cyan-400 text-sm shrink-0">
                             {convo.gamer_tag.substring(0, 2).toUpperCase()}
                           </div>
-                          <div>
+                          <div className="min-w-0">
                             <div className="font-bold text-sm font-rajdhani text-white flex items-center gap-2">
                               {convo.gamer_tag}
                               {convo.unread_count > 0 && (
-                                <span className="bg-cyan-500 text-black text-[9px] px-1.5 py-0.5 rounded-full font-bold">
+                                <span className="bg-cyan-500 text-black text-[9px] px-1.5 py-0.5 rounded-full font-bold shrink-0">
                                   {convo.unread_count} NEW
-                               </span>
+                                </span>
                               )}
                             </div>
-                            <div className="text-xs font-mono opacity-50 truncate max-w-[200px]">
+                            <div className="text-xs font-mono opacity-50 truncate max-w-[180px]">
                               {convo.latest_message}
+                            </div>
+                            <div className="text-[9px] font-mono opacity-30 mt-0.5">
+                              {new Date(convo.sent_at).toLocaleDateString()}
                             </div>
                           </div>
                         </div>
-                        <div className="text-[9px] font-mono opacity-40">
-                          {new Date(convo.sent_at).toLocaleDateString()}
-                        </div>
+
+                        {/* Mark as Read button — shown when there are unread messages */}
+                        {convo.unread_count > 0 && (
+                          <motion.button
+                            initial={{ opacity: 0, scale: 0.8 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            onClick={e => { e.stopPropagation(); handleMarkRead(convo.partner_id); }}
+                            title="Mark as read"
+                            className="ml-2 flex items-center gap-1 px-2 py-1.5 rounded-lg bg-white/5 text-white/40 hover:bg-cyan-500/15 hover:text-cyan-400 border border-white/5 hover:border-cyan-500/20 text-[10px] font-mono transition-all shrink-0"
+                          >
+                            <MailOpen size={12} />
+                            <span className="hidden group-hover:inline">Read</span>
+                          </motion.button>
+                        )}
                       </div>
                     ))
                   )}

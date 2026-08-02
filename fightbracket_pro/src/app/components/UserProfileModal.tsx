@@ -184,7 +184,7 @@ export function UserProfileModal({ isOpen, onClose, targetUserId, supabaseToken,
                     return (
                       <div className="p-4 rounded-xl bg-[#050A14] border border-[#FF006E]/30 space-y-3">
                         <div className="text-xs font-mono font-bold text-[#FF006E] tracking-widest flex items-center gap-2">
-                          <Sparkles size={14} /> MAIN GAMES & CHARACTERS
+                          MAIN GAMES & CHARACTERS
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                           {parsed.map((item: any, idx: number) => (

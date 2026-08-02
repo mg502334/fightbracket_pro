@@ -229,7 +229,6 @@ export function TekkenStatsPanel({ tekkenId, compact = false }: TekkenStatsPanel
       <div
         className={`rounded-xl border border-dashed border-white/10 text-center py-8 px-4 space-y-2 ${compact ? '' : 'bg-[#050A14]'}`}
       >
-        <Swords size={28} className="mx-auto text-white/20" />
         <p className="text-xs font-mono text-gray-500">No Tekken 8 ID linked to this profile.</p>
       </div>
     );
@@ -263,7 +262,6 @@ export function TekkenStatsPanel({ tekkenId, compact = false }: TekkenStatsPanel
       {/* ── Header ── */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Swords size={16} style={{ color: '#ff003c' }} />
           <h3
             className={`font-bold font-rajdhani tracking-widest ${compact ? 'text-base' : 'text-lg'}`}
             style={{ color: '#ff003c' }}
@@ -401,7 +399,7 @@ export function TekkenStatsPanel({ tekkenId, compact = false }: TekkenStatsPanel
           {data.matches.length > 0 && (
             <div>
               <div className="text-[10px] font-mono text-gray-400 tracking-widest mb-2 flex items-center gap-1">
-                <Swords size={10} /> RECENT MATCHES
+                RECENT MATCHES
               </div>
               <div className="space-y-1.5">
                 {data.matches.slice(0, compact ? 5 : 10).map((match, i) => (
