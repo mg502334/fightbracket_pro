@@ -81,6 +81,8 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
   const [userStartggInput, setUserStartggInput] = useState('');
   const [userTekkenId, setUserTekkenId] = useState('');
   const [userSteamId, setUserSteamId] = useState('');
+  const [userTwitchId, setUserTwitchId] = useState('');
+  const [userTwitchUrl, setUserTwitchUrl] = useState('');
   const [importingUserStartgg, setImportingUserStartgg] = useState(false);
 
   // Start.gg state
@@ -170,6 +172,8 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
         if (data.user?.startgg_slug) setUserStartggInput(data.user.startgg_slug);
         if (data.user?.tekken_id) setUserTekkenId(data.user.tekken_id);
         if (data.user?.steam_id) setUserSteamId(data.user.steam_id);
+        if (data.user?.twitch_id) setUserTwitchId(data.user.twitch_id);
+        if (data.user?.twitch_url) setUserTwitchUrl(data.user.twitch_url);
         if (data.user?.gamer_tag && !displayName) setDisplayName(data.user.gamer_tag);
         if (data.user?.games_data) {
           try {
@@ -272,6 +276,26 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
       }
     } catch (err) {
       toast.error('Failed to save Steam ID');
+    }
+  };
+
+  const saveTwitchData = async () => {
+    try {
+      const headers = await getHeaders();
+      const res = await fetch('/api/user/profile', {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify({ 
+          twitch_id: userTwitchId.trim(),
+          twitch_url: userTwitchUrl.trim()
+        })
+      });
+      if (res.ok) {
+        toast.success('Twitch integration saved successfully');
+        fetchUserProfile();
+      }
+    } catch (err) {
+      toast.error('Failed to save Twitch data');
     }
   };
 
@@ -1330,6 +1354,35 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
                       >
                         SAVE ID
                       </button>
+                    </div>
+                  </div>
+
+                  {/* Twitch ID & URL */}
+                  <div className="space-y-3 bg-white/5 p-4 rounded-lg border border-white/10">
+                    <div className="text-xs font-mono font-bold text-gray-400">TWITCH CHANNEL USERNAME & URL</div>
+                    <div className="flex flex-col gap-2">
+                      <input
+                        type="text"
+                        placeholder="Twitch Username (e.g. fightbracket)"
+                        value={userTwitchId}
+                        onChange={e => setUserTwitchId(e.target.value)}
+                        className="w-full bg-[#111] border border-gray-800 rounded-lg p-2.5 text-white focus:border-[#9146FF] outline-none font-mono text-sm"
+                      />
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          placeholder="Twitch URL (e.g. https://twitch.tv/fightbracket)"
+                          value={userTwitchUrl}
+                          onChange={e => setUserTwitchUrl(e.target.value)}
+                          className="flex-1 bg-[#111] border border-gray-800 rounded-lg p-2.5 text-white focus:border-[#9146FF] outline-none font-mono text-sm"
+                        />
+                        <button
+                          onClick={saveTwitchData}
+                          className="px-5 py-2 rounded-lg border border-[#9146FF]/50 text-[#9146FF] hover:bg-[#9146FF]/10 font-rajdhani font-bold tracking-wider transition-all text-sm shrink-0"
+                        >
+                          SAVE TWITCH
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>

@@ -290,12 +290,31 @@ export function UserProfileModal({ isOpen, onClose, targetUserId, supabaseToken,
                   )}
                 </div>
 
+                {/* ── Twitch Integration ── */}
+                {(profile?.twitch_url || profile?.twitch_id) && (
+                  <a
+                    href={profile?.twitch_url ? (profile.twitch_url.startsWith('http') ? profile.twitch_url : `https://${profile.twitch_url}`) : `https://twitch.tv/${profile.twitch_id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-3 p-3 rounded-lg bg-[#9146FF]/10 border border-[#9146FF]/30 hover:bg-[#9146FF]/20 transition-all group"
+                  >
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="#9146FF" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714Z"/>
+                    </svg>
+                    <div className="flex-1">
+                      <div className="text-xs font-mono font-bold text-[#9146FF]">TWITCH CHANNEL</div>
+                      <div className="text-sm font-rajdhani font-bold text-white group-hover:text-[#9146FF] transition-colors">
+                        {profile?.twitch_id || 'Watch Live'}
+                      </div>
+                    </div>
+                  </a>
+                )}
+
                 {/* ── Tekken 8 Live Stats Panel ── */}
                 <TekkenStatsPanel tekkenId={profile?.tekken_id} compact />
 
                 {/* ── Steam Live Gamer Card ── */}
                 <SteamStatsPanel steamId={profile?.steam_id} compact />
-
 
                 {/* Friend / DM Actions */}
                 <div className="pt-2 flex gap-3">

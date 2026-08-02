@@ -102,6 +102,8 @@ class ProfileUpdateRequest(BaseModel):
     startgg_slug: str | None = None
     tekken_id: str | None = None
     steam_id: str | None = None
+    twitch_id: str | None = None
+    twitch_url: str | None = None
     games_data: str | None = None
     is_public: bool | None = None
     friends_only: bool | None = None
@@ -266,6 +268,8 @@ def get_user_profile(user_id: str = Depends(get_current_user_id), db: Session = 
                 "startgg_data": user.startgg_data or "",
                 "tekken_id": user.tekken_id or "",
                 "steam_id": getattr(user, 'steam_id', '') or "",
+                "twitch_id": getattr(user, 'twitch_id', '') or "",
+                "twitch_url": getattr(user, 'twitch_url', '') or "",
                 "games_data": getattr(user, 'games_data', '') or "",
                 "is_public": user.is_public if user.is_public is not None else True,
                 "friends_only": user.friends_only if user.friends_only is not None else False,
@@ -306,6 +310,10 @@ def update_user_profile(req: ProfileUpdateRequest, user_id: str = Depends(get_cu
         user.tekken_id = req.tekken_id.strip() # type: ignore
     if req.steam_id is not None:
         user.steam_id = req.steam_id.strip() # type: ignore
+    if req.twitch_id is not None:
+        user.twitch_id = req.twitch_id.strip() # type: ignore
+    if req.twitch_url is not None:
+        user.twitch_url = req.twitch_url.strip() # type: ignore
     if req.games_data is not None:
         user.games_data = req.games_data # type: ignore
     if req.is_public is not None:
@@ -327,6 +335,9 @@ def update_user_profile(req: ProfileUpdateRequest, user_id: str = Depends(get_cu
             "startgg_data": user.startgg_data or "",
             "tekken_id": user.tekken_id or "",
             "steam_id": getattr(user, 'steam_id', '') or "",
+            "twitch_id": getattr(user, 'twitch_id', '') or "",
+            "twitch_url": getattr(user, 'twitch_url', '') or "",
+            "games_data": getattr(user, 'games_data', '') or "",
             "is_public": user.is_public,
             "friends_only": user.friends_only,
             "created_at": user.created_at.isoformat() if user.created_at else datetime.now(timezone.utc).isoformat()
@@ -870,6 +881,8 @@ def get_target_user_profile(target_user_id: str, user_id: str = Depends(get_curr
             "startgg_data": startgg_data_parsed,
             "tekken_id": "" if privacy_restricted else (target_user.tekken_id or ""),
             "steam_id": "" if privacy_restricted else (getattr(target_user, 'steam_id', '') or ""),
+            "twitch_id": "" if privacy_restricted else (getattr(target_user, 'twitch_id', '') or ""),
+            "twitch_url": "" if privacy_restricted else (getattr(target_user, 'twitch_url', '') or ""),
             "games_data": "" if privacy_restricted else (getattr(target_user, 'games_data', '') or ""),
             "is_public": is_public,
             "friends_only": friends_only,
