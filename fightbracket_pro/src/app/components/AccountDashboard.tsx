@@ -642,7 +642,13 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
           )}
           <div>
             <h2 className="text-3xl font-bold font-rajdhani text-white">ACCOUNT DASHBOARD</h2>
-            <p className="text-[#00FF88] font-mono text-sm mt-1">Welcome, {user.user_metadata?.displayName || 'Host'}</p>
+            <p className="text-[#00FF88] font-mono text-sm mt-1 mb-3">Welcome, {user.user_metadata?.displayName || 'Host'}</p>
+            <button
+              onClick={() => setShowAccountSettingsModal(true)}
+              className="flex items-center gap-2 px-4 py-1.5 rounded-lg border border-[#FF006E]/50 text-[#FF006E] hover:bg-[#FF006E]/10 transition-all font-rajdhani tracking-widest font-bold text-xs w-max"
+            >
+              <Settings size={14} /> SETTINGS
+            </button>
           </div>
         </div>
         <div className="flex flex-wrap gap-3 justify-end">
@@ -667,12 +673,6 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
               ) : null}
             </button>
           )}
-          <button
-            onClick={() => setShowAccountSettingsModal(true)}
-            className="flex items-center gap-2 px-5 py-2 rounded-lg border border-[#FF006E]/50 text-[#FF006E] hover:bg-[#FF006E]/10 transition-all font-rajdhani tracking-widest font-bold text-sm"
-          >
-            <Settings size={15} /> SETTINGS
-          </button>
           <button
             onClick={() => supabase.auth.signOut()}
             className="flex items-center gap-2 px-5 py-2 rounded-lg border border-[#FF006E]/50 text-[#FF006E] hover:bg-[#FF006E]/10 transition-all font-rajdhani tracking-widest font-bold text-sm"
@@ -808,14 +808,14 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
           </div>
         </div>
 
-        {/* Right Column: Start.gg Hosted + Tekken Stats */}
+        {/* Right Column: Start.gg Past Events + Tekken Stats */}
         <div className="space-y-6">
           <div className="bg-[#050A14] border border-[#FF006E]/30 p-6 rounded-xl shadow-lg">
             <div className="border-b border-gray-800 pb-4 mb-6">
               <h3 className="text-xl font-bold font-rajdhani text-[#FF006E] tracking-widest flex items-center gap-2">
-                <Key size={20} /> START.GG INTEGRATION
+                <Key size={20} /> START.GG PAST EVENTS
               </h3>
-              <p className="text-xs text-gray-400 font-mono mt-2">Connect your Developer API Token to view and instantly import tournaments you have hosted.</p>
+              <p className="text-xs text-gray-400 font-mono mt-2">Connect your Developer API Token to view and import events you have participated in.</p>
             </div>
 
             {!startggToken && (
@@ -830,7 +830,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
               className="w-full flex items-center justify-center gap-2 py-3 bg-[#FF006E] hover:bg-[#FF006E]/80 disabled:opacity-50 text-white font-bold rounded-lg transition-colors font-rajdhani tracking-widest mb-6"
             >
               <RefreshCw size={16} className={fetchingStartgg ? "animate-spin" : ""} />
-              {fetchingStartgg ? 'FETCHING...' : 'FETCH MY HOSTED TOURNAMENTS'}
+              {fetchingStartgg ? 'FETCHING...' : 'FETCH MY PAST EVENTS'}
             </button>
 
             {startggTournaments.length > 0 && (
@@ -969,22 +969,31 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
                 <h4 className="text-sm font-bold font-rajdhani text-[#FF006E] tracking-widest border-b border-[#FF006E]/30 pb-2 flex items-center gap-2">
                   <User size={16} /> PROFILE & ACCOUNT
                 </h4>
-                
-                {/* Update Avatar URL */}
+                       {/* Update Avatar Upload */}
                 <div className="space-y-2">
                   <div className="text-xs font-mono font-bold text-gray-400 flex items-center justify-between">
-                    <span>AVATAR IMAGE URL</span>
+                    <span>UPLOAD AVATAR IMAGE</span>
                     {userProfile?.avatar_url && (
                       <span className="text-[10px] text-green-400 bg-green-500/10 px-2 py-0.5 rounded">Active</span>
                     )}
                   </div>
                   <div className="flex gap-2">
                     <input
-                      type="url"
-                      placeholder="https://example.com/my-avatar.png"
-                      value={newAvatarUrl}
-                      onChange={e => setNewAvatarUrl(e.target.value)}
-                      className="flex-1 bg-[#111] border border-gray-800 rounded-lg p-2.5 text-white focus:border-[#FF006E] outline-none font-mono text-sm"
+                      type="file"
+                      accept="image/*"
+                      onChange={e => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          const reader = new FileReader();
+                          reader.onload = (event) => {
+                            if (event.target?.result) {
+                              setNewAvatarUrl(event.target.result as string);
+                            }
+                          };
+                          reader.readAsDataURL(file);
+                        }
+                      }}
+                      className="flex-1 bg-[#111] border border-gray-800 rounded-lg p-2 text-white outline-none font-mono text-sm file:mr-4 file:py-1 file:px-3 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-[#FF006E]/20 file:text-[#FF006E] hover:file:bg-[#FF006E]/30"
                     />
                     <button
                       onClick={handleUpdateAvatar}
@@ -994,8 +1003,8 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
                       SAVE
                     </button>
                   </div>
-                  <p className="text-[10px] text-gray-600 font-mono">Paste a direct link to an image to use as your profile picture.</p>
-                </div>
+                  <p className="text-[10px] text-gray-600 font-mono">Select an image file to upload as your profile picture.</p>
+                </div>     </div>
 
                 <div className="h-px bg-white/5 w-full"></div>
 

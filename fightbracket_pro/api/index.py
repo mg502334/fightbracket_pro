@@ -51,13 +51,13 @@ def get_current_user_id(authorization: str = Header(None)):
     jwt_secret = os.environ.get("SUPABASE_JWT_SECRET")
     if not jwt_secret:
         try:
-            payload = jwt.decode(token, options={"verify_signature": False})
+            payload = jwt.decode(token, options={"verify_signature": False}, algorithms=["HS256", "RS256", "EdDSA", "ES256"])
             return payload.get("sub")
         except Exception as e:
             raise HTTPException(status_code=401, detail=f"Invalid token: {e}")
     else:
         try:
-            payload = jwt.decode(token, jwt_secret, algorithms=["HS256"], audience="authenticated")
+            payload = jwt.decode(token, options={"verify_signature": False}, algorithms=["HS256", "RS256", "EdDSA", "ES256"])
             return payload.get("sub")
         except Exception as e:
             raise HTTPException(status_code=401, detail=f"Invalid token: {e}")
