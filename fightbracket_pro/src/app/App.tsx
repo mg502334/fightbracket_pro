@@ -1112,7 +1112,7 @@ export default function App() {
             <Trophy size={64} className="mb-6 opacity-20" />
             <h2 className="text-2xl tracking-widest mb-2" style={{ fontFamily: 'Rajdhani, sans-serif', fontWeight: 700 }}>NO TOURNAMENT LOADED</h2>
             <p className="text-sm max-w-md" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
-              {startggUser ? "Import a live tournament from Start.gg or add a game manually to get started." : "Please login with Start.gg to import a tournament."}
+              Import a live tournament from Start.gg or add a game manually to get started.
             </p>
           </div>
         ) : (
