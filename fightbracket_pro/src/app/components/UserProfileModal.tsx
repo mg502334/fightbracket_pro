@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Shield, Lock, Globe, UserPlus, MessageSquare, Check, X, Trophy, ExternalLink, Sparkles } from 'lucide-react';
 import { TekkenStatsPanel } from './TekkenStatsPanel';
+import { SteamStatsPanel } from './SteamStatsPanel';
 
 interface UserProfileData {
   id: string;
@@ -11,6 +12,7 @@ interface UserProfileData {
   bio?: string;
   startgg_slug?: string;
   tekken_id?: string;
+  steam_id?: string;
   startgg_data?: {
     slug?: string;
     gamerTag?: string;
@@ -290,6 +292,9 @@ export function UserProfileModal({ isOpen, onClose, targetUserId, supabaseToken,
 
                 {/* ── Tekken 8 Live Stats Panel ── */}
                 <TekkenStatsPanel tekkenId={profile?.tekken_id} compact />
+
+                {/* ── Steam Live Gamer Card ── */}
+                <SteamStatsPanel steamId={profile?.steam_id} compact />
 
 
                 {/* Friend / DM Actions */}

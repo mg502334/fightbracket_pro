@@ -101,6 +101,7 @@ class ProfileUpdateRequest(BaseModel):
     avatar_url: str | None = None
     startgg_slug: str | None = None
     tekken_id: str | None = None
+    steam_id: str | None = None
     games_data: str | None = None
     is_public: bool | None = None
     friends_only: bool | None = None
@@ -264,6 +265,7 @@ def get_user_profile(user_id: str = Depends(get_current_user_id), db: Session = 
                 "startgg_slug": user.startgg_slug or "",
                 "startgg_data": user.startgg_data or "",
                 "tekken_id": user.tekken_id or "",
+                "steam_id": getattr(user, 'steam_id', '') or "",
                 "games_data": getattr(user, 'games_data', '') or "",
                 "is_public": user.is_public if user.is_public is not None else True,
                 "friends_only": user.friends_only if user.friends_only is not None else False,
@@ -302,6 +304,8 @@ def update_user_profile(req: ProfileUpdateRequest, user_id: str = Depends(get_cu
         user.startgg_slug = req.startgg_slug.strip() # type: ignore
     if req.tekken_id is not None:
         user.tekken_id = req.tekken_id.strip() # type: ignore
+    if req.steam_id is not None:
+        user.steam_id = req.steam_id.strip() # type: ignore
     if req.games_data is not None:
         user.games_data = req.games_data # type: ignore
     if req.is_public is not None:
@@ -322,6 +326,7 @@ def update_user_profile(req: ProfileUpdateRequest, user_id: str = Depends(get_cu
             "startgg_slug": user.startgg_slug or "",
             "startgg_data": user.startgg_data or "",
             "tekken_id": user.tekken_id or "",
+            "steam_id": getattr(user, 'steam_id', '') or "",
             "is_public": user.is_public,
             "friends_only": user.friends_only,
             "created_at": user.created_at.isoformat() if user.created_at else datetime.now(timezone.utc).isoformat()
@@ -864,6 +869,7 @@ def get_target_user_profile(target_user_id: str, user_id: str = Depends(get_curr
             "startgg_slug": "" if privacy_restricted else (target_user.startgg_slug or ""),
             "startgg_data": startgg_data_parsed,
             "tekken_id": "" if privacy_restricted else (target_user.tekken_id or ""),
+            "steam_id": "" if privacy_restricted else (getattr(target_user, 'steam_id', '') or ""),
             "games_data": "" if privacy_restricted else (getattr(target_user, 'games_data', '') or ""),
             "is_public": is_public,
             "friends_only": friends_only,
@@ -1489,3 +1495,58 @@ def get_tekken_stats(tekken_id: str):
             "top_characters": [{"name": name, "count": count} for name, count in top_characters],
         },
     }
+
+# ---------------------------------------------------------------------------
+# STEAM WEB API PROXY
+# ---------------------------------------------------------------------------
+
+@app.get("/api/steam/profile/{steam_id}")
+def get_steam_profile(steam_id: str):
+    """
+    Proxy endpoint for SteamWebAPI — fetches profile & summary data for a Steam ID or Vanity URL.
+    """
+    if not steam_id or not steam_id.strip():
+        raise HTTPException(status_code=400, detail="steam_id is required")
+
+    steam_id_clean = steam_id.strip()
+    STEAM_API_KEY = os.environ.get("STEAM_API_KEY", "EE768F7D0B03FF6C84FFE2203B4712F2")
+
+    actual_steam_id = steam_id_clean
+    if not steam_id_clean.isdigit():
+        try:
+            vanity_resp = requests.get(
+                "https://www.steamwebapi.com/steam/api/info/steamid",
+                params={"key": STEAM_API_KEY, "vanityurl": steam_id_clean},
+                timeout=10
+            )
+            if vanity_resp.ok:
+                vdata = vanity_resp.json()
+                if isinstance(vdata, dict) and vdata.get("steamid"):
+                    actual_steam_id = str(vdata["steamid"])
+        except Exception:
+            pass
+
+    profile_data = {}
+    try:
+        prof_resp = requests.get(
+            "https://www.steamwebapi.com/steam/api/profile",
+            params={"key": STEAM_API_KEY, "steamid": actual_steam_id},
+            timeout=10
+        )
+        if prof_resp.ok:
+            profile_data = prof_resp.json()
+    except Exception as e:
+        print(f"Steam profile error: {e}")
+
+    if isinstance(profile_data, list) and len(profile_data) > 0:
+        profile_data = profile_data[0]
+    elif not isinstance(profile_data, dict):
+        profile_data = {}
+
+    return {
+        "status": "ok",
+        "query_id": steam_id_clean,
+        "steam_id_64": actual_steam_id,
+        "profile": profile_data
+    }
+

@@ -4,6 +4,7 @@ import { Trash2, Save, Download, RefreshCw, Key, LogOut, ArrowLeft, Globe, Exter
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
 import { TekkenStatsPanel } from './TekkenStatsPanel';
+import { SteamStatsPanel } from './SteamStatsPanel';
 
 declare global {
   interface Window {
@@ -79,6 +80,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
 
   const [userStartggInput, setUserStartggInput] = useState('');
   const [userTekkenId, setUserTekkenId] = useState('');
+  const [userSteamId, setUserSteamId] = useState('');
   const [importingUserStartgg, setImportingUserStartgg] = useState(false);
 
   // Start.gg state
@@ -155,6 +157,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
         setUserProfile(data.user);
         if (data.user?.startgg_slug) setUserStartggInput(data.user.startgg_slug);
         if (data.user?.tekken_id) setUserTekkenId(data.user.tekken_id);
+        if (data.user?.steam_id) setUserSteamId(data.user.steam_id);
         if (data.user?.gamer_tag && !displayName) setDisplayName(data.user.gamer_tag);
         if (data.user?.games_data) {
           try {
@@ -239,6 +242,24 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
       }
     } catch (err) {
       toast.error('Failed to save Tekken ID');
+    }
+  };
+
+  const saveSteamId = async () => {
+    if (!userSteamId.trim()) return;
+    try {
+      const headers = await getHeaders();
+      const res = await fetch('/api/user/profile', {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify({ steam_id: userSteamId.trim() })
+      });
+      if (res.ok) {
+        toast.success('Steam ID / Vanity URL saved successfully');
+        fetchUserProfile();
+      }
+    } catch (err) {
+      toast.error('Failed to save Steam ID');
     }
   };
 
@@ -780,6 +801,31 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
         </div>
       </div>
 
+      {/* Full Width Steam Live Gamer Card Box */}
+      <div className="bg-[#050A14] border border-[#57CBDE]/30 rounded-2xl shadow-2xl overflow-hidden w-full">
+        <div className="px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/10 bg-black/40">
+          <div>
+            <h3 className="text-xl font-bold font-rajdhani text-[#57CBDE] tracking-widest flex items-center gap-2">
+              STEAM PLAYER CARD & LIVE STATUS
+            </h3>
+            <p className="text-[11px] font-mono text-gray-400 tracking-wider mt-0.5">
+              Live status, avatar, and Steam profile connection
+            </p>
+          </div>
+          {!userProfile?.steam_id && (
+            <button
+              onClick={() => setShowAccountSettingsModal(true)}
+              className="text-xs font-mono text-[#57CBDE] bg-[#57CBDE]/10 border border-[#57CBDE]/30 px-3 py-1.5 rounded-lg hover:bg-[#57CBDE]/20 transition-all shrink-0"
+            >
+              + SET STEAM ID IN SETTINGS
+            </button>
+          )}
+        </div>
+        <div className="p-6">
+          <SteamStatsPanel steamId={userProfile?.steam_id} />
+        </div>
+      </div>
+
       {/* 2-Column Grid for Games & Mains + Start.gg Past Events & Cloud Saves */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         
@@ -1136,6 +1182,27 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
                         onClick={saveTekkenId}
                         disabled={!userTekkenId.trim()}
                         className="px-5 py-2 rounded-lg border border-[#FF006E]/50 text-[#FF006E] hover:bg-[#FF006E]/10 font-rajdhani font-bold tracking-wider transition-all text-sm disabled:opacity-40 shrink-0"
+                      >
+                        SAVE ID
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Steam ID or Vanity URL */}
+                  <div className="space-y-3 bg-white/5 p-4 rounded-lg border border-white/10">
+                    <div className="text-xs font-mono font-bold text-gray-400">STEAM ID OR VANITY USERNAME</div>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        placeholder="e.g. 76561198000000000 or customurl"
+                        value={userSteamId}
+                        onChange={e => setUserSteamId(e.target.value)}
+                        className="flex-1 bg-[#111] border border-gray-800 rounded-lg p-2.5 text-white focus:border-[#57CBDE] outline-none font-mono text-sm"
+                      />
+                      <button
+                        onClick={saveSteamId}
+                        disabled={!userSteamId.trim()}
+                        className="px-5 py-2 rounded-lg border border-[#57CBDE]/50 text-[#57CBDE] hover:bg-[#57CBDE]/10 font-rajdhani font-bold tracking-wider transition-all text-sm disabled:opacity-40 shrink-0"
                       >
                         SAVE ID
                       </button>
