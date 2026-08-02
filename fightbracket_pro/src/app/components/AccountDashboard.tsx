@@ -78,7 +78,6 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
     try { return localStorage.getItem('fb_startggToken') || ''; } catch { return ''; }
   });
   const [startggTournaments, setStartggTournaments] = useState<any[]>([]);
-  const [startggTournaments, setStartggTournaments] = useState<any[]>([]);
   const [fetchingStartgg, setFetchingStartgg] = useState(false);
 
   useEffect(() => {
