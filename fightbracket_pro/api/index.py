@@ -212,7 +212,37 @@ def get_user_profile(user_id: str = Depends(get_current_user_id), db: Session = 
             identifier = DBUserIdentifier(id=user_id, unique_id=user.unique_id)
             db.add(identifier)
             db.commit()
+
+        # Ensure existing accounts also have the FightBracket Bot friend & welcome message
+        bot_id = "fb-bot-system"
+        bot_user = db.query(DBUser).filter(DBUser.id == bot_id).first()
+        if not bot_user:
+            bot_user = DBUser(id=bot_id, unique_id="FB-BOT-0000", gamer_tag="FightBracket Bot")
+            db.add(bot_user)
+            db.commit()
+
+        existing_friendship = db.query(DBFriendship).filter(
+            DBFriendship.user_id == user_id, 
+            DBFriendship.friend_id == bot_id
+        ).first()
+
+        if not existing_friendship:
+            import uuid
+            friendship1 = DBFriendship(id=str(uuid.uuid4()), user_id=user_id, friend_id=bot_id, status="accepted")
+            friendship2 = DBFriendship(id=str(uuid.uuid4()), user_id=bot_id, friend_id=user_id, status="accepted")
+            db.add(friendship1)
+            db.add(friendship2)
             
+            welcome_msg = DBDirectMessage(
+                id=str(uuid.uuid4()),
+                sender_id=bot_id,
+                recipient_id=user_id,
+                message="Welcome to FightBracket Pro! We're glad to have you here. Let us know if you need any help getting started.",
+                read=False
+            )
+            db.add(welcome_msg)
+            db.commit()
+
         created_at_val = user.created_at
         if hasattr(created_at_val, "isoformat"):
             created_at_str = created_at_val.isoformat()
