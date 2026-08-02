@@ -1004,7 +1004,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
                     </button>
                   </div>
                   <p className="text-[10px] text-gray-600 font-mono">Select an image file to upload as your profile picture.</p>
-                </div>     </div>
+                </div>
 
                 <div className="h-px bg-white/5 w-full"></div>
 
