@@ -100,6 +100,17 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
   const [deletingAccount, setDeletingAccount] = useState(false);
   const [showAccountSettingsModal, setShowAccountSettingsModal] = useState(false);
   const [newAvatarUrl, setNewAvatarUrl] = useState('');
+  const [passkeyFactors, setPasskeyFactors] = useState<any[]>([]);
+  const [enrollingPasskey, setEnrollingPasskey] = useState(false);
+
+  const fetchPasskeyFactors = async () => {
+    try {
+      const { data, error } = await supabase.auth.mfa.listFactors();
+      if (!error && data?.all) {
+        setPasskeyFactors(data.all.filter(f => f.factor_type === 'webauthn'));
+      }
+    } catch {}
+  };
 
   useEffect(() => {
     let checkInterval: any;
@@ -138,6 +149,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
     if (user) {
       fetchCloudTournaments();
       fetchUserProfile();
+      fetchPasskeyFactors();
     }
   }, [user]);
 
@@ -260,6 +272,87 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
       }
     } catch (err) {
       toast.error('Failed to save Steam ID');
+    }
+  };
+
+  const handlePasskeySignIn = async () => {
+    if (!window.PublicKeyCredential) {
+      toast.error('Passkeys / WebAuthn are not supported by this browser.');
+      return;
+    }
+    try {
+      const { data: factors, error: factorsErr } = await supabase.auth.mfa.listFactors();
+      if (factorsErr) {
+        toast.error('Passkey verification failed. Please sign in with password first.');
+        return;
+      }
+      const passkeyFactor = factors?.all?.find(f => f.factor_type === 'webauthn');
+      if (!passkeyFactor) {
+        toast.error('No Passkey enrolled on this account. Log in with password or Discord, then register your Passkey in Settings!');
+        return;
+      }
+
+      toast.info('Opening Passkey / Biometric prompt...');
+      const { data: challenge, error: chErr } = await supabase.auth.mfa.challenge({ factorId: passkeyFactor.id });
+      if (chErr) {
+        toast.error(chErr.message);
+        return;
+      }
+      const { error: vErr } = await supabase.auth.mfa.verify({
+        factorId: passkeyFactor.id,
+        challengeId: challenge.id,
+        code: ''
+      });
+      if (vErr) {
+        toast.error(vErr.message || 'Passkey verification failed');
+      } else {
+        toast.success('Passkey verified successfully!');
+      }
+    } catch (err: any) {
+      toast.error(err?.message || 'Passkey sign-in error');
+    }
+  };
+
+  const handleEnrollPasskey = async () => {
+    if (!user) return;
+    if (!window.PublicKeyCredential) {
+      toast.error('WebAuthn / Passkeys are not supported in your current browser.');
+      return;
+    }
+
+    setEnrollingPasskey(true);
+    try {
+      const friendlyName = prompt('Enter a name for your new Passkey (e.g. "iPhone Touch ID", "MacBook Face ID", "YubiKey"):') || 'Passkey';
+      const { data, error } = await supabase.auth.mfa.enroll({
+        factorType: 'webauthn',
+        friendlyName
+      });
+
+      if (error) {
+        toast.error(error.message || 'Passkey enrollment failed');
+        return;
+      }
+
+      toast.success(`Passkey "${friendlyName}" registered successfully!`);
+      fetchPasskeyFactors();
+    } catch (err: any) {
+      toast.error(err?.message || 'Error registering Passkey');
+    } finally {
+      setEnrollingPasskey(false);
+    }
+  };
+
+  const handleUnenrollPasskey = async (factorId: string) => {
+    try {
+      const { error } = await supabase.auth.mfa.unenroll({ factorId });
+      if (error) {
+        toast.error(error.message);
+      } else {
+        toast.success('Passkey removed');
+        fetchPasskeyFactors();
+      }
+    } catch (err: any) {
+      toast.error(err?.message || 'Error removing Passkey');
     }
   };
 
@@ -629,19 +722,29 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
               {isLogin ? 'Welcome back to FightBracket Pro' : 'Join the next generation of bracket management'}
             </p>
 
-            {/* Discord OAuth */}
+            {/* Discord OAuth & Passkey Sign In */}
             {isLogin && (
               <>
-                <button
-                  onClick={handleDiscordLogin}
-                  className="w-full flex items-center justify-center gap-3 py-3 rounded-lg text-white font-bold text-lg tracking-widest mb-6 transition-all hover:brightness-110"
-                  style={{ background: '#5865F2', fontFamily: 'Rajdhani, sans-serif' }}
-                >
-                  <svg width="24" height="24" viewBox="0 0 127.14 96.36" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36,77.7,77.7,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.66,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1A105.25,105.25,0,0,0,126.6,80.22h0C129.24,52.84,122.09,29.11,107.7,8.07ZM42.45,65.69C36.18,65.69,31,60,31,53s5-12.74,11.43-12.74S54,46,53.89,53,48.84,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.31,60,73.31,53s5-12.74,11.43-12.74S96.33,46,96.22,53,91.08,65.69,84.69,65.69Z" fill="white" />
-                  </svg>
-                  SIGN IN WITH DISCORD
-                </button>
+                <div className="space-y-3 mb-6">
+                  <button
+                    onClick={handleDiscordLogin}
+                    className="w-full flex items-center justify-center gap-3 py-3 rounded-lg text-white font-bold text-base tracking-widest transition-all hover:brightness-110 shadow-lg"
+                    style={{ background: '#5865F2', fontFamily: 'Rajdhani, sans-serif' }}
+                  >
+                    <svg width="22" height="22" viewBox="0 0 127.14 96.36" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36,77.7,77.7,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.66,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1A105.25,105.25,0,0,0,126.6,80.22h0C129.24,52.84,122.09,29.11,107.7,8.07ZM42.45,65.69C36.18,65.69,31,60,31,53s5-12.74,11.43-12.74S54,46,53.89,53,48.84,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.31,60,73.31,53s5-12.74,11.43-12.74S96.33,46,96.22,53,91.08,65.69,84.69,65.69Z" fill="white" />
+                    </svg>
+                    SIGN IN WITH DISCORD
+                  </button>
+
+                  <button
+                    onClick={handlePasskeySignIn}
+                    className="w-full flex items-center justify-center gap-2 py-3 rounded-lg text-black font-bold text-base tracking-widest transition-all hover:brightness-110 shadow-lg bg-[#00FF88] hover:bg-[#00FF88]/90 font-rajdhani"
+                  >
+                    <Key size={18} />
+                    SIGN IN WITH PASSKEY / BIOMETRIC
+                  </button>
+                </div>
 
                 <div className="flex items-center gap-4 mb-6">
                   <div className="flex-1 h-px bg-gray-800"></div>
@@ -1295,6 +1398,47 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
                       {updatingPassword ? 'UPDATING...' : 'UPDATE'}
                     </button>
                   </div>
+                </div>
+
+                <div className="h-px bg-white/5 w-full"></div>
+
+                {/* Passkeys & Biometrics */}
+                <div className="space-y-3">
+                  <div className="text-xs font-mono font-bold text-emerald-400 flex items-center justify-between">
+                    <span className="flex items-center gap-1.5"><Key size={14} /> PASSKEYS & BIOMETRIC SECURITY</span>
+                    <span className="text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/30 font-bold">Supabase WebAuthn</span>
+                  </div>
+                  <p className="text-xs font-mono text-gray-400">
+                    Register Touch ID, Face ID, Windows Hello, or a hardware Security Key for instant passwordless sign in.
+                  </p>
+                  
+                  {passkeyFactors.length > 0 && (
+                    <div className="space-y-2">
+                      {passkeyFactors.map(f => (
+                        <div key={f.id} className="flex items-center justify-between p-3 rounded-lg bg-white/5 border border-white/10">
+                          <div className="flex items-center gap-2">
+                            <Shield size={14} className="text-emerald-400" />
+                            <span className="text-xs font-mono font-bold text-white">{f.friendly_name || 'Registered Passkey'}</span>
+                          </div>
+                          <button
+                            onClick={() => handleUnenrollPasskey(f.id)}
+                            className="text-xs font-mono text-red-400 hover:text-red-300 p-1 hover:bg-red-500/10 rounded transition-all"
+                            title="Remove Passkey"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <button
+                    onClick={handleEnrollPasskey}
+                    disabled={enrollingPasskey}
+                    className="w-full py-2.5 rounded-lg border border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/10 font-rajdhani font-bold tracking-wider transition-all text-xs flex items-center justify-center gap-2 disabled:opacity-40"
+                  >
+                    <Key size={14} /> {enrollingPasskey ? 'REGISTERING PASSKEY...' : '+ REGISTER NEW PASSKEY / TOUCH ID'}
+                  </button>
                 </div>
 
                 <div className="h-px bg-white/5 w-full"></div>
