@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
-import { Trash2, Save, Download, RefreshCw, Key, LogOut, ArrowLeft, Globe, ExternalLink } from 'lucide-react';
+import { Trash2, Save, Download, RefreshCw, Key, LogOut, ArrowLeft, Globe, ExternalLink, Settings, X, AlertTriangle, User, Shield } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
 import { TekkenStatsPanel } from './TekkenStatsPanel';
 
@@ -89,6 +90,8 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
   const [updatingEmail, setUpdatingEmail] = useState(false);
   const [updatingPassword, setUpdatingPassword] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
+  const [showAccountSettingsModal, setShowAccountSettingsModal] = useState(false);
+  const [newAvatarUrl, setNewAvatarUrl] = useState('');
 
   useEffect(() => {
     let checkInterval: any;
@@ -457,6 +460,24 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
     setDeletingAccount(false);
   };
 
+  const handleUpdateAvatar = async () => {
+    if (!newAvatarUrl.trim()) return;
+    try {
+      const headers = await getHeaders();
+      const res = await fetch('/api/user/profile', {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify({ avatar_url: newAvatarUrl })
+      });
+      if (!res.ok) throw new Error('Failed to update avatar');
+      toast.success('Avatar updated successfully');
+      fetchUserProfile();
+      setNewAvatarUrl('');
+    } catch (err: any) {
+      toast.error(err.message || 'Error updating avatar');
+    }
+  };
+
   const fetchStartggHosted = async () => {
     if (!startggToken) return toast.error("Please enter a Start.gg token first");
     setFetchingStartgg(true);
@@ -738,219 +759,19 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
             </div>
           </div>
 
-          {/* Start.gg Career Profile Importer — self-contained with inline token step */}
-          <div className="bg-[#050A14] border border-cyan-500/40 p-6 rounded-xl shadow-lg space-y-4 relative overflow-hidden">
-            <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(ellipse at top left, rgba(0,229,255,0.06) 0%, transparent 70%)' }} />
-            <div className="relative">
-              <div className="flex items-center gap-2 mb-1">
-                <ExternalLink size={16} className="text-cyan-400" />
-                <h3 className="text-xl font-bold font-rajdhani text-cyan-400 tracking-widest">START.GG CAREER STATS</h3>
-              </div>
-              <p className="text-xs font-mono text-gray-400 leading-relaxed">
-                Import your public Start.gg profile to showcase tournament placements and career history on your FightBracket profile.
-              </p>
+          {/* Account Settings Button */}
+          <button
+            onClick={() => setShowAccountSettingsModal(true)}
+            className="w-full bg-[#050A14] border border-[#FF006E]/30 p-6 rounded-xl shadow-lg hover:bg-[#FF006E]/5 hover:border-[#FF006E]/50 transition-all flex items-center justify-between group mt-6"
+          >
+            <div>
+              <h3 className="text-xl font-bold font-rajdhani text-[#FF006E] tracking-widest text-left group-hover:text-white transition-colors">ACCOUNT SETTINGS</h3>
+              <p className="text-xs font-mono opacity-60 text-left mt-1">Manage integrations, email, password, avatar, and danger zone.</p>
             </div>
-
-            {/* Step 1: API Token */}
-            <div className={`space-y-2 p-3 rounded-lg border ${startggToken ? 'border-cyan-500/20 bg-cyan-500/5' : 'border-amber-500/40 bg-amber-500/5'}`}>
-              <div className="flex items-center justify-between">
-                <span className={`text-[10px] font-mono tracking-widest font-bold ${startggToken ? 'text-cyan-400' : 'text-amber-400'}`}>
-                  {startggToken ? '✓ STEP 1 — API TOKEN SAVED' : '⚠ STEP 1 — API TOKEN REQUIRED'}
-                </span>
-                {startggToken && (
-                  <button
-                    onClick={() => { setStartggToken(''); localStorage.removeItem('fb_startggToken'); }}
-                    className="text-[10px] font-mono text-gray-600 hover:text-red-400 transition-colors"
-                  >
-                    CLEAR
-                  </button>
-                )}
-              </div>
-              {!startggToken ? (
-                <>
-                  <p className="text-[11px] font-mono text-amber-300/80">
-                    A Start.gg Developer API token is required.{' '}
-                    <a
-                      href="https://developer.start.gg/docs/authentication"
-                      target="_blank"
-                      rel="noreferrer"
-                      className="underline hover:text-cyan-400 transition-colors"
-                    >
-                      Get your free token here ↗
-                    </a>
-                  </p>
-                  <div className="flex gap-2">
-                    <input
-                      type="password"
-                      placeholder="Paste your Start.gg API token..."
-                      value={startggToken}
-                      onChange={e => setStartggToken(e.target.value)}
-                      className="flex-1 bg-[#0a0a1a] border border-amber-500/40 rounded-lg p-2.5 text-white focus:border-cyan-400 outline-none font-mono text-sm placeholder:text-gray-600 transition-colors"
-                    />
-                    <button
-                      onClick={() => { localStorage.setItem('fb_startggToken', startggToken); toast.success('API token saved!'); }}
-                      disabled={!startggToken.trim()}
-                      className="px-4 py-2 rounded-lg bg-amber-500/20 border border-amber-500/50 text-amber-300 hover:bg-amber-500/30 font-rajdhani font-bold tracking-wider transition-all text-sm disabled:opacity-40 shrink-0"
-                    >
-                      SAVE TOKEN
-                    </button>
-                  </div>
-                </>
-              ) : (
-                <p className="text-[11px] font-mono text-gray-500">Token is saved. Continue below to import your profile.</p>
-              )}
+            <div className="text-[#FF006E] opacity-50 group-hover:opacity-100 transition-opacity">
+              <Settings size={24} />
             </div>
-
-            {/* Step 2: Slug / URL — disabled until token is present */}
-            <div className={`space-y-2 ${!startggToken ? 'opacity-40 pointer-events-none select-none' : ''}`}>
-              <span className="text-[10px] font-mono tracking-widest font-bold text-cyan-400">STEP 2 — ENTER YOUR PROFILE URL OR SLUG</span>
-              {userProfile?.startgg_slug && (
-                <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-cyan-500/10 border border-cyan-500/20">
-                  <span className="text-[10px] font-mono text-gray-400">CURRENTLY LINKED:</span>
-                  <a
-                    href={`https://start.gg/user/${userProfile.startgg_slug}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-xs font-mono font-bold text-cyan-400 hover:underline flex items-center gap-1"
-                  >
-                    start.gg/user/{userProfile.startgg_slug} <ExternalLink size={10} />
-                  </a>
-                </div>
-              )}
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  placeholder="e.g. start.gg/user/mang0  or just  mang0"
-                  value={userStartggInput}
-                  onChange={e => setUserStartggInput(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && !importingUserStartgg && userStartggInput.trim() && handleImportCareerStats()}
-                  className="flex-1 bg-[#0a0a1a] border border-cyan-500/30 rounded-lg p-3 text-white focus:border-cyan-400 outline-none font-mono text-sm placeholder:text-gray-600 transition-colors"
-                />
-                <button
-                  onClick={handleImportCareerStats}
-                  disabled={importingUserStartgg || !userStartggInput.trim() || !startggToken}
-                  className="px-5 py-2 rounded-lg bg-cyan-500/20 border border-cyan-500/50 text-cyan-400 hover:bg-cyan-500/30 font-rajdhani font-bold tracking-wider transition-all text-sm disabled:opacity-40 shrink-0"
-                >
-                  {importingUserStartgg ? 'IMPORTING...' : 'IMPORT'}
-                </button>
-              </div>
-              <p className="text-[10px] font-mono text-gray-600">
-                ⓘ Supports full URLs (start.gg/user/…) or just the slug. Press Enter or click Import.
-              </p>
-            </div>
-          </div>
-
-          {/* Tekken 8 Importer Box */}
-          <div className="bg-[#050A14] border border-[#ff003c]/30 p-6 rounded-xl shadow-lg space-y-4">
-            <h3 className="text-xl font-bold font-rajdhani text-[#ff003c] tracking-widest">TEKKEN 8 POLARIS ID</h3>
-            <p className="text-xs font-mono opacity-60">
-              Add your Tekken 8 Polaris ID to fetch live game stats and player metrics.
-            </p>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                placeholder="e.g. 1234-5678-9012"
-                value={userTekkenId}
-                onChange={e => setUserTekkenId(e.target.value)}
-                className="flex-1 bg-[#111] border border-gray-800 rounded-lg p-2.5 text-white focus:border-[#ff003c] outline-none font-mono text-sm"
-              />
-              <button
-                onClick={saveTekkenId}
-                disabled={!userTekkenId.trim()}
-                className="px-5 py-2 rounded-lg border border-[#ff003c]/50 text-[#ff003c] hover:bg-[#ff003c]/10 font-rajdhani font-bold tracking-wider transition-all text-sm disabled:opacity-40"
-              >
-                SAVE
-              </button>
-            </div>
-          </div>
-
-          {/* Account Settings */}
-          <div className="bg-[#050A14] border border-[#FF006E]/30 p-6 rounded-xl shadow-lg space-y-6">
-            <h3 className="text-xl font-bold font-rajdhani text-[#FF006E] tracking-widest">ACCOUNT SETTINGS</h3>
-            
-            {/* Update Email */}
-            <div className="space-y-2">
-              <div className="text-xs font-mono font-bold text-gray-400">UPDATE EMAIL ADDRESS</div>
-              <div className="flex gap-2">
-                <input
-                  type="email"
-                  placeholder="New Email Address"
-                  value={newEmail}
-                  onChange={e => setNewEmail(e.target.value)}
-                  className="flex-1 bg-[#111] border border-gray-800 rounded-lg p-2.5 text-white focus:border-[#FF006E] outline-none font-mono text-sm"
-                />
-                <button
-                  onClick={handleUpdateEmail}
-                  disabled={updatingEmail || !newEmail.trim()}
-                  className="px-5 py-2 rounded-lg border border-[#FF006E]/50 text-[#FF006E] hover:bg-[#FF006E]/10 font-rajdhani font-bold tracking-wider transition-all text-sm disabled:opacity-40"
-                >
-                  {updatingEmail ? 'UPDATING...' : 'UPDATE'}
-                </button>
-              </div>
-            </div>
-
-            {/* Change Password */}
-            <div className="space-y-2">
-              <div className="text-xs font-mono font-bold text-gray-400">CHANGE PASSWORD</div>
-              <div className="flex gap-2">
-                <input
-                  type="password"
-                  placeholder="New Password (min. 6 chars)"
-                  value={newPassword}
-                  onChange={e => setNewPassword(e.target.value)}
-                  className="flex-1 bg-[#111] border border-gray-800 rounded-lg p-2.5 text-white focus:border-[#FF006E] outline-none font-mono text-sm"
-                />
-                <button
-                  onClick={handleUpdatePassword}
-                  disabled={updatingPassword || !newPassword.trim()}
-                  className="px-5 py-2 rounded-lg border border-[#FF006E]/50 text-[#FF006E] hover:bg-[#FF006E]/10 font-rajdhani font-bold tracking-wider transition-all text-sm disabled:opacity-40"
-                >
-                  {updatingPassword ? 'UPDATING...' : 'UPDATE'}
-                </button>
-              </div>
-            </div>
-
-            {/* Delete Account */}
-            <div className="space-y-3 pt-4 border-t border-red-500/20 mt-4">
-              <div className="text-xs font-mono font-bold text-red-500">DANGER ZONE</div>
-              {!showDeleteModal ? (
-                <button
-                  onClick={() => setShowDeleteModal(true)}
-                  className="w-full px-5 py-3 rounded-lg bg-red-600/10 border border-red-600/50 text-red-500 hover:bg-red-600/20 font-rajdhani font-bold tracking-wider transition-all text-sm"
-                >
-                  DELETE ACCOUNT
-                </button>
-              ) : (
-                <div className="space-y-2 bg-red-950/30 p-4 rounded-lg border border-red-600/50 animate-in fade-in zoom-in duration-200">
-                  <p className="text-xs font-mono text-red-400 leading-relaxed">
-                    WARNING: This will permanently delete your account, tournaments, messages, and profile. This action cannot be undone. Type <span className="font-bold text-white">DELETE</span> below to confirm.
-                  </p>
-                  <div className="flex gap-2 pt-2">
-                    <input
-                      type="text"
-                      placeholder="Type DELETE"
-                      value={deleteConfirmation}
-                      onChange={e => setDeleteConfirmation(e.target.value)}
-                      className="flex-1 bg-[#111] border border-red-600/50 rounded-lg p-2.5 text-white focus:border-red-500 outline-none font-mono text-sm"
-                    />
-                    <button
-                      onClick={handleDeleteAccount}
-                      disabled={deletingAccount || deleteConfirmation !== 'DELETE'}
-                      className="px-5 py-2 rounded-lg bg-red-600 text-white font-rajdhani font-bold tracking-wider transition-all text-sm disabled:opacity-40"
-                    >
-                      {deletingAccount ? 'DELETING...' : 'CONFIRM'}
-                    </button>
-                  </div>
-                  <button
-                    onClick={() => { setShowDeleteModal(false); setDeleteConfirmation(''); }}
-                    className="w-full text-center text-xs font-mono text-gray-400 hover:text-white mt-2"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
+          </button>
 
           <div className="bg-[#050A14] border border-[#00E5FF]/30 p-6 rounded-xl shadow-lg">
             <div className="flex justify-between items-center mb-6 border-b border-gray-800 pb-4">
@@ -1003,18 +824,11 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
               <p className="text-xs text-gray-400 font-mono mt-2">Connect your Developer API Token to view and instantly import tournaments you have hosted.</p>
             </div>
 
-            <div className="flex gap-2 mb-6">
-              <input
-                type="password"
-                value={startggToken}
-                onChange={e => setStartggToken(e.target.value)}
-                placeholder="Paste Start.gg API Token..."
-                className="flex-1 bg-[#111] border border-gray-800 rounded-lg p-2.5 text-white focus:border-[#FF006E] outline-none font-mono text-sm"
-              />
-              <button onClick={saveStartggToken} className="px-5 py-2 rounded-lg border border-[#FF006E]/50 text-[#FF006E] hover:bg-[#FF006E]/10 font-rajdhani font-bold tracking-wider transition-all text-sm">
-                SAVE
-              </button>
-            </div>
+            {!startggToken && (
+              <div className="mb-4 text-xs font-mono text-amber-400 bg-amber-500/10 border border-amber-500/30 p-3 rounded flex items-center gap-2">
+                <AlertTriangle size={14} /> Please add your Start.gg API Token in Account Settings to use this feature.
+              </div>
+            )}
 
             <button
               onClick={fetchStartggHosted}
@@ -1059,6 +873,231 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
         </div>
 
       </div>
+
+      {/* Account Settings Modal Overlay */}
+      <AnimatePresence>
+        {showAccountSettingsModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+            onClick={() => setShowAccountSettingsModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              onClick={e => e.stopPropagation()}
+              className="w-full max-w-lg bg-[#050A14] border border-[#FF006E]/40 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+            >
+              <div className="p-6 border-b border-white/5 flex items-center justify-between bg-black/40">
+                <div className="flex items-center gap-3 text-[#FF006E]">
+                  <Settings size={20} />
+                  <h3 className="text-xl font-bold font-rajdhani tracking-widest">ACCOUNT SETTINGS</h3>
+                </div>
+                <button onClick={() => setShowAccountSettingsModal(false)} className="text-gray-500 hover:text-white transition-colors">
+                  <X size={20} />
+                </button>
+              </div>
+              
+              <div className="p-6 space-y-6 overflow-y-auto custom-scrollbar">
+                
+                {/* === INTEGRATIONS SECTION === */}
+                <div className="space-y-4 mb-8">
+                  <h4 className="text-sm font-bold font-rajdhani text-cyan-400 tracking-widest border-b border-cyan-500/30 pb-2 flex items-center gap-2">
+                    <Globe size={16} /> INTEGRATIONS & API KEYS
+                  </h4>
+                  
+                  {/* Start.gg Token & Career Import */}
+                  <div className="space-y-3 bg-white/5 p-4 rounded-lg border border-white/10">
+                    <div className="text-xs font-mono font-bold text-gray-400 flex items-center justify-between">
+                      <span>START.GG API TOKEN & PROFILE SLUG</span>
+                    </div>
+                    <div className="flex gap-2">
+                      <input
+                        type="password"
+                        placeholder="Start.gg Developer Token"
+                        value={startggToken}
+                        onChange={e => setStartggToken(e.target.value)}
+                        className="flex-1 bg-[#111] border border-gray-800 rounded-lg p-2.5 text-white focus:border-cyan-400 outline-none font-mono text-sm"
+                      />
+                      <button
+                        onClick={() => { localStorage.setItem('fb_startggToken', startggToken); toast.success('API token saved!'); }}
+                        disabled={!startggToken.trim()}
+                        className="px-5 py-2 rounded-lg border border-cyan-500/50 text-cyan-400 hover:bg-cyan-500/10 font-rajdhani font-bold tracking-wider transition-all text-sm disabled:opacity-40 shrink-0"
+                      >
+                        SAVE TOKEN
+                      </button>
+                    </div>
+                    
+                    <div className="flex gap-2 pt-2">
+                      <input
+                        type="text"
+                        placeholder="Start.gg Profile Slug (e.g. mang0)"
+                        value={userStartggInput}
+                        onChange={e => setUserStartggInput(e.target.value)}
+                        className="flex-1 bg-[#111] border border-gray-800 rounded-lg p-2.5 text-white focus:border-cyan-400 outline-none font-mono text-sm"
+                      />
+                      <button
+                        onClick={handleImportCareerStats}
+                        disabled={importingUserStartgg || !userStartggInput.trim() || !startggToken}
+                        className="px-5 py-2 rounded-lg bg-cyan-500/20 border border-cyan-500/50 text-cyan-400 hover:bg-cyan-500/30 font-rajdhani font-bold tracking-wider transition-all text-sm disabled:opacity-40 shrink-0"
+                      >
+                        {importingUserStartgg ? 'IMPORTING...' : 'IMPORT'}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Tekken 8 Polaris ID */}
+                  <div className="space-y-3 bg-white/5 p-4 rounded-lg border border-white/10">
+                    <div className="text-xs font-mono font-bold text-gray-400">TEKKEN 8 POLARIS ID</div>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        placeholder="e.g. 1234-5678-9012"
+                        value={userTekkenId}
+                        onChange={e => setUserTekkenId(e.target.value)}
+                        className="flex-1 bg-[#111] border border-gray-800 rounded-lg p-2.5 text-white focus:border-[#ff003c] outline-none font-mono text-sm"
+                      />
+                      <button
+                        onClick={saveTekkenId}
+                        disabled={!userTekkenId.trim()}
+                        className="px-5 py-2 rounded-lg border border-[#ff003c]/50 text-[#ff003c] hover:bg-[#ff003c]/10 font-rajdhani font-bold tracking-wider transition-all text-sm disabled:opacity-40 shrink-0"
+                      >
+                        SAVE ID
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* === BASIC SETTINGS SECTION === */}
+                <h4 className="text-sm font-bold font-rajdhani text-[#FF006E] tracking-widest border-b border-[#FF006E]/30 pb-2 flex items-center gap-2">
+                  <User size={16} /> PROFILE & ACCOUNT
+                </h4>
+                
+                {/* Update Avatar URL */}
+                <div className="space-y-2">
+                  <div className="text-xs font-mono font-bold text-gray-400 flex items-center justify-between">
+                    <span>AVATAR IMAGE URL</span>
+                    {userProfile?.avatar_url && (
+                      <span className="text-[10px] text-green-400 bg-green-500/10 px-2 py-0.5 rounded">Active</span>
+                    )}
+                  </div>
+                  <div className="flex gap-2">
+                    <input
+                      type="url"
+                      placeholder="https://example.com/my-avatar.png"
+                      value={newAvatarUrl}
+                      onChange={e => setNewAvatarUrl(e.target.value)}
+                      className="flex-1 bg-[#111] border border-gray-800 rounded-lg p-2.5 text-white focus:border-[#FF006E] outline-none font-mono text-sm"
+                    />
+                    <button
+                      onClick={handleUpdateAvatar}
+                      disabled={!newAvatarUrl.trim()}
+                      className="px-5 py-2 rounded-lg border border-[#FF006E]/50 text-[#FF006E] hover:bg-[#FF006E]/10 font-rajdhani font-bold tracking-wider transition-all text-sm disabled:opacity-40 shrink-0"
+                    >
+                      SAVE
+                    </button>
+                  </div>
+                  <p className="text-[10px] text-gray-600 font-mono">Paste a direct link to an image to use as your profile picture.</p>
+                </div>
+
+                <div className="h-px bg-white/5 w-full"></div>
+
+                {/* Update Email */}
+                <div className="space-y-2">
+                  <div className="text-xs font-mono font-bold text-gray-400">UPDATE EMAIL ADDRESS</div>
+                  <div className="flex gap-2">
+                    <input
+                      type="email"
+                      placeholder="New Email Address"
+                      value={newEmail}
+                      onChange={e => setNewEmail(e.target.value)}
+                      className="flex-1 bg-[#111] border border-gray-800 rounded-lg p-2.5 text-white focus:border-[#FF006E] outline-none font-mono text-sm"
+                    />
+                    <button
+                      onClick={handleUpdateEmail}
+                      disabled={updatingEmail || !newEmail.trim()}
+                      className="px-5 py-2 rounded-lg border border-[#FF006E]/50 text-[#FF006E] hover:bg-[#FF006E]/10 font-rajdhani font-bold tracking-wider transition-all text-sm disabled:opacity-40 shrink-0"
+                    >
+                      {updatingEmail ? 'UPDATING...' : 'UPDATE'}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="h-px bg-white/5 w-full"></div>
+
+                {/* Change Password */}
+                <div className="space-y-2">
+                  <div className="text-xs font-mono font-bold text-gray-400">CHANGE PASSWORD</div>
+                  <div className="flex gap-2">
+                    <input
+                      type="password"
+                      placeholder="New Password (min. 6 chars)"
+                      value={newPassword}
+                      onChange={e => setNewPassword(e.target.value)}
+                      className="flex-1 bg-[#111] border border-gray-800 rounded-lg p-2.5 text-white focus:border-[#FF006E] outline-none font-mono text-sm"
+                    />
+                    <button
+                      onClick={handleUpdatePassword}
+                      disabled={updatingPassword || !newPassword.trim()}
+                      className="px-5 py-2 rounded-lg border border-[#FF006E]/50 text-[#FF006E] hover:bg-[#FF006E]/10 font-rajdhani font-bold tracking-wider transition-all text-sm disabled:opacity-40 shrink-0"
+                    >
+                      {updatingPassword ? 'UPDATING...' : 'UPDATE'}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="h-px bg-white/5 w-full"></div>
+
+                {/* Delete Account */}
+                <div className="space-y-3 pt-2">
+                  <div className="text-xs font-mono font-bold text-red-500 flex items-center gap-2">
+                    <AlertTriangle size={14} /> DANGER ZONE
+                  </div>
+                  {!showDeleteModal ? (
+                    <button
+                      onClick={() => setShowDeleteModal(true)}
+                      className="w-full px-5 py-3 rounded-lg bg-red-600/10 border border-red-600/50 text-red-500 hover:bg-red-600/20 font-rajdhani font-bold tracking-wider transition-all text-sm"
+                    >
+                      DELETE ACCOUNT PERMANENTLY
+                    </button>
+                  ) : (
+                    <div className="space-y-2 bg-red-950/30 p-4 rounded-lg border border-red-600/50 animate-in fade-in zoom-in duration-200">
+                      <p className="text-xs font-mono text-red-400 leading-relaxed">
+                        WARNING: This will permanently delete your account, tournaments, messages, and profile. This action cannot be undone. Type <span className="font-bold text-white">DELETE</span> below to confirm.
+                      </p>
+                      <div className="flex gap-2 pt-2">
+                        <input
+                          type="text"
+                          placeholder="Type DELETE"
+                          value={deleteConfirmation}
+                          onChange={e => setDeleteConfirmation(e.target.value)}
+                          className="flex-1 bg-[#111] border border-red-600/50 rounded-lg p-2.5 text-white focus:border-red-500 outline-none font-mono text-sm"
+                        />
+                        <button
+                          onClick={handleDeleteAccount}
+                          disabled={deletingAccount || deleteConfirmation !== 'DELETE'}
+                          className="px-5 py-2 rounded-lg bg-red-600 text-white font-rajdhani font-bold tracking-wider transition-all text-sm disabled:opacity-40 shrink-0"
+                        >
+                          {deletingAccount ? 'DELETING...' : 'CONFIRM'}
+                        </button>
+                      </div>
+                      <button
+                        onClick={() => { setShowDeleteModal(false); setDeleteConfirmation(''); }}
+                        className="w-full text-center text-xs font-mono text-gray-400 hover:text-white mt-2"
+                      >
+                        Cancel Deletion
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

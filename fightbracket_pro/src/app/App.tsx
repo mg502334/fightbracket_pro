@@ -54,7 +54,7 @@ export default function App() {
   };
 
   const [activeGame, setActiveGame] = useState<string | null>(() => safeParse('fb_activeGame', null));
-  const [activeTab, setActiveTab] = useState<Tab>('overview');
+  const [activeTab, setActiveTab] = useState<Tab>(() => safeParse('fb_activeTab', 'overview'));
   const [players, setPlayers] = useState<Player[]>(() => safeParse('fb_players', []));
   const [matches, setMatches] = useState<BracketMatch[]>(() => safeParse('fb_matches', []));
   const [selectedPool, setSelectedPool] = useState<string>('ALL');
@@ -105,7 +105,8 @@ export default function App() {
     localStorage.setItem('fb_autoSyncSlug', JSON.stringify(autoSyncSlug));
     localStorage.setItem('fb_exhibitions', JSON.stringify(exhibitions));
     localStorage.setItem('fb_tournamentOwnerId', JSON.stringify(tournamentOwnerId));
-  }, [activeGame, players, matches, stations, smsLogs, activeTournament, gameThemes, gameOrder, autoSyncSlug, exhibitions, tournamentOwnerId]);
+    localStorage.setItem('fb_activeTab', JSON.stringify(activeTab));
+  }, [activeGame, players, matches, stations, smsLogs, activeTournament, gameThemes, gameOrder, autoSyncSlug, exhibitions, tournamentOwnerId, activeTab]);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }: any) => {

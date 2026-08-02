@@ -26,6 +26,7 @@ interface UserProfileData {
   is_friend: boolean;
   friend_status: string;
   privacy_restricted: boolean;
+  is_self: boolean;
 }
 
 interface UserProfileModalProps {
@@ -110,22 +111,26 @@ export function UserProfileModal({ isOpen, onClose, targetUserId, supabaseToken,
             </button>
 
             <div className="flex items-center gap-4">
-              <div
-                className="w-16 h-16 rounded-2xl flex items-center justify-center text-2xl font-bold border-2 shadow-lg"
-                style={{
-                  background: `${theme.primaryColor}20`,
-                  color: theme.primaryColor,
-                  borderColor: theme.primaryColor,
-                  fontFamily: 'Rajdhani, sans-serif',
-                }}
-              >
-                {profile?.gamer_tag ? profile.gamer_tag.substring(0, 2).toUpperCase() : 'FB'}
-              </div>
+              {profile?.avatar_url ? (
+                <img src={profile.avatar_url} alt="Avatar" className="w-16 h-16 rounded-2xl object-cover border-2 shadow-lg" style={{ borderColor: theme.primaryColor }} />
+              ) : (
+                <div
+                  className="w-16 h-16 rounded-2xl flex items-center justify-center text-2xl font-bold border-2 shadow-lg"
+                  style={{
+                    background: `${theme.primaryColor}20`,
+                    color: theme.primaryColor,
+                    borderColor: theme.primaryColor,
+                    fontFamily: 'Rajdhani, sans-serif',
+                  }}
+                >
+                  {profile?.gamer_tag ? profile.gamer_tag.substring(0, 2).toUpperCase() : 'FB'}
+                </div>
+              )}
 
               <div>
                 <div className="flex items-center gap-2">
                   <h2 className="text-2xl font-bold tracking-wider font-rajdhani text-white">
-                    {profile?.gamer_tag || 'FGC Player'}
+                    {profile?.gamer_tag || (profile?.is_self ? 'Add Gamer Tag in Settings' : 'Anonymous Fighter')}
                   </h2>
                   {profile?.is_friend && (
                     <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
@@ -154,7 +159,7 @@ export function UserProfileModal({ isOpen, onClose, targetUserId, supabaseToken,
                     This user's Start.gg profile data & career stats are set to <span className="underline">Friends Only</span> or Private.
                   </p>
                 </div>
-                {profile.friend_status === 'none' && (
+                {profile.friend_status === 'none' && !profile.is_self && (
                   <button
                     onClick={handleAddFriend}
                     className="px-5 py-2 rounded-lg bg-cyan-500 text-black font-bold text-xs font-mono tracking-wider hover:brightness-125 transition-all flex items-center gap-2 mx-auto mt-2"
@@ -162,7 +167,7 @@ export function UserProfileModal({ isOpen, onClose, targetUserId, supabaseToken,
                     <UserPlus size={14} /> ADD FRIEND TO VIEW STATS
                   </button>
                 )}
-                {profile.friend_status === 'pending' && (
+                {profile.friend_status === 'pending' && !profile.is_self && (
                   <div className="text-xs font-mono opacity-50 italic">Friend request pending...</div>
                 )}
               </div>

@@ -761,12 +761,12 @@ def get_target_user_profile(target_user_id: str, user_id: str = Depends(get_curr
         except Exception:
             startgg_data_parsed = None
 
-    uid_str = target_ui.unique_id if target_ui else "FB-MISSING"
+    uid_str = getattr(target_user, 'unique_id', None) or (target_ui.unique_id if target_ui else "FB-USER")
     return {
         "profile": {
             "id": target_user.id,
             "unique_id": uid_str,
-            "gamer_tag": target_user.gamer_tag or uid_str,
+            "gamer_tag": target_user.gamer_tag or "",
             "avatar_url": target_user.avatar_url or "",
             "bio": "" if privacy_restricted else (target_user.bio or ""),
             "startgg_slug": "" if privacy_restricted else (target_user.startgg_slug or ""),
@@ -776,7 +776,8 @@ def get_target_user_profile(target_user_id: str, user_id: str = Depends(get_curr
             "friends_only": friends_only,
             "is_friend": is_friend,
             "friend_status": friend_status,
-            "privacy_restricted": privacy_restricted
+            "privacy_restricted": privacy_restricted,
+            "is_self": is_self
         }
     }
 
