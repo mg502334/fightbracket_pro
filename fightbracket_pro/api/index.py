@@ -51,10 +51,10 @@ def get_current_user_id(authorization: str = Header(None)):
     jwt_secret = os.environ.get("SUPABASE_JWT_SECRET")
     if not jwt_secret:
         try:
-            payload = jwt.decode(token, options={"verify_signature": False})
+            payload = jwt.decode(token, key="", options={"verify_signature": False}, algorithms=["HS256", "RS256"])
             return payload.get("sub")
-        except Exception:
-            raise HTTPException(status_code=401, detail="Invalid token")
+        except Exception as e:
+            raise HTTPException(status_code=401, detail=f"Invalid token: {e}")
     else:
         try:
             payload = jwt.decode(token, jwt_secret, algorithms=["HS256"], audience="authenticated")
@@ -178,6 +178,31 @@ def get_user_profile(user_id: str = Depends(get_current_user_id), db: Session = 
             identifier = DBUserIdentifier(id=user_id, unique_id=unique_id)
             db.add(identifier)
             
+            # Create bot user if it doesn't exist
+            import uuid
+            bot_id = "fb-bot-system"
+            bot_user = db.query(DBUser).filter(DBUser.id == bot_id).first()
+            if not bot_user:
+                bot_user = DBUser(id=bot_id, unique_id="FB-BOT-0000", gamer_tag="FightBracket Bot")
+                db.add(bot_user)
+                db.commit()
+            
+            # Make them friends
+            friendship1 = DBFriendship(id=str(uuid.uuid4()), user_id=user_id, friend_id=bot_id, status="accepted")
+            friendship2 = DBFriendship(id=str(uuid.uuid4()), user_id=bot_id, friend_id=user_id, status="accepted")
+            db.add(friendship1)
+            db.add(friendship2)
+            
+            # Send welcome message
+            welcome_msg = DBDirectMessage(
+                id=str(uuid.uuid4()),
+                sender_id=bot_id,
+                recipient_id=user_id,
+                message="Welcome to FightBracket Pro! We're glad to have you here. Let us know if you need any help getting started.",
+                read=False
+            )
+            db.add(welcome_msg)
+            
             db.commit()
             db.refresh(user)
 
@@ -196,6 +221,8 @@ def get_user_profile(user_id: str = Depends(get_current_user_id), db: Session = 
         else:
             created_at_str = datetime.now(timezone.utc).isoformat()
 
+        unread_count = db.query(DBDirectMessage).filter(DBDirectMessage.recipient_id == user_id, DBDirectMessage.read == False).count()
+
         return {
             "user": {
                 "id": user.id,
@@ -208,7 +235,8 @@ def get_user_profile(user_id: str = Depends(get_current_user_id), db: Session = 
                 "tekken_id": user.tekken_id or "",
                 "is_public": user.is_public if user.is_public is not None else True,
                 "friends_only": user.friends_only if user.friends_only is not None else False,
-                "created_at": created_at_str
+                "created_at": created_at_str,
+                "unread_messages_count": unread_count
             }
         }
     except Exception as e:
@@ -258,6 +286,42 @@ def update_user_profile(req: ProfileUpdateRequest, user_id: str = Depends(get_cu
             "created_at": user.created_at.isoformat() if user.created_at else datetime.now(timezone.utc).isoformat()
         }
     }
+
+@app.delete("/api/user/profile")
+def delete_user_profile(user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    if not db:
+        raise HTTPException(status_code=503, detail="Database unavailable")
+    
+    # 1. Delete all user data from Neon DB
+    db.query(DBFriendship).filter((DBFriendship.user_id == user_id) | (DBFriendship.friend_id == user_id)).delete()
+    db.query(DBDirectMessage).filter((DBDirectMessage.sender_id == user_id) | (DBDirectMessage.recipient_id == user_id)).delete()
+    db.query(DBPlayer).filter(DBPlayer.user_id == user_id).delete()
+    db.query(DBStation).filter(DBStation.user_id == user_id).delete()
+    db.query(DBSMSLog).filter(DBSMSLog.user_id == user_id).delete()
+    db.query(DBTournament).filter(DBTournament.user_id == user_id).delete()
+    db.query(DBUserIdentifier).filter(DBUserIdentifier.id == user_id).delete()
+    db.query(DBUser).filter(DBUser.id == user_id).delete()
+    
+    db.commit()
+
+    # 2. Delete user from Supabase Auth via Admin API
+    supabase_url = os.environ.get("VITE_SUPABASE_URL")
+    service_role_key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
+    
+    if supabase_url and service_role_key:
+        try:
+            url = f"{supabase_url}/auth/v1/admin/users/{user_id}"
+            headers = {
+                "apikey": service_role_key,
+                "Authorization": f"Bearer {service_role_key}",
+                "Content-Type": "application/json"
+            }
+            res = requests.delete(url, headers=headers)
+            res.raise_for_status()
+        except Exception as e:
+            print(f"Failed to delete Supabase Auth user: {e}")
+            
+    return {"status": "success", "message": "Account deleted successfully"}
 
 @app.post("/api/user/startgg-import")
 def import_startgg_profile(req: StartggImportRequest, user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
@@ -565,7 +629,7 @@ def get_direct_messages(friend_id: str, user_id: str = Depends(get_current_user_
     unread = [m for m in messages if m.recipient_id == user_id and not m.read]
     if unread:
         for m in unread:
-            m.read = True
+            m.read = True  # type: ignore
         db.commit()
 
     return {
@@ -748,8 +812,8 @@ def save_tournament(req: TournamentSaveRequest, user_id: str = Depends(get_curre
         return {"status": "error", "detail": "Database not available"}
     tournament = db.query(DBTournament).filter(DBTournament.id == req.id, DBTournament.user_id == user_id).first()
     if tournament:
-        tournament.name = req.name
-        tournament.data = req.data
+        tournament.name = req.name  # type: ignore
+        tournament.data = req.data  # type: ignore
     else:
         tournament = DBTournament(id=req.id, user_id=user_id, name=req.name, data=req.data)
         db.add(tournament)
@@ -822,7 +886,7 @@ def clear_user_data(user_id: str, db: Session = Depends(get_db)):
     return {"status": "success"}
 
 @app.get("/api/bracket/sync")
-def sync_startgg_bracket(slug: str = "clash-of-kings-vii", token: str = None):
+def sync_startgg_bracket(slug: str = "clash-of-kings-vii", token: str = None):  # type: ignore
     if slug:
         slug = slug.strip()
         if "start.gg/tournament/" in slug:
@@ -1078,7 +1142,7 @@ def oauth_callback(code: str):
     return RedirectResponse(f"{frontend_url}/oauth/callback?token={access_token}")
 
 @app.get("/api/startgg/user")
-def get_startgg_user(slug: str, token: str = None):
+def get_startgg_user(slug: str, token: str = None):  # type: ignore
     STARTGG_TOKEN = token or os.environ.get("STARTGG_API_TOKEN")
     if not STARTGG_TOKEN:
         raise HTTPException(status_code=400, detail="Start.gg API token is required. Please login first.")

@@ -1313,29 +1313,33 @@ export default function App() {
           <div className="text-[12px] font-bold tracking-widest" style={{ fontFamily: 'Rajdhani, sans-serif', color: '#00E5FF' }}>
             FIGHTBRACKET PRO
           </div>
-          <div className="text-[10px] opacity-40 space-x-2">
-            <span>Developed and Hosted by <span className="opacity-80 text-white">Ender Gaming Core Hosting</span></span>
-            <span>&middot;</span>
-            <span>Powered by <span className="opacity-80 text-white">Start.gg</span></span>
-          </div>
-          <div className="text-[10px] opacity-30">
-            &copy; 2026 Ender Gaming Core Hosting &mdash; All rights reserved.
-          </div>
-          <div className="flex items-center gap-5 text-[10px] opacity-40 mt-1">
+          
+          <div className="flex items-center justify-center gap-4 text-[9px] uppercase tracking-widest text-gray-500 mt-1">
             {([
               { id: 'help', label: 'Help' },
-              { id: 'privacy', label: 'Privacy Policy' },
-              { id: 'terms', label: 'Terms of Use' },
-              { id: 'disclaimer', label: 'Non-Affiliation' },
+              { id: 'privacy', label: 'Privacy' },
+              { id: 'terms', label: 'Terms' },
+              { id: 'disclaimer', label: 'Disclaimer' },
             ] as { id: StaticPageId; label: string }[]).map(link => (
               <button
                 key={link.id}
                 onClick={() => setShowStaticPage(link.id)}
-                className="hover:opacity-100 hover:text-cyan-400 transition-colors underline-offset-2 hover:underline"
+                className="hover:text-[#00E5FF] transition-colors"
               >
                 {link.label}
               </button>
             ))}
+          </div>
+
+          <div className="text-[9px] text-gray-600 mt-2 space-y-1">
+            <div>
+              <span>Developed and Hosted by <span className="text-gray-400">Ender Gaming Core Hosting</span></span>
+              <span className="mx-2">&middot;</span>
+              <span>Powered by <span className="text-gray-400">Start.gg</span></span>
+            </div>
+            <div>
+              &copy; 2026 FightBracket Pro &middot; &copy; 2026 Ender Gaming Core Hosting &mdash; All rights reserved.
+            </div>
           </div>
         </div>
       </footer>

@@ -65,6 +65,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
     tekken_id?: string;
     is_public?: boolean;
     friends_only?: boolean;
+    unread_messages_count?: number;
   } | null>(null);
   const [profileLoading, setProfileLoading] = useState(true);
   const [profileError, setProfileError] = useState<string | null>(null);
@@ -79,6 +80,15 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
   });
   const [startggTournaments, setStartggTournaments] = useState<any[]>([]);
   const [fetchingStartgg, setFetchingStartgg] = useState(false);
+
+  // Account Settings state
+  const [newEmail, setNewEmail] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [deleteConfirmation, setDeleteConfirmation] = useState('');
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [updatingEmail, setUpdatingEmail] = useState(false);
+  const [updatingPassword, setUpdatingPassword] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
 
   useEffect(() => {
     let checkInterval: any;
@@ -302,8 +312,12 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
 
   const getHeaders = async () => {
     const { data: { session } } = await supabase.auth.getSession();
+    if (!session || !session.access_token) {
+      await supabase.auth.signOut();
+      throw new Error('Your session has expired. Please log in again.');
+    }
     return {
-      'Authorization': `Bearer ${session?.access_token}`,
+      'Authorization': `Bearer ${session.access_token}`,
       'Content-Type': 'application/json'
     };
   };
@@ -387,6 +401,62 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
     toast.success('Start.gg API Token saved locally');
   };
 
+  const handleUpdateEmail = async () => {
+    if (!newEmail.trim() || !newEmail.includes('@')) {
+      toast.error('Please enter a valid email address');
+      return;
+    }
+    setUpdatingEmail(true);
+    try {
+      const { error } = await supabase.auth.updateUser({ email: newEmail });
+      if (error) throw error;
+      toast.success('Check both your old and new email to confirm the change.');
+      setNewEmail('');
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to update email');
+    }
+    setUpdatingEmail(false);
+  };
+
+  const handleUpdatePassword = async () => {
+    if (!newPassword.trim() || newPassword.length < 6) {
+      toast.error('Password must be at least 6 characters');
+      return;
+    }
+    setUpdatingPassword(true);
+    try {
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) throw error;
+      toast.success('Password updated successfully');
+      setNewPassword('');
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to update password');
+    }
+    setUpdatingPassword(false);
+  };
+
+  const handleDeleteAccount = async () => {
+    if (deleteConfirmation !== 'DELETE') {
+      toast.error('Type DELETE to confirm');
+      return;
+    }
+    setDeletingAccount(true);
+    try {
+      const headers = await getHeaders();
+      const res = await fetch('/api/user/profile', { method: 'DELETE', headers });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.detail || 'Failed to delete account');
+      }
+      toast.success('Account deleted permanently.');
+      await supabase.auth.signOut();
+      if (onNavigateHome) onNavigateHome();
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to delete account');
+    }
+    setDeletingAccount(false);
+  };
+
   const fetchStartggHosted = async () => {
     if (!startggToken) return toast.error("Please enter a Start.gg token first");
     setFetchingStartgg(true);
@@ -458,7 +528,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
               {isLogin ? 'SIGN IN' : 'CREATE ACCOUNT'}
             </h2>
             <p className="text-center text-gray-400 text-sm mb-8 font-mono">
-              {isLogin ? 'Welcome back to FightBracket' : 'Join the next generation of bracket management'}
+              {isLogin ? 'Welcome back to FightBracket Pro' : 'Join the next generation of bracket management'}
             </p>
 
             {/* Discord OAuth */}
@@ -566,9 +636,14 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
           {onOpenFriendsModal && (
             <button
               onClick={onOpenFriendsModal}
-              className="flex items-center gap-2 px-5 py-2 rounded-lg border border-[#00E5FF]/50 text-[#00E5FF] hover:bg-[#00E5FF]/10 transition-all font-rajdhani tracking-widest font-bold text-sm"
+              className="relative flex items-center gap-2 px-5 py-2 rounded-lg border border-[#00E5FF]/50 text-[#00E5FF] hover:bg-[#00E5FF]/10 transition-all font-rajdhani tracking-widest font-bold text-sm"
             >
               FRIENDS &amp; DMs
+              {userProfile?.unread_messages_count ? (
+                <span className="absolute -top-2 -right-2 bg-red-600 text-white text-[10px] px-1.5 py-0.5 rounded-full font-sans">
+                  {userProfile.unread_messages_count}
+                </span>
+              ) : null}
             </button>
           )}
           <button
@@ -786,6 +861,94 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
               >
                 SAVE
               </button>
+            </div>
+          </div>
+
+          {/* Account Settings */}
+          <div className="bg-[#050A14] border border-[#FF006E]/30 p-6 rounded-xl shadow-lg space-y-6">
+            <h3 className="text-xl font-bold font-rajdhani text-[#FF006E] tracking-widest">ACCOUNT SETTINGS</h3>
+            
+            {/* Update Email */}
+            <div className="space-y-2">
+              <div className="text-xs font-mono font-bold text-gray-400">UPDATE EMAIL ADDRESS</div>
+              <div className="flex gap-2">
+                <input
+                  type="email"
+                  placeholder="New Email Address"
+                  value={newEmail}
+                  onChange={e => setNewEmail(e.target.value)}
+                  className="flex-1 bg-[#111] border border-gray-800 rounded-lg p-2.5 text-white focus:border-[#FF006E] outline-none font-mono text-sm"
+                />
+                <button
+                  onClick={handleUpdateEmail}
+                  disabled={updatingEmail || !newEmail.trim()}
+                  className="px-5 py-2 rounded-lg border border-[#FF006E]/50 text-[#FF006E] hover:bg-[#FF006E]/10 font-rajdhani font-bold tracking-wider transition-all text-sm disabled:opacity-40"
+                >
+                  {updatingEmail ? 'UPDATING...' : 'UPDATE'}
+                </button>
+              </div>
+            </div>
+
+            {/* Change Password */}
+            <div className="space-y-2">
+              <div className="text-xs font-mono font-bold text-gray-400">CHANGE PASSWORD</div>
+              <div className="flex gap-2">
+                <input
+                  type="password"
+                  placeholder="New Password (min. 6 chars)"
+                  value={newPassword}
+                  onChange={e => setNewPassword(e.target.value)}
+                  className="flex-1 bg-[#111] border border-gray-800 rounded-lg p-2.5 text-white focus:border-[#FF006E] outline-none font-mono text-sm"
+                />
+                <button
+                  onClick={handleUpdatePassword}
+                  disabled={updatingPassword || !newPassword.trim()}
+                  className="px-5 py-2 rounded-lg border border-[#FF006E]/50 text-[#FF006E] hover:bg-[#FF006E]/10 font-rajdhani font-bold tracking-wider transition-all text-sm disabled:opacity-40"
+                >
+                  {updatingPassword ? 'UPDATING...' : 'UPDATE'}
+                </button>
+              </div>
+            </div>
+
+            {/* Delete Account */}
+            <div className="space-y-3 pt-4 border-t border-red-500/20 mt-4">
+              <div className="text-xs font-mono font-bold text-red-500">DANGER ZONE</div>
+              {!showDeleteModal ? (
+                <button
+                  onClick={() => setShowDeleteModal(true)}
+                  className="w-full px-5 py-3 rounded-lg bg-red-600/10 border border-red-600/50 text-red-500 hover:bg-red-600/20 font-rajdhani font-bold tracking-wider transition-all text-sm"
+                >
+                  DELETE ACCOUNT
+                </button>
+              ) : (
+                <div className="space-y-2 bg-red-950/30 p-4 rounded-lg border border-red-600/50 animate-in fade-in zoom-in duration-200">
+                  <p className="text-xs font-mono text-red-400 leading-relaxed">
+                    WARNING: This will permanently delete your account, tournaments, messages, and profile. This action cannot be undone. Type <span className="font-bold text-white">DELETE</span> below to confirm.
+                  </p>
+                  <div className="flex gap-2 pt-2">
+                    <input
+                      type="text"
+                      placeholder="Type DELETE"
+                      value={deleteConfirmation}
+                      onChange={e => setDeleteConfirmation(e.target.value)}
+                      className="flex-1 bg-[#111] border border-red-600/50 rounded-lg p-2.5 text-white focus:border-red-500 outline-none font-mono text-sm"
+                    />
+                    <button
+                      onClick={handleDeleteAccount}
+                      disabled={deletingAccount || deleteConfirmation !== 'DELETE'}
+                      className="px-5 py-2 rounded-lg bg-red-600 text-white font-rajdhani font-bold tracking-wider transition-all text-sm disabled:opacity-40"
+                    >
+                      {deletingAccount ? 'DELETING...' : 'CONFIRM'}
+                    </button>
+                  </div>
+                  <button
+                    onClick={() => { setShowDeleteModal(false); setDeleteConfirmation(''); }}
+                    className="w-full text-center text-xs font-mono text-gray-400 hover:text-white mt-2"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 
