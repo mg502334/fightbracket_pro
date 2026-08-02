@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FunStreams - Channel Panel</title>
+  <script src="https://extension-files.twitch.tv/helper/v1/twitch-ext.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #050a14;
+      color: #e2e8f0;
+      font-family: 'JetBrains Mono', monospace;
+      padding: 16px;
+      width: 100%;
+      height: 100%;
+    }
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-b: 1px solid rgba(0, 229, 255, 0.3);
+      padding-bottom: 10px;
+      margin-bottom: 14px;
+    }
+    .title {
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 18px;
+      font-weight: 700;
+      color: #00e5ff;
+      letter-spacing: 1.5px;
+    }
+    .live-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #00ff88;
+      box-shadow: 0 0 8px #00ff88;
+    }
+    .standings-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .standing-item {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      padding: 10px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12px;
+    }
+    .rank-gold { color: #ffd700; font-weight: bold; }
+    .rank-silver { color: #c0c0c0; font-weight: bold; }
+    .rank-bronze { color: #cd7f32; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <div class="panel-header">
+    <div class="title">FIGHTBRACKET PRO</div>
+    <div class="live-dot" title="Live Sync Active"></div>
+  </div>
+
+  <div className="standings-list" id="standings">
+    <div class="standing-item">
+      <span><span class="rank-gold">#1</span> Player 1</span>
+      <span style="color: #00ff88;">3 - 0</span>
+    </div>
+    <div class="standing-item">
+      <span><span class="rank-silver">#2</span> Player 2</span>
+      <span style="color: #00e5ff;">2 - 1</span>
+    </div>
+    <div class="standing-item">
+      <span><span class="rank-bronze">#3</span> Player 3</span>
+      <span style="color: #ff006e;">1 - 2</span>
+    </div>
+  </div>
+
+  <script>
+    window.Twitch.ext.onAuthorized(function(auth) {
+      console.log('Panel authorized');
+    });
+  </script>
+</body>
+</html>

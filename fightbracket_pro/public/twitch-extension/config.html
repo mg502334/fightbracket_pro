@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FunStreams - FightBracket Pro Extension Setup</title>
+  <script src="https://extension-files.twitch.tv/helper/v1/twitch-ext.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #050a14;
+      color: #e2e8f0;
+      font-family: 'JetBrains Mono', monospace;
+      padding: 24px;
+    }
+    .card {
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid rgba(0, 229, 255, 0.3);
+      border-radius: 12px;
+      padding: 24px;
+      max-width: 560px;
+      margin: 0 auto;
+      box-shadow: 0 10px 30px rgba(0, 229, 255, 0.1);
+    }
+    h1 {
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 24px;
+      color: #00e5ff;
+      letter-spacing: 2px;
+      margin-bottom: 8px;
+    }
+    p {
+      font-size: 12px;
+      color: #94a3b8;
+      margin-bottom: 20px;
+      line-height: 1.5;
+    }
+    label {
+      display: block;
+      font-size: 11px;
+      color: #00e5ff;
+      margin-bottom: 6px;
+      font-weight: bold;
+    }
+    input {
+      width: 100%;
+      background: #0b132b;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 8px;
+      padding: 12px;
+      color: #fff;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      outline: none;
+      margin-bottom: 16px;
+    }
+    input:focus {
+      border-color: #00e5ff;
+    }
+    button {
+      width: 100%;
+      background: #00e5ff;
+      color: #000;
+      font-family: 'Rajdhani', sans-serif;
+      font-weight: 700;
+      font-size: 16px;
+      padding: 12px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      letter-spacing: 1px;
+      transition: all 0.2s;
+    }
+    button:hover {
+      background: #33ebff;
+      box-shadow: 0 0 15px rgba(0, 229, 255, 0.4);
+    }
+    .status {
+      margin-top: 12px;
+      padding: 10px;
+      border-radius: 6px;
+      font-size: 11px;
+      display: none;
+    }
+    .status.success { display: block; background: rgba(0, 255, 136, 0.15); color: #00ff88; border: 1px solid rgba(0, 255, 136, 0.3); }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>FUNSTREAMS // FIGHTBRACKET PRO</h1>
+    <p>Connect your live FightBracket Pro tournament to display live scoreboards, match queues, and Tekken/Steam player cards directly on your stream overlay.</p>
+
+    <label for="tournamentId">TOURNAMENT ID OR LINK</label>
+    <input type="text" id="tournamentId" placeholder="e.g. tourney-1234 or paste tournament URL">
+
+    <label for="streamerId">STREAMER UNIQUE ID (FB-XXXX-YYYY)</label>
+    <input type="text" id="streamerId" placeholder="e.g. FB-[#00E5FF]-1234">
+
+    <button id="saveBtn">SAVE EXTENSION CONFIG</button>
+
+    <div id="statusMsg" class="status"></div>
+  </div>
+
+  <script>
+    let savedConfig = {};
+
+    window.Twitch.ext.onAuthorized(function(auth) {
+      console.log('Twitch extension authorized', auth);
+    });
+
+    window.Twitch.ext.configuration.onChanged(function() {
+      if (window.Twitch.ext.configuration.broadcaster) {
+        try {
+          savedConfig = JSON.parse(window.Twitch.ext.configuration.broadcaster.content);
+          document.getElementById('tournamentId').value = savedConfig.tournamentId || '';
+          document.getElementById('streamerId').value = savedConfig.streamerId || '';
+        } catch(e) {}
+      }
+    });
+
+    document.getElementById('saveBtn').addEventListener('click', function() {
+      const tourney = document.getElementById('tournamentId').value.trim();
+      const streamer = document.getElementById('streamerId').value.trim();
+      
+      const configData = { tournamentId: tourney, streamerId: streamer, updatedAt: new Date().toISOString() };
+      
+      window.Twitch.ext.configuration.set('broadcaster', '1.0', JSON.stringify(configData));
+      
+      const statusMsg = document.getElementById('statusMsg');
+      statusMsg.textContent = '✓ Configuration saved! Overlay will now update with live tournament data.';
+      statusMsg.className = 'status success';
+    });
+  </script>
+</body>
+</html>
