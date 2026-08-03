@@ -14,8 +14,9 @@ export function GameSelectionModal({ isOpen, onClose, onSelectGame, theme }: Gam
   const [search, setSearch] = useState('');
   
   if (!isOpen) return null;
-
-  const filteredGames = startggGames.filter(g => g.name.toLowerCase().includes(search.toLowerCase()));
+  const filteredGames = startggGames
+    .filter(g => g.name.toLowerCase().includes(search.toLowerCase()))
+    .sort((a, b) => a.name.localeCompare(b.name));
 
   return (
     <AnimatePresence>
