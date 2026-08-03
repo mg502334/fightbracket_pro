@@ -294,8 +294,11 @@ function BracketSection({
 }) {
   if (matches.length === 0) return null;
 
-  const isLosers = matches[0]?.round < 0;
-  const rounds = Array.from(new Set(matches.map(m => m.round))).sort((a, b) => isLosers ? b - a : a - b);
+  const isLosers = matches.some(m => m.round < 0 || m.roundName?.toLowerCase().includes('loser'));
+  // Sort rounds chronologically: winners 1→N, losers -1→-N (ascending absolute value)
+  const rounds = Array.from(new Set(matches.map(m => m.round))).sort((a, b) =>
+    isLosers ? Math.abs(a) - Math.abs(b) : a - b
+  );
 
   return (
     <div>
@@ -317,7 +320,19 @@ function BracketSection({
           const isLast = rIdx === rounds.length - 1;
           const totalRounds = rounds.length;
           const isGrandFinals = title.includes("GRAND");
-          const roundName = getChronologicalRoundName(rIdx, totalRounds, isLosers, isGrandFinals);
+          
+          let roundName = getChronologicalRoundName(rIdx, totalRounds, isLosers, isGrandFinals);
+          if (roundMatches.length > 0 && roundMatches[0].roundName) {
+            const mName = roundMatches[0].roundName;
+            if (mName) {
+              // Strip the [Pool X] prefix for a cleaner column label
+              const cleanName = mName.replace(/^\[Pool [^\]]+\]\s*/i, '').trim();
+              if (cleanName && !cleanName.startsWith('Round ')) {
+                // Use the descriptive Start.gg name (e.g. "Winners Round 1", "Losers Semi-Final")
+                roundName = cleanName;
+              }
+            }
+          }
 
           return (
             <div key={round} className="flex flex-col min-w-[250px]">

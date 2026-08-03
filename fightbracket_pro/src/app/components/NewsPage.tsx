@@ -13,11 +13,40 @@ interface NewsItem {
 
 const NEWS_ITEMS: NewsItem[] = [
   {
-    id: 'n0',
+    id: 'n0a',
+    type: 'update',
+    date: 'Aug 3, 2026',
+    title: 'Multi-Platform Stream Support (TikTok, YouTube, Facebook)',
+    body: 'The Streams tab now detects and displays Twitch, TikTok, YouTube, and Facebook streams. TikTok handles (@username or bare handle) are correctly resolved to live URLs. Each stream shows a LIVE or PAST badge so you always know whether a broadcast is currently active or already finished.',
+    badge: 'NEW',
+  },
+  {
+    id: 'n0b',
+    type: 'fix',
+    date: 'Aug 3, 2026',
+    title: 'Tournament Winner Badge (WINNER vs ACTIVE)',
+    body: 'In a completed tournament, the Grand Final winner is now correctly labelled WINNER (gold) instead of ACTIVE (green). The fix prioritises the Grand Final / Winners Final match when detecting the champion, rather than relying on raw round numbers which differ between Start.gg events.',
+  },
+  {
+    id: 'n0c',
+    type: 'fix',
+    date: 'Aug 3, 2026',
+    title: 'Bracket Round Indicators & Ordering',
+    body: 'Bracket columns are now sorted in the correct chronological order for both Winners and Losers sides regardless of how Start.gg numbers the rounds. Column labels also strip the internal [Pool X] prefix and instead show descriptive names like "Winners Round 1" or "Losers Semi-Final".',
+  },
+  {
+    id: 'n0d',
+    type: 'fix',
+    date: 'Aug 3, 2026',
+    title: 'DQ / Absent Players No Longer Auto-Checked-In',
+    body: 'Players who receive a DQ (Disqualification) result due to absence in a Start.gg import were previously being auto-marked as Checked In. This is now corrected — a DQ loss no longer triggers an automatic check-in for the absent player.',
+  },
+  {
+    id: 'n0e',
     type: 'feature',
     date: 'Aug 3, 2026',
-    title: 'Start.gg Integration Overhaul & QoL Updates',
-    body: 'Huge updates today! Start.gg imports now perfectly map Pools and visually order brackets logically. Stream URLs dynamically detect Twitch, YouTube, and TikTok and clearly display LIVE vs COMPLETED status. We also added persistent Custom Station Names that save to your profile, and improved Check-in tracking for no-show (ABSENT) participants in imported events.',
+    title: 'Pool Phase Grouping Fixed',
+    body: 'The Pools tab now correctly groups matches by their Start.gg phase (e.g. "Pools", "Top 24", "Top 8"). Previously, all phases were flattened into a single list and pools with matching identifiers could overwrite each other.',
     badge: 'NEW',
   },
   {

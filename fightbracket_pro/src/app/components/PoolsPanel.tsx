@@ -98,6 +98,16 @@ export function PoolsPanel({
   };
 
   const getPoolPlayers = (poolName: string): Player[] => {
+    if (isImported) {
+      const poolMatchPlayers = new Set<string>();
+      matches.forEach(m => {
+        if (m.pool === poolName) {
+          if (m.player1Id) poolMatchPlayers.add(m.player1Id);
+          if (m.player2Id) poolMatchPlayers.add(m.player2Id);
+        }
+      });
+      return players.filter(p => poolMatchPlayers.has(p.id));
+    }
     return players.filter(p => poolsByMatch.get(p.id) === poolName);
   };
 
@@ -341,9 +351,34 @@ export function PoolsPanel({
         </div>
       ) : (
         /* ── MODE 2: SEE ALL POOLS MASTER VIEW ── */
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-            {availablePools.map(pool => {
+        <div className="space-y-8">
+          {(() => {
+            const poolsByPhase = new Map<string, string[]>();
+            if (isImported) {
+              matches.forEach(m => {
+                if (m.pool) {
+                  const p = m.phase || 'Pools';
+                  if (!poolsByPhase.has(p)) poolsByPhase.set(p, []);
+                  if (!poolsByPhase.get(p)!.includes(m.pool)) {
+                    poolsByPhase.get(p)!.push(m.pool);
+                  }
+                }
+              });
+              // Sort pools within each phase
+              poolsByPhase.forEach(pools => pools.sort());
+            } else {
+              poolsByPhase.set('Pools', availablePools);
+            }
+
+            return Array.from(poolsByPhase.entries()).map(([phase, phasePools]) => (
+              <div key={phase} className="space-y-4">
+                <h3 className="text-xl tracking-widest font-bold flex items-center gap-2 pb-2 border-b border-white/10" style={{ fontFamily: 'Rajdhani, sans-serif', color: theme.primaryColor }}>
+                  <Layers size={20} />
+                  {phase.toUpperCase()}
+                  <span className="text-xs font-mono opacity-50 font-normal bg-white/5 px-2 py-0.5 rounded">{phasePools.length} brackets</span>
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+                  {phasePools.map(pool => {
               const stats = getPoolStats(pool);
               const poolPlayers = getPoolPlayers(pool);
               const isExpanded = expandedPoolCard === pool;
@@ -437,7 +472,10 @@ export function PoolsPanel({
                 </div>
               );
             })}
-          </div>
+                </div>
+              </div>
+            ));
+          })()}
 
           {/* Unassigned Players (Manual Tournaments Only) */}
           {unassignedPlayers.length > 0 && isHost && !isImported && (

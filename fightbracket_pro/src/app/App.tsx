@@ -50,14 +50,26 @@ const TABS: { id: Tab; label: string; icon: React.ComponentType<{ size?: number 
 ];
 
 export function parseStreamUrl(streamName: string, streamSource?: string): string {
+  if (!streamName) return '';
   if (streamName.startsWith('http')) return streamName;
-  if (streamName.includes('tiktok.com')) return `https://${streamName}`;
-  if (streamName.includes('youtube.com') || streamName.includes('youtu.be')) return `https://${streamName}`;
-  
-  if (streamSource === 'YOUTUBE') return `https://youtube.com/c/${streamName}`;
+
+  // TikTok - handle domain, @username, or bare username
+  if (streamSource === 'TIKTOK' || streamName.includes('tiktok')) {
+    if (streamName.includes('tiktok.com')) return `https://${streamName.replace(/^\/\//, '')}`;
+    const handle = streamName.startsWith('@') ? streamName : `@${streamName}`;
+    return `https://www.tiktok.com/${handle}/live`;
+  }
+  if (streamName.includes('tiktok.com')) return `https://${streamName.replace(/^\/\//, '')}`;
+
+  // YouTube
+  if (streamName.includes('youtube.com') || streamName.includes('youtu.be')) return `https://${streamName.replace(/^\/\//, '')}`;
+  if (streamSource === 'YOUTUBE') return `https://youtube.com/@${streamName}/live`;
+
+  // Facebook
   if (streamSource === 'FACEBOOK') return `https://facebook.com/${streamName}`;
-  
-  if (streamName.includes('twitch.tv')) return `https://${streamName}`;
+
+  // Twitch (default)
+  if (streamName.includes('twitch.tv')) return `https://${streamName.replace(/^\/\//, '')}`;
   return `https://twitch.tv/${streamName}`;
 }
 
@@ -360,16 +372,27 @@ export default function App() {
     }
   });
 
-  // Find the final match to protect the winner from being marked eliminated
-  const maxRoundMatch = gameMatches.reduce((prev, current) =>
-    (prev && prev.round > current.round) ? prev : current, gameMatches[0]);
+  // Find the tournament champion: prefer Grand Final match, else highest round winners match
+  const grandFinalMatch = gameMatches.find(m =>
+    m.roundName && (
+      m.roundName.toLowerCase().includes('grand final') ||
+      m.roundName.toLowerCase() === 'grand finals'
+    )
+  );
+  const maxRoundMatch = grandFinalMatch ||
+    gameMatches.reduce((prev, current) =>
+      (prev && Math.abs(prev.round) > Math.abs(current.round)) ? prev : current, gameMatches[0]);
   const championId = maxRoundMatch && maxRoundMatch.state === 'completed' ? maxRoundMatch.winnerId : null;
 
   const gamePlayers = activeGame ? players.filter(p => p.gameId === activeGame).map(p => ({
     ...p,
-    status: (championId === p.id || activePlayerIds.has(p.id)) ? 'active' as const : 'eliminated' as const
+    status: (championId === p.id) ? 'winner' as const : (activePlayerIds.has(p.id) ? 'active' as const : 'eliminated' as const)
   })).sort((a, b) => {
-    if (a.status !== b.status) return a.status === 'active' ? -1 : 1;
+    if (a.status !== b.status) {
+      if (a.status === 'winner') return -1;
+      if (b.status === 'winner') return 1;
+      return a.status === 'active' ? -1 : 1;
+    }
     return a.seed - b.seed;
   }) : [];
   const activeMatches = gameMatches.filter(m => m.state === 'in_progress' || m.state === 'called');
@@ -772,23 +795,17 @@ export default function App() {
             if (!isNaN(ls)) p1Score = ls;
             if (!isNaN(rs)) p2Score = rs;
           }
-        } else if (set.displayScore === "DQ" && winnerId) {
-          const loserId = p1 === winnerId ? p2 : p1;
-          if (loserId) {
-            const loserPlayer = newPlayers.find(np => np.id === String(loserId));
-            if (loserPlayer) loserPlayer.checkedIn = false;
-          }
         }
 
-        if (matchState === 'completed') {
-          if (p1) {
-            const p1Player = newPlayers.find(np => np.id === String(p1));
-            if (p1Player) p1Player.checkedIn = true;
-          }
-          if (p2) {
-            const p2Player = newPlayers.find(np => np.id === String(p2));
-            if (p2Player) p2Player.checkedIn = true;
-          }
+        const isDQ = set.displayScore === "DQ" && winnerId;
+        const loserId = isDQ ? (p1 === winnerId ? p2 : p1) : null;
+
+        if (matchState === 'completed' && p1 && p2) {
+          const p1Player = newPlayers.find(np => np.id === String(p1));
+          if (p1Player && p1 !== loserId) p1Player.checkedIn = true;
+          
+          const p2Player = newPlayers.find(np => np.id === String(p2));
+          if (p2Player && p2 !== loserId) p2Player.checkedIn = true;
         }
 
         const poolIdentifier = set.phaseGroup?.displayIdentifier;
@@ -1623,8 +1640,8 @@ function OverviewTab({
                     </div>
                     <div className="text-xs opacity-40" style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9 }}>{gt.shortName} · #{p.seed}</div>
                   </div>
-                  <span className="text-xs tabular-nums font-bold" style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10, color: isEliminated ? '#FF1744' : '#00FF88' }}>
-                    {isEliminated ? 'ELIMINATED' : 'ACTIVE'}
+                  <span className="text-xs tabular-nums font-bold" style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10, color: p.status === 'eliminated' ? '#FF1744' : p.status === 'winner' ? '#FFD600' : '#00FF88' }}>
+                    {p.status.toUpperCase()}
                   </span>
                   {isHost && (
                     <button onClick={() => onRemovePlayer(p.id)} className="opacity-50 hover:opacity-100 hover:text-[#FF1744] transition-all ml-2">
