@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
-import { Trash2, Save, Download, RefreshCw, Key, LogOut, ArrowLeft, Globe, ExternalLink, Settings, X, AlertTriangle, User, Shield, Swords, Sparkles, Cloud, Users } from 'lucide-react';
+import { Trash2, Save, Download, RefreshCw, Key, LogOut, ArrowLeft, Globe, ExternalLink, Settings, X, AlertTriangle, User, Shield, Swords, Sparkles, Cloud, Users, Eye, EyeOff, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
 import { TekkenStatsPanel } from './TekkenStatsPanel';
@@ -47,6 +47,8 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLogin, setIsLogin] = useState(true);
 
   // Cloud state
@@ -761,96 +763,152 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
       if (error) toast.error(error.message);
     };
 
+    const handleGoogleLogin = async () => {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: window.location.origin,
+        }
+      });
+      if (error) toast.error(error.message);
+    };
+
     return (
-      <div className="flex flex-col h-full p-4">
+      <div className="flex flex-col min-h-full p-4 md:p-6 items-center justify-center">
         {onNavigateHome && (
-          <div className="mb-4">
+          <div className="w-full max-w-md mb-4 flex justify-start">
             <button
               onClick={onNavigateHome}
-              className="flex items-center gap-2 px-3 py-1.5 rounded text-xs font-mono tracking-wider text-gray-400 hover:text-white border border-white/10 hover:border-white/30 bg-white/5 hover:bg-white/10 transition-all"
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-mono tracking-wider text-gray-400 hover:text-white border border-white/10 hover:border-white/30 bg-white/5 hover:bg-white/10 transition-all"
             >
-              <ArrowLeft size={12} /> BACK TO HOME
+              <ArrowLeft size={14} /> BACK TO HOME
             </button>
           </div>
         )}
-        <div className="flex-1 flex items-center justify-center">
-          <div className={`bg-[#050A14] border p-10 rounded-xl shadow-2xl w-full max-w-lg transition-colors duration-300 ${isLogin ? 'border-[#00E5FF]' : 'border-[#FF006E]'}`}>
-            <h2 className={`text-3xl font-bold mb-2 text-center transition-colors duration-300 ${isLogin ? 'text-[#00E5FF]' : 'text-[#FF006E]'}`} style={{ fontFamily: 'Rajdhani, sans-serif' }}>
-              {isLogin ? 'SIGN IN' : 'CREATE ACCOUNT'}
-            </h2>
-            <p className="text-center text-gray-400 text-sm mb-8 font-mono">
-              {isLogin ? 'Welcome back to FightBracket Pro' : 'Join the next generation of bracket management'}
-            </p>
+        <div className="w-full max-w-md bg-[#0A0E1A]/95 border border-white/10 rounded-2xl shadow-[0_25px_60px_rgba(0,0,0,0.8)] backdrop-blur-xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+          
+          {/* Dual Header Tabs */}
+          <div className="grid grid-cols-2 border-b border-white/10 bg-[#060913]">
+            <button
+              type="button"
+              onClick={() => setIsLogin(true)}
+              className={`py-4 text-xs sm:text-sm font-bold tracking-widest uppercase transition-all relative flex items-center justify-center font-rajdhani ${
+                isLogin
+                  ? 'text-white bg-white/[0.03]'
+                  : 'text-gray-500 hover:text-gray-300'
+              }`}
+            >
+              SIGN IN
+              {isLogin && (
+                <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#00E5FF] shadow-[0_0_12px_#00E5FF]" />
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsLogin(false)}
+              className={`py-4 text-xs sm:text-sm font-bold tracking-widest uppercase transition-all relative flex items-center justify-center font-rajdhani ${
+                !isLogin
+                  ? 'text-white bg-white/[0.03]'
+                  : 'text-gray-500 hover:text-gray-300'
+              }`}
+            >
+              REGISTER
+              {!isLogin && (
+                <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#00E5FF] shadow-[0_0_12px_#00E5FF]" />
+              )}
+            </button>
+          </div>
 
-            {/* Discord OAuth & Passkey Sign In */}
-            {isLogin && (
-              <>
-                <div className="space-y-3 mb-6">
-                  <button
-                    onClick={handleDiscordLogin}
-                    className="w-full flex items-center justify-center gap-3 py-3 rounded-lg text-white font-bold text-base tracking-widest transition-all hover:brightness-110 shadow-lg"
-                    style={{ background: '#5865F2', fontFamily: 'Rajdhani, sans-serif' }}
-                  >
-                    <svg width="22" height="22" viewBox="0 0 127.14 96.36" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36,77.7,77.7,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.66,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1A105.25,105.25,0,0,0,126.6,80.22h0C129.24,52.84,122.09,29.11,107.7,8.07ZM42.45,65.69C36.18,65.69,31,60,31,53s5-12.74,11.43-12.74S54,46,53.89,53,48.84,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.31,60,73.31,53s5-12.74,11.43-12.74S96.33,46,96.22,53,91.08,65.69,84.69,65.69Z" fill="white" />
-                    </svg>
-                    SIGN IN WITH DISCORD
-                  </button>
+          {/* Form Content */}
+          <div className="p-6 sm:p-8 space-y-6">
+            <div>
+              <h2 className="text-2xl sm:text-3xl font-extrabold text-white font-rajdhani tracking-wider uppercase mb-1">
+                {isLogin ? 'WELCOME BACK' : 'JOIN THE ARENA'}
+              </h2>
+              <p className="text-xs sm:text-sm text-gray-400 font-mono">
+                {isLogin
+                  ? 'Enter your credentials to access your dashboard.'
+                  : 'Enter your details to create your FightBracket account.'}
+              </p>
+            </div>
 
-                  <button
-                    onClick={handleTwitchLogin}
-                    className="w-full flex items-center justify-center gap-3 py-3 rounded-lg text-white font-bold text-base tracking-widest transition-all hover:brightness-110 shadow-lg bg-[#9146FF]"
-                    style={{ fontFamily: 'Rajdhani, sans-serif' }}
-                  >
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714Z"/>
-                    </svg>
-                    SIGN IN WITH TWITCH
-                  </button>
-
-                  <button
-                    onClick={handlePasskeySignIn}
-                    className="w-full flex items-center justify-center gap-2 py-3 rounded-lg text-black font-bold text-base tracking-widest transition-all hover:brightness-110 shadow-lg bg-[#00FF88] hover:bg-[#00FF88]/90 font-rajdhani"
-                  >
-                    <Key size={18} />
-                    SIGN IN WITH PASSKEY / BIOMETRIC
-                  </button>
-                </div>
-
-                <div className="flex items-center gap-4 mb-6">
-                  <div className="flex-1 h-px bg-gray-800"></div>
-                  <span className="text-xs text-gray-500 font-mono tracking-wider">OR USE EMAIL</span>
-                  <div className="flex-1 h-px bg-gray-800"></div>
-                </div>
-              </>
-            )}
-
-            <form onSubmit={handleAuthSubmit} className="space-y-6">
+            <form onSubmit={handleAuthSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm text-gray-400 mb-2" style={{ fontFamily: 'JetBrains Mono, monospace' }}>EMAIL</label>
-                <input type="email" value={email} onChange={e => setEmail(e.target.value)} required
-                  className={`w-full bg-[#111] border border-gray-800 rounded-lg p-3 text-white outline-none transition-colors ${isLogin ? 'focus:border-[#00E5FF]' : 'focus:border-[#FF006E]'}`} />
+                <label className="block text-xs font-semibold text-gray-400 tracking-wider uppercase mb-1.5 font-mono">
+                  EMAIL ADDRESS
+                </label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="john@example.com"
+                  required
+                  className="w-full bg-[#121929]/90 border border-white/10 rounded-lg px-4 py-3 text-white placeholder-gray-600 outline-none text-sm font-mono transition-colors focus:border-[#00E5FF] focus:ring-1 focus:ring-[#00E5FF]"
+                />
               </div>
+
               <div>
-                <div className="flex justify-between items-center mb-2">
-                  <label className="block text-sm text-gray-400" style={{ fontFamily: 'JetBrains Mono, monospace' }}>PASSWORD</label>
-                  {isLogin && (
-                    <button type="button" onClick={handleResetPassword} className="text-xs text-gray-500 hover:text-[#00E5FF] transition-colors" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
-                      Forgot Password?
+                <label className="block text-xs font-semibold text-gray-400 tracking-wider uppercase mb-1.5 font-mono">
+                  PASSWORD
+                </label>
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    required
+                    className="w-full bg-[#121929]/90 border border-white/10 rounded-lg pl-4 pr-11 py-3 text-white placeholder-gray-600 outline-none text-sm font-mono transition-colors focus:border-[#00E5FF] focus:ring-1 focus:ring-[#00E5FF]"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors cursor-pointer"
+                    title={showPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
+                {isLogin && (
+                  <div className="flex justify-end mt-1.5">
+                    <button
+                      type="button"
+                      onClick={handleResetPassword}
+                      className="text-xs text-gray-400 hover:text-[#00E5FF] transition-colors font-mono"
+                    >
+                      Forgot password?
                     </button>
-                  )}
-                </div>
-                <input type="password" value={password} onChange={e => setPassword(e.target.value)} required
-                  className={`w-full bg-[#111] border border-gray-800 rounded-lg p-3 text-white outline-none transition-colors ${isLogin ? 'focus:border-[#00E5FF]' : 'focus:border-[#FF006E]'}`} />
+                  </div>
+                )}
               </div>
+
               {!isLogin && (
                 <div>
-                  <label className="block text-sm text-gray-400 mb-2" style={{ fontFamily: 'JetBrains Mono, monospace' }}>CONFIRM PASSWORD</label>
-                  <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} required
-                    className="w-full bg-[#111] border border-gray-800 rounded-lg p-3 text-white outline-none transition-colors focus:border-[#FF006E]" />
+                  <label className="block text-xs font-semibold text-gray-400 tracking-wider uppercase mb-1.5 font-mono">
+                    CONFIRM PASSWORD
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showConfirmPassword ? 'text' : 'password'}
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      placeholder="••••••••"
+                      required
+                      className="w-full bg-[#121929]/90 border border-white/10 rounded-lg pl-4 pr-11 py-3 text-white placeholder-gray-600 outline-none text-sm font-mono transition-colors focus:border-[#00E5FF] focus:ring-1 focus:ring-[#00E5FF]"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors cursor-pointer"
+                      title={showConfirmPassword ? 'Hide password' : 'Show password'}
+                    >
+                      {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </div>
                 </div>
               )}
-              <div className="flex justify-center mt-4">
+
+              <div className="flex justify-center pt-1">
                 <div
                   id="turnstile-widget"
                   className="cf-turnstile"
@@ -859,19 +917,96 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
                   data-theme="dark"
                 ></div>
               </div>
-              <button type="submit" className={`w-full font-bold py-3 rounded-lg text-xl transition-all tracking-widest mt-4 ${isLogin ? 'bg-[#00E5FF] hover:bg-[#00E5FF]/80 text-black' : 'bg-[#FF006E] hover:bg-[#FF006E]/80 text-white'}`} style={{ fontFamily: 'Rajdhani, sans-serif' }}>
-                {isLogin ? 'SIGN IN' : 'REGISTER NOW'}
+
+              <button
+                type="submit"
+                className="w-full py-3.5 px-6 rounded-lg text-[#050A14] font-bold text-base sm:text-lg tracking-widest uppercase transition-all duration-200 shadow-lg flex items-center justify-center gap-2 font-rajdhani bg-[#00E5FF] hover:bg-[#00B3CC] active:scale-[0.99] shadow-[#00E5FF]/25 mt-2"
+              >
+                <span>{isLogin ? 'SIGN IN' : 'CREATE ACCOUNT'}</span>
+                <ChevronRight size={18} />
               </button>
             </form>
-            <div className="mt-8 text-center border-t border-gray-800 pt-6">
-              <p className="text-sm text-gray-400" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
-                {isLogin ? "Don't have an account? " : "Already have an account? "}
-                <button onClick={() => setIsLogin(!isLogin)} className="text-[#FF006E] hover:text-[#FF006E]/80 font-bold ml-2 transition-colors">
-                  {isLogin ? 'Register Now' : 'Log In Here'}
+
+            {isLogin && (
+              <>
+                {/* OR Divider */}
+                <div className="relative flex items-center justify-center my-4">
+                  <div className="w-full border-t border-white/10"></div>
+                  <span className="bg-[#0A0E1A] px-3 text-xs font-mono text-gray-500 tracking-widest uppercase absolute">
+                    OR
+                  </span>
+                </div>
+
+                {/* Social Logins */}
+                <div className="space-y-2.5">
+                  <button
+                    type="button"
+                    onClick={handleGoogleLogin}
+                    className="w-full flex items-center justify-center gap-3 py-3 px-4 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 text-white font-semibold text-sm transition-all hover:shadow-md font-mono"
+                  >
+                    <svg width="18" height="18" viewBox="0 0 24 24">
+                      <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z"/>
+                      <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.26v3.15C3.25 21.3 7.31 24 12 24z"/>
+                      <path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.26C.46 8.18 0 9.99 0 12s.46 3.82 1.26 5.42l4.02-3.15z"/>
+                      <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.31 0 3.25 2.7 1.26 6.58l4.02 3.15c.95-2.83 3.6-4.98 6.72-4.98z"/>
+                    </svg>
+                    Continue with Google
+                  </button>
+
+                  <div className="grid grid-cols-3 gap-2">
+                    <button
+                      type="button"
+                      onClick={handleDiscordLogin}
+                      className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg bg-[#5865F2]/20 hover:bg-[#5865F2]/30 border border-[#5865F2]/40 text-white font-medium text-xs transition-all font-mono"
+                      title="Sign in with Discord"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 127.14 96.36" fill="currentColor">
+                        <path d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36,77.7,77.7,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.66,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1A105.25,105.25,0,0,0,126.6,80.22h0C129.24,52.84,122.09,29.11,107.7,8.07ZM42.45,65.69C36.18,65.69,31,60,31,53s5-12.74,11.43-12.74S54,46,53.89,53,48.84,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.31,60,73.31,53s5-12.74,11.43-12.74S96.33,46,96.22,53,91.08,65.69,84.69,65.69Z" />
+                      </svg>
+                      <span>Discord</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleTwitchLogin}
+                      className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg bg-[#9146FF]/20 hover:bg-[#9146FF]/30 border border-[#9146FF]/40 text-white font-medium text-xs transition-all font-mono"
+                      title="Sign in with Twitch"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714Z"/>
+                      </svg>
+                      <span>Twitch</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handlePasskeySignIn}
+                      className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg bg-[#00FF88]/15 hover:bg-[#00FF88]/25 border border-[#00FF88]/30 text-[#00FF88] font-medium text-xs transition-all font-mono"
+                      title="Sign in with Passkey"
+                    >
+                      <Key size={14} />
+                      <span>Passkey</span>
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Bottom Toggle Text */}
+            <div className="text-center pt-2 border-t border-white/10">
+              <p className="text-xs text-gray-400 font-mono">
+                {isLogin ? "Don't have an account?" : "Already have an account?"}
+                <button
+                  type="button"
+                  onClick={() => setIsLogin(!isLogin)}
+                  className="text-[#00E5FF] hover:underline font-bold ml-1.5 transition-colors"
+                >
+                  {isLogin ? 'Create one' : 'Sign in'}
                 </button>
               </p>
             </div>
           </div>
+
         </div>
       </div>
     );
