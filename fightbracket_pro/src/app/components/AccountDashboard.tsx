@@ -117,6 +117,10 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
   });
   const [startggTournaments, setStartggTournaments] = useState<any[]>([]);
   const [fetchingStartgg, setFetchingStartgg] = useState(false);
+  
+  // Local Tournament History state
+  const [localHistory, setLocalHistory] = useState<any[]>([]);
+  const [fetchingLocalHistory, setFetchingLocalHistory] = useState(false);
 
   // Account Settings state
   const [newEmail, setNewEmail] = useState('');
@@ -182,6 +186,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
   }, [user]);
 
   const fetchUserProfile = async () => {
+    if (!user) return;
     setProfileLoading(true);
     setProfileError(null);
     try {
@@ -189,19 +194,18 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
       const res = await fetch('/api/user/profile', { headers });
       if (res.ok) {
         const data = await res.json();
-        if (data.error) {
-          setProfileError(data.error);
-          console.error('Profile API error:', data.error);
-          return;
+        setUserProfile(data.profile || data.user);
+        const profile = data.profile || data.user;
+        if (profile?.unique_id) {
+          fetchLocalHistory(profile.unique_id);
         }
-        setUserProfile(data.user);
-        if (data.user?.startgg_slug) setUserStartggInput(data.user.startgg_slug);
-        if (data.user?.startgg_token) {
-          setStartggToken(data.user.startgg_token);
-          try { localStorage.setItem('fb_startggToken', data.user.startgg_token); } catch { }
+        if (profile?.startgg_slug) setUserStartggInput(profile.startgg_slug);
+        if (profile?.startgg_token) {
+          setStartggToken(profile.startgg_token);
+          try { localStorage.setItem('fb_startggToken', profile.startgg_token); } catch { }
         }
-        if (data.user?.tekken_id) setUserTekkenId(data.user.tekken_id);
-        if (data.user?.steam_id) setUserSteamId(data.user.steam_id);
+        if (profile?.tekken_id) setUserTekkenId(profile.tekken_id);
+        if (profile?.steam_id) setUserSteamId(profile.steam_id);
         // Auto-detect Twitch username from OAuth metadata if not already set in DB profile
         const oauthTwitchUsername = user?.user_metadata?.preferred_username || user?.user_metadata?.user_name || (user?.app_metadata?.provider === 'twitch' ? user?.user_metadata?.name : '');
         const currentTwitchId = data.user?.twitch_id || oauthTwitchUsername || '';
@@ -225,6 +229,22 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
       console.error('Failed to fetch user profile', err);
     } finally {
       setProfileLoading(false);
+    }
+  };
+
+  const fetchLocalHistory = async (uniqueId: string) => {
+    setFetchingLocalHistory(true);
+    try {
+      const headers = await getHeaders();
+      const res = await fetch(`/api/users/${uniqueId}/local-history`, { headers });
+      if (res.ok) {
+        const data = await res.json();
+        setLocalHistory(data.tournaments || []);
+      }
+    } catch (err) {
+      console.error("Failed to fetch local history:", err);
+    } finally {
+      setFetchingLocalHistory(false);
     }
   };
 
@@ -1496,6 +1516,50 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
                 ))}
               </div>
             )}
+        </div>
+
+        {/* Local Tournament History */}
+        <div className="space-y-6 md:col-span-2">
+          <div className="bg-[#050A14] border border-white/10 p-6 rounded-2xl shadow-xl">
+            <div className="border-b border-white/10 pb-4 mb-6 flex justify-between items-center">
+              <div>
+                <h3 className="text-xl font-bold font-rajdhani text-[#00E5FF] tracking-widest flex items-center gap-2">
+                  <Key size={20} /> LOCAL TOURNAMENT HISTORY
+                </h3>
+                <p className="text-xs text-gray-400 font-mono mt-2">Custom tournaments you've participated in on this platform.</p>
+              </div>
+              <button
+                onClick={() => userProfile?.unique_id && fetchLocalHistory(userProfile.unique_id)}
+                disabled={fetchingLocalHistory}
+                className="p-2 rounded-lg border border-white/10 text-white hover:border-white/30 hover:bg-white/5 transition-all"
+                title="Refresh History"
+              >
+                <RefreshCw size={15} className={fetchingLocalHistory ? "animate-spin" : ""} />
+              </button>
+            </div>
+            
+            {fetchingLocalHistory ? (
+              <div className="text-center py-8 opacity-50 font-mono text-sm">Loading history...</div>
+            ) : localHistory.length === 0 ? (
+              <div className="text-center py-8 opacity-50 font-mono text-sm">No local tournament history found.</div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {localHistory.map((t, idx) => (
+                  <div key={`${t.tournament_id}-${idx}`} className="flex flex-col p-4 bg-[#111] border border-gray-800 rounded-lg hover:border-[#00E5FF]/30 transition-colors">
+                    <div className="text-xs font-mono text-gray-500 mb-1">{new Date(t.date).toLocaleDateString()}</div>
+                    <div className="font-bold text-white font-rajdhani text-lg truncate mb-2">{t.tournament_name}</div>
+                    <div className="flex justify-between items-end mt-auto pt-2 border-t border-white/5">
+                      <div className="text-xs font-mono text-gray-400">Played as: <span className="text-[#00E5FF]">{t.gamer_tag}</span></div>
+                      {t.placement && (
+                        <div className="text-sm font-bold font-rajdhani text-white bg-white/10 px-2 rounded">
+                          {t.placement}{[11,12,13].includes(t.placement%100) ? 'th' : ['st','nd','rd'][t.placement%10-1] || 'th'} Place
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
@@ -1936,6 +2000,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
           </motion.div>
         )}
       </AnimatePresence>
+    </div>
     </div>
   </main>
 </div>

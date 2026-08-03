@@ -13,6 +13,14 @@ interface NewsItem {
 
 const NEWS_ITEMS: NewsItem[] = [
   {
+    id: 'n0',
+    type: 'feature',
+    date: 'Aug 3, 2026',
+    title: 'Start.gg Integration Overhaul & QoL Updates',
+    body: 'Huge updates today! Start.gg imports now perfectly map Pools and visually order brackets logically. Stream URLs dynamically detect Twitch, YouTube, and TikTok and clearly display LIVE vs COMPLETED status. We also added persistent Custom Station Names that save to your profile, and improved Check-in tracking for no-show (ABSENT) participants in imported events.',
+    badge: 'NEW',
+  },
+  {
     id: 'n1',
     type: 'feature',
     date: 'Aug 1, 2026',

@@ -49,6 +49,18 @@ const TABS: { id: Tab; label: string; icon: React.ComponentType<{ size?: number 
   { id: 'account', label: 'ACCOUNT', icon: UserCheck },
 ];
 
+export function parseStreamUrl(streamName: string, streamSource?: string): string {
+  if (streamName.startsWith('http')) return streamName;
+  if (streamName.includes('tiktok.com')) return `https://${streamName}`;
+  if (streamName.includes('youtube.com') || streamName.includes('youtu.be')) return `https://${streamName}`;
+  
+  if (streamSource === 'YOUTUBE') return `https://youtube.com/c/${streamName}`;
+  if (streamSource === 'FACEBOOK') return `https://facebook.com/${streamName}`;
+  
+  if (streamName.includes('twitch.tv')) return `https://${streamName}`;
+  return `https://twitch.tv/${streamName}`;
+}
+
 export default function App() {
   const safeParse = (key: string, defaultVal: any) => {
     try { const saved = localStorage.getItem(key); return saved ? JSON.parse(saved) : defaultVal; } catch { return defaultVal; }
@@ -124,6 +136,51 @@ export default function App() {
     });
     return () => subscription.unsubscribe();
   }, []);
+
+  // Sync station names to backend
+  const stationNamesStr = JSON.stringify(stations.map(s => s.name));
+  useEffect(() => {
+    if (!supabaseToken || !stationNamesStr) return;
+    const isDefault = stations.every((s, i) => s.name === `Station ${i + 1}`);
+    if (isDefault) return; // Don't overwrite cloud with defaults on first load
+    const timer = setTimeout(() => {
+      fetch('/api/user/profile', {
+        method: 'PUT',
+        headers: { 'Authorization': `Bearer ${supabaseToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ station_names: stationNamesStr })
+      }).catch(console.error);
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, [stationNamesStr, supabaseToken]);
+
+  // Load station names from backend
+  useEffect(() => {
+    if (!supabaseToken) return;
+    fetch('/api/user/profile', { headers: { 'Authorization': `Bearer ${supabaseToken}` } })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        const profile = data?.profile || data?.user;
+        if (profile?.station_names) {
+          try {
+            const parsedNames = JSON.parse(profile.station_names);
+            if (Array.isArray(parsedNames) && parsedNames.length > 0) {
+              setStations(prev => {
+                const newStations = [...prev];
+                parsedNames.forEach((name, i) => {
+                  if (newStations[i]) {
+                    newStations[i].name = name;
+                  } else {
+                    newStations.push({ id: i + 1, name, active: true, matchId: null, gameId: null });
+                  }
+                });
+                return newStations;
+              });
+            }
+          } catch {}
+        }
+      })
+      .catch(console.error);
+  }, [supabaseToken]);
 
   useEffect(() => {
     const path = window.location.pathname;
@@ -260,7 +317,7 @@ export default function App() {
     setMatches(prev => prev.filter(m => m.gameId !== gameIdToRemove));
   };
 
-  const handleAddPlayer = (playerData: { tag: string; realName: string; seed: number; startggId?: string; country?: string }) => {
+  const handleAddPlayer = (playerData: { tag: string; realName: string; seed: number; startggId?: string; country?: string; character?: string; fbUserId?: string }) => {
     if (!activeGame) return;
     const newPlayer: Player = {
       id: `p-${Date.now()}`,
@@ -273,6 +330,8 @@ export default function App() {
       phone: '',
       smsNotified: false,
       gameId: activeGame,
+      character: playerData.character,
+      fbUserId: playerData.fbUserId,
     };
     setPlayers(prev => [...prev, newPlayer]);
   };
@@ -350,9 +409,7 @@ export default function App() {
     // Find the station so we can pull its stream name into the match
     const station = stations.find(s => s.id === sid);
     const streamUrl = station?.streamName
-      ? station.streamName.includes('twitch.tv')
-        ? station.streamName
-        : `https://twitch.tv/${station.streamName}`
+      ? parseStreamUrl(station.streamName)
       : match.streamUrl;
 
     setMatches(prev => prev.map(m => m.id === match.id ? { ...m, state: 'called', stationId: sid, calledAt: calledTime, streamUrl: streamUrl || m.streamUrl } : m));
@@ -688,8 +745,8 @@ export default function App() {
         else if (set.state === 6) matchState = 'called';
 
         let streamUrl: string | undefined = undefined;
-        if (set.stream?.streamSource === 'TWITCH' && set.stream?.streamName) {
-          streamUrl = `https://twitch.tv/${set.stream.streamName}`;
+        if (set.stream?.streamName) {
+          streamUrl = parseStreamUrl(set.stream.streamName, set.stream.streamSource);
         }
         const winnerId = set.winnerId ? String(set.winnerId) : null;
 
@@ -758,6 +815,7 @@ export default function App() {
           bestOf: 3,
           pool: poolIdentifier,
           phase: phaseName,
+          identifier: set.identifier,
         });
       });
     });
@@ -1168,7 +1226,15 @@ export default function App() {
               {activeTab === 'checkin' && (
                 <div>
                   <SectionHeader title="PARTICIPANT CHECK-IN" subtitle={`${checkedInCount} of ${gamePlayers.length} checked in`} theme={theme} />
-                  <CheckInPanel players={gamePlayers} theme={theme} onCheckIn={handleCheckIn} onRemovePlayer={isHost ? handleRemovePlayer : undefined} />
+                  <CheckInPanel 
+                    players={gamePlayers} 
+                    theme={theme} 
+                    onCheckIn={handleCheckIn} 
+                    onRemovePlayer={isHost ? handleRemovePlayer : undefined} 
+                    onAddPlayer={handleAddPlayer}
+                    isCustomTournament={!autoSyncSlug && !activeTournament?.slug}
+                    supabaseToken={supabaseToken}
+                  />
                 </div>
               )}
               {activeTab === 'pools' && (

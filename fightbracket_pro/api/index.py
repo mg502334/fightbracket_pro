@@ -21,20 +21,20 @@ except ImportError:
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-    from api.db import get_db, DBPlayer, DBStation, DBSMSLog, DBTournament, DBUser, DBFriendship, DBDirectMessage, DBUserIdentifier
+    from api.db import get_db, DBPlayer, DBStation, DBSMSLog, DBTournament, DBTournamentParticipant, DBUser, DBFriendship, DBDirectMessage, DBUserIdentifier
 
 else:
     try:
         try:
-            from api.db import get_db, DBPlayer, DBStation, DBSMSLog, DBTournament, DBUser, DBFriendship, DBDirectMessage, DBUserIdentifier
+            from api.db import get_db, DBPlayer, DBStation, DBSMSLog, DBTournament, DBTournamentParticipant, DBUser, DBFriendship, DBDirectMessage, DBUserIdentifier
         except Exception:
-            from db import get_db, DBPlayer, DBStation, DBSMSLog, DBTournament, DBUser, DBFriendship, DBDirectMessage, DBUserIdentifier  # type: ignore
+            from db import get_db, DBPlayer, DBStation, DBSMSLog, DBTournament, DBTournamentParticipant, DBUser, DBFriendship, DBDirectMessage, DBUserIdentifier  # type: ignore
     except Exception as _db_err:
         print(f"DB import warning: {_db_err}")
         def get_db():
             yield None
         class _DummyModel: pass
-        DBPlayer = DBStation = DBSMSLog = DBTournament = DBFriendship = DBDirectMessage = DBUser = DBUserIdentifier = _DummyModel # type: ignore
+        DBPlayer = DBStation = DBSMSLog = DBTournament = DBTournamentParticipant = DBFriendship = DBDirectMessage = DBUser = DBUserIdentifier = _DummyModel # type: ignore
 try:
     import jwt
 except ImportError:
@@ -106,6 +106,7 @@ class ProfileUpdateRequest(BaseModel):
     twitch_id: str | None = None
     twitch_url: str | None = None
     games_data: str | None = None
+    station_names: str | None = None
     is_public: bool | None = None
     friends_only: bool | None = None
 
@@ -342,6 +343,8 @@ def update_user_profile(req: ProfileUpdateRequest, user_id: str = Depends(get_cu
         user.twitch_url = req.twitch_url.strip() # type: ignore
     if req.games_data is not None:
         user.games_data = req.games_data # type: ignore
+    if req.station_names is not None:
+        user.station_names = req.station_names # type: ignore
     if req.is_public is not None:
         user.is_public = req.is_public # type: ignore
     if req.friends_only is not None:
@@ -961,6 +964,38 @@ def save_tournament(req: TournamentSaveRequest, user_id: str = Depends(get_curre
     else:
         tournament = DBTournament(id=req.id, user_id=user_id, name=req.name, data=req.data)
         db.add(tournament)
+    
+    # Sync participants
+    try:
+        import json
+        parsed = json.loads(req.data)
+        players = parsed.get("players", [])
+        
+        # Clear old participants for this tournament
+        db.query(DBTournamentParticipant).filter(DBTournamentParticipant.tournament_id == req.id).delete()
+        
+        # Add new participants
+        for p in players:
+            fb_user_id = p.get("fbUserId")
+            player_id = p.get("id")
+            gamer_tag = p.get("tag")
+            placement = p.get("placement")
+            
+            if not player_id or not gamer_tag:
+                continue
+                
+            participant = DBTournamentParticipant(
+                id=f"{req.id}_{player_id}",
+                tournament_id=req.id,
+                fb_user_id=fb_user_id,
+                player_id=player_id,
+                gamer_tag=gamer_tag,
+                placement=placement
+            )
+            db.add(participant)
+    except Exception as e:
+        print(f"Failed to sync participants: {e}")
+
     db.commit()
     return {"status": "success"}
 
@@ -1137,11 +1172,18 @@ def sync_startgg_bracket(slug: str = "clash-of-kings-vii", token: str = None):  
           }
           nodes {
             id
+            identifier
             state
             fullRoundText
             round
             winnerId
             displayScore
+            phaseGroup {
+              displayIdentifier
+              phase {
+                name
+              }
+            }
             stream {
               streamName
               streamSource
@@ -1592,3 +1634,35 @@ def get_steam_profile(steam_id: str):
         "profile": profile_data
     }
 
+# ---------------------------------------------------------------------------
+# LOCAL TOURNAMENT HISTORY
+# ---------------------------------------------------------------------------
+
+@app.get("/api/users/{unique_id}/local-history")
+def get_user_local_history(unique_id: str, db: Session = Depends(get_db)):
+    if not db:
+        return {"tournaments": []}
+        
+    try:
+        # Query tournament participants matching this unique_id
+        participants = db.query(DBTournamentParticipant).filter(DBTournamentParticipant.fb_user_id == unique_id).all()
+        
+        history = []
+        for p in participants:
+            # Fetch the tournament details
+            tournament = db.query(DBTournament).filter(DBTournament.id == p.tournament_id).first()
+            if tournament:
+                history.append({
+                    "tournament_id": tournament.id,
+                    "tournament_name": tournament.name,
+                    "date": tournament.updated_at.isoformat(),
+                    "placement": p.placement,
+                    "gamer_tag": p.gamer_tag
+                })
+        
+        # Sort by date descending
+        history.sort(key=lambda x: x["date"], reverse=True)
+        return {"tournaments": history}
+    except Exception as e:
+        print(f"Error fetching local history: {e}")
+        return {"tournaments": []}

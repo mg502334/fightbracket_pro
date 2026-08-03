@@ -37,6 +37,7 @@ export interface Player {
   character?: string;
   gameId: string;
   placement?: number;
+  fbUserId?: string;
 }
 
 export interface BracketMatch {

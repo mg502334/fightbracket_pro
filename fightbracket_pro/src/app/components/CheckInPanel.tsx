@@ -1,17 +1,21 @@
-import { useState } from "react";
-import { Search, CheckCircle2, XCircle, Smartphone, Trash2 } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Search, CheckCircle2, XCircle, Smartphone, Trash2, UserPlus, Loader2 } from "lucide-react";
 import type { Player, GameTheme } from "../data/tournamentData";
+import { motion, AnimatePresence } from "motion/react";
 
 interface CheckInPanelProps {
   players: Player[];
   theme: GameTheme;
   onCheckIn: (playerId: string, checked: boolean) => void;
   onRemovePlayer?: (playerId: string) => void;
+  onAddPlayer?: (playerData: { tag: string; realName: string; seed: number; character?: string; fbUserId?: string }) => void;
+  isCustomTournament?: boolean;
+  supabaseToken?: string | null;
 }
 
 type FilterMode = 'all' | 'checked' | 'unchecked';
 
-export function CheckInPanel({ players, theme, onCheckIn, onRemovePlayer }: CheckInPanelProps) {
+export function CheckInPanel({ players, theme, onCheckIn, onRemovePlayer, onAddPlayer, isCustomTournament, supabaseToken }: CheckInPanelProps) {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<FilterMode>('all');
 
@@ -24,10 +28,148 @@ export function CheckInPanel({ players, theme, onCheckIn, onRemovePlayer }: Chec
   });
 
   const checkedCount = players.filter(p => p.checkedIn).length;
-  const pct = Math.round((checkedCount / players.length) * 100);
+  const pct = players.length > 0 ? Math.round((checkedCount / players.length) * 100) : 0;
+
+  // Registration form state
+  const [regTag, setRegTag] = useState('');
+  const [regName, setRegName] = useState('');
+  const [regChar, setRegChar] = useState('');
+  const [regFbUserId, setRegFbUserId] = useState<string | null>(null);
+  const [isSearchingUsers, setIsSearchingUsers] = useState(false);
+  const [userSearchResults, setUserSearchResults] = useState<any[]>([]);
+  const [showUserDropdown, setShowUserDropdown] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowUserDropdown(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    if (!regTag.trim() || regFbUserId) {
+      setUserSearchResults([]);
+      setShowUserDropdown(false);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      setIsSearchingUsers(true);
+      try {
+        const headers: Record<string, string> = {};
+        if (supabaseToken) headers['Authorization'] = `Bearer ${supabaseToken}`;
+        const res = await fetch(`/api/users/search?q=${encodeURIComponent(regTag)}`, { headers });
+        if (res.ok) {
+          const data = await res.json();
+          setUserSearchResults(data.users || []);
+          setShowUserDropdown((data.users || []).length > 0);
+        }
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setIsSearchingUsers(false);
+      }
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [regTag, regFbUserId, supabaseToken]);
+
+  const handleRegister = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!regTag.trim() || !onAddPlayer) return;
+    onAddPlayer({
+      tag: regTag.trim(),
+      realName: regName.trim(),
+      character: regChar.trim(),
+      fbUserId: regFbUserId || undefined,
+      seed: players.length + 1
+    });
+    setRegTag('');
+    setRegName('');
+    setRegChar('');
+    setRegFbUserId(null);
+  };
 
   return (
     <div className="flex flex-col gap-4">
+      {/* Registration Form (Only for Custom Tournaments) */}
+      {isCustomTournament && onAddPlayer && (
+        <form onSubmit={handleRegister} className="rounded p-4 flex flex-col gap-3" style={{ background: 'var(--card)', border: `1px solid ${theme.primaryColor}40` }}>
+          <div className="flex items-center gap-2 mb-1">
+            <UserPlus size={16} style={{ color: theme.primaryColor }} />
+            <span className="text-sm tracking-widest font-bold" style={{ fontFamily: 'Rajdhani, sans-serif', color: theme.primaryColor }}>
+              REGISTER PLAYER
+            </span>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="flex-1 relative" ref={dropdownRef}>
+              <input
+                value={regTag}
+                onChange={e => { setRegTag(e.target.value); setRegFbUserId(null); }}
+                placeholder="Gamertag *"
+                required
+                className="w-full px-3 py-2 rounded text-sm outline-none transition-all"
+                style={{ background: 'var(--sidebar)', border: `1px solid ${regFbUserId ? '#00FF88' : 'rgba(122,158,192,0.2)'}`, color: 'var(--foreground)' }}
+              />
+              {isSearchingUsers && <Loader2 size={14} className="absolute right-3 top-1/2 -translate-y-1/2 animate-spin opacity-50" />}
+              
+              <AnimatePresence>
+                {showUserDropdown && userSearchResults.length > 0 && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -5 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -5 }}
+                    className="absolute z-10 w-full mt-1 rounded shadow-lg overflow-hidden border"
+                    style={{ background: 'var(--card)', borderColor: 'var(--border)' }}
+                  >
+                    {userSearchResults.map(u => (
+                      <button
+                        key={u.id}
+                        type="button"
+                        className="w-full text-left px-3 py-2 text-sm hover:bg-white/5 transition-colors flex items-center justify-between"
+                        onClick={() => {
+                          setRegTag(u.gamer_tag);
+                          setRegFbUserId(u.unique_id);
+                          setShowUserDropdown(false);
+                        }}
+                      >
+                        <span className="font-bold">{u.gamer_tag}</span>
+                        <span className="text-xs opacity-50 font-mono">{u.unique_id}</span>
+                      </button>
+                    ))}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+            
+            <input
+              value={regName}
+              onChange={e => setRegName(e.target.value)}
+              placeholder="Name (Optional)"
+              className="flex-1 px-3 py-2 rounded text-sm outline-none transition-all"
+              style={{ background: 'var(--sidebar)', border: '1px solid rgba(122,158,192,0.2)', color: 'var(--foreground)' }}
+            />
+            <input
+              value={regChar}
+              onChange={e => setRegChar(e.target.value)}
+              placeholder="Character (Optional)"
+              className="flex-1 px-3 py-2 rounded text-sm outline-none transition-all"
+              style={{ background: 'var(--sidebar)', border: '1px solid rgba(122,158,192,0.2)', color: 'var(--foreground)' }}
+            />
+            <button
+              type="submit"
+              disabled={!regTag.trim()}
+              className="px-6 py-2 rounded text-sm font-bold tracking-wider disabled:opacity-50 transition-colors shrink-0"
+              style={{ background: theme.primaryColor, color: '#050A14', fontFamily: 'Rajdhani, sans-serif' }}
+            >
+              ADD
+            </button>
+          </div>
+        </form>
+      )}
+
       {/* Progress bar */}
       <div className="rounded p-4" style={{ background: 'var(--card)', border: `1px solid ${theme.primaryColor}20` }}>
         <div className="flex items-center justify-between mb-2">
@@ -120,7 +262,7 @@ export function CheckInPanel({ players, theme, onCheckIn, onRemovePlayer }: Chec
             </div>
           ) : (
             filtered.map(player => (
-              <PlayerRow key={player.id} player={player} theme={theme} onToggle={onCheckIn} onRemove={onRemovePlayer} />
+              <PlayerRow key={player.id} player={player} theme={theme} onToggle={onCheckIn} onRemove={isCustomTournament ? onRemovePlayer : undefined} />
             ))
           )}
         </div>
@@ -183,7 +325,7 @@ function PlayerRow({ player, theme, onToggle, onRemove }: { player: Player; them
         >
           {player.checkedIn
             ? <><CheckCircle2 size={11} /> IN</>
-            : <><XCircle size={11} /> OUT</>
+            : <><XCircle size={11} /> ABSENT</>
           }
         </button>
         {onRemove && (

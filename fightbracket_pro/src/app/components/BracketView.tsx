@@ -307,7 +307,13 @@ function BracketSection({
       </div>
       <div className="flex gap-12 min-w-max pb-4 overflow-x-auto custom-scrollbar">
         {rounds.map((round, rIdx) => {
-          const roundMatches = matches.filter(m => m.round === round);
+          let roundMatches = matches.filter(m => m.round === round);
+          roundMatches.sort((a, b) => {
+            const idA = a.identifier || String(a.matchNumber);
+            const idB = b.identifier || String(b.matchNumber);
+            if (idA.length !== idB.length) return idA.length - idB.length;
+            return idA.localeCompare(idB);
+          });
           const isLast = rIdx === rounds.length - 1;
           const totalRounds = rounds.length;
           const isGrandFinals = title.includes("GRAND");
@@ -424,23 +430,39 @@ function BracketSection({
                             CALL MATCH
                           </div>
                         )}
-                        {match.streamUrl && (
-                          <a
-                            href={match.streamUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center justify-center gap-1 py-1.5 text-xs tracking-widest mt-px hover:opacity-80 transition-opacity"
-                            style={{
-                              background: `#6441a5`,
-                              color: 'white',
-                              fontFamily: 'JetBrains Mono, monospace',
-                              fontWeight: 700,
-                              textDecoration: 'none'
-                            }}
-                          >
-                            WATCH LIVE
-                          </a>
-                        )}
+                        {match.streamUrl && (() => {
+                          const isTwitch = match.streamUrl.includes('twitch.tv');
+                          const isYouTube = match.streamUrl.includes('youtube.com') || match.streamUrl.includes('youtu.be');
+                          const isTikTok = match.streamUrl.includes('tiktok.com');
+                          
+                          const platformName = isTwitch ? 'TWITCH' : isYouTube ? 'YOUTUBE' : isTikTok ? 'TIKTOK' : 'STREAM';
+                          const platformColor = isTwitch ? '#6441a5' : isYouTube ? '#FF0000' : isTikTok ? '#00f2fe' : theme.primaryColor;
+                          
+                          const buttonText = match.state === 'completed' 
+                            ? `WAS ON ${platformName}` 
+                            : match.state === 'pending'
+                              ? `SCHEDULED ON ${platformName}`
+                              : `WATCH LIVE ON ${platformName}`;
+
+                          return (
+                            <a
+                              href={match.streamUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center justify-center gap-1 py-1.5 text-xs tracking-widest mt-px hover:brightness-125 transition-all"
+                              style={{
+                                background: platformColor,
+                                color: isTikTok ? '#000000' : 'white',
+                                fontFamily: 'JetBrains Mono, monospace',
+                                fontWeight: 700,
+                                textDecoration: 'none',
+                                opacity: match.state === 'completed' ? 0.6 : 1
+                              }}
+                            >
+                              {buttonText}
+                            </a>
+                          );
+                        })()}
                       </div>
                     </div>
                   );

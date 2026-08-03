@@ -20,6 +20,7 @@ class DBUser(Base):
     twitch_id = Column(String, nullable=True) # Twitch channel username or ID
     twitch_url = Column(String, nullable=True) # Twitch channel URL
     games_data = Column(Text, nullable=True) # Stored JSON string of main games & characters
+    station_names = Column(Text, nullable=True) # Stored JSON list of custom station names
     is_public = Column(Boolean, default=True) # Publicly viewable vs hidden
     friends_only = Column(Boolean, default=False) # Only friends can view Start.gg stats
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
@@ -79,6 +80,16 @@ class DBTournament(Base):
     name = Column(String)
     data = Column(Text)
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+
+class DBTournamentParticipant(Base):
+    __tablename__ = "tournament_participants"
+    id = Column(String, primary_key=True, index=True) # e.g. tournament_id + "_" + player_id
+    tournament_id = Column(String, index=True, nullable=False)
+    fb_user_id = Column(String, index=True, nullable=True) # unique_id of the FB user (if linked)
+    player_id = Column(String, nullable=False)
+    gamer_tag = Column(String, nullable=False)
+    placement = Column(Integer, nullable=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 # Lazy engine — only created when first needed, prevents cold-start crash on Vercel
 _engine = None
