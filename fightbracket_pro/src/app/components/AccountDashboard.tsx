@@ -735,8 +735,8 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
   };
 
   const handleAddGameMain = () => {
-    if (!newMainChar.trim()) return toast.error('Please enter your main character');
-    const updated = [...gamesList.filter(g => g.game !== newGameName), { game: newGameName, main: newMainChar.trim() }];
+    if (!newGameName.trim()) return toast.error('Please select or enter a game');
+    const updated = [...gamesList.filter(g => g.game !== newGameName), { game: newGameName.trim(), main: newMainChar.trim() }];
     saveGamesList(updated);
     setNewMainChar('');
   };
@@ -1326,7 +1326,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
                 </datalist>
                 <input
                   type="text"
-                  placeholder="Main Character (e.g. Kazuya)"
+                  placeholder="Main Character (Optional)"
                   value={newMainChar}
                   onChange={e => setNewMainChar(e.target.value)}
                   className="flex-1 bg-[#111] border border-gray-800 rounded-lg px-3 py-2 text-white font-mono text-xs outline-none focus:border-[#00E5FF]"
@@ -1351,7 +1351,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
                   <div key={item.game} className="p-3 rounded-xl bg-black/40 border border-white/10 flex items-center justify-between group">
                     <div>
                       <div className="font-bold text-xs font-mono text-[#00E5FF]">{item.game}</div>
-                      <div className="text-sm font-bold font-rajdhani text-white mt-0.5">{item.main}</div>
+                      {item.main && <div className="text-sm font-bold font-rajdhani text-white mt-0.5">{item.main}</div>}
                     </div>
                     <button
                       onClick={() => handleRemoveGameMain(item.game)}
