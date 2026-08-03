@@ -113,7 +113,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
       if (!error && data?.all) {
         setPasskeyFactors(data.all.filter(f => f.factor_type === 'webauthn'));
       }
-    } catch {}
+    } catch { }
   };
 
   useEffect(() => {
@@ -128,11 +128,11 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
               action: 'turnstile-spin-v2',
               theme: 'dark'
             });
-          } catch (e) {}
+          } catch (e) { }
         }
       }
     };
-    
+
     if (!user) {
       if (window.turnstile) {
         renderWidget();
@@ -145,7 +145,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
         }, 500);
       }
     }
-    
+
     return () => clearInterval(checkInterval);
   }, [user, isLogin]);
 
@@ -174,7 +174,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
         if (data.user?.startgg_slug) setUserStartggInput(data.user.startgg_slug);
         if (data.user?.startgg_token) {
           setStartggToken(data.user.startgg_token);
-          try { localStorage.setItem('fb_startggToken', data.user.startgg_token); } catch {}
+          try { localStorage.setItem('fb_startggToken', data.user.startgg_token); } catch { }
         }
         if (data.user?.tekken_id) setUserTekkenId(data.user.tekken_id);
         if (data.user?.steam_id) setUserSteamId(data.user.steam_id);
@@ -182,7 +182,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
         const oauthTwitchUsername = user?.user_metadata?.preferred_username || user?.user_metadata?.user_name || (user?.app_metadata?.provider === 'twitch' ? user?.user_metadata?.name : '');
         const currentTwitchId = data.user?.twitch_id || oauthTwitchUsername || '';
         const currentTwitchUrl = data.user?.twitch_url || (currentTwitchId ? (currentTwitchId.startsWith('http') ? currentTwitchId : `https://twitch.tv/${currentTwitchId}`) : '');
-        
+
         setUserTwitchId(currentTwitchId);
         setUserTwitchUrl(currentTwitchUrl);
         if (data.user?.gamer_tag && !displayName) setDisplayName(data.user.gamer_tag);
@@ -190,7 +190,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
           try {
             const parsed = JSON.parse(data.user.games_data);
             if (Array.isArray(parsed)) setGamesList(parsed);
-          } catch {}
+          } catch { }
         }
       } else {
         const errText = await res.text().catch(() => res.statusText);
@@ -207,7 +207,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
   const saveStartggToken = async () => {
     if (!startggToken.trim()) return;
     try {
-      try { localStorage.setItem('fb_startggToken', startggToken.trim()); } catch {}
+      try { localStorage.setItem('fb_startggToken', startggToken.trim()); } catch { }
       const headers = await getHeaders();
       const res = await fetch('/api/user/profile', {
         method: 'PUT',
@@ -318,7 +318,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
       const res = await fetch('/api/user/profile', {
         method: 'PUT',
         headers,
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           twitch_id: userTwitchId.trim(),
           twitch_url: userTwitchUrl.trim()
         })
@@ -786,17 +786,16 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
           </div>
         )}
         <div className="w-full max-w-md bg-[#0A0E1A]/95 border border-white/10 rounded-2xl shadow-[0_25px_60px_rgba(0,0,0,0.8)] backdrop-blur-xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-          
+
           {/* Dual Header Tabs */}
           <div className="grid grid-cols-2 border-b border-white/10 bg-[#060913]">
             <button
               type="button"
               onClick={() => setIsLogin(true)}
-              className={`py-4 text-xs sm:text-sm font-bold tracking-widest uppercase transition-all relative flex items-center justify-center font-rajdhani ${
-                isLogin
+              className={`py-4 text-xs sm:text-sm font-bold tracking-widest uppercase transition-all relative flex items-center justify-center font-rajdhani ${isLogin
                   ? 'text-white bg-white/[0.03]'
                   : 'text-gray-500 hover:text-gray-300'
-              }`}
+                }`}
             >
               SIGN IN
               {isLogin && (
@@ -806,11 +805,10 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
             <button
               type="button"
               onClick={() => setIsLogin(false)}
-              className={`py-4 text-xs sm:text-sm font-bold tracking-widest uppercase transition-all relative flex items-center justify-center font-rajdhani ${
-                !isLogin
+              className={`py-4 text-xs sm:text-sm font-bold tracking-widest uppercase transition-all relative flex items-center justify-center font-rajdhani ${!isLogin
                   ? 'text-white bg-white/[0.03]'
                   : 'text-gray-500 hover:text-gray-300'
-              }`}
+                }`}
             >
               REGISTER
               {!isLogin && (
@@ -827,8 +825,8 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
               </h2>
               <p className="text-xs sm:text-sm text-gray-400 font-mono">
                 {isLogin
-                  ? 'Enter your credentials to access your dashboard.'
-                  : 'Enter your details to create your FightBracket account.'}
+                  ? 'Enter your credentials to access the arena.'
+                  : 'Enter your details to create your FightBracket Pro account.'}
               </p>
             </div>
 
@@ -945,10 +943,10 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
                     className="w-full flex items-center justify-center gap-3 py-3 px-4 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 text-white font-semibold text-sm transition-all hover:shadow-md font-mono"
                   >
                     <svg width="18" height="18" viewBox="0 0 24 24">
-                      <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z"/>
-                      <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.26v3.15C3.25 21.3 7.31 24 12 24z"/>
-                      <path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.26C.46 8.18 0 9.99 0 12s.46 3.82 1.26 5.42l4.02-3.15z"/>
-                      <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.31 0 3.25 2.7 1.26 6.58l4.02 3.15c.95-2.83 3.6-4.98 6.72-4.98z"/>
+                      <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z" />
+                      <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.26v3.15C3.25 21.3 7.31 24 12 24z" />
+                      <path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.26C.46 8.18 0 9.99 0 12s.46 3.82 1.26 5.42l4.02-3.15z" />
+                      <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.31 0 3.25 2.7 1.26 6.58l4.02 3.15c.95-2.83 3.6-4.98 6.72-4.98z" />
                     </svg>
                     Continue with Google
                   </button>
@@ -973,7 +971,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
                       title="Sign in with Twitch"
                     >
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714Z"/>
+                        <path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714Z" />
                       </svg>
                       <span>Twitch</span>
                     </button>
@@ -1137,7 +1135,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
 
       {/* 2-Column Grid for Games & Mains + Start.gg Past Events & Cloud Saves */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        
+
         {/* Left Column: Main Games & Characters */}
         <div className="space-y-6">
           <div className="bg-[#050A14] border border-[#FF006E]/30 p-6 rounded-2xl shadow-xl space-y-4">
@@ -1146,7 +1144,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
                 MAIN GAMES & CHARACTERS
               </h3>
             </div>
-            
+
             {/* Quick Add */}
             <div className="bg-black/40 border border-white/10 p-3.5 rounded-xl space-y-3">
               <div className="text-xs font-mono text-gray-400 font-bold">ADD OR UPDATE YOUR MAIN</div>
@@ -1345,9 +1343,9 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
                   <X size={20} />
                 </button>
               </div>
-              
+
               <div className="p-6 space-y-6 overflow-y-auto custom-scrollbar">
-                
+
                 {/* === PROFILE & PRIVACY SECTION === */}
                 <div className="space-y-4 mb-6">
                   <h4 className="text-sm font-bold font-rajdhani text-[#00FF88] tracking-widest border-b border-[#00FF88]/30 pb-2 flex items-center gap-2">
@@ -1439,13 +1437,13 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
                     </div>
                   </div>
                 </div>
-                
+
                 {/* === INTEGRATIONS SECTION === */}
                 <div className="space-y-4 mb-8">
                   <h4 className="text-sm font-bold font-rajdhani text-cyan-400 tracking-widest border-b border-cyan-500/30 pb-2 flex items-center gap-2">
                     <Globe size={16} /> INTEGRATIONS & API KEYS
                   </h4>
-                  
+
                   {/* Start.gg Token & Career Import */}
                   <div className="space-y-3 bg-white/5 p-4 rounded-lg border border-white/10">
                     <div className="text-xs font-mono font-bold text-gray-400 flex items-center justify-between">
@@ -1467,7 +1465,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
                         SAVE TOKEN
                       </button>
                     </div>
-                    
+
                     <div className="flex gap-2 pt-2">
                       <input
                         type="text"
@@ -1545,7 +1543,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
                         className="px-3 py-1 rounded text-xs font-mono bg-[#9146FF]/20 text-[#9146FF] hover:bg-[#9146FF]/30 border border-[#9146FF]/40 transition-all flex items-center gap-1.5"
                       >
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                          <path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714Z"/>
+                          <path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714Z" />
                         </svg>
                         SIGN IN WITH TWITCH
                       </button>
@@ -1581,7 +1579,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
                 <h4 className="text-sm font-bold font-rajdhani text-[#FF006E] tracking-widest border-b border-[#FF006E]/30 pb-2 flex items-center gap-2">
                   <User size={16} /> PROFILE & ACCOUNT
                 </h4>
-                       {/* Update Avatar Upload */}
+                {/* Update Avatar Upload */}
                 <div className="space-y-2">
                   <div className="text-xs font-mono font-bold text-gray-400 flex items-center justify-between">
                     <span>UPLOAD AVATAR IMAGE</span>
@@ -1675,7 +1673,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
                   <p className="text-xs font-mono text-gray-400">
                     Register Touch ID, Face ID, Windows Hello, or a hardware Security Key for instant passwordless sign in.
                   </p>
-                  
+
                   {passkeyFactors.length > 0 && (
                     <div className="space-y-2">
                       {passkeyFactors.map(f => (
