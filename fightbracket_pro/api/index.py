@@ -1559,33 +1559,31 @@ def get_steam_profile(steam_id: str):
     if not steam_id_clean.isdigit():
         try:
             vanity_resp = requests.get(
-                "https://www.steamwebapi.com/steam/api/info/steamid",
+                "https://api.steampowered.com/ISteamUser/ResolveVanityURL/v0001/",
                 params={"key": STEAM_API_KEY, "vanityurl": steam_id_clean},
                 timeout=10
             )
             if vanity_resp.ok:
                 vdata = vanity_resp.json()
-                if isinstance(vdata, dict) and vdata.get("steamid"):
-                    actual_steam_id = str(vdata["steamid"])
+                if vdata.get("response", {}).get("success") == 1:
+                    actual_steam_id = str(vdata["response"]["steamid"])
         except Exception:
             pass
 
     profile_data = {}
     try:
         prof_resp = requests.get(
-            "https://www.steamwebapi.com/steam/api/profile",
-            params={"key": STEAM_API_KEY, "steamid": actual_steam_id},
+            "https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/",
+            params={"key": STEAM_API_KEY, "steamids": actual_steam_id},
             timeout=10
         )
         if prof_resp.ok:
-            profile_data = prof_resp.json()
+            pdata = prof_resp.json()
+            players = pdata.get("response", {}).get("players", [])
+            if players:
+                profile_data = players[0]
     except Exception as e:
         print(f"Steam profile error: {e}")
-
-    if isinstance(profile_data, list) and len(profile_data) > 0:
-        profile_data = profile_data[0]
-    elif not isinstance(profile_data, dict):
-        profile_data = {}
 
     return {
         "status": "ok",
