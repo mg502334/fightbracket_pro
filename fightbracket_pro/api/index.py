@@ -100,6 +100,7 @@ class ProfileUpdateRequest(BaseModel):
     bio: str | None = None
     avatar_url: str | None = None
     startgg_slug: str | None = None
+    startgg_token: str | None = None
     tekken_id: str | None = None
     steam_id: str | None = None
     twitch_id: str | None = None
@@ -157,95 +158,120 @@ def health_check():
     return {"status": "ok"}
 
 @app.get("/api/user/profile")
-def get_user_profile(user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
-    if not db:
-        raise HTTPException(status_code=404, detail="Database not available")
-    
+def get_or_create_user(db: Session, user_id: str) -> DBUser:
     import random
     import string
-    
-    try:
-        user = db.query(DBUser).filter(DBUser.id == user_id).first()
-        if not user:
-            # Generate unique ID first since it's NOT NULL in DB
-            while True:
-                unique_part = ''.join(random.choices(string.ascii_uppercase + string.digits, k=4))
-                unique_part2 = ''.join(random.choices(string.ascii_uppercase + string.digits, k=4))
-                unique_id = f"FB-{unique_part}-{unique_part2}"
-                if not db.query(DBUser).filter(DBUser.unique_id == unique_id).first():
-                    break
+    import uuid
 
-            user = DBUser(id=user_id, unique_id=unique_id)
-            db.add(user)
-            
-            # Also sync to user_identifiers table to keep it consistent
-            identifier = DBUserIdentifier(id=user_id, unique_id=unique_id)
-            db.add(identifier)
-            
-            # Create bot user if it doesn't exist
-            import uuid
-            bot_id = "fb-bot-system"
-            bot_user = db.query(DBUser).filter(DBUser.id == bot_id).first()
-            if not bot_user:
-                bot_user = DBUser(id=bot_id, unique_id="FB-BOT-0000", gamer_tag="FightBracket Bot")
-                db.add(bot_user)
-                db.commit()
-            
-            # Make them friends
-            friendship1 = DBFriendship(id=str(uuid.uuid4()), user_id=user_id, friend_id=bot_id, status="accepted")
-            friendship2 = DBFriendship(id=str(uuid.uuid4()), user_id=bot_id, friend_id=user_id, status="accepted")
-            db.add(friendship1)
-            db.add(friendship2)
-            
-            # Send welcome message
-            welcome_msg = DBDirectMessage(
-                id=str(uuid.uuid4()),
-                sender_id=bot_id,
-                recipient_id=user_id,
-                message="Welcome to FightBracket Pro! We're glad to have you here. Let us know if you need any help getting started.",
-                read=False
-            )
-            db.add(welcome_msg)
-            
-            db.commit()
-            db.refresh(user)
+    user = db.query(DBUser).filter(DBUser.id == user_id).first()
+    if not user:
+        # Generate unique ID first since it's NOT NULL in DB
+        while True:
+            unique_part = ''.join(random.choices(string.ascii_uppercase + string.digits, k=4))
+            unique_part2 = ''.join(random.choices(string.ascii_uppercase + string.digits, k=4))
+            unique_id = f"FB-{unique_part}-{unique_part2}"
+            if not db.query(DBUser).filter(DBUser.unique_id == unique_id).first():
+                break
 
-        # In case the user exists but user_identifiers doesn't (legacy)
-        identifier = db.query(DBUserIdentifier).filter(DBUserIdentifier.id == user_id).first()
-        if not identifier and hasattr(user, 'unique_id') and user.unique_id:
-            identifier = DBUserIdentifier(id=user_id, unique_id=user.unique_id)
-            db.add(identifier)
-            db.commit()
-
-        # Ensure existing accounts also have the FightBracket Bot friend & welcome message
+        user = DBUser(id=user_id, unique_id=unique_id)
+        db.add(user)
+        
+        # Sync to user_identifiers table
+        identifier = DBUserIdentifier(id=user_id, unique_id=unique_id)
+        db.add(identifier)
+        
+        # Create bot user if it doesn't exist
         bot_id = "fb-bot-system"
         bot_user = db.query(DBUser).filter(DBUser.id == bot_id).first()
         if not bot_user:
             bot_user = DBUser(id=bot_id, unique_id="FB-BOT-0000", gamer_tag="FightBracket Bot")
             db.add(bot_user)
             db.commit()
+        
+        # Make them friends
+        friendship1 = DBFriendship(id=str(uuid.uuid4()), user_id=user_id, friend_id=bot_id, status="accepted")
+        friendship2 = DBFriendship(id=str(uuid.uuid4()), user_id=bot_id, friend_id=user_id, status="accepted")
+        db.add(friendship1)
+        db.add(friendship2)
+        
+        # Send welcome message
+        welcome_msg = DBDirectMessage(
+            id=str(uuid.uuid4()),
+            sender_id=bot_id,
+            recipient_id=user_id,
+            message="Welcome to FightBracket Pro! We're glad to have you here. Let us know if you need any help getting started.",
+            read=False
+        )
+        db.add(welcome_msg)
+        db.commit()
+        db.refresh(user)
 
-        existing_friendship = db.query(DBFriendship).filter(
-            ((DBFriendship.user_id == user_id) & (DBFriendship.friend_id == bot_id)) |
-            ((DBFriendship.user_id == bot_id) & (DBFriendship.friend_id == user_id))
-        ).first()
+    # Ensure existing account has a valid unique_id populated (repair if null/empty)
+    if not getattr(user, 'unique_id', None):
+        identifier = db.query(DBUserIdentifier).filter(DBUserIdentifier.id == user_id).first()
+        if identifier and identifier.unique_id:
+            user.unique_id = identifier.unique_id
+        else:
+            while True:
+                unique_part = ''.join(random.choices(string.ascii_uppercase + string.digits, k=4))
+                unique_part2 = ''.join(random.choices(string.ascii_uppercase + string.digits, k=4))
+                unique_id = f"FB-{unique_part}-{unique_part2}"
+                if not db.query(DBUser).filter(DBUser.unique_id == unique_id).first():
+                    break
+            user.unique_id = unique_id
+            if not identifier:
+                identifier = DBUserIdentifier(id=user_id, unique_id=unique_id)
+                db.add(identifier)
+            else:
+                identifier.unique_id = unique_id
+        db.commit()
+        db.refresh(user)
 
-        if not existing_friendship:
-            import uuid
-            friendship1 = DBFriendship(id=str(uuid.uuid4()), user_id=user_id, friend_id=bot_id, status="accepted")
-            friendship2 = DBFriendship(id=str(uuid.uuid4()), user_id=bot_id, friend_id=user_id, status="accepted")
-            db.add(friendship1)
-            db.add(friendship2)
-            
-            welcome_msg = DBDirectMessage(
-                id=str(uuid.uuid4()),
-                sender_id=bot_id,
-                recipient_id=user_id,
-                message="Welcome to FightBracket Pro! We're glad to have you here. Let us know if you need any help getting started.",
-                read=False
-            )
-            db.add(welcome_msg)
-            db.commit()
+    # In case the user exists but user_identifiers doesn't (legacy)
+    identifier = db.query(DBUserIdentifier).filter(DBUserIdentifier.id == user_id).first()
+    if not identifier and hasattr(user, 'unique_id') and user.unique_id:
+        identifier = DBUserIdentifier(id=user_id, unique_id=user.unique_id)
+        db.add(identifier)
+        db.commit()
+
+    # Ensure existing accounts also have the FightBracket Bot friend & welcome message
+    bot_id = "fb-bot-system"
+    bot_user = db.query(DBUser).filter(DBUser.id == bot_id).first()
+    if not bot_user:
+        bot_user = DBUser(id=bot_id, unique_id="FB-BOT-0000", gamer_tag="FightBracket Bot")
+        db.add(bot_user)
+        db.commit()
+
+    existing_friendship = db.query(DBFriendship).filter(
+        ((DBFriendship.user_id == user_id) & (DBFriendship.friend_id == bot_id)) |
+        ((DBFriendship.user_id == bot_id) & (DBFriendship.friend_id == user_id))
+    ).first()
+
+    if not existing_friendship:
+        friendship1 = DBFriendship(id=str(uuid.uuid4()), user_id=user_id, friend_id=bot_id, status="accepted")
+        friendship2 = DBFriendship(id=str(uuid.uuid4()), user_id=bot_id, friend_id=user_id, status="accepted")
+        db.add(friendship1)
+        db.add(friendship2)
+        
+        welcome_msg = DBDirectMessage(
+            id=str(uuid.uuid4()),
+            sender_id=bot_id,
+            recipient_id=user_id,
+            message="Welcome to FightBracket Pro! We're glad to have you here. Let us know if you need any help getting started.",
+            read=False
+        )
+        db.add(welcome_msg)
+        db.commit()
+
+    return user
+
+@app.get("/api/user/profile")
+def get_user_profile(user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    if not db:
+        raise HTTPException(status_code=404, detail="Database not available")
+    
+    try:
+        user = get_or_create_user(db, user_id)
 
         created_at_val = user.created_at
         if hasattr(created_at_val, "isoformat"):
@@ -260,11 +286,12 @@ def get_user_profile(user_id: str = Depends(get_current_user_id), db: Session = 
         return {
             "user": {
                 "id": user.id,
-                "unique_id": getattr(user, 'unique_id', identifier.unique_id if identifier else "FB-UNKNOWN"),
+                "unique_id": user.unique_id or "FB-UNKNOWN",
                 "gamer_tag": user.gamer_tag or "",
                 "bio": user.bio or "",
                 "avatar_url": user.avatar_url or "",
                 "startgg_slug": user.startgg_slug or "",
+                "startgg_token": getattr(user, 'startgg_token', '') or "",
                 "startgg_data": user.startgg_data or "",
                 "tekken_id": user.tekken_id or "",
                 "steam_id": getattr(user, 'steam_id', '') or "",
@@ -287,9 +314,7 @@ def update_user_profile(req: ProfileUpdateRequest, user_id: str = Depends(get_cu
     if not db:
         raise HTTPException(status_code=404, detail="Database not available")
     
-    user = db.query(DBUser).filter(DBUser.id == user_id).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+    user = get_or_create_user(db, user_id)
         
     if req.gamer_tag is not None:
         tag_clean = req.gamer_tag.strip()
@@ -306,6 +331,8 @@ def update_user_profile(req: ProfileUpdateRequest, user_id: str = Depends(get_cu
         user.avatar_url = req.avatar_url.strip() # type: ignore
     if req.startgg_slug is not None:
         user.startgg_slug = req.startgg_slug.strip() # type: ignore
+    if req.startgg_token is not None:
+        user.startgg_token = req.startgg_token.strip() # type: ignore
     if req.tekken_id is not None:
         user.tekken_id = req.tekken_id.strip() # type: ignore
     if req.steam_id is not None:
@@ -327,11 +354,12 @@ def update_user_profile(req: ProfileUpdateRequest, user_id: str = Depends(get_cu
     return {
         "user": {
             "id": user.id,
-            "unique_id": user.unique_id,
+            "unique_id": user.unique_id or "FB-UNKNOWN",
             "gamer_tag": user.gamer_tag or "",
             "bio": user.bio or "",
             "avatar_url": user.avatar_url or "",
             "startgg_slug": user.startgg_slug or "",
+            "startgg_token": getattr(user, 'startgg_token', '') or "",
             "startgg_data": user.startgg_data or "",
             "tekken_id": user.tekken_id or "",
             "steam_id": getattr(user, 'steam_id', '') or "",

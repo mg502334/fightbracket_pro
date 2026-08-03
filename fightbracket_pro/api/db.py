@@ -13,6 +13,7 @@ class DBUser(Base):
     bio = Column(String, nullable=True)
     avatar_url = Column(String, nullable=True)
     startgg_slug = Column(String, nullable=True)
+    startgg_token = Column(String, nullable=True) # Start.gg API Token
     startgg_data = Column(Text, nullable=True) # Stored JSON string of Start.gg events & stats
     tekken_id = Column(String, nullable=True) # Tekken 8 / Polaris ID
     steam_id = Column(String, nullable=True) # Steam ID 64 or vanity username
@@ -101,6 +102,14 @@ def _get_engine():
             return None, None
     # Always run create_all so new tables are created even if engine was already cached
     try:
+        from sqlalchemy import text
+        with _engine.begin() as conn:
+            conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS startgg_token VARCHAR;"))
+            conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS tekken_id VARCHAR;"))
+            conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS steam_id VARCHAR;"))
+            conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS twitch_id VARCHAR;"))
+            conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS twitch_url VARCHAR;"))
+            conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS games_data TEXT;"))
         Base.metadata.create_all(bind=_engine)
     except Exception as e:
         print(f"DB schema sync warning: {e}")

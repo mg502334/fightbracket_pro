@@ -170,10 +170,19 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
         }
         setUserProfile(data.user);
         if (data.user?.startgg_slug) setUserStartggInput(data.user.startgg_slug);
+        if (data.user?.startgg_token) {
+          setStartggToken(data.user.startgg_token);
+          try { localStorage.setItem('fb_startggToken', data.user.startgg_token); } catch {}
+        }
         if (data.user?.tekken_id) setUserTekkenId(data.user.tekken_id);
         if (data.user?.steam_id) setUserSteamId(data.user.steam_id);
-        if (data.user?.twitch_id) setUserTwitchId(data.user.twitch_id);
-        if (data.user?.twitch_url) setUserTwitchUrl(data.user.twitch_url);
+        // Auto-detect Twitch username from OAuth metadata if not already set in DB profile
+        const oauthTwitchUsername = user?.user_metadata?.preferred_username || user?.user_metadata?.user_name || (user?.app_metadata?.provider === 'twitch' ? user?.user_metadata?.name : '');
+        const currentTwitchId = data.user?.twitch_id || oauthTwitchUsername || '';
+        const currentTwitchUrl = data.user?.twitch_url || (currentTwitchId ? (currentTwitchId.startsWith('http') ? currentTwitchId : `https://twitch.tv/${currentTwitchId}`) : '');
+        
+        setUserTwitchId(currentTwitchId);
+        setUserTwitchUrl(currentTwitchUrl);
         if (data.user?.gamer_tag && !displayName) setDisplayName(data.user.gamer_tag);
         if (data.user?.games_data) {
           try {
@@ -190,6 +199,28 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
       console.error('Failed to fetch user profile', err);
     } finally {
       setProfileLoading(false);
+    }
+  };
+
+  const saveStartggToken = async () => {
+    if (!startggToken.trim()) return;
+    try {
+      try { localStorage.setItem('fb_startggToken', startggToken.trim()); } catch {}
+      const headers = await getHeaders();
+      const res = await fetch('/api/user/profile', {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify({ startgg_token: startggToken.trim() })
+      });
+      if (res.ok) {
+        toast.success('Start.gg API token saved to account profile');
+        fetchUserProfile();
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        toast.error(errData.detail || 'Failed to save Start.gg token');
+      }
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to save Start.gg token');
     }
   };
 
@@ -550,11 +581,6 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
     }
   };
 
-  const saveStartggToken = () => {
-    localStorage.setItem('fb_startggToken', startggToken);
-    toast.success('Start.gg API Token saved locally');
-  };
-
   const handleUpdateEmail = async () => {
     if (!newEmail.trim() || !newEmail.includes('@')) {
       toast.error('Please enter a valid email address');
@@ -719,7 +745,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'discord',
         options: {
-          redirectTo: window.location.origin,
+          redirectTo: window.location.href,
         }
       });
       if (error) toast.error(error.message);
@@ -729,7 +755,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'twitch',
         options: {
-          redirectTo: window.location.origin,
+          redirectTo: window.location.href,
         }
       });
       if (error) toast.error(error.message);
@@ -1218,7 +1244,17 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
                         </button>
                       </div>
                     ) : (
-                      <div className="text-xs font-mono text-gray-500 mt-1">Loading FB-ID...</div>
+                      <div className="flex items-center justify-between mt-1.5">
+                        <span className="text-xs font-mono text-gray-400">
+                          {profileLoading ? 'Loading FB-ID...' : profileError ? `Error: ${profileError}` : 'FB-ID not initialized'}
+                        </span>
+                        <button
+                          onClick={fetchUserProfile}
+                          className="text-xs text-[#00FF88] hover:underline font-mono ml-2"
+                        >
+                          RETRY
+                        </button>
+                      </div>
                     )}
                   </div>
 
@@ -1289,7 +1325,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
                         className="flex-1 bg-[#111] border border-gray-800 rounded-lg p-2.5 text-white focus:border-cyan-400 outline-none font-mono text-sm"
                       />
                       <button
-                        onClick={() => { localStorage.setItem('fb_startggToken', startggToken); toast.success('API token saved!'); }}
+                        onClick={saveStartggToken}
                         disabled={!startggToken.trim()}
                         className="px-5 py-2 rounded-lg border border-[#FF006E]/50 text-[#FF006E] hover:bg-[#FF006E]/10 font-rajdhani font-bold tracking-wider transition-all text-sm disabled:opacity-40 shrink-0"
                       >
@@ -1359,7 +1395,26 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
 
                   {/* Twitch ID & URL */}
                   <div className="space-y-3 bg-white/5 p-4 rounded-lg border border-white/10">
-                    <div className="text-xs font-mono font-bold text-gray-400">TWITCH CHANNEL USERNAME & URL</div>
+                    <div className="flex items-center justify-between">
+                      <div className="text-xs font-mono font-bold text-gray-400">TWITCH CHANNEL USERNAME & URL</div>
+                      <button
+                        onClick={async () => {
+                          const { error } = await supabase.auth.signInWithOAuth({
+                            provider: 'twitch',
+                            options: {
+                              redirectTo: window.location.href,
+                            }
+                          });
+                          if (error) toast.error(error.message);
+                        }}
+                        className="px-3 py-1 rounded text-xs font-mono bg-[#9146FF]/20 text-[#9146FF] hover:bg-[#9146FF]/30 border border-[#9146FF]/40 transition-all flex items-center gap-1.5"
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714Z"/>
+                        </svg>
+                        SIGN IN WITH TWITCH
+                      </button>
+                    </div>
                     <div className="flex flex-col gap-2">
                       <input
                         type="text"
