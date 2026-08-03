@@ -745,7 +745,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'discord',
         options: {
-          redirectTo: window.location.href,
+          redirectTo: window.location.origin,
         }
       });
       if (error) toast.error(error.message);
@@ -755,7 +755,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'twitch',
         options: {
-          redirectTo: window.location.href,
+          redirectTo: window.location.origin,
         }
       });
       if (error) toast.error(error.message);
@@ -1402,7 +1402,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
                           const { error } = await supabase.auth.signInWithOAuth({
                             provider: 'twitch',
                             options: {
-                              redirectTo: window.location.href,
+                              redirectTo: window.location.origin,
                             }
                           });
                           if (error) toast.error(error.message);
