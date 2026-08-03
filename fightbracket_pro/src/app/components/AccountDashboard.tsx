@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
-import { Trash2, Save, Download, RefreshCw, Key, LogOut, ArrowLeft, Globe, ExternalLink, Settings, X, AlertTriangle, User, Shield, Swords, Sparkles, Cloud, Users, Eye, EyeOff, ChevronRight } from 'lucide-react';
+import { Trash2, Save, Download, RefreshCw, Key, LogOut, ArrowLeft, Globe, ExternalLink, Settings, X, AlertTriangle, User, Shield, Swords, Sparkles, Cloud, Users, Eye, EyeOff, ChevronRight, LayoutDashboard, Menu, Search, Bell, Trophy } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
 import { TekkenStatsPanel } from './TekkenStatsPanel';
@@ -43,6 +43,10 @@ interface AccountDashboardProps {
 }
 
 export function AccountDashboard({ user, theme, currentTournamentData, onLoad, onStartggImport, onOpenFriendsModal, onNavigateHome, onViewOwnProfile }: AccountDashboardProps) {
+  // Sidebar layout state
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState("Dashboard");
+
   // Auth state
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -1011,62 +1015,88 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
   }
 
   return (
-    <div className="p-6 h-full overflow-auto max-w-6xl mx-auto space-y-8 animate-in fade-in duration-300">
-
-      {/* Top Bar: Account Info */}
-      <div className="bg-[#050A14]/90 border border-[#00FF88]/30 p-5 rounded-2xl shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
-        {/* Left Side: Navigation + Title + User Greeting */}
-        <div className="flex items-center gap-4">
-          {onNavigateHome && (
-            <button
-              onClick={onNavigateHome}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-mono tracking-wider text-gray-300 hover:text-white border border-white/15 hover:border-white/40 bg-white/5 hover:bg-white/10 transition-all shrink-0"
-              title="Return to Home"
-            >
-              <ArrowLeft size={14} />
-              <span>HOME</span>
-            </button>
-          )}
-
-          <div>
-            <h2 className="text-2xl md:text-3xl font-extrabold font-rajdhani text-white tracking-wide">
-              ACCOUNT DASHBOARD
-            </h2>
-            <p className="text-[#00FF88] font-mono text-xs md:text-sm mt-0.5">
-              Welcome, <span className="text-white font-semibold">{user.user_metadata?.displayName || 'Host'}</span>
-            </p>
+    <div
+      className="min-h-screen flex w-full"
+      style={{
+        background: "#0c0c0e",
+        fontFamily: "'Inter', sans-serif",
+        color: "#f0ede8",
+      }}
+    >
+      {/* Sidebar */}
+      <aside
+        className={`fixed lg:static inset-y-0 left-0 z-40 flex flex-col transition-transform duration-300 ${
+          sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+        }`}
+        style={{
+          width: "220px",
+          background: "#0f0f12",
+          borderRight: "1px solid rgba(255,255,255,0.06)",
+        }}
+      >
+        {/* Logo */}
+        <div
+          className="flex items-center gap-3 px-5 py-5"
+          style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}
+        >
+          <div className="w-8 h-8 bg-[#00E5FF] flex items-center justify-center flex-shrink-0 rounded-sm">
+            <Trophy size={15} className="text-[#050A14]" />
           </div>
+          <div>
+            <div
+              className="text-white text-base leading-none tracking-widest uppercase"
+              style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 800 }}
+            >
+              FightBracket
+            </div>
+            <div className="text-[#00E5FF] text-[10px] tracking-[0.2em] uppercase font-medium">
+              Pro
+            </div>
+          </div>
+          <button
+            className="ml-auto lg:hidden text-white/40 hover:text-white"
+            onClick={() => setSidebarOpen(false)}
+          >
+            <X size={16} />
+          </button>
         </div>
 
-        {/* Right Side: Action Buttons */}
-        <div className="flex flex-wrap items-center gap-2.5">
+        {/* Nav */}
+        <nav className="flex-1 px-3 py-4 flex flex-col gap-0.5">
           <button
-            onClick={() => setShowAccountSettingsModal(true)}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-white/20 hover:border-[#FF006E]/60 text-gray-200 hover:text-[#FF006E] bg-white/5 hover:bg-[#FF006E]/10 transition-all font-rajdhani tracking-wider font-semibold text-xs"
+            className="flex items-center gap-3 px-3 py-2.5 text-sm font-medium transition-all duration-150 text-left w-full group"
+            style={{
+              color: "#f0ede8",
+              background: "rgba(0, 229, 255, 0.1)",
+              borderLeft: "2px solid #00E5FF",
+              borderRadius: "2px",
+            }}
           >
-            <Settings size={14} />
-            <span>SETTINGS</span>
+            <LayoutDashboard size={15} />
+            Dashboard
           </button>
-
+          
           {onViewOwnProfile && (
             <button
               onClick={onViewOwnProfile}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-[#00FF88]/40 text-[#00FF88] hover:bg-[#00FF88]/10 transition-all font-rajdhani tracking-wider font-semibold text-xs"
+              className="flex items-center gap-3 px-3 py-2.5 text-sm font-medium transition-all duration-150 text-left w-full group text-[#8a8a9a] hover:text-[#00E5FF] hover:bg-white/5"
+              style={{ borderLeft: "2px solid transparent", borderRadius: "2px" }}
             >
-              <Globe size={14} />
-              <span>PUBLIC PROFILE</span>
+              <Globe size={15} />
+              Public Profile
             </button>
           )}
 
           {onOpenFriendsModal && (
             <button
               onClick={onOpenFriendsModal}
-              className="relative flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-[#00E5FF]/40 text-[#00E5FF] hover:bg-[#00E5FF]/10 transition-all font-rajdhani tracking-wider font-semibold text-xs"
+              className="flex items-center gap-3 px-3 py-2.5 text-sm font-medium transition-all duration-150 text-left w-full group text-[#8a8a9a] hover:text-[#00E5FF] hover:bg-white/5"
+              style={{ borderLeft: "2px solid transparent", borderRadius: "2px" }}
             >
-              <Users size={14} />
-              <span>FRIENDS &amp; DMs</span>
+              <Users size={15} />
+              Friends & DMs
               {userProfile?.unread_messages_count ? (
-                <span className="absolute -top-1.5 -right-1.5 bg-[#FF006E] text-white text-[10px] w-4.5 h-4.5 rounded-full flex items-center justify-center font-bold shadow-md">
+                <span className="ml-auto bg-[#00E5FF] text-[#050A14] text-[10px] font-bold px-1.5 py-0.5 rounded">
                   {userProfile.unread_messages_count}
                 </span>
               ) : null}
@@ -1074,20 +1104,143 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
           )}
 
           <button
-            onClick={() => supabase.auth.signOut()}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-red-500/40 text-red-400 hover:bg-red-500/10 transition-all font-rajdhani tracking-wider font-semibold text-xs"
+            onClick={() => setShowAccountSettingsModal(true)}
+            className="flex items-center gap-3 px-3 py-2.5 text-sm font-medium transition-all duration-150 text-left w-full group text-[#8a8a9a] hover:text-[#00E5FF] hover:bg-white/5"
+            style={{ borderLeft: "2px solid transparent", borderRadius: "2px" }}
           >
-            <LogOut size={14} />
-            <span>LOGOUT</span>
+            <Settings size={15} />
+            Settings
           </button>
+        </nav>
+
+        {/* User */}
+        <div
+          className="p-4"
+          style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}
+        >
+          <div className="flex items-center gap-3">
+            <div
+              className="w-8 h-8 flex items-center justify-center text-xs font-bold text-[#050A14] flex-shrink-0"
+              style={{ background: "#00E5FF", borderRadius: "2px" }}
+            >
+              {(userProfile?.gamer_tag || user.user_metadata?.displayName || 'U').substring(0, 2).toUpperCase()}
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="text-xs font-medium text-white truncate">{userProfile?.gamer_tag || user.user_metadata?.displayName || 'User'}</div>
+              <div className="text-[10px]" style={{ color: "#00E5FF" }}>
+                {userProfile?.unique_id || 'PRO USER'}
+              </div>
+            </div>
+            <button onClick={() => supabase.auth.signOut()} className="ml-auto text-white/30 hover:text-[#00E5FF] transition-colors" title="Logout">
+              <LogOut size={14} />
+            </button>
+          </div>
         </div>
-      </div>
+      </aside>
+
+      {/* Sidebar backdrop (mobile) */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-30 bg-black/60 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      {/* Main */}
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Topbar */}
+        <header
+          className="flex items-center gap-4 px-6 py-4 sticky top-0 z-20"
+          style={{
+            background: "rgba(12,12,14,0.9)",
+            backdropFilter: "blur(12px)",
+            borderBottom: "1px solid rgba(255,255,255,0.06)",
+          }}
+        >
+          <button
+            className="lg:hidden text-white/60 hover:text-white"
+            onClick={() => setSidebarOpen(true)}
+          >
+            <Menu size={20} />
+          </button>
+
+          {/* Search */}
+          <div className="flex items-center gap-2 flex-1 max-w-sm">
+            <div
+              className="flex items-center gap-2 flex-1 px-3 h-9 text-sm"
+              style={{
+                background: "#1e1e24",
+                border: "1px solid rgba(255,255,255,0.06)",
+                borderRadius: "2px",
+              }}
+            >
+              <Search size={13} style={{ color: "#8a8a9a" }} />
+              <input
+                placeholder="Search..."
+                className="bg-transparent outline-none flex-1 placeholder:text-white/20 text-sm font-mono"
+                style={{ color: "#f0ede8" }}
+              />
+            </div>
+          </div>
+
+          <div className="ml-auto flex items-center gap-3">
+            {/* Notification bell */}
+            <button className="relative w-9 h-9 flex items-center justify-center transition-colors hover:bg-white/5" style={{ borderRadius: "2px" }}>
+              <Bell size={16} style={{ color: "#8a8a9a" }} />
+              <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-[#00E5FF] rounded-full" />
+            </button>
+
+            {/* Home CTA */}
+            {onNavigateHome && (
+              <button
+                onClick={onNavigateHome}
+                className="hidden sm:flex items-center gap-2 h-9 px-4 text-xs font-semibold text-[#050A14] transition-all duration-150"
+                style={{
+                  background: "#00E5FF",
+                  borderRadius: "2px",
+                  letterSpacing: "0.08em",
+                  textTransform: "uppercase",
+                  fontFamily: "'Barlow Condensed', sans-serif",
+                  fontWeight: 700,
+                  fontSize: "0.75rem",
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = "#00B3CC")}
+                onMouseLeave={(e) => (e.currentTarget.style.background = "#00E5FF")}
+              >
+                <ArrowLeft size={13} />
+                RETURN HOME
+              </button>
+            )}
+          </div>
+        </header>
+
+        {/* Page content */}
+        <main className="flex-1 p-6 overflow-auto">
+          {/* Page heading */}
+          <div className="mb-6">
+            <h1
+              className="text-white uppercase tracking-wide mb-0.5"
+              style={{
+                fontFamily: "'Barlow Condensed', sans-serif",
+                fontWeight: 700,
+                fontSize: "1.5rem",
+                letterSpacing: "0.05em",
+              }}
+            >
+              Dashboard
+            </h1>
+            <p className="text-sm" style={{ color: "#8a8a9a" }}>
+              Welcome back, {userProfile?.gamer_tag || user.user_metadata?.displayName || 'User'}.
+            </p>
+          </div>
+          
+          <div className="max-w-6xl space-y-8 animate-in fade-in duration-300">
 
       {/* Full Width Tekken 8 Live Stats Box */}
-      <div className="bg-[#050A14] border border-[#ff003c]/30 rounded-2xl shadow-2xl overflow-hidden w-full">
+      <div className="bg-[#050A14] border border-white/10 rounded-2xl shadow-2xl overflow-hidden w-full">
         <div className="px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/10 bg-black/40">
           <div>
-            <h3 className="text-xl font-bold font-rajdhani text-[#ff003c] tracking-widest flex items-center gap-2">
+            <h3 className="text-xl font-bold font-rajdhani text-[#00E5FF] tracking-widest flex items-center gap-2">
               TEKKEN 8 LIVE STATS & RANKING
             </h3>
             <p className="text-[11px] font-mono text-gray-400 tracking-wider mt-0.5">
@@ -1097,7 +1250,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
           {!userProfile?.tekken_id && (
             <button
               onClick={() => setShowAccountSettingsModal(true)}
-              className="text-xs font-mono text-[#ff003c] bg-[#ff003c]/10 border border-[#ff003c]/30 px-3 py-1.5 rounded-lg hover:bg-[#ff003c]/20 transition-all shrink-0"
+              className="text-xs font-mono text-[#00E5FF] bg-[#00E5FF]/10 border border-[#00E5FF]/30 px-3 py-1.5 rounded-lg hover:bg-[#00E5FF]/20 transition-all shrink-0"
             >
               + SET POLARIS ID IN SETTINGS
             </button>
@@ -1109,10 +1262,10 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
       </div>
 
       {/* Full Width Steam Live Gamer Card Box */}
-      <div className="bg-[#050A14] border border-[#57CBDE]/30 rounded-2xl shadow-2xl overflow-hidden w-full">
+      <div className="bg-[#050A14] border border-white/10 rounded-2xl shadow-2xl overflow-hidden w-full">
         <div className="px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/10 bg-black/40">
           <div>
-            <h3 className="text-xl font-bold font-rajdhani text-[#57CBDE] tracking-widest flex items-center gap-2">
+            <h3 className="text-xl font-bold font-rajdhani text-[#00E5FF] tracking-widest flex items-center gap-2">
               STEAM PLAYER CARD & LIVE STATUS
             </h3>
             <p className="text-[11px] font-mono text-gray-400 tracking-wider mt-0.5">
@@ -1122,7 +1275,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
           {!userProfile?.steam_id && (
             <button
               onClick={() => setShowAccountSettingsModal(true)}
-              className="text-xs font-mono text-[#57CBDE] bg-[#57CBDE]/10 border border-[#57CBDE]/30 px-3 py-1.5 rounded-lg hover:bg-[#57CBDE]/20 transition-all shrink-0"
+              className="text-xs font-mono text-[#00E5FF] bg-[#00E5FF]/10 border border-[#00E5FF]/30 px-3 py-1.5 rounded-lg hover:bg-[#00E5FF]/20 transition-all shrink-0"
             >
               + SET STEAM ID IN SETTINGS
             </button>
@@ -1138,9 +1291,9 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
 
         {/* Left Column: Main Games & Characters */}
         <div className="space-y-6">
-          <div className="bg-[#050A14] border border-[#FF006E]/30 p-6 rounded-2xl shadow-xl space-y-4">
+          <div className="bg-[#050A14] border border-white/10 p-6 rounded-2xl shadow-xl space-y-4">
             <div className="flex justify-between items-center border-b border-white/10 pb-4">
-              <h3 className="text-xl font-bold font-rajdhani text-[#FF006E] tracking-widest flex items-center gap-2">
+              <h3 className="text-xl font-bold font-rajdhani text-[#00E5FF] tracking-widest flex items-center gap-2">
                 MAIN GAMES & CHARACTERS
               </h3>
             </div>
@@ -1154,7 +1307,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
                   value={newGameName}
                   onChange={e => setNewGameName(e.target.value)}
                   placeholder="Game Name (e.g. Tekken 8)"
-                  className="bg-[#111] border border-gray-800 rounded-lg px-3 py-2 text-white font-mono text-xs outline-none focus:border-[#FF006E] min-w-[150px]"
+                  className="bg-[#111] border border-gray-800 rounded-lg px-3 py-2 text-white font-mono text-xs outline-none focus:border-[#00E5FF] min-w-[150px]"
                 />
                 <datalist id="games-datalist">
                   <option value="Tekken 8" />
@@ -1189,11 +1342,11 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
                   placeholder="Main Character (e.g. Kazuya)"
                   value={newMainChar}
                   onChange={e => setNewMainChar(e.target.value)}
-                  className="flex-1 bg-[#111] border border-gray-800 rounded-lg px-3 py-2 text-white font-mono text-xs outline-none focus:border-[#FF006E]"
+                  className="flex-1 bg-[#111] border border-gray-800 rounded-lg px-3 py-2 text-white font-mono text-xs outline-none focus:border-[#00E5FF]"
                 />
                 <button
                   onClick={handleAddGameMain}
-                  className="px-4 py-2 bg-[#FF006E] text-white font-bold font-rajdhani tracking-wider rounded-lg text-xs hover:bg-[#FF006E]/80 transition-all shrink-0"
+                  className="px-4 py-2 bg-[#00E5FF] text-[#050A14] font-bold font-rajdhani tracking-wider rounded-lg text-xs hover:bg-[#00B3CC] transition-all shrink-0"
                 >
                   ADD
                 </button>
@@ -1227,8 +1380,8 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
           </div>
 
           {/* Cloud Saves */}
-          <div className="bg-[#050A14] border border-[#00E5FF]/30 p-6 rounded-2xl shadow-xl">
-            <div className="flex justify-between items-center mb-6 border-b border-gray-800 pb-4">
+          <div className="bg-[#050A14] border border-white/10 p-6 rounded-2xl shadow-xl">
+            <div className="flex justify-between items-center mb-6 border-b border-white/10 pb-4">
               <h3 className="text-xl font-bold font-rajdhani text-[#00E5FF] tracking-widest flex items-center gap-2">
                 <Cloud size={20} /> CLOUD SAVES
               </h3>
@@ -1236,7 +1389,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
                 <button onClick={fetchCloudTournaments} className="p-2 rounded-lg border border-white/10 text-white hover:border-white/30 hover:bg-white/5 transition-all" title="Refresh">
                   <RefreshCw size={15} />
                 </button>
-                <button onClick={saveToCloud} disabled={saving} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#00E5FF] hover:bg-[#00E5FF]/80 text-black font-bold transition-all font-rajdhani tracking-wider text-sm disabled:opacity-50">
+                <button onClick={saveToCloud} disabled={saving} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#00E5FF] hover:bg-[#00B3CC] text-[#050A14] font-bold transition-all font-rajdhani tracking-wider text-sm disabled:opacity-50">
                   <Save size={15} /> {saving ? 'SAVING...' : 'SAVE CURRENT'}
                 </button>
               </div>
@@ -1271,9 +1424,9 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
 
         {/* Right Column: Start.gg Past Events */}
         <div className="space-y-6">
-          <div className="bg-[#050A14] border border-[#FF006E]/30 p-6 rounded-2xl shadow-xl">
-            <div className="border-b border-gray-800 pb-4 mb-6">
-              <h3 className="text-xl font-bold font-rajdhani text-[#FF006E] tracking-widest flex items-center gap-2">
+          <div className="bg-[#050A14] border border-white/10 p-6 rounded-2xl shadow-xl">
+            <div className="border-b border-white/10 pb-4 mb-6">
+              <h3 className="text-xl font-bold font-rajdhani text-[#00E5FF] tracking-widest flex items-center gap-2">
                 <Key size={20} /> START.GG PAST EVENTS
               </h3>
               <p className="text-xs text-gray-400 font-mono mt-2">Connect your Developer API Token to view and import events you have participated in.</p>
@@ -1288,7 +1441,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
             <button
               onClick={fetchStartggHosted}
               disabled={fetchingStartgg || !startggToken}
-              className="w-full flex items-center justify-center gap-2 py-3 bg-[#FF006E] hover:bg-[#FF006E]/80 disabled:opacity-50 text-white font-bold rounded-lg transition-colors font-rajdhani tracking-widest mb-6"
+              className="w-full flex items-center justify-center gap-2 py-3 bg-[#00E5FF] hover:bg-[#00B3CC] disabled:opacity-50 text-[#050A14] font-bold rounded-lg transition-colors font-rajdhani tracking-widest mb-6"
             >
               <RefreshCw size={16} className={fetchingStartgg ? "animate-spin" : ""} />
               {fetchingStartgg ? 'FETCHING...' : 'FETCH MY PAST EVENTS'}
@@ -1297,7 +1450,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
             {startggTournaments.length > 0 && (
               <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
                 {startggTournaments.map(t => (
-                  <div key={t.id} className="flex flex-col p-4 bg-[#111] border border-gray-800 hover:border-[#FF006E]/50 rounded-lg transition-colors">
+                  <div key={t.id} className="flex flex-col p-4 bg-[#111] border border-gray-800 hover:border-[#00E5FF]/50 rounded-lg transition-colors">
                     <div className="font-bold text-white font-rajdhani text-lg truncate mb-1">{t.name}</div>
                     <div className="flex justify-between items-center mt-2">
                       <span className="text-xs font-mono bg-white/10 px-2 py-0.5 rounded text-gray-300">State: {t.state === 1 ? 'Published' : 'Draft'}</span>
@@ -1332,10 +1485,10 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.95, opacity: 0, y: 20 }}
               onClick={e => e.stopPropagation()}
-              className="w-full max-w-lg bg-[#050A14] border border-[#FF006E]/40 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+              className="w-full max-w-lg bg-[#050A14] border border-[#00E5FF]/40 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
             >
               <div className="p-6 border-b border-white/5 flex items-center justify-between bg-black/40">
-                <div className="flex items-center gap-3 text-[#FF006E]">
+                <div className="flex items-center gap-3 text-[#00E5FF]">
                   <Settings size={20} />
                   <h3 className="text-xl font-bold font-rajdhani tracking-widest">ACCOUNT SETTINGS</h3>
                 </div>
@@ -1348,14 +1501,14 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
 
                 {/* === PROFILE & PRIVACY SECTION === */}
                 <div className="space-y-4 mb-6">
-                  <h4 className="text-sm font-bold font-rajdhani text-[#00FF88] tracking-widest border-b border-[#00FF88]/30 pb-2 flex items-center gap-2">
+                  <h4 className="text-sm font-bold font-rajdhani text-[#00E5FF] tracking-widest border-b border-[#00E5FF]/30 pb-2 flex items-center gap-2">
                     <Shield size={16} /> PROFILE & PRIVACY
                   </h4>
 
                   {/* Always-visible FB-ID row */}
-                  <div className="bg-black/40 border border-[#00FF88]/20 p-3.5 rounded-xl">
+                  <div className="bg-black/40 border border-[#00E5FF]/20 p-3.5 rounded-xl">
                     <div className="flex justify-between items-center">
-                      <span className="text-xs text-[#00FF88] font-mono tracking-wider opacity-80">UNIQUE FB-ID</span>
+                      <span className="text-xs text-[#00E5FF] font-mono tracking-wider opacity-80">UNIQUE FB-ID</span>
                       <button
                         onClick={fetchUserProfile}
                         className="text-xs text-gray-500 hover:text-white font-mono transition-colors"
@@ -1366,7 +1519,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
                     </div>
                     {userProfile?.unique_id ? (
                       <div className="flex items-center justify-between mt-1.5">
-                        <span className="font-mono font-bold tracking-widest bg-[#00FF88]/10 px-2.5 py-1 rounded text-[#00FF88] text-sm">
+                        <span className="font-mono font-bold tracking-widest bg-[#00E5FF]/10 px-2.5 py-1 rounded text-[#00E5FF] text-sm">
                           {userProfile.unique_id}
                         </span>
                         <button
@@ -1383,7 +1536,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
                         </span>
                         <button
                           onClick={fetchUserProfile}
-                          className="text-xs text-[#00FF88] hover:underline font-mono ml-2"
+                          className="text-xs text-[#00E5FF] hover:underline font-mono ml-2"
                         >
                           RETRY
                         </button>
@@ -1400,11 +1553,11 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
                         value={displayName}
                         onChange={e => setDisplayName(e.target.value)}
                         placeholder="Gamertag or Channel Name"
-                        className="flex-1 bg-[#111] border border-gray-800 rounded-lg p-2.5 text-white focus:border-[#00FF88] outline-none font-mono text-sm"
+                        className="flex-1 bg-[#111] border border-gray-800 rounded-lg p-2.5 text-white focus:border-[#00E5FF] outline-none font-mono text-sm"
                       />
                       <button
                         onClick={saveDisplayName}
-                        className="px-5 py-2 rounded-lg border border-[#00FF88]/50 text-[#00FF88] hover:bg-[#00FF88]/10 font-rajdhani font-bold tracking-wider transition-all text-sm shrink-0"
+                        className="px-5 py-2 rounded-lg border border-[#00E5FF]/50 text-[#00E5FF] hover:bg-[#00E5FF]/10 font-rajdhani font-bold tracking-wider transition-all text-sm shrink-0"
                       >
                         SAVE
                       </button>
@@ -1440,7 +1593,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
 
                 {/* === INTEGRATIONS SECTION === */}
                 <div className="space-y-4 mb-8">
-                  <h4 className="text-sm font-bold font-rajdhani text-cyan-400 tracking-widest border-b border-cyan-500/30 pb-2 flex items-center gap-2">
+                  <h4 className="text-sm font-bold font-rajdhani text-[#00E5FF] tracking-widest border-b border-[#00E5FF]/30 pb-2 flex items-center gap-2">
                     <Globe size={16} /> INTEGRATIONS & API KEYS
                   </h4>
 
@@ -1455,12 +1608,12 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
                         placeholder="Start.gg Developer Token"
                         value={startggToken}
                         onChange={e => setStartggToken(e.target.value)}
-                        className="flex-1 bg-[#111] border border-gray-800 rounded-lg p-2.5 text-white focus:border-cyan-400 outline-none font-mono text-sm"
+                        className="flex-1 bg-[#111] border border-gray-800 rounded-lg p-2.5 text-white focus:border-[#00E5FF] outline-none font-mono text-sm"
                       />
                       <button
                         onClick={saveStartggToken}
                         disabled={!startggToken.trim()}
-                        className="px-5 py-2 rounded-lg border border-[#FF006E]/50 text-[#FF006E] hover:bg-[#FF006E]/10 font-rajdhani font-bold tracking-wider transition-all text-sm disabled:opacity-40 shrink-0"
+                        className="px-5 py-2 rounded-lg border border-[#00E5FF]/50 text-[#00E5FF] hover:bg-[#00E5FF]/10 font-rajdhani font-bold tracking-wider transition-all text-sm disabled:opacity-40 shrink-0"
                       >
                         SAVE TOKEN
                       </button>
@@ -1472,12 +1625,12 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
                         placeholder="Start.gg Profile Slug (e.g. mang0)"
                         value={userStartggInput}
                         onChange={e => setUserStartggInput(e.target.value)}
-                        className="flex-1 bg-[#111] border border-gray-800 rounded-lg p-2.5 text-white focus:border-cyan-400 outline-none font-mono text-sm"
+                        className="flex-1 bg-[#111] border border-gray-800 rounded-lg p-2.5 text-white focus:border-[#00E5FF] outline-none font-mono text-sm"
                       />
                       <button
                         onClick={handleImportCareerStats}
-                        disabled={importingUserStartgg || !userStartggInput.trim() || !startggToken}
-                        className="px-5 py-2 rounded-lg bg-[#FF006E]/20 border border-[#FF006E]/50 text-[#FF006E] hover:bg-[#FF006E]/30 font-rajdhani font-bold tracking-wider transition-all text-sm disabled:opacity-40 shrink-0"
+                        disabled={importingUserStartgg || !userStartggInput.trim()}
+                        className="px-5 py-2 rounded-lg bg-[#00E5FF]/20 border border-[#00E5FF]/50 text-[#00E5FF] hover:bg-[#00E5FF]/30 font-rajdhani font-bold tracking-wider transition-all text-sm disabled:opacity-40 shrink-0"
                       >
                         {importingUserStartgg ? 'IMPORTING...' : 'IMPORT'}
                       </button>
@@ -1493,12 +1646,12 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
                         placeholder="e.g. 1234-5678-9012"
                         value={userTekkenId}
                         onChange={e => setUserTekkenId(e.target.value)}
-                        className="flex-1 bg-[#111] border border-gray-800 rounded-lg p-2.5 text-white focus:border-[#ff003c] outline-none font-mono text-sm"
+                        className="flex-1 bg-[#111] border border-gray-800 rounded-lg p-2.5 text-white focus:border-[#00E5FF] outline-none font-mono text-sm"
                       />
                       <button
                         onClick={saveTekkenId}
                         disabled={!userTekkenId.trim()}
-                        className="px-5 py-2 rounded-lg border border-[#FF006E]/50 text-[#FF006E] hover:bg-[#FF006E]/10 font-rajdhani font-bold tracking-wider transition-all text-sm disabled:opacity-40 shrink-0"
+                        className="px-5 py-2 rounded-lg border border-[#00E5FF]/50 text-[#00E5FF] hover:bg-[#00E5FF]/10 font-rajdhani font-bold tracking-wider transition-all text-sm disabled:opacity-40 shrink-0"
                       >
                         SAVE ID
                       </button>
@@ -1514,12 +1667,12 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
                         placeholder="e.g. 76561198000000000 or customurl"
                         value={userSteamId}
                         onChange={e => setUserSteamId(e.target.value)}
-                        className="flex-1 bg-[#111] border border-gray-800 rounded-lg p-2.5 text-white focus:border-[#57CBDE] outline-none font-mono text-sm"
+                        className="flex-1 bg-[#111] border border-gray-800 rounded-lg p-2.5 text-white focus:border-[#00E5FF] outline-none font-mono text-sm"
                       />
                       <button
                         onClick={saveSteamId}
                         disabled={!userSteamId.trim()}
-                        className="px-5 py-2 rounded-lg border border-[#57CBDE]/50 text-[#57CBDE] hover:bg-[#57CBDE]/10 font-rajdhani font-bold tracking-wider transition-all text-sm disabled:opacity-40 shrink-0"
+                        className="px-5 py-2 rounded-lg border border-[#00E5FF]/50 text-[#00E5FF] hover:bg-[#00E5FF]/10 font-rajdhani font-bold tracking-wider transition-all text-sm disabled:opacity-40 shrink-0"
                       >
                         SAVE ID
                       </button>
@@ -1576,7 +1729,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
                 </div>
 
                 {/* === BASIC SETTINGS SECTION === */}
-                <h4 className="text-sm font-bold font-rajdhani text-[#FF006E] tracking-widest border-b border-[#FF006E]/30 pb-2 flex items-center gap-2">
+                <h4 className="text-sm font-bold font-rajdhani text-[#00E5FF] tracking-widest border-b border-[#00E5FF]/30 pb-2 flex items-center gap-2">
                   <User size={16} /> PROFILE & ACCOUNT
                 </h4>
                 {/* Update Avatar Upload */}
@@ -1603,12 +1756,12 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
                           reader.readAsDataURL(file);
                         }
                       }}
-                      className="flex-1 bg-[#111] border border-gray-800 rounded-lg p-2 text-white outline-none font-mono text-sm file:mr-4 file:py-1 file:px-3 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-[#FF006E]/20 file:text-[#FF006E] hover:file:bg-[#FF006E]/30"
+                      className="flex-1 bg-[#111] border border-gray-800 rounded-lg p-2 text-white outline-none font-mono text-sm file:mr-4 file:py-1 file:px-3 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-[#00E5FF]/20 file:text-[#00E5FF] hover:file:bg-[#00E5FF]/30"
                     />
                     <button
                       onClick={handleUpdateAvatar}
                       disabled={!newAvatarUrl.trim()}
-                      className="px-5 py-2 rounded-lg border border-[#FF006E]/50 text-[#FF006E] hover:bg-[#FF006E]/10 font-rajdhani font-bold tracking-wider transition-all text-sm disabled:opacity-40 shrink-0"
+                      className="px-5 py-2 rounded-lg border border-[#00E5FF]/50 text-[#00E5FF] hover:bg-[#00E5FF]/10 font-rajdhani font-bold tracking-wider transition-all text-sm disabled:opacity-40 shrink-0"
                     >
                       SAVE
                     </button>
@@ -1627,12 +1780,12 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
                       placeholder="New Email Address"
                       value={newEmail}
                       onChange={e => setNewEmail(e.target.value)}
-                      className="flex-1 bg-[#111] border border-gray-800 rounded-lg p-2.5 text-white focus:border-[#FF006E] outline-none font-mono text-sm"
+                      className="flex-1 bg-[#111] border border-gray-800 rounded-lg p-2.5 text-white focus:border-[#00E5FF] outline-none font-mono text-sm"
                     />
                     <button
                       onClick={handleUpdateEmail}
                       disabled={updatingEmail || !newEmail.trim()}
-                      className="px-5 py-2 rounded-lg border border-[#FF006E]/50 text-[#FF006E] hover:bg-[#FF006E]/10 font-rajdhani font-bold tracking-wider transition-all text-sm disabled:opacity-40 shrink-0"
+                      className="px-5 py-2 rounded-lg border border-[#00E5FF]/50 text-[#00E5FF] hover:bg-[#00E5FF]/10 font-rajdhani font-bold tracking-wider transition-all text-sm disabled:opacity-40 shrink-0"
                     >
                       {updatingEmail ? 'UPDATING...' : 'UPDATE'}
                     </button>
@@ -1650,12 +1803,12 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
                       placeholder="New Password (min. 6 chars)"
                       value={newPassword}
                       onChange={e => setNewPassword(e.target.value)}
-                      className="flex-1 bg-[#111] border border-gray-800 rounded-lg p-2.5 text-white focus:border-[#FF006E] outline-none font-mono text-sm"
+                      className="flex-1 bg-[#111] border border-gray-800 rounded-lg p-2.5 text-white focus:border-[#00E5FF] outline-none font-mono text-sm"
                     />
                     <button
                       onClick={handleUpdatePassword}
                       disabled={updatingPassword || !newPassword.trim()}
-                      className="px-5 py-2 rounded-lg border border-[#FF006E]/50 text-[#FF006E] hover:bg-[#FF006E]/10 font-rajdhani font-bold tracking-wider transition-all text-sm disabled:opacity-40 shrink-0"
+                      className="px-5 py-2 rounded-lg border border-[#00E5FF]/50 text-[#00E5FF] hover:bg-[#00E5FF]/10 font-rajdhani font-bold tracking-wider transition-all text-sm disabled:opacity-40 shrink-0"
                     >
                       {updatingPassword ? 'UPDATING...' : 'UPDATE'}
                     </button>
@@ -1753,5 +1906,8 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
         )}
       </AnimatePresence>
     </div>
+  </main>
+</div>
+</div>
   );
 }

@@ -157,7 +157,6 @@ def verify_auth_turnstile(req: VerifyRequest, request: Request):
 def health_check():
     return {"status": "ok"}
 
-@app.get("/api/user/profile")
 def get_or_create_user(db: Session, user_id: str) -> DBUser:
     import random
     import string
