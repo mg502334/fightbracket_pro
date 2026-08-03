@@ -97,25 +97,27 @@ export function GameSelectionModal({ isOpen, onClose, onSelectGame, theme }: Gam
                   </div>
                 </button>
               ))}
-            </div>
-            
-            {search.trim().length > 0 && !startggGames.some(g => g.name.toLowerCase() === search.toLowerCase()) && (
               <button
-                onClick={() => onSelectGame({ id: `custom_${Date.now()}`, name: search.trim(), imageUrl: '' })}
-                className="w-full p-4 mt-2 border border-dashed rounded-lg transition-colors flex items-center justify-center gap-2 font-rajdhani font-bold tracking-wider"
+                onClick={() => {
+                  const customName = search.trim() || prompt("Enter custom game name:");
+                  if (customName && customName.trim()) {
+                    onSelectGame({ id: `custom_${Date.now()}`, name: customName.trim(), imageUrl: '' });
+                  }
+                }}
+                className="group flex flex-col items-center justify-center text-center transition-transform hover:scale-[1.02] overflow-hidden rounded shadow-md"
                 style={{ 
-                  borderColor: theme?.primaryColor || '#00E5FF', 
+                  background: 'transparent', 
+                  border: `2px dashed ${theme?.primaryColor || '#00E5FF'}60`,
                   color: theme?.primaryColor || '#00E5FF',
-                  backgroundColor: `${theme?.primaryColor || '#00E5FF'}10`
+                  minHeight: '160px'
                 }}
               >
-                + ADD CUSTOM GAME "{search.trim()}"
+                <div className="p-4 font-rajdhani font-bold text-lg tracking-wider flex flex-col items-center gap-2">
+                  <span className="text-4xl font-light leading-none mb-1">+</span>
+                  <span className="break-words max-w-full px-2 line-clamp-2">{search.trim() ? `ADD "${search.trim()}"` : 'CUSTOM GAME'}</span>
+                </div>
               </button>
-            )}
-
-            {filteredGames.length === 0 && search.trim().length === 0 && (
-              <div className="py-10 text-center opacity-40 text-sm">No games found</div>
-            )}
+            </div>
           </div>
         </motion.div>
       </motion.div>
