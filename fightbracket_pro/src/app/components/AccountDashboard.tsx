@@ -1034,27 +1034,14 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
           borderRight: "1px solid rgba(255,255,255,0.06)",
         }}
       >
-        {/* Logo */}
+        {/* Mobile Close Button */}
         <div
-          className="flex items-center gap-3 px-5 py-5"
+          className="flex items-center gap-3 px-5 py-5 lg:hidden"
           style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}
         >
-          <div className="w-8 h-8 bg-[#00E5FF] flex items-center justify-center flex-shrink-0 rounded-sm">
-            <Trophy size={15} className="text-[#050A14]" />
-          </div>
-          <div>
-            <div
-              className="text-white text-base leading-none tracking-widest uppercase"
-              style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 800 }}
-            >
-              FightBracket
-            </div>
-            <div className="text-[#00E5FF] text-[10px] tracking-[0.2em] uppercase font-medium">
-              Pro
-            </div>
-          </div>
+          <div className="font-bold text-white text-sm tracking-widest font-rajdhani">MENU</div>
           <button
-            className="ml-auto lg:hidden text-white/40 hover:text-white"
+            className="ml-auto text-white/40 hover:text-white"
             onClick={() => setSidebarOpen(false)}
           >
             <X size={16} />
