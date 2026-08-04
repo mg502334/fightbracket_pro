@@ -13,6 +13,8 @@ interface UserProfileData {
   startgg_slug?: string;
   tekken_id?: string;
   steam_id?: string;
+  twitch_url?: string;
+  twitch_id?: string;
   startgg_data?: {
     slug?: string;
     gamerTag?: string;

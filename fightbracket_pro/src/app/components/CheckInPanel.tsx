@@ -255,7 +255,7 @@ export function CheckInPanel({ players, theme, onCheckIn, onRemovePlayer, onAddP
           <span className="text-right">STATUS</span>
         </div>
 
-        <div className="divide-y" style={{ divideColor: 'var(--border)' }}>
+        <div className="divide-y" style={{ borderColor: 'var(--border)' }}>
           {filtered.length === 0 ? (
             <div className="py-8 text-center text-sm opacity-40" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
               No players found

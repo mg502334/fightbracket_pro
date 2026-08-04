@@ -33,7 +33,7 @@ export interface Player {
   checkedIn: boolean;
   phone: string;
   smsNotified: boolean;
-  status?: 'active' | 'eliminated';
+  status?: 'active' | 'eliminated' | 'winner';
   character?: string;
   gameId: string;
   placement?: number;

@@ -39,7 +39,7 @@ import {
   generateMockDataForGame, generateDynamicBracket, BracketType
 } from "./data/tournamentData";
 
-type Tab = 'overview' | 'bracket' | 'checkin' | 'stations' | 'streams' | 'vods' | 'pools' | 'account';
+type Tab = 'overview' | 'bracket' | 'checkin' | 'stations' | 'streams' | 'vods' | 'pools' | 'account' | 'news';
 
 const DEFAULT_GAME_ORDER: string[] = ['tekken8', 'sf6', 'fatalFury'];
 const TABS: { id: Tab; label: string; icon: React.ComponentType<{ size?: number }> }[] = [
@@ -1437,12 +1437,6 @@ export default function App() {
         onSelectUser={(userId) => {
           setTargetProfileUserId(userId);
         }}
-      />
-
-            <TermsOfServiceModal
-        isOpen={showTerms}
-        onClose={() => setShowTerms(false)}
-        theme={theme || { id: 'default', displayName: 'FightBracket', shortName: 'FB', primaryColor: '#00E5FF' }}
       />
 
       <StaticPageModal

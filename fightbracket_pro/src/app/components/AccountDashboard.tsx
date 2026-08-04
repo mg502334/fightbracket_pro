@@ -95,6 +95,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
     startgg_slug?: string;
     startgg_data?: string;
     tekken_id?: string;
+    steam_id?: string;
     games_data?: string;
     is_public?: boolean;
     friends_only?: boolean;
