@@ -46,6 +46,8 @@ class DBDirectMessage(Base):
     sender_id = Column(String, index=True, nullable=False)
     recipient_id = Column(String, index=True, nullable=False)
     message = Column(Text, nullable=False)
+    message_type = Column(String, default="text")
+    metadata_json = Column(Text, nullable=True)
     read = Column(Boolean, default=False)
     sent_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
@@ -89,6 +91,16 @@ class DBTournamentParticipant(Base):
     player_id = Column(String, nullable=False)
     gamer_tag = Column(String, nullable=False)
     placement = Column(Integer, nullable=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+class DBUserReport(Base):
+    __tablename__ = "user_reports"
+    id = Column(String, primary_key=True, index=True)
+    reporter_id = Column(String, index=True, nullable=False)
+    target_id = Column(String, index=True, nullable=False)
+    reason = Column(String, nullable=False)
+    description = Column(Text, nullable=True)
+    status = Column(String, default="pending")
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 # Lazy engine — only created when first needed, prevents cold-start crash on Vercel

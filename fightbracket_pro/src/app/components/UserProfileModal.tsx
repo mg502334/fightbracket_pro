@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Shield, Lock, Globe, UserPlus, MessageSquare, Check, X, Trophy, ExternalLink, Sparkles } from 'lucide-react';
+import { Shield, Lock, Globe, UserPlus, MessageSquare, Check, X, Trophy, ExternalLink, Sparkles, AlertTriangle } from 'lucide-react';
 import { TekkenStatsPanel } from './TekkenStatsPanel';
 import { SteamStatsPanel } from './SteamStatsPanel';
 
@@ -46,6 +46,12 @@ export function UserProfileModal({ isOpen, onClose, targetUserId, supabaseToken,
   const [loading, setLoading] = useState(false);
   const [friendActionMsg, setFriendActionMsg] = useState<string | null>(null);
 
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportReason, setReportReason] = useState('Inappropriate Behavior');
+  const [reportDescription, setReportDescription] = useState('');
+  const [isReporting, setIsReporting] = useState(false);
+  const [reportSuccess, setReportSuccess] = useState(false);
+
   useEffect(() => {
     if (isOpen && targetUserId && supabaseToken) {
       setLoading(true);
@@ -82,6 +88,35 @@ export function UserProfileModal({ isOpen, onClose, targetUserId, supabaseToken,
     }
   };
 
+  const handleReportSubmit = async () => {
+    if (!profile || !supabaseToken) return;
+    setIsReporting(true);
+    try {
+      const res = await fetch('/api/users/report', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${supabaseToken}`
+        },
+        body: JSON.stringify({
+          target_id: profile.id,
+          reason: reportReason,
+          description: reportDescription
+        })
+      });
+      if (res.ok) {
+        setReportSuccess(true);
+        setTimeout(() => setShowReportModal(false), 2000);
+      } else {
+        console.error('Report failed');
+      }
+    } catch (e) {
+      console.error('Error sending report:', e);
+    } finally {
+      setIsReporting(false);
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -109,9 +144,20 @@ export function UserProfileModal({ isOpen, onClose, targetUserId, supabaseToken,
               borderColor: 'rgba(255,255,255,0.08)',
             }}
           >
-            <button onClick={onClose} className="absolute right-4 top-4 opacity-60 hover:opacity-100 p-1">
-              <X size={18} />
-            </button>
+            <div className="absolute right-4 top-4 flex items-center gap-3">
+              {!profile?.is_self && profile && (
+                <button
+                  onClick={() => setShowReportModal(true)}
+                  className="opacity-60 hover:opacity-100 hover:text-red-400 p-1 transition-colors flex items-center gap-1 text-xs font-mono"
+                  title="Report User"
+                >
+                  <AlertTriangle size={14} /> REPORT
+                </button>
+              )}
+              <button onClick={onClose} className="opacity-60 hover:opacity-100 p-1">
+                <X size={18} />
+              </button>
+            </div>
 
             <div className="flex items-center gap-4">
               {profile?.avatar_url ? (
@@ -349,6 +395,88 @@ export function UserProfileModal({ isOpen, onClose, targetUserId, supabaseToken,
             )}
           </div>
         </motion.div>
+        
+        {/* Report Modal */}
+        <AnimatePresence>
+          {showReportModal && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+              onClick={() => setShowReportModal(false)}
+            >
+              <motion.div
+                initial={{ scale: 0.95, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.95, opacity: 0 }}
+                onClick={(e) => e.stopPropagation()}
+                className="w-full max-w-sm bg-[#050A14] border border-red-500/40 rounded-xl shadow-2xl p-6"
+              >
+                <div className="flex items-center gap-2 text-red-400 mb-4">
+                  <AlertTriangle size={20} />
+                  <h3 className="font-rajdhani font-bold text-lg tracking-widest">REPORT USER</h3>
+                </div>
+                
+                {reportSuccess ? (
+                  <div className="text-center py-6">
+                    <Check size={32} className="mx-auto text-emerald-400 mb-2" />
+                    <p className="font-mono text-xs text-white">Report submitted successfully.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <p className="text-xs font-mono text-gray-400">
+                      Why are you reporting <span className="text-white font-bold">{profile?.gamer_tag}</span>?
+                    </p>
+                    
+                    <div className="space-y-2">
+                      {['Inappropriate Behavior', 'Harassment/Abuse', 'Spam', 'Cheating/Smurfing', 'Other'].map(reason => (
+                        <label key={reason} className="flex items-center gap-2 cursor-pointer group">
+                          <input
+                            type="radio"
+                            name="reportReason"
+                            value={reason}
+                            checked={reportReason === reason}
+                            onChange={(e) => setReportReason(e.target.value)}
+                            className="accent-red-500"
+                          />
+                          <span className="text-xs font-mono text-gray-300 group-hover:text-white transition-colors">
+                            {reason}
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                    
+                    {reportReason === 'Other' && (
+                      <textarea
+                        placeholder="Please provide details..."
+                        value={reportDescription}
+                        onChange={(e) => setReportDescription(e.target.value)}
+                        className="w-full bg-[#111] border border-red-500/30 rounded-lg p-3 text-white focus:border-red-500 outline-none font-mono text-xs h-24 resize-none"
+                      />
+                    )}
+                    
+                    <div className="flex gap-2 pt-2">
+                      <button
+                        onClick={() => setShowReportModal(false)}
+                        className="flex-1 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-white font-mono text-xs transition-colors border border-white/10"
+                      >
+                        CANCEL
+                      </button>
+                      <button
+                        onClick={handleReportSubmit}
+                        disabled={isReporting || (reportReason === 'Other' && !reportDescription.trim())}
+                        className="flex-1 py-2 rounded-lg bg-red-500/20 hover:bg-red-500/30 border border-red-500/50 text-red-400 font-mono text-xs font-bold transition-all disabled:opacity-50"
+                      >
+                        {isReporting ? 'SUBMITTING...' : 'SUBMIT'}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </motion.div>
     </AnimatePresence>
   );

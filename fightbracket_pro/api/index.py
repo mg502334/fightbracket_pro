@@ -124,6 +124,13 @@ class FriendResponseInput(BaseModel):
 class SendMessageInput(BaseModel):
     recipient_id: str
     message: str
+    message_type: str | None = None
+    metadata_json: str | None = None
+
+class ReportUserInput(BaseModel):
+    target_id: str
+    reason: str
+    description: str | None = None
 
 @app.post("/api/auth/verify")
 def verify_auth_turnstile(req: VerifyRequest, request: Request):
@@ -654,6 +661,31 @@ def remove_friend(friend_id: str, user_id: str = Depends(get_current_user_id), d
 
     return {"status": "removed"}
 
+@app.post("/api/users/report")
+def report_user(req: ReportUserInput, user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    if not db:
+        raise HTTPException(status_code=404, detail="Database not available")
+        
+    if req.target_id == user_id:
+        raise HTTPException(status_code=400, detail="Cannot report yourself")
+        
+    target_user = db.query(DBUser).filter(DBUser.id == req.target_id).first()
+    if not target_user:
+        raise HTTPException(status_code=404, detail="Target user not found")
+        
+    from api.db import DBUserReport
+    new_report = DBUserReport(
+        id=str(uuid.uuid4()),
+        reporter_id=user_id,
+        target_id=req.target_id,
+        reason=req.reason,
+        description=req.description,
+        status="pending"
+    )
+    db.add(new_report)
+    db.commit()
+    return {"message": "Report submitted successfully", "report_id": new_report.id}
+
 # --- DIRECT MESSAGES ENDPOINTS ---
 
 @app.get("/api/messages/inbox")
@@ -734,6 +766,8 @@ def get_direct_messages(friend_id: str, user_id: str = Depends(get_current_user_
                 "sender_id": m.sender_id,
                 "recipient_id": m.recipient_id,
                 "message": m.message,
+                "message_type": getattr(m, 'message_type', 'text'),
+                "metadata_json": getattr(m, 'metadata_json', None),
                 "read": m.read,
                 "sent_at": m.sent_at.isoformat() if m.sent_at else datetime.now(timezone.utc).isoformat()
             }
@@ -766,6 +800,8 @@ def send_direct_message(req: SendMessageInput, user_id: str = Depends(get_curren
         sender_id=user_id,
         recipient_id=recipient_id,
         message=message_text,
+        message_type=req.message_type or 'text',
+        metadata_json=req.metadata_json,
         read=False
     )
     db.add(dm)
@@ -779,6 +815,8 @@ def send_direct_message(req: SendMessageInput, user_id: str = Depends(get_curren
             "sender_id": dm.sender_id,
             "recipient_id": dm.recipient_id,
             "message": dm.message,
+            "message_type": dm.message_type,
+            "metadata_json": dm.metadata_json,
             "read": dm.read,
             "sent_at": dm.sent_at.isoformat() if dm.sent_at else datetime.now(timezone.utc).isoformat()
         }

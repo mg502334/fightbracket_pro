@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "vite build",
-    "dev": "vite"
+    "dev": "concurrently \"vite\" \"uv run uvicorn api.index:app --port 8000\""
   },
   "dependencies": {
     "@emotion/react": "11.14.0",
@@ -70,6 +70,7 @@
   "devDependencies": {
     "@tailwindcss/vite": "4.1.12",
     "@vitejs/plugin-react": "4.7.0",
+    "concurrently": "^10.0.4",
     "tailwindcss": "4.1.12",
     "vite": "6.3.5"
   },

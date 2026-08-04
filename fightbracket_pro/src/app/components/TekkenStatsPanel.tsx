@@ -249,10 +249,14 @@ export function TekkenStatsPanel({ tekkenId, compact = false }: TekkenStatsPanel
     );
   }
 
-  const rankName = data ? getRankName(data.profile) : null;
-  const rankPoints = data ? getRankPoints(data.profile) : null;
-  const playerName = data ? getPlayerName(data.profile) : null;
+  const rankName = data?.profile ? getRankName(data.profile) : null;
+  const rankPoints = data?.profile ? getRankPoints(data.profile) : null;
+  const playerName = data?.profile ? getPlayerName(data.profile) : null;
   const rankColor = getRankColor(rankName ?? undefined);
+  
+  const derived = data?.derived || { wins: 0, losses: 0, win_rate: 0, top_characters: [] };
+  const meta = data?.meta || {};
+  const matches = data?.matches || [];
 
   return (
     <div
@@ -350,19 +354,19 @@ export function TekkenStatsPanel({ tekkenId, compact = false }: TekkenStatsPanel
 
           {/* ── Win Rate ── */}
           <WinRateBar
-            winRate={data.derived.win_rate}
-            wins={data.derived.wins}
-            losses={data.derived.losses}
+            winRate={derived.win_rate || 0}
+            wins={derived.wins || 0}
+            losses={derived.losses || 0}
           />
 
           {/* ── Top Characters ── */}
-          {data.derived.top_characters.length > 0 && (
+          {derived.top_characters && derived.top_characters.length > 0 && (
             <div>
               <div className="text-[10px] font-mono text-gray-400 tracking-widest mb-2 flex items-center gap-1">
                 <Zap size={10} /> MOST PLAYED
               </div>
               <div className="flex gap-2 flex-wrap">
-                {data.derived.top_characters.map((char, i) => (
+                {derived.top_characters.map((char, i) => (
                   <motion.div
                     key={char.name}
                     initial={{ opacity: 0, scale: 0.9 }}
@@ -385,31 +389,31 @@ export function TekkenStatsPanel({ tekkenId, compact = false }: TekkenStatsPanel
           )}
 
           {/* ── Rate Limit Badge ── */}
-          {data.meta.rate_limit_remaining !== undefined && (
+          {meta.rate_limit_remaining !== undefined && (
             <div className="flex items-center gap-1.5">
               <TrendingUp size={10} className="text-gray-600" />
               <span className="text-[10px] font-mono text-gray-600">
-                {data.meta.rate_limit_remaining} API calls remaining today
-                {data.meta.tier && ` · ${data.meta.tier} tier`}
+                {meta.rate_limit_remaining} API calls remaining today
+                {meta.tier && ` · ${meta.tier} tier`}
               </span>
             </div>
           )}
 
           {/* ── Recent Matches ── */}
-          {data.matches.length > 0 && (
+          {matches.length > 0 && (
             <div>
               <div className="text-[10px] font-mono text-gray-400 tracking-widest mb-2 flex items-center gap-1">
                 RECENT MATCHES
               </div>
               <div className="space-y-1.5">
-                {data.matches.slice(0, compact ? 5 : 10).map((match, i) => (
+                {matches.slice(0, compact ? 5 : 10).map((match, i) => (
                   <MatchRow key={match.id || i} match={match} index={i} />
                 ))}
               </div>
             </div>
           )}
 
-          {data.matches.length === 0 && !error && (
+          {matches.length === 0 && !error && (
             <div className="text-center text-xs font-mono text-gray-600 py-4">
               No recent match history found.
             </div>
