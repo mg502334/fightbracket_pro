@@ -7,6 +7,8 @@ import { TekkenStatsPanel } from './TekkenStatsPanel';
 import { SteamStatsPanel } from './SteamStatsPanel';
 import { AccountSettingsPanel } from './AccountSettingsPanel';
 
+const API_URL = import.meta.env.VITE_API_URL || '';
+
 declare global {
   interface Window {
     turnstile?: {

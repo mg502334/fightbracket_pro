@@ -1,3 +1,4 @@
+from __future__ import annotations
 from api.crypto import encrypt_text, decrypt_text
 # pyright: reportGeneralTypeIssues=false, reportAttributeAccessIssue=false, reportArgumentType=false
 from fastapi import FastAPI, HTTPException, Depends, Request
