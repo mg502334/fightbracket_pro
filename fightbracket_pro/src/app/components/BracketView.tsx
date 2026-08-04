@@ -303,6 +303,9 @@ function BracketSection({
   const hasTreeData = matches.some(m => m.prereqSetIds && m.prereqSetIds.length > 0);
   const slotMap = hasTreeData ? computeBracketSlots(matches) : null;
 
+  const SLOT_SIZE = 120; // 120px per slot (card height + vertical gap)
+
+
   // Sort rounds chronologically: winners 1→N, losers by absolute value ascending (earliest first)
   const rounds = Array.from(new Set(matches.map(m => m.round))).sort((a, b) =>
     isLosers ? Math.abs(a) - Math.abs(b) : a - b
@@ -364,8 +367,11 @@ function BracketSection({
               >
                 {roundName}
               </div>
-              <div className="flex flex-col justify-around flex-1 gap-6 relative">
-                {roundMatches.map(match => {
+              <div 
+                className={slotMap ? "relative w-full" : "flex flex-col justify-around flex-1 gap-6 relative"}
+                style={slotMap ? { height: (slotMap.maxSlot + 1) * SLOT_SIZE } : undefined}
+              >
+                {roundMatches.map((match, mIdx) => {
                   const p1 = match.player1Id ? playerMap[match.player1Id] : null;
                   const p2 = match.player2Id ? playerMap[match.player2Id] : null;
                   const cfg = STATE_CONFIG[match.state];
@@ -377,8 +383,14 @@ function BracketSection({
                   const matchesSearch = (p1 && searchMatchingPlayerIds.has(p1.id)) ||
                                        (p2 && searchMatchingPlayerIds.has(p2.id));
 
+                  const slot = slotMap ? (slotMap.slots.get(match.id) ?? mIdx) : mIdx;
+
                   return (
-                    <div key={match.id} className="relative w-full">
+                    <div 
+                      key={match.id} 
+                      className={slotMap ? "absolute w-full" : "relative w-full"}
+                      style={slotMap ? { top: slot * SLOT_SIZE } : undefined}
+                    >
                       {/* Connection Line */}
                       {!isLast && (
                         <div 
