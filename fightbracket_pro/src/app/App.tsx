@@ -31,6 +31,7 @@ import { StaticPageModal, type StaticPageId } from "./components/StaticPageModal
 import { TermsOfServiceModal } from "./components/TermsOfServiceModal";
 import { NewsPage } from "./components/NewsPage";
 import { PasswordResetModal } from "./components/PasswordResetModal";
+import { SupportModal } from "./components/SupportModal";
 import { Users } from "lucide-react";
 
 import {
@@ -119,6 +120,7 @@ export default function App() {
   }, []);
 
   const [showPasswordReset, setShowPasswordReset] = useState(false);
+  const [showSupportModal, setShowSupportModal] = useState(false);
 
   const [activeTournament, setActiveTournament] = useState<{ name: string, location: string, slug?: string, numAttendees?: number } | null>(() => safeParse('fb_tournament', null));
   const [autoSyncSlug, setAutoSyncSlug] = useState<string | null>(() => safeParse('fb_autoSyncSlug', null));
@@ -1454,6 +1456,11 @@ export default function App() {
         onClose={() => setShowPasswordReset(false)}
       />
 
+      <SupportModal
+        isOpen={showSupportModal}
+        onClose={() => setShowSupportModal(false)}
+      />
+
       <Toaster position="bottom-right" />
       <footer
         className="shrink-0 border-t px-6 py-5"
@@ -1464,7 +1471,7 @@ export default function App() {
             FIGHTBRACKET PRO
           </div>
           
-          <div className="flex items-center justify-center gap-4 text-[9px] uppercase tracking-widest text-gray-500 mt-1">
+          <div className="flex items-center justify-center gap-4 text-[9px] uppercase tracking-widest text-gray-500 mt-1 flex-wrap">
             {([
               { id: 'help', label: 'Help' },
               { id: 'privacy', label: 'Privacy' },
@@ -1479,6 +1486,12 @@ export default function App() {
                 {link.label}
               </button>
             ))}
+            <button
+              onClick={() => setShowSupportModal(true)}
+              className="hover:text-[#00E5FF] transition-colors"
+            >
+              Contact Support
+            </button>
           </div>
 
           <div className="text-[9px] text-gray-600 mt-2 space-y-1">
