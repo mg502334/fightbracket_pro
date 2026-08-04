@@ -22,12 +22,12 @@ except ImportError:
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-    from api.db import get_db, DBPlayer, DBStation, DBSMSLog, DBTournament, DBTournamentParticipant, DBUser, DBFriendship, DBDirectMessage, DBUserIdentifier
+    from api.db import get_db, DBPlayer, DBStation, DBSMSLog, DBTournament, DBTournamentParticipant, DBUser, DBFriendship, DBDirectMessage, DBUserIdentifier, DBUserIntegration
 
 else:
     try:
         try:
-            from api.db import get_db, DBPlayer, DBStation, DBSMSLog, DBTournament, DBTournamentParticipant, DBUser, DBFriendship, DBDirectMessage, DBUserIdentifier
+            from api.db import get_db, DBPlayer, DBStation, DBSMSLog, DBTournament, DBTournamentParticipant, DBUser, DBFriendship, DBDirectMessage, DBUserIdentifier, DBUserIntegration
         except Exception:
             from db import get_db, DBPlayer, DBStation, DBSMSLog, DBTournament, DBTournamentParticipant, DBUser, DBFriendship, DBDirectMessage, DBUserIdentifier  # type: ignore
     except Exception as _db_err:
