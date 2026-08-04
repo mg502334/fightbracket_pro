@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
 import { TekkenStatsPanel } from './TekkenStatsPanel';
 import { SteamStatsPanel } from './SteamStatsPanel';
+import { AccountSettingsPanel } from './AccountSettingsPanel';
 
 declare global {
   interface Window {
@@ -1138,9 +1139,14 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
           )}
 
           <button
-            onClick={() => setShowAccountSettingsModal(true)}
-            className="flex items-center gap-3 px-3 py-2.5 text-sm font-medium transition-all duration-150 text-left w-full group text-[#8a8a9a] hover:text-[#00E5FF] hover:bg-white/5"
-            style={{ borderLeft: "2px solid transparent", borderRadius: "2px" }}
+            onClick={() => setActiveTab("Settings")}
+            className="flex items-center gap-3 px-3 py-2.5 text-sm font-medium transition-all duration-150 text-left w-full group"
+            style={{
+              color: activeTab === "Settings" ? "#f0ede8" : "#8a8a9a",
+              background: activeTab === "Settings" ? "rgba(0, 229, 255, 0.1)" : "transparent",
+              borderLeft: activeTab === "Settings" ? "2px solid #00E5FF" : "2px solid transparent",
+              borderRadius: "2px",
+            }}
           >
             <Settings size={15} />
             Settings
@@ -1226,6 +1232,13 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
           </div>
 
           <div className="ml-auto flex items-center gap-3">
+            <button 
+              onClick={() => supabase.auth.signOut()}
+              className="flex items-center gap-2 px-3 py-1.5 mr-2 text-xs font-bold text-red-400 bg-red-500/10 hover:bg-red-500/20 rounded transition-colors"
+            >
+              <LogOut size={14} /> LOG OUT
+            </button>
+
             {/* Notification bell */}
             <button className="relative w-9 h-9 flex items-center justify-center transition-colors hover:bg-white/5" style={{ borderRadius: "2px" }}>
               <Bell size={16} style={{ color: "#8a8a9a" }} />
@@ -1258,6 +1271,15 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
 
         {/* Page content */}
         <main className="flex-1 p-6 overflow-auto">
+          {activeTab === "Settings" && (
+            <AccountSettingsPanel
+              user={user}
+              userProfile={userProfile}
+              fetchUserProfile={fetchUserProfile}
+              getHeaders={getHeaders}
+            />
+          )}
+          <div style={{ display: activeTab === "Settings" ? 'none' : 'block' }}>
           {/* Page heading */}
           <div className="mb-6">
             <h1
@@ -1291,7 +1313,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
           </div>
           {!userProfile?.tekken_id && (
             <button
-              onClick={() => setShowAccountSettingsModal(true)}
+              onClick={() => setActiveTab('Settings')}
               className="text-xs font-mono text-[#00E5FF] bg-[#00E5FF]/10 border border-[#00E5FF]/30 px-3 py-1.5 rounded-lg hover:bg-[#00E5FF]/20 transition-all shrink-0"
             >
               + SET POLARIS ID IN SETTINGS
@@ -1316,7 +1338,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
           </div>
           {!userProfile?.steam_id && (
             <button
-              onClick={() => setShowAccountSettingsModal(true)}
+              onClick={() => setActiveTab('Settings')}
               className="text-xs font-mono text-[#00E5FF] bg-[#00E5FF]/10 border border-[#00E5FF]/30 px-3 py-1.5 rounded-lg hover:bg-[#00E5FF]/20 transition-all shrink-0"
             >
               + SET STEAM ID IN SETTINGS
@@ -1580,481 +1602,10 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
 
       </div>
 
-      {/* Account Settings Modal Overlay */}
-      <AnimatePresence>
-        {showAccountSettingsModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
-            onClick={() => setShowAccountSettingsModal(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0, y: 20 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.95, opacity: 0, y: 20 }}
-              onClick={e => e.stopPropagation()}
-              className="w-full max-w-lg bg-[#050A14] border border-[#00E5FF]/40 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
-            >
-              <div className="p-6 border-b border-white/5 flex items-center justify-between bg-black/40">
-                <div className="flex items-center gap-3 text-[#00E5FF]">
-                  <Settings size={20} />
-                  <h3 className="text-xl font-bold font-rajdhani tracking-widest">ACCOUNT SETTINGS</h3>
-                </div>
-                <button onClick={() => setShowAccountSettingsModal(false)} className="text-gray-500 hover:text-white transition-colors">
-                  <X size={20} />
-                </button>
-              </div>
-
-              <div className="p-6 space-y-6 overflow-y-auto custom-scrollbar">
-
-                {/* === PROFILE & PRIVACY SECTION === */}
-                <div className="space-y-4 mb-6">
-                  <h4 className="text-sm font-bold font-rajdhani text-[#00E5FF] tracking-widest border-b border-[#00E5FF]/30 pb-2 flex items-center gap-2">
-                    <Shield size={16} /> PROFILE & PRIVACY
-                  </h4>
-
-                  {/* Social Logins & Identity Linking */}
-                  <div className="bg-white/5 border border-white/10 p-4 rounded-xl space-y-3">
-                    <div className="text-xs font-mono font-bold text-gray-400">LINKED ACCOUNTS</div>
-                    <p className="text-xs text-gray-500 font-mono mb-2">Link your social accounts so you can sign in with them later.</p>
-                    <div className="grid grid-cols-3 gap-2">
-                      <button
-                        onClick={() => handleLinkIdentity('discord')}
-                        className="flex items-center justify-center gap-2 py-2 px-3 rounded-lg bg-[#5865F2]/20 hover:bg-[#5865F2]/30 border border-[#5865F2]/40 text-white font-medium text-xs transition-all font-mono"
-                      >
-                        <svg width="14" height="14" viewBox="0 0 127.14 96.36" fill="currentColor">
-                          <path d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36,77.7,77.7,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.66,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1A105.25,105.25,0,0,0,126.6,80.22h0C129.24,52.84,122.09,29.11,107.7,8.07ZM42.45,65.69C36.18,65.69,31,60,31,53s5-12.74,11.43-12.74S54,46,53.89,53,48.84,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.31,60,73.31,53s5-12.74,11.43-12.74S96.33,46,96.22,53,91.08,65.69,84.69,65.69Z" />
-                        </svg>
-                        <span>Link Discord</span>
-                      </button>
-                      <button
-                        onClick={() => handleLinkIdentity('twitch')}
-                        className="flex items-center justify-center gap-2 py-2 px-3 rounded-lg bg-[#9146FF]/20 hover:bg-[#9146FF]/30 border border-[#9146FF]/40 text-white font-medium text-xs transition-all font-mono"
-                      >
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                          <path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714Z" />
-                        </svg>
-                        <span>Link Twitch</span>
-                      </button>
-                      <button
-                        onClick={() => handleLinkIdentity('google')}
-                        className="flex items-center justify-center gap-2 py-2 px-3 rounded-lg bg-white/10 hover:bg-white/20 border border-white/20 text-white font-medium text-xs transition-all font-mono"
-                      >
-                        <svg width="14" height="14" viewBox="0 0 24 24">
-                          <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z" />
-                          <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.26v3.15C3.25 21.3 7.31 24 12 24z" />
-                          <path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.26C.46 8.18 0 9.99 0 12s.46 3.82 1.26 5.42l4.02-3.15z" />
-                          <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.31 0 3.25 2.7 1.26 6.58l4.02 3.15c.95-2.83 3.6-4.98 6.72-4.98z" />
-                        </svg>
-                        <span>Link Google</span>
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Always-visible FB-ID row */}
-                  <div className="bg-black/40 border border-[#00E5FF]/20 p-3.5 rounded-xl">
-                    <div className="flex justify-between items-center">
-                      <span className="text-xs text-[#00E5FF] font-mono tracking-wider opacity-80">UNIQUE FB-ID</span>
-                      <button
-                        onClick={fetchUserProfile}
-                        className="text-xs text-gray-500 hover:text-white font-mono transition-colors"
-                        title="Refresh"
-                      >
-                        ↻
-                      </button>
-                    </div>
-                    {userProfile?.unique_id ? (
-                      <div className="flex items-center justify-between mt-1.5">
-                        <span className="font-mono font-bold tracking-widest bg-[#00E5FF]/10 px-2.5 py-1 rounded text-[#00E5FF] text-sm">
-                          {userProfile.unique_id}
-                        </span>
-                        <button
-                          onClick={() => { navigator.clipboard.writeText(userProfile.unique_id!); toast.success('FB-ID copied!'); }}
-                          className="text-xs text-gray-400 hover:text-white font-mono ml-2 transition-colors px-2.5 py-1 bg-white/5 rounded border border-white/10 hover:bg-white/10"
-                        >
-                          COPY
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="flex items-center justify-between mt-1.5">
-                        <span className="text-xs font-mono text-gray-400">
-                          {profileLoading ? 'Loading FB-ID...' : profileError ? `Error: ${profileError}` : 'FB-ID not initialized'}
-                        </span>
-                        <button
-                          onClick={fetchUserProfile}
-                          className="text-xs text-[#00E5FF] hover:underline font-mono ml-2"
-                        >
-                          RETRY
-                        </button>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Gamer Tag */}
-                  <div className="space-y-2">
-                    <div className="text-xs font-mono font-bold text-gray-400">GAMER TAG / DISPLAY NAME</div>
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        value={displayName}
-                        onChange={e => setDisplayName(e.target.value)}
-                        placeholder="Gamertag or Channel Name"
-                        className="flex-1 bg-[#111] border border-gray-800 rounded-lg p-2.5 text-white focus:border-[#00E5FF] outline-none font-mono text-sm"
-                      />
-                      <button
-                        onClick={saveDisplayName}
-                        className="px-5 py-2 rounded-lg border border-[#00E5FF]/50 text-[#00E5FF] hover:bg-[#00E5FF]/10 font-rajdhani font-bold tracking-wider transition-all text-sm shrink-0"
-                      >
-                        SAVE
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Privacy Controls */}
-                  <div className="pt-2 space-y-2.5">
-                    <div className="text-xs font-mono font-bold text-gray-400">PRIVACY CONTROLS</div>
-                    <div className="flex items-center justify-between p-2.5 rounded-lg bg-black/30 border border-white/5">
-                      <span className="text-xs font-mono opacity-80">Publicly Searchable Profile</span>
-                      <button
-                        onClick={() => handleTogglePrivacy('is_public', !(userProfile?.is_public ?? true))}
-                        className={`px-3 py-1 rounded text-xs font-mono font-bold transition-all ${(userProfile?.is_public ?? true) ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/40' : 'bg-white/5 text-gray-400'
-                          }`}
-                      >
-                        {(userProfile?.is_public ?? true) ? 'PUBLIC' : 'HIDDEN'}
-                      </button>
-                    </div>
-
-                    <div className="flex items-center justify-between p-2.5 rounded-lg bg-black/30 border border-white/5">
-                      <span className="text-xs font-mono opacity-80">Friends-Only Start.gg Stats</span>
-                      <button
-                        onClick={() => handleTogglePrivacy('friends_only', !(userProfile?.friends_only ?? false))}
-                        className={`px-3 py-1 rounded text-xs font-mono font-bold transition-all ${(userProfile?.friends_only ?? false) ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40' : 'bg-white/5 text-gray-400'
-                          }`}
-                      >
-                        {(userProfile?.friends_only ?? false) ? 'FRIENDS ONLY' : 'ANYONE'}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* === INTEGRATIONS SECTION === */}
-                <div className="space-y-4 mb-8">
-                  <h4 className="text-sm font-bold font-rajdhani text-[#00E5FF] tracking-widest border-b border-[#00E5FF]/30 pb-2 flex items-center gap-2">
-                    <Globe size={16} /> INTEGRATIONS & API KEYS
-                  </h4>
-
-                  {/* Start.gg Token & Career Import */}
-                  <div className="space-y-3 bg-white/5 p-4 rounded-lg border border-white/10">
-                    <div className="text-xs font-mono font-bold text-gray-400 flex items-center justify-between">
-                      <span>START.GG API TOKEN & PROFILE SLUG</span>
-                    </div>
-                    <div className="flex gap-2">
-                      <input
-                        type="password"
-                        placeholder="Start.gg Developer Token"
-                        value={startggToken}
-                        onChange={e => setStartggToken(e.target.value)}
-                        className="flex-1 bg-[#111] border border-gray-800 rounded-lg p-2.5 text-white focus:border-[#00E5FF] outline-none font-mono text-sm"
-                      />
-                      <button
-                        onClick={saveStartggToken}
-                        disabled={!startggToken.trim()}
-                        className="px-5 py-2 rounded-lg border border-[#00E5FF]/50 text-[#00E5FF] hover:bg-[#00E5FF]/10 font-rajdhani font-bold tracking-wider transition-all text-sm disabled:opacity-40 shrink-0"
-                      >
-                        SAVE TOKEN
-                      </button>
-                    </div>
-
-                    <div className="flex gap-2 pt-2">
-                      <input
-                        type="text"
-                        placeholder="Start.gg Profile Slug (e.g. mang0)"
-                        value={userStartggInput}
-                        onChange={e => setUserStartggInput(e.target.value)}
-                        className="flex-1 bg-[#111] border border-gray-800 rounded-lg p-2.5 text-white focus:border-[#00E5FF] outline-none font-mono text-sm"
-                      />
-                      <button
-                        onClick={handleImportCareerStats}
-                        disabled={importingUserStartgg || !userStartggInput.trim()}
-                        className="px-5 py-2 rounded-lg bg-[#00E5FF]/20 border border-[#00E5FF]/50 text-[#00E5FF] hover:bg-[#00E5FF]/30 font-rajdhani font-bold tracking-wider transition-all text-sm disabled:opacity-40 shrink-0"
-                      >
-                        {importingUserStartgg ? 'IMPORTING...' : 'IMPORT'}
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Tekken 8 Polaris ID */}
-                  <div className="space-y-3 bg-white/5 p-4 rounded-lg border border-white/10">
-                    <div className="text-xs font-mono font-bold text-gray-400">TEKKEN 8 POLARIS ID</div>
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        placeholder="e.g. 1234-5678-9012"
-                        value={userTekkenId}
-                        onChange={e => setUserTekkenId(e.target.value)}
-                        className="flex-1 bg-[#111] border border-gray-800 rounded-lg p-2.5 text-white focus:border-[#00E5FF] outline-none font-mono text-sm"
-                      />
-                      <button
-                        onClick={saveTekkenId}
-                        disabled={!userTekkenId.trim()}
-                        className="px-5 py-2 rounded-lg border border-[#00E5FF]/50 text-[#00E5FF] hover:bg-[#00E5FF]/10 font-rajdhani font-bold tracking-wider transition-all text-sm disabled:opacity-40 shrink-0"
-                      >
-                        SAVE ID
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Steam ID or Vanity URL */}
-                  <div className="space-y-3 bg-white/5 p-4 rounded-lg border border-white/10">
-                    <div className="text-xs font-mono font-bold text-gray-400">STEAM ID OR VANITY USERNAME</div>
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        placeholder="e.g. 76561198000000000 or customurl"
-                        value={userSteamId}
-                        onChange={e => setUserSteamId(e.target.value)}
-                        className="flex-1 bg-[#111] border border-gray-800 rounded-lg p-2.5 text-white focus:border-[#00E5FF] outline-none font-mono text-sm"
-                      />
-                      <button
-                        onClick={saveSteamId}
-                        disabled={!userSteamId.trim()}
-                        className="px-5 py-2 rounded-lg border border-[#00E5FF]/50 text-[#00E5FF] hover:bg-[#00E5FF]/10 font-rajdhani font-bold tracking-wider transition-all text-sm disabled:opacity-40 shrink-0"
-                      >
-                        SAVE ID
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Twitch ID & URL */}
-                  <div className="space-y-3 bg-white/5 p-4 rounded-lg border border-white/10">
-                    <div className="flex items-center justify-between">
-                      <div className="text-xs font-mono font-bold text-gray-400">TWITCH CHANNEL USERNAME & URL</div>
-                      <button
-                        onClick={async () => {
-                          const { error } = await supabase.auth.signInWithOAuth({
-                            provider: 'twitch',
-                            options: {
-                              redirectTo: window.location.origin,
-                            }
-                          });
-                          if (error) toast.error(error.message);
-                        }}
-                        className="px-3 py-1 rounded text-xs font-mono bg-[#9146FF]/20 text-[#9146FF] hover:bg-[#9146FF]/30 border border-[#9146FF]/40 transition-all flex items-center gap-1.5"
-                      >
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                          <path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714Z" />
-                        </svg>
-                        SIGN IN WITH TWITCH
-                      </button>
-                    </div>
-                    <div className="flex flex-col gap-2">
-                      <input
-                        type="text"
-                        placeholder="Twitch Username (e.g. fightbracket)"
-                        value={userTwitchId}
-                        onChange={e => setUserTwitchId(e.target.value)}
-                        className="w-full bg-[#111] border border-gray-800 rounded-lg p-2.5 text-white focus:border-[#9146FF] outline-none font-mono text-sm"
-                      />
-                      <div className="flex gap-2">
-                        <input
-                          type="text"
-                          placeholder="Twitch URL (e.g. https://twitch.tv/fightbracket)"
-                          value={userTwitchUrl}
-                          onChange={e => setUserTwitchUrl(e.target.value)}
-                          className="flex-1 bg-[#111] border border-gray-800 rounded-lg p-2.5 text-white focus:border-[#9146FF] outline-none font-mono text-sm"
-                        />
-                        <button
-                          onClick={saveTwitchData}
-                          className="px-5 py-2 rounded-lg border border-[#9146FF]/50 text-[#9146FF] hover:bg-[#9146FF]/10 font-rajdhani font-bold tracking-wider transition-all text-sm shrink-0"
-                        >
-                          SAVE TWITCH
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* === BASIC SETTINGS SECTION === */}
-                <h4 className="text-sm font-bold font-rajdhani text-[#00E5FF] tracking-widest border-b border-[#00E5FF]/30 pb-2 flex items-center gap-2">
-                  <User size={16} /> PROFILE & ACCOUNT
-                </h4>
-                {/* Update Avatar Upload */}
-                <div className="space-y-2">
-                  <div className="text-xs font-mono font-bold text-gray-400 flex items-center justify-between">
-                    <span>UPLOAD AVATAR IMAGE</span>
-                    {userProfile?.avatar_url && (
-                      <span className="text-[10px] text-green-400 bg-green-500/10 px-2 py-0.5 rounded">Active</span>
-                    )}
-                  </div>
-                  <div className="flex gap-2">
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={e => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          const reader = new FileReader();
-                          reader.onload = (event) => {
-                            if (event.target?.result) {
-                              setNewAvatarUrl(event.target.result as string);
-                            }
-                          };
-                          reader.readAsDataURL(file);
-                        }
-                      }}
-                      className="flex-1 bg-[#111] border border-gray-800 rounded-lg p-2 text-white outline-none font-mono text-sm file:mr-4 file:py-1 file:px-3 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-[#00E5FF]/20 file:text-[#00E5FF] hover:file:bg-[#00E5FF]/30"
-                    />
-                    <button
-                      onClick={handleUpdateAvatar}
-                      disabled={!newAvatarUrl.trim()}
-                      className="px-5 py-2 rounded-lg border border-[#00E5FF]/50 text-[#00E5FF] hover:bg-[#00E5FF]/10 font-rajdhani font-bold tracking-wider transition-all text-sm disabled:opacity-40 shrink-0"
-                    >
-                      SAVE
-                    </button>
-                  </div>
-                  <p className="text-[10px] text-gray-600 font-mono">Select an image file to upload as your profile picture.</p>
-                </div>
-
-                <div className="h-px bg-white/5 w-full"></div>
-
-                {/* Update Email */}
-                <div className="space-y-2">
-                  <div className="text-xs font-mono font-bold text-gray-400">UPDATE EMAIL ADDRESS</div>
-                  <div className="flex gap-2">
-                    <input
-                      type="email"
-                      placeholder="New Email Address"
-                      value={newEmail}
-                      onChange={e => setNewEmail(e.target.value)}
-                      className="flex-1 bg-[#111] border border-gray-800 rounded-lg p-2.5 text-white focus:border-[#00E5FF] outline-none font-mono text-sm"
-                    />
-                    <button
-                      onClick={handleUpdateEmail}
-                      disabled={updatingEmail || !newEmail.trim()}
-                      className="px-5 py-2 rounded-lg border border-[#00E5FF]/50 text-[#00E5FF] hover:bg-[#00E5FF]/10 font-rajdhani font-bold tracking-wider transition-all text-sm disabled:opacity-40 shrink-0"
-                    >
-                      {updatingEmail ? 'UPDATING...' : 'UPDATE'}
-                    </button>
-                  </div>
-                </div>
-
-                <div className="h-px bg-white/5 w-full"></div>
-
-                {/* Change Password */}
-                <div className="space-y-2">
-                  <div className="text-xs font-mono font-bold text-gray-400">CHANGE PASSWORD</div>
-                  <div className="flex gap-2">
-                    <input
-                      type="password"
-                      placeholder="New Password (min. 6 chars)"
-                      value={newPassword}
-                      onChange={e => setNewPassword(e.target.value)}
-                      className="flex-1 bg-[#111] border border-gray-800 rounded-lg p-2.5 text-white focus:border-[#00E5FF] outline-none font-mono text-sm"
-                    />
-                    <button
-                      onClick={handleUpdatePassword}
-                      disabled={updatingPassword || !newPassword.trim()}
-                      className="px-5 py-2 rounded-lg border border-[#00E5FF]/50 text-[#00E5FF] hover:bg-[#00E5FF]/10 font-rajdhani font-bold tracking-wider transition-all text-sm disabled:opacity-40 shrink-0"
-                    >
-                      {updatingPassword ? 'UPDATING...' : 'UPDATE'}
-                    </button>
-                  </div>
-                </div>
-
-                <div className="h-px bg-white/5 w-full"></div>
-
-                {/* Passkeys & Biometrics */}
-                <div className="space-y-3">
-                  <div className="text-xs font-mono font-bold text-emerald-400 flex items-center justify-between">
-                    <span className="flex items-center gap-1.5"><Key size={14} /> PASSKEYS & BIOMETRIC SECURITY</span>
-                    <span className="text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/30 font-bold">Supabase WebAuthn</span>
-                  </div>
-                  <p className="text-xs font-mono text-gray-400">
-                    Register Touch ID, Face ID, Windows Hello, or a hardware Security Key for instant passwordless sign in.
-                  </p>
-
-                  {passkeyFactors.length > 0 && (
-                    <div className="space-y-2">
-                      {passkeyFactors.map(f => (
-                        <div key={f.id} className="flex items-center justify-between p-3 rounded-lg bg-white/5 border border-white/10">
-                          <div className="flex items-center gap-2">
-                            <Shield size={14} className="text-emerald-400" />
-                            <span className="text-xs font-mono font-bold text-white">{f.friendly_name || 'Registered Passkey'}</span>
-                          </div>
-                          <button
-                            onClick={() => handleUnenrollPasskey(f.id)}
-                            className="text-xs font-mono text-red-400 hover:text-red-300 p-1 hover:bg-red-500/10 rounded transition-all"
-                            title="Remove Passkey"
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  <button
-                    onClick={handleEnrollPasskey}
-                    disabled={enrollingPasskey}
-                    className="w-full py-2.5 rounded-lg border border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/10 font-rajdhani font-bold tracking-wider transition-all text-xs flex items-center justify-center gap-2 disabled:opacity-40"
-                  >
-                    <Key size={14} /> {enrollingPasskey ? 'REGISTERING PASSKEY...' : '+ REGISTER NEW PASSKEY / TOUCH ID'}
-                  </button>
-                </div>
-
-                <div className="h-px bg-white/5 w-full"></div>
-
-                {/* Delete Account */}
-                <div className="space-y-3 pt-2">
-                  <div className="text-xs font-mono font-bold text-red-500 flex items-center gap-2">
-                    <AlertTriangle size={14} /> DANGER ZONE
-                  </div>
-                  {!showDeleteModal ? (
-                    <button
-                      onClick={() => setShowDeleteModal(true)}
-                      className="w-full px-5 py-3 rounded-lg bg-red-600/10 border border-red-600/50 text-red-500 hover:bg-red-600/20 font-rajdhani font-bold tracking-wider transition-all text-sm"
-                    >
-                      DELETE ACCOUNT PERMANENTLY
-                    </button>
-                  ) : (
-                    <div className="space-y-2 bg-red-950/30 p-4 rounded-lg border border-red-600/50 animate-in fade-in zoom-in duration-200">
-                      <p className="text-xs font-mono text-red-400 leading-relaxed">
-                        WARNING: This will permanently delete your account, tournaments, messages, and profile. This action cannot be undone. Type <span className="font-bold text-white">DELETE</span> below to confirm.
-                      </p>
-                      <div className="flex gap-2 pt-2">
-                        <input
-                          type="text"
-                          placeholder="Type DELETE"
-                          value={deleteConfirmation}
-                          onChange={e => setDeleteConfirmation(e.target.value)}
-                          className="flex-1 bg-[#111] border border-red-600/50 rounded-lg p-2.5 text-white focus:border-red-500 outline-none font-mono text-sm"
-                        />
-                        <button
-                          onClick={handleDeleteAccount}
-                          disabled={deletingAccount || deleteConfirmation !== 'DELETE'}
-                          className="px-5 py-2 rounded-lg bg-red-600 text-white font-rajdhani font-bold tracking-wider transition-all text-sm disabled:opacity-40 shrink-0"
-                        >
-                          {deletingAccount ? 'DELETING...' : 'CONFIRM'}
-                        </button>
-                      </div>
-                      <button
-                        onClick={() => { setShowDeleteModal(false); setDeleteConfirmation(''); }}
-                        className="w-full text-center text-xs font-mono text-gray-400 hover:text-white mt-2"
-                      >
-                        Cancel Deletion
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      
     </div>
     </div>
+          </div>
   </main>
 </div>
 </div>
