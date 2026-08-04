@@ -554,12 +554,13 @@ export default function App() {
   }, [theme?.primaryColor, players, userId]);
 
   async function fetchStartggDirect(slug: string, token?: string | null) {
-    if (!token) {
-      throw new Error('Start.gg API token required. Please log in with Start.gg or enter your Personal Access Token in Account settings.');
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      throw new Error('You must be logged in to sync from Start.gg');
     }
 
     const headers: Record<string, string> = {
-      'Authorization': `Bearer ${token}`,
+      'Authorization': `Bearer ${session.access_token}`,
       'Content-Type': 'application/json'
     };
 
@@ -583,7 +584,7 @@ export default function App() {
       }
     `;
 
-    const tourneyRes = await fetch('https://api.start.gg/gql/alpha', {
+    const tourneyRes = await fetch(`${API_URL}/api/startgg/proxy`, {
       method: 'POST',
       headers,
       body: JSON.stringify({ query: queryTourney, variables: { slug } })
@@ -632,7 +633,7 @@ export default function App() {
       let allEntrants: any[] = [];
       let page = 1;
       while (true) {
-        const entRes = await fetch('https://api.start.gg/gql/alpha', {
+        const entRes = await fetch(`${API_URL}/api/startgg/proxy`, {
           method: 'POST', headers, body: JSON.stringify({ query: queryEntrants, variables: { eventId: ev.id, page } })
         });
         const entJson = await entRes.json().catch(() => ({}));
@@ -649,7 +650,7 @@ export default function App() {
       let allSets: any[] = [];
       page = 1;
       while (true) {
-        const setRes = await fetch('https://api.start.gg/gql/alpha', {
+        const setRes = await fetch(`${API_URL}/api/startgg/proxy`, {
           method: 'POST', headers, body: JSON.stringify({ query: querySets, variables: { eventId: ev.id, page } })
         });
         const setJson = await setRes.json().catch(() => ({}));

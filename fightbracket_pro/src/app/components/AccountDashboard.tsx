@@ -726,10 +726,11 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
           }
         }
       }`;
-      const res = await fetch('https://api.start.gg/gql/alpha', {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${API_URL}/api/startgg/proxy`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${startggToken}`,
+          'Authorization': `Bearer ${session?.access_token || ''}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({ query })

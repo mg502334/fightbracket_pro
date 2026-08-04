@@ -1,3 +1,4 @@
+from api.crypto import encrypt_text, decrypt_text
 # pyright: reportGeneralTypeIssues=false, reportAttributeAccessIssue=false, reportArgumentType=false
 from fastapi import FastAPI, HTTPException, Depends, Request
 from fastapi.responses import RedirectResponse
@@ -298,7 +299,7 @@ def get_user_profile(user_id: str = Depends(get_current_user_id), db: Session = 
                 "bio": user.bio or "",
                 "avatar_url": user.avatar_url or "",
                 "startgg_slug": user.startgg_slug or "",
-                "startgg_token": getattr(user, 'startgg_token', '') or "",
+                            "startgg_token": "SECURE_HIDDEN" if (getattr(user, 'startgg_token', '') or db.query(DBUserIntegration).filter(DBUserIntegration.user_id == user.id, DBUserIntegration.integration_type == 'startgg').first()) else "", 
                 "startgg_data": user.startgg_data or "",
                 "tekken_id": user.tekken_id or "",
                 "steam_id": getattr(user, 'steam_id', '') or "",
@@ -339,7 +340,21 @@ def update_user_profile(req: ProfileUpdateRequest, user_id: str = Depends(get_cu
     if req.startgg_slug is not None:
         user.startgg_slug = req.startgg_slug.strip() # type: ignore
     if req.startgg_token is not None:
-        user.startgg_token = req.startgg_token.strip() # type: ignore
+        token_clean = req.startgg_token.strip()
+        if token_clean and token_clean != "SECURE_HIDDEN":
+            # Encrypt and save to user_integrations
+            enc_token = encrypt_text(token_clean)
+            integration = db.query(DBUserIntegration).filter(DBUserIntegration.user_id == user_id, DBUserIntegration.integration_type == 'startgg').first()
+            if integration:
+                integration.encrypted_api_key = enc_token
+            else:
+                db.add(DBUserIntegration(user_id=user_id, integration_type='startgg', encrypted_api_key=enc_token))
+            user.startgg_token = "" # Clear from public table
+        elif token_clean == "":
+            # Delete integration
+            db.query(DBUserIntegration).filter(DBUserIntegration.user_id == user_id, DBUserIntegration.integration_type == 'startgg').delete()
+            user.startgg_token = ""
+
     if req.tekken_id is not None:
         user.tekken_id = req.tekken_id.strip() # type: ignore
     if req.steam_id is not None:
@@ -368,7 +383,7 @@ def update_user_profile(req: ProfileUpdateRequest, user_id: str = Depends(get_cu
             "bio": user.bio or "",
             "avatar_url": user.avatar_url or "",
             "startgg_slug": user.startgg_slug or "",
-            "startgg_token": getattr(user, 'startgg_token', '') or "",
+                        "startgg_token": "SECURE_HIDDEN" if (getattr(user, 'startgg_token', '') or db.query(DBUserIntegration).filter(DBUserIntegration.user_id == user.id, DBUserIntegration.integration_type == 'startgg').first()) else "", 
             "startgg_data": user.startgg_data or "",
             "tekken_id": user.tekken_id or "",
             "steam_id": getattr(user, 'steam_id', '') or "",
@@ -1704,3 +1719,43 @@ def get_user_local_history(unique_id: str, db: Session = Depends(get_db)):
     except Exception as e:
         print(f"Error fetching local history: {e}")
         return {"tournaments": []}
+
+
+class StartggProxyRequest(BaseModel):
+    query: str
+    variables: dict = {}
+
+@app.post("/api/startgg/proxy")
+def proxy_startgg(req: StartggProxyRequest, user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    integration = db.query(DBUserIntegration).filter(
+        DBUserIntegration.user_id == user_id, 
+        DBUserIntegration.integration_type == "startgg"
+    ).first()
+    
+    token = None
+    if integration:
+        token = decrypt_text(integration.encrypted_api_key)
+    else:
+        user = db.query(DBUser).filter(DBUser.id == user_id).first()
+        if user and getattr(user, 'startgg_token', None):
+            token = getattr(user, 'startgg_token')
+            
+    if not token:
+        raise HTTPException(status_code=404, detail="Start.gg integration not found. Please set your token in settings.")
+
+    import requests
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json"
+    }
+    
+    try:
+        response = requests.post(
+            "https://api.start.gg/gql/alpha", 
+            json={"query": req.query, "variables": req.variables},
+            headers=headers,
+            timeout=10
+        )
+        return response.json()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

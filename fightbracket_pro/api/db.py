@@ -25,6 +25,15 @@ class DBUser(Base):
     friends_only = Column(Boolean, default=False) # Only friends can view Start.gg stats
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
+
+class DBUserIntegration(Base):
+    __tablename__ = "user_integrations"
+    id = Column(String, primary_key=True, index=True)
+    user_id = Column(String, index=True, nullable=False) # References users.id
+    integration_type = Column(String, nullable=False) # e.g. "startgg"
+    encrypted_api_key = Column(String, nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
 class DBFriendship(Base):
     __tablename__ = "friendships"
     id = Column(String, primary_key=True, index=True)
