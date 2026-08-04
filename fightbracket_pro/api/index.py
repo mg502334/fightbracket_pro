@@ -21,7 +21,7 @@ try:
 except ImportError:
     pass
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 if TYPE_CHECKING:
     from api.db import get_db, DBPlayer, DBStation, DBSMSLog, DBTournament, DBTournamentParticipant, DBUser, DBFriendship, DBDirectMessage, DBUserIdentifier, DBUserIntegration
 
@@ -78,7 +78,7 @@ app.add_middleware(
 class SMSRequest(BaseModel):
     phone_numbers: list[str]
     message: str
-    match_id: str | None = None
+    match_id: Optional[str] = None
     enable_real_sms: bool = False
 
 class CheckInRequest(BaseModel):
@@ -87,7 +87,7 @@ class CheckInRequest(BaseModel):
 
 class StationAssignRequest(BaseModel):
     station_id: int
-    match_id: str | None
+    match_id: Optional[str]
 
 class TournamentSaveRequest(BaseModel):
     id: str
@@ -98,23 +98,23 @@ class VerifyRequest(BaseModel):
     token: str
 
 class ProfileUpdateRequest(BaseModel):
-    gamer_tag: str | None = None
-    bio: str | None = None
-    avatar_url: str | None = None
-    startgg_slug: str | None = None
-    startgg_token: str | None = None
-    tekken_id: str | None = None
-    steam_id: str | None = None
-    twitch_id: str | None = None
-    twitch_url: str | None = None
-    games_data: str | None = None
-    station_names: str | None = None
-    is_public: bool | None = None
-    friends_only: bool | None = None
+    gamer_tag: Optional[str] = None
+    bio: Optional[str] = None
+    avatar_url: Optional[str] = None
+    startgg_slug: Optional[str] = None
+    startgg_token: Optional[str] = None
+    tekken_id: Optional[str] = None
+    steam_id: Optional[str] = None
+    twitch_id: Optional[str] = None
+    twitch_url: Optional[str] = None
+    games_data: Optional[str] = None
+    station_names: Optional[str] = None
+    is_public: Optional[bool] = None
+    friends_only: Optional[bool] = None
 
 class StartggImportRequest(BaseModel):
     startgg_slug_or_url: str
-    api_token: str | None = None
+    api_token: Optional[str] = None
 
 class FriendRequestInput(BaseModel):
     target_identifier: str
@@ -126,13 +126,13 @@ class FriendResponseInput(BaseModel):
 class SendMessageInput(BaseModel):
     recipient_id: str
     message: str
-    message_type: str | None = None
-    metadata_json: str | None = None
+    message_type: Optional[str] = None
+    metadata_json: Optional[str] = None
 
 class ReportUserInput(BaseModel):
     target_id: str
     reason: str
-    description: str | None = None
+    description: Optional[str] = None
 class SupportTicketRequest(BaseModel):
     inquiry_type: str  # bracket | oauth | privacy | api | general
     email: str
