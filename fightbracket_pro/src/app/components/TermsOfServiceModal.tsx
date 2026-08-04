@@ -78,17 +78,29 @@ You have the right to access, export, or permanently delete your account, messag
     title: "NON-AFFILIATION DISCLAIMER",
     icon: AlertTriangle,
     content: `
-# Non-Affiliation Disclaimer
+# ⚖️ Non-Affiliation & Trademark Disclaimer
+Last Updated: August 4, 2026
 
-fightbracketpro.com is an independent software platform built for tournament organization and management. 
+FightBracket Pro (fightbracketpro.com) is an independent, community-driven software platform built strictly for tournament organization and management.
 
+## 1. NO OFFICIAL LEAGUE OR PUBLISHER AFFILIATION
 We are not affiliated, associated, authorized, endorsed by, or in any way officially connected with:
-* Evolution Championship Series (Evo) or Sony Interactive Entertainment.
-* Any video game publishers, developers, or fighting game franchises (including but not limited to Bandai Namco, Capcom, NetherRealm, or Arc System Works).
 
-All product and company names, logos, and trademarks displayed on this website are the property of their respective owners. Their use does not imply any affiliation with or endorsement by them.
+* **Esports Leagues & Events:** Evolution Championship Series (Evo), Sony Interactive Entertainment, or any official competitive circuits.
+* **Video Game Publishers & Franchises:** Any game developers or fighting game franchises (including but not limited to Bandai Namco Entertainment, Capcom, NetherRealm Studios, Arc System Works, or Nintendo).
+
+## 2. NO THIRD-PARTY PLATFORM AFFILIATION
+While our platform integrates third-party tools to facilitate tournament workflows, logging, streaming, and account authentication, FightBracket Pro is entirely independent and has no official corporate partnership, joint venture, or endorsement from:
+
+* **Tournament Engines:** start.gg or its parent entities.
+* **Streaming & Media Services:** Twitch, YouTube, Kick, or TikTok.
+* **Authentication, OAuth, & API Providers:** Twitch, Discord, Google, or Spotify.
+
+## 3. TRADEMARK NOTICE
+All product names, company names, logos, video game titles, characters, and trademarks displayed on this website are the structural property of their respective owners. Their appearance on FightBracket Pro is for informational, organizational, and bracket tracking purposes only. Use of these names and assets does not imply any affiliation with, endorsement by, or sponsorship from the respective trademark holders.
 `
   },
+
   terms: {
     title: "TERMS OF USE",
     icon: FileText,

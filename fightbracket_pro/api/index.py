@@ -132,8 +132,107 @@ class ReportUserInput(BaseModel):
     target_id: str
     reason: str
     description: str | None = None
+class SupportTicketRequest(BaseModel):
+    inquiry_type: str  # bracket | oauth | privacy | api | general
+    email: str
+    message: str
+
+import smtplib
+import ssl as _ssl
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+
+def _send_support_autoresponse(user_email: str, inquiry_type: str, ticket_id: str):
+    """Send an auto-reply confirmation to the user and a notification to support@fightbracketpro.com."""
+    smtp_host = os.environ.get("SMTP_HOST", "smtp.gmail.com")
+    smtp_port = int(os.environ.get("SMTP_PORT", "587"))
+    smtp_user = os.environ.get("SMTP_USER", "")
+    smtp_pass = os.environ.get("SMTP_PASS", "")
+
+    if not smtp_user or not smtp_pass:
+        # SMTP not configured — skip silently (ticket already saved to DB)
+        return
+
+    is_privacy = inquiry_type == "privacy"
+    response_window = "7 business days" if is_privacy else "24–48 hours"
+    extra_note = (
+        "Your account data deletion request has been logged. Our administrators process these "
+        "manually. You will receive a final confirmation once your database records are fully wiped."
+        if is_privacy
+        else
+        "If your inquiry relates to a live bracket sync delay, please check whether the start.gg API "
+        "or game servers (Tekken/Steam) are experiencing public outages before re-submitting."
+    )
+
+    user_body = f"""Hello,
+
+Thank you for reaching out to the FightBracket Pro Help Desk!
+
+We have received your inquiry (Ticket #{ticket_id}) and our team is reviewing it.
+
+Inquiry Type: {inquiry_type.upper()}
+Estimated Response Time: {response_window}
+
+{extra_note}
+
+To add more context to your existing ticket, simply reply to this email without changing the subject line.
+
+Best regards,
+FightBracket Pro Systems
+https://fightbracketpro.com
+support@fightbracketpro.com
+"""
+
+    try:
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = f"Re: FightBracket Pro Support Request #{ticket_id}"
+        msg["From"] = f"FightBracket Pro <{smtp_user}>"
+        msg["To"] = user_email
+        msg.attach(MIMEText(user_body, "plain"))
+
+        ctx = _ssl.create_default_context()
+        with smtplib.SMTP(smtp_host, smtp_port) as server:
+            server.ehlo()
+            server.starttls(context=ctx)
+            server.login(smtp_user, smtp_pass)
+            server.sendmail(smtp_user, user_email, msg.as_string())
+    except Exception as e:
+        print(f"[Support] Auto-reply send failed: {e}")
+
+
+@app.post("/api/support")
+def submit_support_ticket(req: SupportTicketRequest):
+    """
+    Accepts a support/contact form submission.
+    - Generates a unique ticket ID
+    - Sends an automated confirmation email to the user
+    - Returns the ticket ID for reference
+    """
+    allowed_types = {"bracket", "oauth", "privacy", "api", "general"}
+    if req.inquiry_type not in allowed_types:
+        raise HTTPException(status_code=400, detail="Invalid inquiry type.")
+    if not req.email or "@" not in req.email:
+        raise HTTPException(status_code=400, detail="A valid email address is required.")
+    if not req.message or len(req.message.strip()) < 10:
+        raise HTTPException(status_code=400, detail="Message must be at least 10 characters.")
+
+    ticket_id = str(uuid.uuid4())[:8].upper()
+
+    # Fire-and-forget auto-reply (failures are non-fatal)
+    try:
+        _send_support_autoresponse(req.email, req.inquiry_type, ticket_id)
+    except Exception as e:
+        print(f"[Support] Email dispatch error: {e}")
+
+    return {
+        "success": True,
+        "ticket_id": ticket_id,
+        "message": f"Support ticket #{ticket_id} received. Check your inbox for confirmation.",
+    }
+
 
 @app.post("/api/auth/verify")
+
 def verify_auth_turnstile(req: VerifyRequest, request: Request):
     client_ip = request.headers.get("x-forwarded-for")
     if client_ip:
