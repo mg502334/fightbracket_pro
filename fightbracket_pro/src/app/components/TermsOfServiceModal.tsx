@@ -78,7 +78,7 @@ You have the right to access, export, or permanently delete your account, messag
     title: "NON-AFFILIATION DISCLAIMER",
     icon: AlertTriangle,
     content: `
-# ⚖️ Non-Affiliation & Trademark Disclaimer
+# Non-Affiliation & Trademark Disclaimer
 Last Updated: August 4, 2026
 
 FightBracket Pro (fightbracketpro.com) is an independent, community-driven software platform built strictly for tournament organization and management.
@@ -105,7 +105,7 @@ All product names, company names, logos, video game titles, characters, and trad
     title: "TERMS OF USE",
     icon: FileText,
     content: `
-# ⚖️ FightBracket Pro — Terms of Service
+# FightBracket Pro — Terms of Service
 Last Updated: August 4, 2026 [1] 
 Welcome to FightBracket Pro ("we," "our," or "the platform"). By accessing our website, tournament bracket dashboards, messaging systems, or developer integration nodes, you agree to be bound by these Terms of Service. If you do not agree to these terms, please terminate your session and close the platform.
 

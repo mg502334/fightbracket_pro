@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { X, Headphones, Send, CheckCircle, AlertCircle, ChevronRight, Mail } from 'lucide-react';
 import { toast } from 'sonner';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const API_URL = import.meta.env.VITE_API_URL || '';
 
 interface SupportModalProps {
   isOpen: boolean;
