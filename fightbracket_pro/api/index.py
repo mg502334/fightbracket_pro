@@ -164,31 +164,124 @@ def _send_support_autoresponse(user_email: str, inquiry_type: str, ticket_id: st
         "or game servers (Tekken/Steam) are experiencing public outages before re-submitting."
     )
 
-    user_body = f"""Hello,
-
-Thank you for reaching out to the FightBracket Pro Help Desk!
-
-We have received your inquiry (Ticket #{ticket_id}) and our team is reviewing it.
-
-Inquiry Type: {inquiry_type.upper()}
-Estimated Response Time: {response_window}
-
-{extra_note}
-
-To add more context to your existing ticket, simply reply to this email without changing the subject line.
-
-Best regards,
-FightBracket Pro Systems
-https://fightbracketpro.com
-support@fightbracketpro.com
-"""
+    html_body = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FightBracket Pro Support</title>
+<style>
+  body {{
+    background-color: #050A14;
+    color: #FFFFFF;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    -webkit-font-smoothing: antialiased;
+  }}
+  .wrapper {{
+    width: 100%;
+    background-color: #050A14;
+    padding: 40px 0;
+  }}
+  .container {{
+    max-width: 600px;
+    margin: 0 auto;
+    background-color: #0A1122;
+    border: 1px solid rgba(0, 229, 255, 0.3);
+    border-radius: 12px;
+    padding: 40px;
+    box-shadow: 0 0 20px rgba(0, 229, 255, 0.1);
+  }}
+  .header {{
+    text-align: center;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding-bottom: 24px;
+    margin-bottom: 32px;
+  }}
+  .header h1 {{
+    color: #00E5FF;
+    margin: 0;
+    font-size: 28px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    font-family: 'Courier New', Courier, monospace;
+    font-weight: 800;
+  }}
+  .content {{
+    line-height: 1.7;
+    font-size: 16px;
+    color: #E2E8F0;
+  }}
+  .highlight {{
+    color: #00E5FF;
+    font-weight: 700;
+  }}
+  .ticket-box {{
+    background-color: rgba(0, 229, 255, 0.05);
+    border: 1px solid rgba(0, 229, 255, 0.2);
+    border-radius: 8px;
+    padding: 20px;
+    margin: 24px 0;
+  }}
+  .footer {{
+    text-align: center;
+    font-size: 13px;
+    color: #64748B;
+    margin-top: 40px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    padding-top: 24px;
+  }}
+  @media only screen and (max-width: 620px) {{
+    .container {{
+      padding: 20px;
+      margin: 0 10px;
+      width: auto !important;
+    }}
+  }}
+</style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="container">
+      <div class="header">
+        <h1>FIGHTBRACKET PRO</h1>
+      </div>
+      <div class="content">
+        <p style="font-family: 'Courier New', Courier, monospace; color: #94a3b8; font-size: 14px;">> SUPPORT TICKET RECEIVED...</p>
+        <p>Hello,</p>
+        <p>Thank you for reaching out to the <span class="highlight">FightBracket Pro</span> Help Desk. Our team has received your inquiry and is currently reviewing it.</p>
+        
+        <div class="ticket-box">
+          <strong>Ticket #:</strong> {ticket_id}<br>
+          <strong>Inquiry Type:</strong> {inquiry_type.upper()}<br>
+          <strong>Estimated Response Time:</strong> {response_window}
+        </div>
+        
+        <p style="font-size: 14px; color: #cbd5e1;"><em>{extra_note}</em></p>
+        
+        <p>To add more context to your existing ticket, simply reply to this email without changing the subject line.</p>
+        
+        <p style="margin-top: 30px;">
+          Best regards,<br>
+          <strong style="color: #00E5FF;">FightBracket Pro Systems</strong>
+        </p>
+      </div>
+      <div class="footer">
+        &copy; 2026 FightBracket Pro. All rights reserved.<br>
+        <span style="font-family: 'Courier New', Courier, monospace; font-size: 11px; margin-top: 10px; display: block; color: rgba(255,255,255,0.2);">SECURE. CONNECTION. ESTABLISHED.</span>
+      </div>
+    </div>
+  </div>
+</body>
+</html>"""
 
     try:
         _resend.Emails.send({
             "from": "FightBracket Pro <support@fightbracketpro.com>",
             "to": [user_email],
             "subject": f"Re: FightBracket Pro Support Request #{ticket_id}",
-            "text": user_body,
+            "html": html_body,
         })
     except Exception as e:
         print(f"[Support] Resend dispatch failed: {e}")
