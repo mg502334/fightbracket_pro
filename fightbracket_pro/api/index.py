@@ -137,21 +137,16 @@ class SupportTicketRequest(BaseModel):
     email: str
     message: str
 
-import smtplib
-import ssl as _ssl
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
+import resend as _resend
 
 def _send_support_autoresponse(user_email: str, inquiry_type: str, ticket_id: str):
-    """Send an auto-reply confirmation to the user and a notification to support@fightbracketpro.com."""
-    smtp_host = os.environ.get("SMTP_HOST", "smtp.gmail.com")
-    smtp_port = int(os.environ.get("SMTP_PORT", "587"))
-    smtp_user = os.environ.get("SMTP_USER", "")
-    smtp_pass = os.environ.get("SMTP_PASS", "")
-
-    if not smtp_user or not smtp_pass:
-        # SMTP not configured — skip silently (ticket already saved to DB)
+    """Send an auto-reply confirmation to the user via Resend."""
+    api_key = os.environ.get("RESEND_API_KEY", "")
+    if not api_key:
+        # Resend not configured — skip silently (ticket still accepted)
         return
+
+    _resend.api_key = api_key
 
     is_privacy = inquiry_type == "privacy"
     response_window = "7 business days" if is_privacy else "24–48 hours"
@@ -184,20 +179,14 @@ support@fightbracketpro.com
 """
 
     try:
-        msg = MIMEMultipart("alternative")
-        msg["Subject"] = f"Re: FightBracket Pro Support Request #{ticket_id}"
-        msg["From"] = f"FightBracket Pro <{smtp_user}>"
-        msg["To"] = user_email
-        msg.attach(MIMEText(user_body, "plain"))
-
-        ctx = _ssl.create_default_context()
-        with smtplib.SMTP(smtp_host, smtp_port) as server:
-            server.ehlo()
-            server.starttls(context=ctx)
-            server.login(smtp_user, smtp_pass)
-            server.sendmail(smtp_user, user_email, msg.as_string())
+        _resend.Emails.send({
+            "from": "FightBracket Pro <support@fightbracketpro.com>",
+            "to": [user_email],
+            "subject": f"Re: FightBracket Pro Support Request #{ticket_id}",
+            "text": user_body,
+        })
     except Exception as e:
-        print(f"[Support] Auto-reply send failed: {e}")
+        print(f"[Support] Resend dispatch failed: {e}")
 
 
 @app.post("/api/support")
