@@ -13,6 +13,7 @@ import urllib.parse
 from datetime import datetime, timezone
 import random
 import string
+import re
 
 # Load dotenv if running locally
 try:
@@ -65,6 +66,22 @@ def get_current_user_id(authorization: str = Header(None)):
             raise HTTPException(status_code=401, detail=f"Invalid token: {e}")
 
 app = FastAPI()
+
+from fastapi.responses import JSONResponse
+import traceback
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    print(f"Unhandled Exception on {request.url.path}: {exc}")
+    traceback.print_exc()
+    return JSONResponse(
+        status_code=500,
+        content={
+            "detail": "A server error occurred.",
+            "error_message": str(exc),
+            "path": request.url.path
+        }
+    )
 
 # Configure CORS
 app.add_middleware(
@@ -264,7 +281,7 @@ def _send_support_autoresponse(user_email: str, inquiry_type: str, ticket_id: st
         
         <p style="margin-top: 30px;">
           Best regards,<br>
-          <strong style="color: #00E5FF;">FightBracket Pro Systems</strong>
+          <strong style="color: #00E5FF;">FightBracket Pro Support Team</strong>
         </p>
       </div>
       <div class="footer">
@@ -412,12 +429,12 @@ def get_or_create_user(db: Session, user_id: str) -> DBUser:
                 unique_id = f"FB-{unique_part}-{unique_part2}"
                 if not db.query(DBUser).filter(DBUser.unique_id == unique_id).first():
                     break
-            user.unique_id = unique_id
+            user.unique_id = unique_id  # type: ignore
             if not identifier:
                 identifier = DBUserIdentifier(id=user_id, unique_id=unique_id)
                 db.add(identifier)
             else:
-                identifier.unique_id = unique_id
+                identifier.unique_id = unique_id  # type: ignore
         db.commit()
         db.refresh(user)
 
@@ -532,14 +549,14 @@ def update_user_profile(req: ProfileUpdateRequest, user_id: str = Depends(get_cu
             enc_token = encrypt_text(token_clean)
             integration = db.query(DBUserIntegration).filter(DBUserIntegration.user_id == user_id, DBUserIntegration.integration_type == 'startgg').first()
             if integration:
-                integration.encrypted_api_key = enc_token
+                integration.encrypted_api_key = enc_token # type: ignore
             else:
                 db.add(DBUserIntegration(user_id=user_id, integration_type='startgg', encrypted_api_key=enc_token))
-            user.startgg_token = "" # Clear from public table
+            user.startgg_token = "" # type: ignore # Clear from public table
         elif token_clean == "":
             # Delete integration
             db.query(DBUserIntegration).filter(DBUserIntegration.user_id == user_id, DBUserIntegration.integration_type == 'startgg').delete()
-            user.startgg_token = ""
+            user.startgg_token = "" # type: ignore
 
     if req.tekken_id is not None:
         user.tekken_id = req.tekken_id.strip() # type: ignore
@@ -1739,6 +1756,24 @@ def get_tekken_stats(tekken_id: str):
             }
             break
 
+    # Fetch Glicko-2 ratings from Wavu Wank
+    try:
+        wank_resp = requests.get(
+            f"https://wank.wavu.wiki/player/{tekken_id}",
+            headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"},
+            timeout=3
+        )
+        if wank_resp.ok:
+            html = wank_resp.text
+            mu_match = re.search(r'<div class="mu">.*?(\d+).*?</div>', html, re.IGNORECASE)
+            sigma_match = re.search(r'<div class="sigma">.*?(\d+).*?</div>', html, re.IGNORECASE)
+            if mu_match:
+                profile["glicko_mu"] = mu_match.group(1).strip()
+            if sigma_match:
+                profile["glicko_sigma"] = sigma_match.group(1).strip()
+    except Exception as e:
+        print(f"Warning: Failed to fetch from Wavu Wank: {e}")
+
     # Compute win/loss from the battles (winner field: 1 = p1 wins, 2 = p2 wins)
     wins = 0
     losses = 0
@@ -1916,7 +1951,7 @@ def proxy_startgg(req: StartggProxyRequest, user_id: str = Depends(get_current_u
     
     token = None
     if integration:
-        token = decrypt_text(integration.encrypted_api_key)
+        token = decrypt_text(integration.encrypted_api_key)  # type: ignore
     else:
         user = db.query(DBUser).filter(DBUser.id == user_id).first()
         if user and getattr(user, 'startgg_token', None):

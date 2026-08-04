@@ -1465,12 +1465,13 @@ export default function App() {
             FIGHTBRACKET PRO
           </div>
           
-          <div className="flex items-center justify-center gap-4 text-[9px] uppercase tracking-widest text-gray-500 mt-1 flex-wrap">
+          <div className="flex items-center justify-center gap-8 text-[9px] uppercase tracking-widest text-gray-500 mt-1 flex-wrap">
             {([
               { id: 'help', label: 'Help' },
               { id: 'privacy', label: 'Privacy' },
               { id: 'terms', label: 'Terms' },
               { id: 'disclaimer', label: 'Disclaimer' },
+              { id: 'resources', label: 'Resources' },
             ] as { id: StaticPageId; label: string }[]).map(link => (
               <button
                 key={link.id}

@@ -25,9 +25,14 @@ interface TekkenProfile {
   rank_name?: string;
   rankPoints?: number;
   rank_points?: number;
+  tekkenPower?: number;
   winRate?: number;
   totalMatches?: number;
   total_matches?: number;
+  region?: string;
+  mainChar?: string;
+  glicko_mu?: string | number;
+  glicko_sigma?: string | number;
 }
 
 interface TekkenDerived {
@@ -55,11 +60,21 @@ interface TekkenStatsPanelProps {
   tekkenId: string | null | undefined;
   /** If true, shows a minimal/compact layout (e.g. inside a modal) */
   compact?: boolean;
+  steamId?: string | null;
+  psnId?: string | null;
+  xboxId?: string | null;
+  gamerTag?: string | null;
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Helpers
 // ──────────────────────────────────────────────────────────────────────────────
+
+function getCharacterPortraitUrl(charName: string | undefined): string | null {
+  if (!charName) return null;
+  const formatted = charName.toLowerCase().replace(/\s+/g, '-');
+  return `https://raw.githubusercontent.com/pbruvoll/tekkendocs/main/app/images/t8/avatars/${formatted}-brand-256.webp`;
+}
 
 function getRankColor(rankName: string | undefined): string {
   if (!rankName) return '#00E5FF';
@@ -74,6 +89,15 @@ function getRankColor(rankName: string | undefined): string {
   if (r.includes('orange')) return '#F97316';
   if (r.includes('red')) return '#EF4444';
   return '#00E5FF';
+}
+
+function getRankImageUrl(rankName: string | undefined): string | null {
+  if (!rankName || rankName.toLowerCase() === 'unranked') return null;
+  const formatted = rankName
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join('');
+  return `https://raw.githubusercontent.com/ewgf-gg/ewgfgg-frontend/main/static/rank-icons/${formatted}T8.webp`;
 }
 
 function formatTimestamp(ts: number | string | undefined): string {
@@ -186,7 +210,7 @@ function MatchRow({ match, index }: { match: TekkenMatch; index: number }) {
 // Main component
 // ──────────────────────────────────────────────────────────────────────────────
 
-export function TekkenStatsPanel({ tekkenId, compact = false }: TekkenStatsPanelProps) {
+export function TekkenStatsPanel({ tekkenId, compact = false, steamId, psnId, xboxId, gamerTag }: TekkenStatsPanelProps) {
   const [data, setData] = useState<TekkenStatsData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -253,6 +277,9 @@ export function TekkenStatsPanel({ tekkenId, compact = false }: TekkenStatsPanel
   const rankPoints = data?.profile ? getRankPoints(data.profile) : null;
   const playerName = data?.profile ? getPlayerName(data.profile) : null;
   const rankColor = getRankColor(rankName ?? undefined);
+  const rankImageUrl = getRankImageUrl(rankName ?? undefined);
+  const mainCharName = data?.profile?.mainChar || data?.derived?.top_characters?.[0]?.name;
+  const charPortrait = getCharacterPortraitUrl(mainCharName);
   
   const derived = data?.derived || { wins: 0, losses: 0, win_rate: 0, top_characters: [] };
   const meta = data?.meta || {};
@@ -307,57 +334,122 @@ export function TekkenStatsPanel({ tekkenId, compact = false }: TekkenStatsPanel
 
       {data && (
         <>
-          {/* ── Rank Card ── */}
+          {/* ── 3-Column Profile Layout ── */}
           <motion.div
             initial={{ opacity: 0, y: 4 }}
             animate={{ opacity: 1, y: 0 }}
-            className="relative rounded-xl overflow-hidden p-4 border"
+            className="relative rounded-xl overflow-hidden p-4 border grid grid-cols-1 md:grid-cols-3 gap-6 items-center"
             style={{
               borderColor: `${rankColor}30`,
-              background: `linear-gradient(135deg, ${rankColor}12 0%, rgba(5,10,20,0.9) 100%)`,
+              background: `linear-gradient(135deg, ${rankColor}08 0%, rgba(5,10,20,0.95) 100%)`,
             }}
           >
             {/* Glow */}
             <div
-              className="absolute inset-0 opacity-20 pointer-events-none"
+              className="absolute inset-0 opacity-10 pointer-events-none"
               style={{
                 background: `radial-gradient(ellipse at top left, ${rankColor}40, transparent 70%)`,
               }}
             />
-            <div className="relative flex items-center justify-between gap-3">
-              <div>
-                {playerName && (
-                  <div className="text-[10px] font-mono text-gray-500 mb-0.5 tracking-wider">
-                    {tekkenId}
-                  </div>
+
+            {/* Column 1: Character Portrait & Stats */}
+            <div className="relative flex flex-col gap-3 items-center md:items-start z-10 w-full">
+              <div className="w-full max-w-[200px] aspect-[4/3] rounded-lg overflow-hidden bg-[#0A101C] border border-white/5 relative flex items-center justify-center">
+                {charPortrait ? (
+                  <img src={charPortrait} alt={mainCharName} className="w-full h-full object-cover opacity-90 drop-shadow-xl" />
+                ) : (
+                  <span className="font-mono text-gray-600 text-xs">No Character Info</span>
                 )}
-                <div
-                  className="text-xl font-bold font-rajdhani tracking-widest"
-                  style={{ color: rankColor }}
-                >
-                  {rankName || 'Unranked'}
+                {/* Gradient overlay at the bottom of the portrait */}
+                <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-[#050A14] to-transparent" />
+                <div className="absolute bottom-2 left-0 w-full text-center">
+                  <span className="text-[10px] font-bold tracking-widest text-white/80 drop-shadow-md">
+                    {mainCharName?.toUpperCase() || 'UNKNOWN'}
+                  </span>
                 </div>
-                {rankPoints !== null && (
-                  <div className="text-[11px] font-mono text-gray-400 mt-0.5">
-                    {rankPoints.toLocaleString()} RP
-                  </div>
-                )}
               </div>
-              <div
-                className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0"
-                style={{ background: `${rankColor}15`, border: `1px solid ${rankColor}30` }}
-              >
-                <Trophy size={22} style={{ color: rankColor }} />
+              <div className="w-full max-w-[200px]">
+                <WinRateBar winRate={derived.win_rate || 0} wins={derived.wins || 0} losses={derived.losses || 0} />
               </div>
             </div>
-          </motion.div>
 
-          {/* ── Win Rate ── */}
-          <WinRateBar
-            winRate={derived.win_rate || 0}
-            wins={derived.wins || 0}
-            losses={derived.losses || 0}
-          />
+            {/* Column 2: Player Info */}
+            <div className="flex flex-col items-center justify-center border-y md:border-y-0 md:border-x border-white/5 py-5 md:py-0 px-2 gap-3 text-center relative z-10 w-full h-full">
+              <h2 className="text-2xl font-bold text-white tracking-widest font-rajdhani">{playerName || gamerTag || tekkenId}</h2>
+              
+              <div className="flex flex-col items-center gap-1.5 mt-1">
+                {tekkenId && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-mono text-gray-500 w-16 text-right">TEKKEN ID</span>
+                    <span className="text-xs font-mono text-white/80 bg-white/5 px-2 py-0.5 rounded">{tekkenId}</span>
+                  </div>
+                )}
+                {steamId && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-mono text-gray-500 w-16 text-right">STEAM</span>
+                    <span className="text-xs font-mono text-white/80 bg-white/5 px-2 py-0.5 rounded">{steamId}</span>
+                  </div>
+                )}
+                {psnId && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-mono text-gray-500 w-16 text-right">PSN</span>
+                    <span className="text-xs font-mono text-white/80 bg-white/5 px-2 py-0.5 rounded">{psnId}</span>
+                  </div>
+                )}
+                {xboxId && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-mono text-gray-500 w-16 text-right">XBOX</span>
+                    <span className="text-xs font-mono text-white/80 bg-white/5 px-2 py-0.5 rounded">{xboxId}</span>
+                  </div>
+                )}
+                {data?.profile?.glicko_mu && (
+                  <div className="flex items-center gap-2 mt-2 pt-2 border-t border-white/10 w-full justify-center">
+                    <span className="text-[10px] font-mono text-[#00E5FF] w-16 text-right">GLICKO-2</span>
+                    <span className="text-xs font-bold font-mono text-white bg-[#00E5FF]/10 px-2 py-0.5 rounded border border-[#00E5FF]/20 shadow-[0_0_10px_rgba(0,229,255,0.1)]">
+                      {data.profile.glicko_mu} <span className="text-gray-500 font-normal">±{data.profile.glicko_sigma}</span>
+                    </span>
+                  </div>
+                )}
+              </div>
+              
+              {/* Region */}
+              {data.profile?.region && (
+                <div className="mt-2 flex items-center justify-center gap-1.5 px-3 py-1 rounded-full bg-white/5 border border-white/5 text-xs text-gray-400">
+                  <span className="w-2 h-2 rounded-full" style={{ background: '#00E5FF', boxShadow: '0 0 8px #00E5FF' }}></span>
+                  {data.profile.region}
+                </div>
+              )}
+            </div>
+
+            {/* Column 3: Rank & Prowess */}
+            <div className="flex flex-col items-center justify-center gap-2 relative z-10 w-full py-2">
+              <div
+                className="w-24 h-24 sm:w-32 sm:h-32 rounded-xl flex items-center justify-center shrink-0 overflow-hidden relative"
+              >
+                {rankImageUrl ? (
+                  <img src={rankImageUrl} alt={rankName || 'Rank'} className="w-full h-full object-contain p-2 drop-shadow-[0_0_12px_rgba(0,0,0,0.6)]" />
+                ) : (
+                  <Trophy size={40} style={{ color: rankColor }} />
+                )}
+              </div>
+              
+              <div className="text-center mt-2">
+                <div className="text-[10px] font-mono text-gray-400 uppercase tracking-widest mb-1">
+                  All Time Highest Rank
+                </div>
+                <div className="text-lg sm:text-xl font-bold font-rajdhani tracking-widest" style={{ color: rankColor }}>
+                  {rankName || 'Unranked'}
+                </div>
+              </div>
+
+              {rankPoints !== null && (
+                <div className="mt-3 flex items-center gap-2 text-sm font-mono text-white/90 bg-[#050A14] border border-white/10 px-4 py-1.5 rounded-lg shadow-lg">
+                  <span className="text-[10px] text-gray-500 tracking-widest">PROWESS</span>
+                  <span className="font-bold">{rankPoints.toLocaleString()}</span>
+                </div>
+              )}
+            </div>
+          </motion.div>
 
           {/* ── Top Characters ── */}
           {derived.top_characters && derived.top_characters.length > 0 && (

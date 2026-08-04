@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Shield, Lock, Globe, UserPlus, MessageSquare, Check, X, Trophy, ExternalLink, Sparkles, AlertTriangle } from 'lucide-react';
+import { Shield, Lock, Globe, UserPlus, MessageSquare, Check, X, Trophy, ExternalLink, Sparkles, AlertTriangle, Swords, ChevronDown, ChevronUp } from 'lucide-react';
 import { TekkenStatsPanel } from './TekkenStatsPanel';
 import { SteamStatsPanel } from './SteamStatsPanel';
+import { GAME_COVERS } from '../data/gameCovers';
 
 interface UserProfileData {
   id: string;
@@ -47,6 +48,7 @@ export function UserProfileModal({ isOpen, onClose, targetUserId, supabaseToken,
   const [profile, setProfile] = useState<UserProfileData | null>(null);
   const [loading, setLoading] = useState(false);
   const [friendActionMsg, setFriendActionMsg] = useState<string | null>(null);
+  const [gamesListExpanded, setGamesListExpanded] = useState(false);
 
   const [showReportModal, setShowReportModal] = useState(false);
   const [reportReason, setReportReason] = useState('Inappropriate Behavior');
@@ -232,17 +234,56 @@ export function UserProfileModal({ isOpen, onClose, targetUserId, supabaseToken,
                     const parsed = JSON.parse(profile.games_data);
                     if (!Array.isArray(parsed) || parsed.length === 0) return null;
                     return (
-                      <div className="p-4 rounded-xl bg-[#050A14] border border-[#FF006E]/30 space-y-3">
-                        <div className="text-xs font-mono font-bold text-[#FF006E] tracking-widest flex items-center gap-2">
-                          MAIN GAMES & CHARACTERS
+                      <div className="space-y-4">
+                        {/* Top 3 Games Preview */}
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                          {parsed.slice(0, 3).map((item: any) => {
+                            const coverUrl = GAME_COVERS[item.game];
+                            return (
+                              <div 
+                                key={item.game} 
+                                title={`${item.game}${item.main ? ` - ${item.main}` : ''}`}
+                                className="relative aspect-[2/3] rounded-xl overflow-hidden border border-white/10 group shadow-lg flex flex-col justify-end bg-[#050A14]"
+                              >
+                                {/* Background Cover */}
+                                {coverUrl ? (
+                                  <img src={coverUrl} alt={item.game} className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+                                ) : (
+                                  <div className="absolute inset-0 w-full h-full bg-gradient-to-br from-indigo-900 to-[#050A14] flex flex-col items-center justify-center p-4 text-center">
+                                    <Swords size={24} className="text-white/20 mb-2" />
+                                    <span className="font-bold font-rajdhani text-lg text-white/40 leading-tight">{item.game}</span>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
                         </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                          {parsed.map((item: any, idx: number) => (
-                            <div key={idx} className="p-2.5 rounded bg-black/40 border border-white/10 flex items-center justify-between text-xs font-mono">
-                              <span className="font-bold text-cyan-400">{item.game}</span>
-                              <span className="text-white bg-white/10 px-2 py-0.5 rounded text-[11px]">{item.main}</span>
-                            </div>
-                          ))}
+
+                        {/* Text List of All Games with Expansion */}
+                        <div className="bg-black/40 border border-[#FF006E]/30 rounded-lg p-3">
+                          <div className="text-[10px] font-mono text-[#FF006E] mb-2 flex justify-between items-center font-bold tracking-wider">
+                            <span>MAIN GAMES & CHARACTERS ({parsed.length})</span>
+                            {parsed.length > 3 && (
+                              <button 
+                                onClick={() => setGamesListExpanded(!gamesListExpanded)}
+                                className="text-white hover:text-gray-300 flex items-center gap-1"
+                              >
+                                {gamesListExpanded ? (
+                                  <>COLLAPSE <ChevronUp size={12} /></>
+                                ) : (
+                                  <>VIEW ALL <ChevronDown size={12} /></>
+                                )}
+                              </button>
+                            )}
+                          </div>
+                          <div className="space-y-1.5">
+                            {(gamesListExpanded ? parsed : parsed.slice(0, 3)).map((item: any, idx: number) => (
+                              <div key={idx} className="flex justify-between items-center text-xs font-mono border-b border-white/5 pb-1.5 last:border-0 last:pb-0">
+                                <span className="text-white font-bold">{item.game}</span>
+                                {item.main && <span className="text-white text-[10px] bg-white/10 px-2 py-0.5 rounded">{item.main}</span>}
+                              </div>
+                            ))}
+                          </div>
                         </div>
                       </div>
                     );
@@ -359,8 +400,12 @@ export function UserProfileModal({ isOpen, onClose, targetUserId, supabaseToken,
                 )}
 
                 {/* ── Tekken 8 Live Stats Panel ── */}
-                <TekkenStatsPanel tekkenId={profile?.tekken_id} compact />
-
+                <TekkenStatsPanel 
+                  tekkenId={profile?.tekken_id} 
+                  steamId={profile?.steam_id}
+                  gamerTag={profile?.gamer_tag}
+                  compact 
+                />
                 {/* ── Steam Live Gamer Card ── */}
                 <SteamStatsPanel steamId={profile?.steam_id} compact />
 

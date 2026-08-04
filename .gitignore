@@ -1,7 +1,12 @@
 # Node
 node_modules/
 dist/
+build/
+
+# Environments
 .env
+.env.*
+!.env.example
 
 # Python
 __pycache__/
@@ -10,9 +15,12 @@ __pycache__/
 .venv/
 venv/
 env/
-.env
 
+# Misc
 .vercel
-.env*
 *.key
 fightbracketpro.com.txt
+
+# Security and Scripts
+supabase_rls_policies.sql
+scripts/*.py

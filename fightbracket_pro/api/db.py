@@ -134,15 +134,23 @@ def _get_engine():
             return None, None
     # Always run create_all so new tables are created even if engine was already cached
     try:
-        from sqlalchemy import text
-        with _engine.begin() as conn:
-            conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS startgg_token VARCHAR;"))
-            conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS tekken_id VARCHAR;"))
-            conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS steam_id VARCHAR;"))
-            conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS twitch_id VARCHAR;"))
-            conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS twitch_url VARCHAR;"))
-            conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS games_data TEXT;"))
+        from sqlalchemy import inspect, text
         Base.metadata.create_all(bind=_engine)
+        
+        # Automatic column migration safety net
+        inspector = inspect(_engine)
+        with _engine.begin() as conn:
+            for table_name, table in Base.metadata.tables.items():
+                if inspector.has_table(table_name):
+                    existing_columns = {col['name'] for col in inspector.get_columns(table_name)}
+                    for column in table.columns:
+                        if column.name not in existing_columns:
+                            col_type = str(column.type.compile(_engine.dialect))
+                            print(f"Safety net: Adding missing column {table_name}.{column.name} ({col_type})")
+                            try:
+                                conn.execute(text(f"ALTER TABLE {table_name} ADD COLUMN IF NOT EXISTS {column.name} {col_type};"))
+                            except Exception as add_col_err:
+                                print(f"Warning: Failed to auto-add column {column.name}: {add_col_err}")
     except Exception as e:
         print(f"DB schema sync warning: {e}")
     return _engine, _SessionLocal

@@ -2,7 +2,7 @@ import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, HelpCircle, Shield, AlertTriangle, FileText, BookOpen } from 'lucide-react';
 
-export type StaticPageId = 'help' | 'privacy' | 'disclaimer' | 'terms';
+export type StaticPageId = 'help' | 'privacy' | 'disclaimer' | 'terms' | 'resources';
 
 interface StaticPageModalProps {
   pageId: StaticPageId | null;
@@ -138,6 +138,23 @@ To the maximum extent permitted by law, FightBracket Pro and its developers shal
 
 ## 5. ACCOUNT INDEMNITY & AUTHENTICATION SHARED OAUTH
 If you register for our services using third-party single-sign-on (OAuth) systems (including Google, Discord, Twitch, or Spotify), you are solely responsible for securing your authorization tokens. We possess no structural ability to restore an account if your primary social channel credentials are leaked or compromised externally.
+`
+  },
+  resources: {
+    title: "RESOURCES & CREDITS",
+    icon: BookOpen,
+    content: `
+# RESOURCES & CREDITS
+Thank you to the amazing community resources that help make FightBracket Pro possible!
+
+## Frame Data & Character Assets
+* **TekkenDocs**: Special thanks to TekkenDocs (tekkendocs.com) and pbruvoll for the high-quality character portraits and comprehensive frame data resources.
+* **EWGF.gg**: Built using the EWGF.gg API and frontend assets (ewgf.gg) for live match tracking and dynamic rank badges.
+
+## Code & Libraries
+* **Lucide Icons**: Beautiful open-source icons for our UI.
+* **Framer Motion**: Smooth interface animations.
+* **Start.gg API**: For seamless tournament data integration.
 `
   }
 };

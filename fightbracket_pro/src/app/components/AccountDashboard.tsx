@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
-import { Trash2, Save, Download, RefreshCw, Key, LogOut, ArrowLeft, Globe, ExternalLink, Settings, X, AlertTriangle, User, Shield, Swords, Sparkles, Cloud, Users, Eye, EyeOff, ChevronRight, LayoutDashboard, Menu, Search, Bell, Trophy } from 'lucide-react';
+import { Trash2, Save, Download, RefreshCw, Key, LogOut, ArrowLeft, Globe, ExternalLink, Settings, X, AlertTriangle, User, Shield, Swords, Sparkles, Cloud, Users, Eye, EyeOff, ChevronRight, ChevronDown, ChevronUp, LayoutDashboard, Menu, Search, Bell, Trophy } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
 import { TekkenStatsPanel } from './TekkenStatsPanel';
+import { GAME_COVERS } from '../data/gameCovers';
 import { SteamStatsPanel } from './SteamStatsPanel';
 import { AccountSettingsPanel } from './AccountSettingsPanel';
 
@@ -29,29 +30,6 @@ const safeResetTurnstile = (): void => {
       // silently ignore reset errors
     }
   }
-};
-
-const GAME_COVERS: Record<string, string> = {
-  'Tekken 8': 'https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1778820/library_600x900_2x.jpg',
-  'Tekken 7': 'https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/389730/library_600x900_2x.jpg',
-  'Street Fighter 6': 'https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1364780/library_600x900_2x.jpg',
-  'Street Fighter V': 'https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/310950/library_600x900_2x.jpg',
-  'Street Fighter IV': 'https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/45760/library_600x900_2x.jpg',
-  'Guilty Gear Strive': 'https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1384160/library_600x900_2x.jpg',
-  'Guilty Gear Xrd': 'https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/520440/library_600x900_2x.jpg',
-  'Mortal Kombat 1': 'https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1971870/library_600x900_2x.jpg',
-  'Mortal Kombat 11': 'https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/976310/library_600x900_2x.jpg',
-  'DBFZ': 'https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/678950/library_600x900_2x.jpg',
-  'GBVSR': 'https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2157560/library_600x900_2x.jpg',
-  'UNI2': 'https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2076010/library_600x900_2x.jpg',
-  'KOF XV': 'https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1498590/library_600x900_2x.jpg',
-  'Marvel vs. Capcom 3': 'https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/357190/library_600x900_2x.jpg',
-  'BlazBlue: Central Fiction': 'https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/586140/library_600x900_2x.jpg',
-  'Soul Calibur VI': 'https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/544810/library_600x900_2x.jpg',
-  'Smash Ultimate': 'https://images.igdb.com/igdb/image/upload/t_cover_big/co1xrs.jpg',
-  'Smash Melee': 'https://images.igdb.com/igdb/image/upload/t_cover_big/co2l1b.jpg',
-  '2XKO': 'https://images.igdb.com/igdb/image/upload/t_cover_big/co3812.jpg',
-  'Fatal Fury: City of the Wolves': 'https://images.igdb.com/igdb/image/upload/t_cover_big/co811o.jpg',
 };
 
 interface AccountDashboardProps {
@@ -106,6 +84,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
 
   // Main games & characters state
   const [gamesList, setGamesList] = useState<{ game: string; main: string }[]>([]);
+  const [gamesListExpanded, setGamesListExpanded] = useState(false);
   const [newGameName, setNewGameName] = useState('Tekken 8');
   const [newMainChar, setNewMainChar] = useState('');
 
@@ -151,12 +130,14 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
 
   useEffect(() => {
     let checkInterval: any;
+    let widgetId: any;
+
     const renderWidget = () => {
       if (!user && window.turnstile) {
         const container = document.getElementById('turnstile-widget');
         if (container && container.innerHTML === '') {
           try {
-            window.turnstile.render(container, {
+            widgetId = window.turnstile.render(container, {
               sitekey: '0x4AAAAAAEBO-v0nV0L1u4Sv',
               action: 'turnstile-spin-v2',
               theme: 'dark'
@@ -179,7 +160,12 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
       }
     }
 
-    return () => clearInterval(checkInterval);
+    return () => {
+      clearInterval(checkInterval);
+      if (widgetId && window.turnstile) {
+        (window.turnstile as any).remove(widgetId);
+      }
+    };
   }, [user, isLogin]);
 
   useEffect(() => {
@@ -897,6 +883,8 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
                   EMAIL ADDRESS
                 </label>
                 <input
+                  id="email"
+                  name="email"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -912,6 +900,8 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
                 </label>
                 <div className="relative">
                   <input
+                    id="password"
+                    name="password"
                     type={showPassword ? 'text' : 'password'}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
@@ -948,6 +938,8 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
                   </label>
                   <div className="relative">
                     <input
+                      id="confirmPassword"
+                      name="confirmPassword"
                       type={showConfirmPassword ? 'text' : 'password'}
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
@@ -982,6 +974,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
                   <input
                     type="checkbox"
                     id="tos-consent"
+                    name="tos-consent"
                     checked={agreedToTerms}
                     onChange={(e) => setAgreedToTerms(e.target.checked)}
                     className="mt-1 shrink-0 accent-[#00E5FF] w-4 h-4 rounded-sm border-white/20 bg-[#111]"
@@ -1357,7 +1350,11 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
           )}
         </div>
         <div className="p-6">
-          <TekkenStatsPanel tekkenId={userProfile?.tekken_id} />
+          <TekkenStatsPanel 
+            tekkenId={userProfile?.tekken_id} 
+            steamId={userProfile?.steam_id}
+            gamerTag={userProfile?.gamer_tag}
+          />
         </div>
       </div>
 
@@ -1459,46 +1456,66 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
                 No main games added yet. Add your main characters above to display them on your profile!
               </div>
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                {gamesList.map(item => {
-                  const coverUrl = GAME_COVERS[item.game];
-                  return (
-                    <div 
-                      key={item.game} 
-                      className="relative aspect-[2/3] rounded-xl overflow-hidden border border-white/10 group shadow-lg flex flex-col justify-end bg-[#050A14]"
-                    >
-                      {/* Background Cover */}
-                      {coverUrl ? (
-                        <img src={coverUrl} alt={item.game} className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
-                      ) : (
-                        <div className="absolute inset-0 w-full h-full bg-gradient-to-br from-indigo-900 to-[#050A14] flex flex-col items-center justify-center p-4 text-center">
-                          <Swords size={24} className="text-white/20 mb-2" />
-                          <span className="font-bold font-rajdhani text-lg text-white/40 leading-tight">{item.game}</span>
-                        </div>
-                      )}
-                      
-                      {/* Gradient Overlay for Text */}
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent opacity-90 transition-opacity duration-300 group-hover:opacity-100" />
-                      
-                      {/* Text Content */}
-                      <div className="relative z-10 p-3 w-full transform transition-transform duration-300 group-hover:translate-y-[-2px]">
-                        <div className="font-bold text-[10px] sm:text-xs font-mono text-[#00E5FF] line-clamp-1 truncate drop-shadow-md">{item.game}</div>
-                        {item.main && (
-                          <div className="text-sm sm:text-base font-bold font-rajdhani text-white mt-0.5 line-clamp-1 truncate drop-shadow-md">{item.main}</div>
-                        )}
-                      </div>
-                      
-                      {/* Remove Button */}
-                      <button
-                        onClick={() => handleRemoveGameMain(item.game)}
-                        className="absolute top-2 right-2 z-20 text-white/50 bg-black/50 p-1.5 rounded-full hover:text-red-400 hover:bg-black/80 opacity-0 group-hover:opacity-100 transition-all backdrop-blur-sm shadow-md"
-                        title="Remove"
+              <div className="space-y-4">
+                {/* Top 3 Games Preview */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                  {gamesList.slice(0, 3).map(item => {
+                    const coverUrl = GAME_COVERS[item.game];
+                    return (
+                      <div 
+                        key={item.game} 
+                        title={`${item.game}${item.main ? ` - ${item.main}` : ''}`}
+                        className="relative aspect-[2/3] rounded-xl overflow-hidden border border-white/10 group shadow-lg flex flex-col justify-end bg-[#050A14]"
                       >
-                        <Trash2 size={12} />
+                        {/* Background Cover */}
+                        {coverUrl ? (
+                          <img src={coverUrl} alt={item.game} className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+                        ) : (
+                          <div className="absolute inset-0 w-full h-full bg-gradient-to-br from-indigo-900 to-[#050A14] flex flex-col items-center justify-center p-4 text-center">
+                            <Swords size={24} className="text-white/20 mb-2" />
+                            <span className="font-bold font-rajdhani text-lg text-white/40 leading-tight">{item.game}</span>
+                          </div>
+                        )}
+                        
+                        {/* Remove Button */}
+                        <button
+                          onClick={() => handleRemoveGameMain(item.game)}
+                          className="absolute top-2 right-2 z-20 text-white/50 bg-black/50 p-1.5 rounded-full hover:text-red-400 hover:bg-black/80 opacity-0 group-hover:opacity-100 transition-all backdrop-blur-sm shadow-md"
+                          title="Remove"
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Text List of All Games with Expansion */}
+                <div className="bg-black/40 border border-white/5 rounded-lg p-3">
+                  <div className="text-[10px] font-mono text-gray-400 mb-2 flex justify-between items-center font-bold tracking-wider">
+                    <span>ALL GAMES ({gamesList.length})</span>
+                    {gamesList.length > 3 && (
+                      <button 
+                        onClick={() => setGamesListExpanded(!gamesListExpanded)}
+                        className="text-[#00E5FF] hover:underline flex items-center gap-1"
+                      >
+                        {gamesListExpanded ? (
+                          <>COLLAPSE <ChevronUp size={12} /></>
+                        ) : (
+                          <>VIEW ALL <ChevronDown size={12} /></>
+                        )}
                       </button>
-                    </div>
-                  );
-                })}
+                    )}
+                  </div>
+                  <div className="space-y-1.5">
+                    {(gamesListExpanded ? gamesList : gamesList.slice(0, 3)).map((item, idx) => (
+                      <div key={idx} className="flex justify-between items-center text-xs font-mono border-b border-white/5 pb-1.5 last:border-0 last:pb-0">
+                        <span className="text-white font-bold">{item.game}</span>
+                        {item.main && <span className="text-white text-[10px] bg-white/10 px-2 py-0.5 rounded">{item.main}</span>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
             )}
           </div>
@@ -1562,13 +1579,65 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
               </div>
             )}
 
+            {/* Display Already Imported Events */}
+            {(() => {
+              if (!userProfile?.startgg_data) return null;
+              try {
+                const startggData = JSON.parse(userProfile.startgg_data);
+                if (!startggData?.events || startggData.events.length === 0) return null;
+                return (
+                  <div className="mb-6 space-y-1.5">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-[10px] font-mono px-2.5 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-400">
+                        {startggData.events.length} imported event{startggData.events.length !== 1 ? 's' : ''} 
+                      </span>
+                    </div>
+                    {startggData.events.slice(0, 5).map((ev: any, i: number) => {
+                      const place = Number(ev.placement);
+                      const medalColor =
+                        place === 1 ? '#FFD700' :
+                        place === 2 ? '#C0C0C0' :
+                        place === 3 ? '#CD7F32' :
+                        place <= 8  ? '#00E5FF' : '#6B7280';
+                      const medalBg =
+                        place === 1 ? 'rgba(255,215,0,0.1)' :
+                        place === 2 ? 'rgba(192,192,192,0.08)' :
+                        place === 3 ? 'rgba(205,127,50,0.1)' :
+                        place <= 8  ? 'rgba(0,229,255,0.08)' : 'rgba(255,255,255,0.04)';
+
+                      return (
+                        <div
+                          key={i}
+                          className="flex items-center justify-between px-3 py-2 rounded-lg border border-white/5 hover:border-white/10 transition-colors"
+                          style={{ background: medalBg }}
+                        >
+                          <div className="min-w-0 pr-2">
+                            <div className="font-bold text-xs font-rajdhani text-white truncate">{ev.event_name}</div>
+                            <div className="text-[10px] font-mono text-gray-500 truncate">{ev.tournament_name}</div>
+                          </div>
+                          <div
+                            className="text-xs font-mono font-bold px-2.5 py-1 rounded shrink-0"
+                            style={{ color: medalColor, background: `${medalColor}15`, border: `1px solid ${medalColor}30` }}
+                          >
+                            {place === 1 ? '🥇' : place === 2 ? '🥈' : place === 3 ? '🥉' : `#${ev.placement}`}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              } catch {
+                return null;
+              }
+            })()}
+
             <button
               onClick={fetchStartggHosted}
               disabled={fetchingStartgg || !startggToken}
               className="w-full flex items-center justify-center gap-2 py-3 bg-[#00E5FF] hover:bg-[#00B3CC] disabled:opacity-50 text-[#050A14] font-bold rounded-lg transition-colors font-rajdhani tracking-widest mb-6"
             >
               <RefreshCw size={16} className={fetchingStartgg ? "animate-spin" : ""} />
-              {fetchingStartgg ? 'FETCHING...' : 'FETCH MY PAST EVENTS'}
+              {fetchingStartgg ? 'FETCHING...' : 'FETCH NEW EVENTS TO IMPORT'}
             </button>
 
             {startggTournaments.length > 0 && (
@@ -1580,9 +1649,10 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
                       <span className="text-xs font-mono bg-white/10 px-2 py-0.5 rounded text-gray-300">State: {t.state === 1 ? 'Published' : 'Draft'}</span>
                       <button
                         onClick={() => onStartggImport(t.slug)}
-                        className="text-xs font-bold font-rajdhani tracking-widest text-[#00E5FF] hover:underline"
+                        className="text-xs font-bold font-rajdhani tracking-widest text-[#FF006E] hover:underline"
+                        title="Import this tournament bracket to run locally"
                       >
-                        IMPORT →
+                        RUN BRACKET →
                       </button>
                     </div>
                   </div>
