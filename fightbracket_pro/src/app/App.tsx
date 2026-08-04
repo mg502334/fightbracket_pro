@@ -702,7 +702,10 @@ export default function App() {
     }
     slug = slug.split('/')[0].split('?')[0].trim();
 
-    const token = localStorage.getItem('startgg_access_token') || localStorage.getItem('fb_startggToken');
+    let token = localStorage.getItem('startgg_access_token') || localStorage.getItem('fb_startggToken');
+    if (token === 'SECURE_HIDDEN') {
+      token = null;
+    }
 
     let tournamentData: any = null;
     try {
@@ -716,9 +719,7 @@ export default function App() {
         if (err.detail) throw new Error(err.detail);
       }
     } catch (e: any) {
-      if (e.message && (e.message.includes('token') || e.message.includes('Token') || e.message.includes('Account settings'))) {
-        throw e;
-      }
+      // Don't throw the token error yet, let it try the authenticated fallback first!
     }
 
     if (!tournamentData) {

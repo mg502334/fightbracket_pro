@@ -191,9 +191,12 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
           fetchLocalHistory(profile.unique_id);
         }
         if (profile?.startgg_slug) setUserStartggInput(profile.startgg_slug);
-        if (profile?.startgg_token) {
+        if (profile?.startgg_token && profile.startgg_token !== 'SECURE_HIDDEN') {
           setStartggToken(profile.startgg_token);
           try { localStorage.setItem('fb_startggToken', profile.startgg_token); } catch { }
+        } else if (profile?.startgg_token === 'SECURE_HIDDEN') {
+          setStartggToken(profile.startgg_token);
+          try { localStorage.removeItem('fb_startggToken'); } catch { }
         }
         if (profile?.tekken_id) setUserTekkenId(profile.tekken_id);
         if (profile?.steam_id) setUserSteamId(profile.steam_id);
@@ -244,7 +247,9 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
   const saveStartggToken = async () => {
     if (!startggToken.trim()) return;
     try {
-      try { localStorage.setItem('fb_startggToken', startggToken.trim()); } catch { }
+      if (startggToken.trim() !== 'SECURE_HIDDEN') {
+        try { localStorage.setItem('fb_startggToken', startggToken.trim()); } catch { }
+      }
       const headers = await getHeaders();
       const res = await fetch('/api/user/profile', {
         method: 'PUT',
