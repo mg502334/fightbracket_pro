@@ -1820,23 +1820,6 @@ function SectionHeader({ title, subtitle, theme }: { title: string; subtitle?: s
       {subtitle && (
         <div className="text-xs opacity-40 mt-0.5" style={{ fontFamily: 'JetBrains Mono, monospace' }}>{subtitle}</div>
       )}
-
-      {/* Global Footer */}
-      <footer className="w-full bg-[#050A14] border-t border-white/5 py-6 px-4 mt-auto z-50">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="text-gray-500 font-mono text-xs">
-            © {new Date().getFullYear()} FightBracket Pro. All rights reserved.
-          </div>
-          <div className="flex items-center gap-6 text-xs font-semibold uppercase tracking-widest font-rajdhani">
-            <button onClick={() => setShowTerms(true)} className="text-gray-400 hover:text-[#00E5FF] transition-colors">
-              Terms of Service
-            </button>
-            <button onClick={() => setShowStaticPage('privacy')} className="text-gray-400 hover:text-[#00E5FF] transition-colors">
-              Privacy Policy
-            </button>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }
