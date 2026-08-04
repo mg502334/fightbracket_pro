@@ -26,6 +26,7 @@ import { FriendsModal } from "./components/FriendsModal";
 import { UserProfileModal } from "./components/UserProfileModal";
 import { UserDirectoryModal } from "./components/UserDirectoryModal";
 import { StaticPageModal, type StaticPageId } from "./components/StaticPageModal";
+import { TermsOfServiceModal } from "./components/TermsOfServiceModal";
 import { NewsPage } from "./components/NewsPage";
 import { PasswordResetModal } from "./components/PasswordResetModal";
 import { Users } from "lucide-react";
@@ -102,6 +103,19 @@ export default function App() {
   const [showDirectoryModal, setShowDirectoryModal] = useState(false);
   const [targetProfileUserId, setTargetProfileUserId] = useState<string | null>(null);
   const [showStaticPage, setShowStaticPage] = useState<StaticPageId | null>(null);
+  const [showTerms, setShowTerms] = useState(false);
+
+  useEffect(() => {
+    const handleOpenTos = () => setShowTerms(true);
+    const handleOpenPrivacy = () => setShowStaticPage('privacy');
+    window.addEventListener('open-tos', handleOpenTos);
+    window.addEventListener('open-privacy', handleOpenPrivacy);
+    return () => {
+      window.removeEventListener('open-tos', handleOpenTos);
+      window.removeEventListener('open-privacy', handleOpenPrivacy);
+    };
+  }, []);
+
   const [showPasswordReset, setShowPasswordReset] = useState(false);
 
   const [activeTournament, setActiveTournament] = useState<{ name: string, location: string, slug?: string, numAttendees?: number } | null>(() => safeParse('fb_tournament', null));
@@ -1402,6 +1416,12 @@ export default function App() {
         }}
       />
 
+            <TermsOfServiceModal
+        isOpen={showTerms}
+        onClose={() => setShowTerms(false)}
+        theme={theme || { id: 'default', displayName: 'FightBracket', shortName: 'FB', primaryColor: '#00E5FF' }}
+      />
+
       <StaticPageModal
         pageId={showStaticPage}
         onClose={() => setShowStaticPage(null)}
@@ -1781,6 +1801,23 @@ function SectionHeader({ title, subtitle, theme }: { title: string; subtitle?: s
       {subtitle && (
         <div className="text-xs opacity-40 mt-0.5" style={{ fontFamily: 'JetBrains Mono, monospace' }}>{subtitle}</div>
       )}
+
+      {/* Global Footer */}
+      <footer className="w-full bg-[#050A14] border-t border-white/5 py-6 px-4 mt-auto z-50">
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="text-gray-500 font-mono text-xs">
+            © {new Date().getFullYear()} FightBracket Pro. All rights reserved.
+          </div>
+          <div className="flex items-center gap-6 text-xs font-semibold uppercase tracking-widest font-rajdhani">
+            <button onClick={() => setShowTerms(true)} className="text-gray-400 hover:text-[#00E5FF] transition-colors">
+              Terms of Service
+            </button>
+            <button onClick={() => setShowStaticPage('privacy')} className="text-gray-400 hover:text-[#00E5FF] transition-colors">
+              Privacy Policy
+            </button>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }

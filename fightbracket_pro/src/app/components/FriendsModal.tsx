@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Users, UserPlus, MessageSquare, X, Check, CheckCheck, Trash2, Send, MailOpen } from 'lucide-react';
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
 interface Friend {
   id: string;
   unique_id: string;
@@ -66,7 +68,7 @@ export function FriendsModal({ isOpen, onClose, theme, currentUserId, supabaseTo
   const fetchFriends = async () => {
     if (!supabaseToken) return;
     try {
-      const res = await fetch('/api/friends', {
+      const res = await fetch(`${API_URL}/api/friends`, {
         headers: { Authorization: `Bearer ${supabaseToken}` }
       });
       if (res.ok) {
@@ -83,7 +85,7 @@ export function FriendsModal({ isOpen, onClose, theme, currentUserId, supabaseTo
   const fetchInbox = async () => {
     if (!supabaseToken) return;
     try {
-      const res = await fetch('/api/messages/inbox', {
+      const res = await fetch(`${API_URL}/api/messages/inbox`, {
         headers: { Authorization: `Bearer ${supabaseToken}` }
       });
       if (res.ok) {
@@ -111,7 +113,7 @@ export function FriendsModal({ isOpen, onClose, theme, currentUserId, supabaseTo
     setLoading(true);
     setStatusMsg(null);
     try {
-      const res = await fetch('/api/friends/request', {
+      const res = await fetch(`${API_URL}/api/friends/request`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -137,7 +139,7 @@ export function FriendsModal({ isOpen, onClose, theme, currentUserId, supabaseTo
   const handleRespond = async (friendshipId: string, action: 'accept' | 'decline') => {
     if (!supabaseToken) return;
     try {
-      const res = await fetch('/api/friends/respond', {
+      const res = await fetch(`${API_URL}/api/friends/respond`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -156,7 +158,7 @@ export function FriendsModal({ isOpen, onClose, theme, currentUserId, supabaseTo
   const handleRemoveFriend = async (friendId: string) => {
     if (!supabaseToken) return;
     try {
-      const res = await fetch(`/api/friends/${friendId}`, {
+      const res = await fetch(`${API_URL}/api/friends/${friendId}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${supabaseToken}` }
       });
@@ -173,7 +175,7 @@ export function FriendsModal({ isOpen, onClose, theme, currentUserId, supabaseTo
     setActiveChatFriend(friend);
     if (!supabaseToken) return;
     try {
-      const res = await fetch(`/api/messages/${friend.id}`, {
+      const res = await fetch(`${API_URL}/api/messages/${friend.id}`, {
         headers: { Authorization: `Bearer ${supabaseToken}` }
       });
       if (res.ok) {
@@ -192,7 +194,7 @@ export function FriendsModal({ isOpen, onClose, theme, currentUserId, supabaseTo
     const msgText = newMessage.trim();
     setNewMessage('');
     try {
-      const res = await fetch('/api/messages/send', {
+      const res = await fetch(`${API_URL}/api/messages/send`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -213,7 +215,7 @@ export function FriendsModal({ isOpen, onClose, theme, currentUserId, supabaseTo
     if (!supabaseToken) return;
     setDeletingMsgId(messageId);
     try {
-      const res = await fetch(`/api/messages/${messageId}`, {
+      const res = await fetch(`${API_URL}/api/messages/${messageId}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${supabaseToken}` }
       });
@@ -233,7 +235,7 @@ export function FriendsModal({ isOpen, onClose, theme, currentUserId, supabaseTo
   const handleMarkRead = async (partnerId: string) => {
     if (!supabaseToken) return;
     try {
-      await fetch(`/api/messages/mark-read/${partnerId}`, {
+      await fetch(`${API_URL}/api/messages/mark-read/${partnerId}`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${supabaseToken}` }
       });

@@ -70,6 +70,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
 
   // Auth state
   const [email, setEmail] = useState('');
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -511,6 +512,10 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
     } else {
       if (password !== confirmPassword) {
         toast.error('Passwords do not match');
+        return;
+      }
+      if (!agreedToTerms) {
+        toast.error('You must agree to the Terms of Service and Privacy Policy to create an account.');
         return;
       }
       const { error } = await supabase.auth.signUp({ email, password });
@@ -969,6 +974,20 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
                 ></div>
               </div>
 
+              {!isLogin && (
+                <div className="flex items-start gap-3 mt-4 mb-2 p-3 border border-white/10 rounded-lg bg-black/20">
+                  <input
+                    type="checkbox"
+                    id="tos-consent"
+                    checked={agreedToTerms}
+                    onChange={(e) => setAgreedToTerms(e.target.checked)}
+                    className="mt-1 shrink-0 accent-[#00E5FF] w-4 h-4 rounded-sm border-white/20 bg-[#111]"
+                  />
+                  <label htmlFor="tos-consent" className="text-xs text-gray-400 font-mono leading-tight">
+                    I agree to the FightBracket Pro <button type="button" onClick={() => window.dispatchEvent(new Event('open-tos'))} className="text-[#00E5FF] hover:underline">Terms of Service</button> and <button type="button" onClick={() => window.dispatchEvent(new Event('open-privacy'))} className="text-[#00E5FF] hover:underline">Privacy Policy</button>.
+                  </label>
+                </div>
+              )}
               <button
                 type="submit"
                 className="w-full py-3.5 px-6 rounded-lg text-[#050A14] font-bold text-base sm:text-lg tracking-widest uppercase transition-all duration-200 shadow-lg flex items-center justify-center gap-2 font-rajdhani bg-[#00E5FF] hover:bg-[#00B3CC] active:scale-[0.99] shadow-[#00E5FF]/25 mt-2"
@@ -1100,11 +1119,12 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
         {/* Nav */}
         <nav className="flex-1 px-3 py-4 flex flex-col gap-0.5">
           <button
+            onClick={() => setActiveTab("Dashboard")}
             className="flex items-center gap-3 px-3 py-2.5 text-sm font-medium transition-all duration-150 text-left w-full group"
             style={{
-              color: "#f0ede8",
-              background: "rgba(0, 229, 255, 0.1)",
-              borderLeft: "2px solid #00E5FF",
+              color: activeTab === "Dashboard" ? "#f0ede8" : "#8a8a9a",
+              background: activeTab === "Dashboard" ? "rgba(0, 229, 255, 0.1)" : "transparent",
+              borderLeft: activeTab === "Dashboard" ? "2px solid #00E5FF" : "2px solid transparent",
               borderRadius: "2px",
             }}
           >
@@ -1235,13 +1255,25 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
           <div className="ml-auto flex items-center gap-3">
             <button 
               onClick={() => supabase.auth.signOut()}
-              className="flex items-center gap-2 px-3 py-1.5 mr-2 text-xs font-bold text-red-400 bg-red-500/10 hover:bg-red-500/20 rounded transition-colors"
+              className="flex items-center gap-2 h-9 px-4 mr-2 text-xs font-semibold text-[#050A14] transition-all duration-150"
+              style={{
+                background: "#00E5FF",
+                borderRadius: "2px",
+                letterSpacing: "0.08em",
+                textTransform: "uppercase",
+                fontFamily: "'Barlow Condensed', sans-serif",
+                fontWeight: 700,
+                fontSize: "0.75rem",
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = "#00B3CC")}
+              onMouseLeave={(e) => (e.currentTarget.style.background = "#00E5FF")}
             >
-              <LogOut size={14} /> LOG OUT
+              <LogOut size={13} />
+              LOG OUT
             </button>
 
             {/* Notification bell */}
-            <button className="relative w-9 h-9 flex items-center justify-center transition-colors hover:bg-white/5" style={{ borderRadius: "2px" }}>
+            <button onClick={() => toast.info("No new notifications")} className="relative w-9 h-9 flex items-center justify-center transition-colors hover:bg-white/5" style={{ borderRadius: "2px" }}>
               <Bell size={16} style={{ color: "#8a8a9a" }} />
               <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-[#00E5FF] rounded-full" />
             </button>
