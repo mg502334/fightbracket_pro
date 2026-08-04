@@ -78,39 +78,66 @@ You have the right to access, export, or permanently delete your account, messag
     title: "NON-AFFILIATION DISCLAIMER",
     icon: AlertTriangle,
     content: `
-# Non-Affiliation Disclaimer
+# Non-Affiliation & Trademark Disclaimer
+Last Updated: August 4, 2026
 
-fightbracketpro.com is an independent software platform built for tournament organization and management. 
+FightBracket Pro (fightbracketpro.com) is an independent, community-driven software platform built strictly for tournament organization and management.
 
+## 1. NO OFFICIAL LEAGUE OR PUBLISHER AFFILIATION
 We are not affiliated, associated, authorized, endorsed by, or in any way officially connected with:
-* Evolution Championship Series (Evo) or Sony Interactive Entertainment.
-* Any video game publishers, developers, or fighting game franchises (including but not limited to Bandai Namco, Capcom, NetherRealm, or Arc System Works).
 
-All product and company names, logos, and trademarks displayed on this website are the property of their respective owners. Their use does not imply any affiliation with or endorsement by them.
+* **Esports Leagues & Events:** Evolution Championship Series (Evo), Sony Interactive Entertainment, or any official competitive circuits.
+* **Video Game Publishers & Franchises:** Any game developers or fighting game franchises (including but not limited to Bandai Namco Entertainment, Capcom, NetherRealm Studios, Arc System Works, or Nintendo).
+
+## 2. NO THIRD-PARTY PLATFORM AFFILIATION
+While our platform integrates third-party tools to facilitate tournament workflows, logging, streaming, and account authentication, FightBracket Pro is entirely independent and has no official corporate partnership, joint venture, or endorsement from:
+
+* **Tournament Engines:** start.gg or its parent entities.
+* **Streaming & Media Services:** Twitch, YouTube, Kick, or TikTok.
+* **Authentication, OAuth, & API Providers:** Twitch, Discord, Google, or Spotify.
+
+## 3. TRADEMARK NOTICE
+All product names, company names, logos, video game titles, characters, and trademarks displayed on this website are the structural property of their respective owners. Their appearance on FightBracket Pro is for informational, organizational, and bracket tracking purposes only. Use of these names and assets does not imply any affiliation with, endorsement by, or sponsorship from the respective trademark holders.
 `
   },
+
   terms: {
     title: "TERMS OF USE",
     icon: FileText,
     content: `
-# Terms of Use
+# FightBracket Pro — Terms of Service
+Last Updated: August 4, 2026 [1] 
+Welcome to FightBracket Pro ("we," "our," or "the platform"). By accessing our website, tournament bracket dashboards, messaging systems, or developer integration nodes, you agree to be bound by these Terms of Service. If you do not agree to these terms, please terminate your session and close the platform.
 
-Welcome to fightbracketpro.com (the "Service"). By using our website, you agree to comply with and be bound by the following terms.
+## 1. PLATFORM SCOPE & STRICT NO-GAMBLING POLICY
+FightBracket Pro is a free tournament management system (TMS) provided strictly for casual competitive play, entertainment, and tournament coordination.
 
-## 1. Description of Service
-fightbracketpro.com provides tournament bracket management, station assignment software, and score tracking tools. 
+* Wagering Prohibition: You are strictly prohibited from using our live bracket updates, tournament URLs, player directories, or match reporting systems to facilitate, coordinate, or track real-money gambling, sports wagering, or illegal betting rings.
+* No Financial Processing: We do not collect payments or process prize distributions. Any localized use of this free platform to circumvent this policy will result in the immediate and permanent deletion of the offending tournament ecosystem and all associated user accounts.
 
-## 2. Limitation of Liability
-The Service is provided on an "as-is" and "as-available" basis. While we strive to prevent disruptions, fightbracketpro.com is not liable for any tournament delays, scoring errors, loss of tournament data, financial losses, or disputes regarding prize pools resulting from the use or failure of our software. Tournament Organizers use this tool at their own risk.
+## 2. ACCURACY OF AUTOMATED TOURNAMENT DATA & APIS
+Our platform orchestrates live metadata syncing by pulling cross-platform gaming assets through external third-party developer integrations (such as the start.gg API, Steam API, and Tekken 8/Polaris server hooks).
 
-## 3. User Conduct
-Users agree not to:
-* Manipulate tournament scores or match outcomes fraudulently.
-* Harass, threaten, or abuse other players or tournament staff.
-* Deploy bots, scrapers, or automated tools that disrupt the website's infrastructure.
+* We do not guarantee the structural accuracy, up-time, or integrity of data pushed or pulled from these external ecosystems.
+* If a sync delay from an external developer endpoint breaks a seed chart, corrupts a player's tournament path, or fails to fetch game histories, it remains the responsibility of the designated Tournament Organizer (TO) to perform manual diagnostic corrections.
 
-## 4. Account Termination
-We reserve the right to suspend or terminate access to our Service at any time, without prior notice, for conduct that violates these Terms.
+## 3. USER-GENERATED CONTENT & COMMUNICATIVE CONDUCT
+By initializing custom brackets or utilizing our integrated peer-to-peer user messaging network, you assume full responsibility for all content transmitted. You agree that you will not submit, message, or host content that:
+
+* Infringes upon protected industry trademarks (such as unauthorized usage of official promotion logos).
+* Is explicitly unlawful, abusive, defamatory, harassing, or threatening to other competitors or tournament officials.
+We maintain full administrative discretion to police data tables across our network and may erase bracket data or text streams without prior notification if terms are breached.
+
+## 4. SERVICE INFRASTRUCTURE & LIMITATION OF LIABILITY
+FightBracket Pro is deployed using a distributed architecture spanning Vercel edge endpoints, Supabase authentication networks, and Neon PostgreSQL databases. While we utilize modern secure data layers, the platform is provided on an "AS-IS" and "AS-AVAILABLE" basis.
+To the maximum extent permitted by law, FightBracket Pro and its developers shall not be liable for any damages resulting from:
+
+* Unexpected server drops, database disconnections, or system downtime during live tournament pool cycles.
+* Loss of historic competitor logs, broken match results, or chat metadata synchronization failures.
+* Manual scoring overrides, user moderation decisions, or station tracking errors executed by independent Tournament Organizers.
+
+## 5. ACCOUNT INDEMNITY & AUTHENTICATION SHARED OAUTH
+If you register for our services using third-party single-sign-on (OAuth) systems (including Google, Discord, Twitch, or Spotify), you are solely responsible for securing your authorization tokens. We possess no structural ability to restore an account if your primary social channel credentials are leaked or compromised externally.
 `
   }
 };
