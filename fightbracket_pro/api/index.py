@@ -137,10 +137,14 @@ class SupportTicketRequest(BaseModel):
     email: str
     message: str
 
-import resend as _resend
-
 def _send_support_autoresponse(user_email: str, inquiry_type: str, ticket_id: str):
     """Send an auto-reply confirmation to the user via Resend."""
+    try:
+        import resend as _resend
+    except ImportError:
+        print("[Support] Resend module not installed, skipping auto-reply")
+        return
+
     api_key = os.environ.get("RESEND_API_KEY", "")
     if not api_key:
         # Resend not configured — skip silently (ticket still accepted)
@@ -1216,16 +1220,12 @@ def sync_startgg_bracket(slug: str = "clash-of-kings-vii", token: str = None):  
         slug = slug.split("/")[0].split("?")[0].strip()
 
     STARTGG_TOKEN = token or os.environ.get("STARTGG_API_TOKEN")
-    if not STARTGG_TOKEN:
-        raise HTTPException(
-            status_code=401, 
-            detail="Start.gg API token is required. Please log in with Start.gg or enter your Personal Access Token in Account settings."
-        )
 
     headers = {
-        "Authorization": f"Bearer {STARTGG_TOKEN}",
         "Content-Type": "application/json"
     }
+    if STARTGG_TOKEN:
+        headers["Authorization"] = f"Bearer {STARTGG_TOKEN}"
 
     query_tourney = """
     query TournamentQuery($slug: String!) {

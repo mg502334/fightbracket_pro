@@ -7,6 +7,8 @@ import {
 } from "lucide-react";
 import { useTheme } from "next-themes";
 
+const API_URL = import.meta.env.VITE_API_URL || '';
+
 import { GameBanner } from "./components/GameBanner";
 import { AddPlayerModal } from "./components/AddPlayerModal";
 import { supabase } from "./supabaseClient";
