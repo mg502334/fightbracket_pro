@@ -295,7 +295,8 @@ function BracketSection({
   if (matches.length === 0) return null;
 
   const isLosers = matches.some(m => m.round < 0 || m.roundName?.toLowerCase().includes('loser'));
-  // Sort rounds chronologically: winners 1→N, losers -1→-N (ascending absolute value)
+  // Sort rounds chronologically: winners 1→N, losers by absolute value ascending (earliest first)
+  // start.gg losers rounds use negative integers: -1 = Losers Round 1 (earliest), -2 = next, etc.
   const rounds = Array.from(new Set(matches.map(m => m.round))).sort((a, b) =>
     isLosers ? Math.abs(a) - Math.abs(b) : a - b
   );
@@ -312,10 +313,17 @@ function BracketSection({
         {rounds.map((round, rIdx) => {
           let roundMatches = matches.filter(m => m.round === round);
           roundMatches.sort((a, b) => {
-            const idA = a.identifier || String(a.matchNumber);
-            const idB = b.identifier || String(b.matchNumber);
-            if (idA.length !== idB.length) return idA.length - idB.length;
-            return idA.localeCompare(idB);
+            const idA = a.identifier;
+            const idB = b.identifier;
+            // If both have identifiers (from start.gg), sort by them:
+            // single-char comes before multi-char, then alphabetically.
+            // This preserves start.gg's N→O→P→Q→W→X... ordering.
+            if (idA && idB) {
+              if (idA.length !== idB.length) return idA.length - idB.length;
+              return idA.localeCompare(idB);
+            }
+            // Fall back to matchNumber (which is now the raw numeric start.gg set ID)
+            return (a.matchNumber || 0) - (b.matchNumber || 0);
           });
           const isLast = rIdx === rounds.length - 1;
           const totalRounds = rounds.length;

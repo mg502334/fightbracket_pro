@@ -633,9 +633,13 @@ export default function App() {
           sets(page: $page, perPage: 50, sortType: STANDARD) {
             pageInfo { totalPages total }
             nodes {
-              id state fullRoundText round winnerId displayScore
+              id identifier state fullRoundText round winnerId displayScore
               stream { streamName streamSource }
               slots { entrant { id name } standing { stats { score { value } } } }
+              phaseGroup {
+                displayIdentifier
+                phase { name }
+              }
             }
           }
         }
@@ -830,12 +834,16 @@ export default function App() {
           roundLabel = `[Pool ${poolIdentifier}] ${roundLabel}`;
         }
 
+        // Use numeric set.id for stable ordering within rounds
+        // start.gg IDs are always increasing in chronological bracket order
+        const numericSetId = parseInt(String(set.id), 10) || idx;
+
         newMatches.push({
           id: String(set.id),
           gameId,
           round: parsedRound,
           roundName: roundLabel,
-          matchNumber: idx + 1,
+          matchNumber: numericSetId,
           player1Id: p1 ? String(p1) : null,
           player2Id: p2 ? String(p2) : null,
           state: matchState,
@@ -847,7 +855,7 @@ export default function App() {
           bestOf: 3,
           pool: poolIdentifier,
           phase: phaseName,
-          identifier: set.identifier,
+          identifier: set.identifier || undefined,
         });
       });
     });
