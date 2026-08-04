@@ -36,20 +36,42 @@ Go to your Tournament Settings panel, navigate to "Station Management," and add 
     title: "PRIVACY POLICY & LEGAL INFO",
     icon: Shield,
     content: `
-# Privacy Policy & Legal Information
+# PRIVACY POLICY & LEGAL INFORMATION
+*Last Updated: August 4, 2026*
 
-Your privacy is important to us. This policy explains how fightbracketpro.com collects and uses your data.
+Your privacy is important to us. This policy explains how fightbracketpro.com ("we," "our," or "the platform") collects, uses, processes, and secures your data across our cloud infrastructure. By using our platform, you agree to the practices described below.
 
-## 1. Information We Collect
-* **Account Information:** Email addresses and usernames created during registration.
-* **Tournament Data:** Gamertags, match history, and bracket scores.
-* **Contact Data:** Phone numbers, if provided voluntarily to receive station assignment SMS alerts.
+## 1. INFORMATION WE COLLECT & INTEGRATE
+* **Account & Authentication Data:** Email addresses, usernames, and encrypted passwords. If you sign in using third-party OAuth services (Google, Discord, Twitch, or Spotify), we collect your public account ID, email, and basic profile avatar as permitted by those platforms.
+* **Ecosystem & Tournament Data:** 
+  * Gaming Identifiers: Steam IDs and game-specific identifiers, including Tekken 8 IDs (Polaris Engine identifiers).
+  * Third-Party Tournament Data: Tournament records, brackets, and seeding pulled via the start.gg API to sync your competitive history.
+* **Streaming Media URLs:** User-provided links from streaming platforms (including Twitch, YouTube, Kick, and TikTok) used to broadcast live matches.
+* **Messaging Service Data:** Text communications, timestamps, and routing metadata sent between users via our internal messaging system.
+* **Communication Data:** Phone numbers provided voluntarily to receive automated station assignment SMS alerts.
+* **Technical Logging:** IP addresses, device identifiers, and browser configurations handled automatically via our infrastructure.
 
-## 2. How We Use Your Data
-We use your information solely to facilitate tournament brackets, notify you of upcoming matches, and manage station assignments. We do not sell your personal data to advertisers.
+## 2. HOW WE USE YOUR DATA & PRIVACY CONTROLS
+We use your data strictly to power tournament bracket operations, dashboard personalization, and user communication.
+* **Public vs. Private Profiles:** Users maintain full control over their visibility. By default, profiles displaying your tournament brackets, gaming IDs, and streaming links are public. You may toggle your profile settings to "Private" at any time to hide this information from public directories and search features.
+* **Messaging Data:** Internal messages are used solely to facilitate tournament coordination and user interaction. We do not read or monitor private messages unless flagged for violating our Terms of Service.
+* **API and Data Integration:** External data fetched from start.gg or provided via developer API keys is used exclusively to automate live match progression and player data syncing.
 
-## 3. Third-Party Services
-We use third-party infrastructure (such as Vercel for hosting and SMS gateways for notifications) to run our service. These providers only access your data to perform specific technical tasks on our behalf.
+We never sell, rent, or trade your personal information, messages, or connected platform data to third-party advertisers.
+
+## 3. OUR TECHNICAL INFRASTRUCTURE STACK
+Your data is securely processed and synchronized across the following third-party infrastructure providers:
+* **Vercel:** Securely hosts our frontend application and processes edge network traffic.
+* **Neon Postgres & Supabase:** Power our primary backend databases, secure user authentication systems, and media storage networks.
+* **SMS Gateways:** Phone numbers are passed to secure telecom processors strictly for match alert routing and are never shared for marketing.
+
+## 4. DATA SECURITY & ENCRYPTION GUARANTEES
+We implement strict technical and administrative safeguards to protect your personal data. 
+* **Sensitive Integration Credentials:** All user-provided developer API keys and passwords are strictly encrypted at-rest using robust server-side encryption protocols.
+* **Database Guardrails:** Access to our Neon and Supabase databases is protected by rigid Row-Level Security (RLS) layers to ensure users can never access or query other players' private data or credentials.
+
+## 5. YOUR RIGHTS & DATA DELETION
+You have the right to access, export, or permanently delete your account, message history, and data records at any time. To execute a complete account deletion, navigate to your Account Settings or contact our support team.
 `
   },
   disclaimer: {
