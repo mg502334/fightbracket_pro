@@ -635,7 +635,11 @@ export default function App() {
             nodes {
               id identifier state fullRoundText round winnerId displayScore
               stream { streamName streamSource }
-              slots { entrant { id name } standing { stats { score { value } } } }
+              slots {
+                entrant { id name }
+                standing { stats { score { value } } }
+                prereqSet { id }
+              }
               phaseGroup {
                 displayIdentifier
                 phase { name }
@@ -827,6 +831,12 @@ export default function App() {
           if (p2Player && p2 !== loserId) p2Player.checkedIn = true;
         }
 
+        // Extract prereqSet IDs so BracketEngine can build the true bracket tree
+        const prereqSetIds = slots
+          .map((s: any) => s.prereqSet?.id)
+          .filter(Boolean)
+          .map(String);
+
         const poolIdentifier = set.phaseGroup?.displayIdentifier;
         const phaseName = set.phaseGroup?.phase?.name;
         let roundLabel = set.fullRoundText || `Round ${set.round || 1}`;
@@ -856,6 +866,7 @@ export default function App() {
           pool: poolIdentifier,
           phase: phaseName,
           identifier: set.identifier || undefined,
+          prereqSetIds: prereqSetIds.length > 0 ? prereqSetIds : undefined,
         });
       });
     });

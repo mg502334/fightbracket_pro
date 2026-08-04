@@ -279,6 +279,8 @@ export function BracketView({
   );
 }
 
+import { computeBracketSlots } from '../data/bracketEngine';
+
 function BracketSection({ 
   title, matches, playerMap, theme, hoveredMatchId, setHoveredMatchId, onCallMatch, searchMatchingPlayerIds, selectedPool
 }: { 
@@ -295,11 +297,17 @@ function BracketSection({
   if (matches.length === 0) return null;
 
   const isLosers = matches.some(m => m.round < 0 || m.roundName?.toLowerCase().includes('loser'));
+
+  // Build bracket tree slot positions using the BracketEngine
+  // This gives each match its true vertical position based on parent-child relationships
+  const hasTreeData = matches.some(m => m.prereqSetIds && m.prereqSetIds.length > 0);
+  const slotMap = hasTreeData ? computeBracketSlots(matches) : null;
+
   // Sort rounds chronologically: winners 1→N, losers by absolute value ascending (earliest first)
-  // start.gg losers rounds use negative integers: -1 = Losers Round 1 (earliest), -2 = next, etc.
   const rounds = Array.from(new Set(matches.map(m => m.round))).sort((a, b) =>
     isLosers ? Math.abs(a) - Math.abs(b) : a - b
   );
+
 
   return (
     <div>
@@ -313,16 +321,22 @@ function BracketSection({
         {rounds.map((round, rIdx) => {
           let roundMatches = matches.filter(m => m.round === round);
           roundMatches.sort((a, b) => {
+            // Priority 1: Use BracketEngine slot positions (most accurate — from prereqSet tree)
+            if (slotMap) {
+              const slotA = slotMap.slots.get(a.id) ?? 9999;
+              const slotB = slotMap.slots.get(b.id) ?? 9999;
+              if (slotA !== slotB) return slotA - slotB;
+            }
+            // Priority 2: start.gg identifier letters (N < O < P < Q < W < X...)
             const idA = a.identifier;
             const idB = b.identifier;
-            // If both have identifiers (from start.gg), sort by them:
-            // single-char comes before multi-char, then alphabetically.
-            // This preserves start.gg's N→O→P→Q→W→X... ordering.
             if (idA && idB) {
               if (idA.length !== idB.length) return idA.length - idB.length;
               return idA.localeCompare(idB);
             }
-            // Fall back to matchNumber (which is now the raw numeric start.gg set ID)
+            if (idA) return -1;
+            if (idB) return 1;
+            // Priority 3: raw numeric start.gg set ID (chronological)
             return (a.matchNumber || 0) - (b.matchNumber || 0);
           });
           const isLast = rIdx === rounds.length - 1;

@@ -59,6 +59,8 @@ export interface BracketMatch {
   phase?: string;
   calledAt?: number;
   identifier?: string;
+  /** IDs of start.gg sets that feed into this set (used by BracketEngine for tree layout) */
+  prereqSetIds?: string[];
 }
 
 export function getMatchIdentifier(index: number): string {
