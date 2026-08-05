@@ -143,7 +143,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
         if (container && container.innerHTML === '') {
           try {
             widgetId = window.turnstile.render(container, {
-              sitekey: '0x4AAAAAAEBO-v0nV0L1u4Sv',
+              sitekey: '0x4AAAAAAEDitTdf9Il-8DUe',
               action: 'turnstile-spin-v2',
               theme: 'dark'
             });

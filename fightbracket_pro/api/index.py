@@ -305,6 +305,40 @@ def _send_support_autoresponse(user_email: str, inquiry_type: str, ticket_id: st
     except Exception as e:
         print(f"[Support] Resend dispatch failed: {e}")
 
+def _send_admin_ticket_notification(req: SupportTicketRequest, ticket_id: str):
+    """Forward the actual support ticket content to the admin email."""
+    try:
+        import resend as _resend
+    except ImportError:
+        return
+
+    api_key = os.environ.get("RESEND_API_KEY", "")
+    if not api_key:
+        return
+
+    admin_email = os.environ.get("SUPPORT_EMAIL", "support@fightbracketpro.com")
+    _resend.api_key = api_key
+
+    html_body = f"""
+    <h2>New Support Ticket: #{ticket_id}</h2>
+    <p><strong>From:</strong> {req.email}</p>
+    <p><strong>Type:</strong> {req.inquiry_type.upper()}</p>
+    <hr>
+    <p><strong>Message:</strong></p>
+    <blockquote style="white-space: pre-wrap; background: #f4f4f4; padding: 10px; border-left: 4px solid #ccc;">{req.message}</blockquote>
+    """
+
+    try:
+        _resend.Emails.send({
+            "from": "FightBracket Pro <support@fightbracketpro.com>",
+            "to": [admin_email],
+            "subject": f"New Ticket #{ticket_id} - {req.inquiry_type.upper()} ({req.email})",
+            "html": html_body,
+            "reply_to": req.email
+        })
+    except Exception as e:
+        print(f"[Support] Admin notification dispatch failed: {e}")
+
 
 @app.post("/api/support")
 def submit_support_ticket(req: SupportTicketRequest):
@@ -324,9 +358,10 @@ def submit_support_ticket(req: SupportTicketRequest):
 
     ticket_id = str(uuid.uuid4())[:8].upper()
 
-    # Fire-and-forget auto-reply (failures are non-fatal)
+    # Fire-and-forget emails (failures are non-fatal)
     try:
         _send_support_autoresponse(req.email, req.inquiry_type, ticket_id)
+        _send_admin_ticket_notification(req, ticket_id)
     except Exception as e:
         print(f"[Support] Email dispatch error: {e}")
 
@@ -353,12 +388,13 @@ def verify_auth_turnstile(req: VerifyRequest, request: Request):
     try:
         resp = requests.post("https://challenges.cloudflare.com/turnstile/v0/siteverify", data={
             "secret": secret,
-            "response": req.token,
-            "remoteip": client_ip
+            "response": req.token
         })
         if resp.status_code != 200:
             raise HTTPException(status_code=403, detail="Turnstile verification request failed.")
         result = resp.json()
+        if not result.get("success"):
+            print(f"[Turnstile] Verification failed: {result.get('error-codes')}")
     except Exception as e:
         raise HTTPException(status_code=403, detail="Forbidden - Turnstile verification failed.")
         
