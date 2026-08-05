@@ -996,10 +996,9 @@ export default function App() {
     }));
   };
 
-  const activeGamePlayersList = activeGame ? players.filter(p => p.gameId === activeGame) : players;
-  const totalPlayers = activeGamePlayersList.length;
-  const totalCheckedIn = activeGamePlayersList.filter(p => p.checkedIn).length;
-  const totalActive = matches.filter(m => (activeGame ? m.gameId === activeGame : true) && (m.state === 'in_progress' || m.state === 'called')).length;
+  const totalPlayers = players.length;
+  const totalCheckedIn = players.filter(p => p.checkedIn).length;
+  const totalActive = matches.filter(m => m.state === 'in_progress' || m.state === 'called').length;
   const totalStationsActive = stations.filter(s => s.active && s.matchId).length;
 
   return (
