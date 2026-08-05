@@ -49,6 +49,9 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
   const [activeTab, setActiveTab] = useState("Dashboard");
 
   // Auth state
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [gamerTag, setGamerTag] = useState('');
   const [email, setEmail] = useState('');
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [password, setPassword] = useState('');
@@ -68,6 +71,8 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
   const [userProfile, setUserProfile] = useState<{
     id: string;
     unique_id: string;
+    first_name?: string;
+    last_name?: string;
     gamer_tag?: string;
     bio?: string;
     startgg_slug?: string;
@@ -512,11 +517,40 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
         toast.error('You must agree to the Terms of Service and Privacy Policy to create an account.');
         return;
       }
-      const { error } = await supabase.auth.signUp({ email, password });
+      const { data: authData, error } = await supabase.auth.signUp({ 
+        email, 
+        password,
+        options: {
+          data: {
+            first_name: firstName.trim(),
+            last_name: lastName.trim(),
+            gamer_tag: gamerTag.trim()
+          }
+        }
+      });
       if (error) {
         toast.error(getFriendlyError(error));
         safeResetTurnstile();
       } else {
+        // If they are logged in immediately, try to push to backend
+        if (authData.session) {
+          try {
+            await fetch('/api/user/profile', {
+              method: 'PUT',
+              headers: {
+                'Authorization': `Bearer ${authData.session.access_token}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                first_name: firstName.trim(),
+                last_name: lastName.trim(),
+                gamer_tag: gamerTag.trim()
+              })
+            });
+          } catch (e) {
+            console.error('Failed to sync profile data to backend on signup', e);
+          }
+        }
         toast.success('Signed up successfully. If email confirmation is off, you are logged in.');
       }
     }
@@ -883,6 +917,55 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
             </div>
 
             <form onSubmit={handleAuthSubmit} className="space-y-4">
+              {!isLogin && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-400 tracking-wider uppercase mb-1.5 font-mono">
+                      FIRST NAME
+                    </label>
+                    <input
+                      id="firstName"
+                      name="firstName"
+                      type="text"
+                      value={firstName}
+                      onChange={(e) => setFirstName(e.target.value)}
+                      placeholder="Jane"
+                      required
+                      className="w-full bg-[#121929]/90 border border-white/10 rounded-lg px-4 py-3 text-white placeholder-gray-600 outline-none text-sm font-mono transition-colors focus:border-[#00E5FF] focus:ring-1 focus:ring-[#00E5FF]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-400 tracking-wider uppercase mb-1.5 font-mono">
+                      LAST NAME
+                    </label>
+                    <input
+                      id="lastName"
+                      name="lastName"
+                      type="text"
+                      value={lastName}
+                      onChange={(e) => setLastName(e.target.value)}
+                      placeholder="Doe"
+                      required
+                      className="w-full bg-[#121929]/90 border border-white/10 rounded-lg px-4 py-3 text-white placeholder-gray-600 outline-none text-sm font-mono transition-colors focus:border-[#00E5FF] focus:ring-1 focus:ring-[#00E5FF]"
+                    />
+                  </div>
+                  <div className="sm:col-span-2">
+                    <label className="block text-xs font-semibold text-gray-400 tracking-wider uppercase mb-1.5 font-mono">
+                      GAMER TAG <span className="text-gray-500 font-normal normal-case">(Optional)</span>
+                    </label>
+                    <input
+                      id="gamerTag"
+                      name="gamerTag"
+                      type="text"
+                      value={gamerTag}
+                      onChange={(e) => setGamerTag(e.target.value)}
+                      placeholder="e.g. ShadowStriker"
+                      className="w-full bg-[#121929]/90 border border-white/10 rounded-lg px-4 py-3 text-white placeholder-gray-600 outline-none text-sm font-mono transition-colors focus:border-[#00E5FF] focus:ring-1 focus:ring-[#00E5FF]"
+                    />
+                  </div>
+                </div>
+              )}
+
               <div>
                 <label className="block text-xs font-semibold text-gray-400 tracking-wider uppercase mb-1.5 font-mono">
                   EMAIL ADDRESS
@@ -1199,7 +1282,9 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
               {(userProfile?.gamer_tag || user.user_metadata?.displayName || 'U').substring(0, 2).toUpperCase()}
             </div>
             <div className="min-w-0 flex-1">
-              <div className="text-xs font-medium text-white truncate">{userProfile?.gamer_tag || user.user_metadata?.displayName || 'User'}</div>
+              <div className="text-xs font-medium text-white truncate">
+                {userProfile?.first_name ? `${userProfile.first_name} ${userProfile.last_name || ''}` : (userProfile?.gamer_tag || user.user_metadata?.displayName || 'User')}
+              </div>
               <div className="text-[10px]" style={{ color: "#00E5FF" }}>
                 {userProfile?.unique_id || 'PRO USER'}
               </div>
@@ -1328,7 +1413,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
               Dashboard
             </h1>
             <p className="text-sm" style={{ color: "#8a8a9a" }}>
-              Welcome back, {userProfile?.gamer_tag || user.user_metadata?.displayName || 'User'}.
+              Welcome back, {userProfile?.first_name ? `${userProfile.first_name} ${userProfile.last_name || ''}` : (userProfile?.gamer_tag || user.user_metadata?.displayName || 'User')}{userProfile?.first_name && userProfile?.gamer_tag ? ` (${userProfile.gamer_tag})` : ''}.
             </p>
           </div>
           

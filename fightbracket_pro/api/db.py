@@ -9,6 +9,8 @@ class DBUser(Base):
     __tablename__ = "users"
     id = Column(String, primary_key=True, index=True) # Supabase user ID
     unique_id = Column(String, unique=True, index=True, nullable=False) # FB-XXXX-YYYY
+    first_name = Column(String, nullable=True)
+    last_name = Column(String, nullable=True)
     gamer_tag = Column(String, nullable=True)
     bio = Column(String, nullable=True)
     avatar_url = Column(String, nullable=True)

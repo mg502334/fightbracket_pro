@@ -115,6 +115,8 @@ class VerifyRequest(BaseModel):
     token: str
 
 class ProfileUpdateRequest(BaseModel):
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
     gamer_tag: Optional[str] = None
     bio: Optional[str] = None
     avatar_url: Optional[str] = None
@@ -498,7 +500,9 @@ def get_user_profile(user_id: str = Depends(get_current_user_id), db: Session = 
             "user": {
                 "id": user.id,
                 "unique_id": user.unique_id or "FB-UNKNOWN",
-                "gamer_tag": user.gamer_tag or "",
+                "first_name": getattr(user, 'first_name', '') or "",
+                "last_name": getattr(user, 'last_name', '') or "",
+                "gamer_tag": getattr(user, 'gamer_tag', '') or "",
                 "bio": user.bio or "",
                 "avatar_url": user.avatar_url or "",
                 "startgg_slug": user.startgg_slug or "",
@@ -527,6 +531,10 @@ def update_user_profile(req: ProfileUpdateRequest, user_id: str = Depends(get_cu
     
     user = get_or_create_user(db, user_id)
         
+    if req.first_name is not None:
+        user.first_name = req.first_name.strip() # type: ignore
+    if req.last_name is not None:
+        user.last_name = req.last_name.strip() # type: ignore
     if req.gamer_tag is not None:
         tag_clean = req.gamer_tag.strip()
         if tag_clean:

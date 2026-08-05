@@ -18,13 +18,15 @@ export function AccountSettingsPanel({ user, userProfile, fetchUserProfile, getH
   const [activeTab, setActiveTab] = useState<SettingsTab>("profile");
 
   // Local states
+  const [firstName, setFirstName] = useState(userProfile?.first_name || '');
+  const [lastName, setLastName] = useState(userProfile?.last_name || '');
   const [displayName, setDisplayName] = useState(userProfile?.gamer_tag || user?.user_metadata?.displayName || '');
   const [bio, setBio] = useState(userProfile?.bio || '');
   const [newAvatarUrl, setNewAvatarUrl] = useState('');
   const [newEmail, setNewEmail] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [userStartggInput, setUserStartggInput] = useState(userProfile?.startgg_slug || '');
-  const [startggToken, setStartggToken] = useState(userProfile?.startgg_token || '');
+  const [startggToken, setStartggToken] = useState(userProfile?.startgg_token === 'SECURE_HIDDEN' ? '' : (userProfile?.startgg_token || ''));
   const [userTekkenId, setUserTekkenId] = useState(userProfile?.tekken_id || '');
   const [userSteamId, setUserSteamId] = useState(userProfile?.steam_id || '');
   const [userTwitchId, setUserTwitchId] = useState(userProfile?.twitch_id || '');
@@ -44,7 +46,7 @@ export function AccountSettingsPanel({ user, userProfile, fetchUserProfile, getH
       await fetch('/api/user/profile', {
         method: 'PUT',
         headers,
-        body: JSON.stringify({ gamer_tag: displayName, bio })
+        body: JSON.stringify({ first_name: firstName, last_name: lastName, gamer_tag: displayName, bio })
       });
       fetchUserProfile();
       toast.success('Profile updated successfully');
@@ -168,6 +170,10 @@ export function AccountSettingsPanel({ user, userProfile, fetchUserProfile, getH
         {activeTab === "profile" && (
           <div className="animate-in fade-in duration-300">
             <SettingsCard title="Public Identity" description="How you appear to other players and TOs on the platform.">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                <SettingsInput label="First Name" value={firstName} onChange={e => setFirstName(e.target.value)} />
+                <SettingsInput label="Last Name" value={lastName} onChange={e => setLastName(e.target.value)} />
+              </div>
               <div className="mb-4">
                 <SettingsInput label="Gamer Tag / Display Name" value={displayName} onChange={e => setDisplayName(e.target.value)} helper="This is how you appear in brackets and leaderboards." />
               </div>
@@ -256,7 +262,7 @@ export function AccountSettingsPanel({ user, userProfile, fetchUserProfile, getH
             <SettingsCard title="Start.gg Integration" description="Connect your Start.gg account to import brackets and tournament history.">
               <div className="flex flex-col gap-4 mb-5">
                 <div className="mb-2">
-                  <SettingsInput label="API Token" value={startggToken} onChange={e => setStartggToken(e.target.value)} type="password" helper="Generate tokens at start.gg/admin/profile/developer" />
+                  <SettingsInput label="API Token" value={startggToken} onChange={e => setStartggToken(e.target.value)} type="password" placeholder={userProfile?.startgg_token === 'SECURE_HIDDEN' ? '•••••••••••••••• (Saved)' : ''} helper="Generate tokens at start.gg/admin/profile/developer" />
                 </div>
                 <div className="flex justify-end"><SaveButton label="SAVE TOKEN" onClick={() => saveIntegrationData({ startgg_token: startggToken })} loading={savingIntegration} /></div>
                 
