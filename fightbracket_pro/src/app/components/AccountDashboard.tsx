@@ -23,9 +23,7 @@ declare global {
 const safeResetTurnstile = (): void => {
   if (window.turnstile) {
     try {
-      const container = document.querySelector('.cf-turnstile') as HTMLElement | null;
-      const hasWidget = container?.querySelector('iframe');
-      if (hasWidget && container) window.turnstile.reset(container);
+      window.turnstile.reset();
     } catch {
       // silently ignore reset errors
     }
@@ -488,6 +486,18 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
 
   const handleAuthSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!isLogin) {
+      if (password !== confirmPassword) {
+        toast.error('Passwords do not match');
+        return;
+      }
+      if (!agreedToTerms) {
+        toast.error('You must agree to the Terms of Service and Privacy Policy to create an account.');
+        return;
+      }
+    }
+
     const verified = await verifyTurnstile();
     if (!verified) return;
 
@@ -509,15 +519,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
         toast.success('Logged in successfully');
       }
     } else {
-      if (password !== confirmPassword) {
-        toast.error('Passwords do not match');
-        return;
-      }
-      if (!agreedToTerms) {
-        toast.error('You must agree to the Terms of Service and Privacy Policy to create an account.');
-        return;
-      }
-      const { data: authData, error } = await supabase.auth.signUp({ 
+      const { data: authData, error } = await supabase.auth.signUp({
         email, 
         password,
         options: {
