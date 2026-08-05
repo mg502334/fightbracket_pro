@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
-import { Trash2, Save, Download, RefreshCw, Key, LogOut, ArrowLeft, Globe, ExternalLink, Settings, X, AlertTriangle, User, Shield, Swords, Sparkles, Cloud, Users, Eye, EyeOff, ChevronRight, ChevronDown, ChevronUp, LayoutDashboard, Menu, Search, Bell, Trophy } from 'lucide-react';
+import { Trash2, Save, Download, RefreshCw, Key, LogOut, ArrowLeft, Globe, ExternalLink, Settings, X, AlertTriangle, User, Shield, Swords, Sparkles, Cloud, Users, Eye, EyeOff, ChevronRight, ChevronDown, ChevronUp, LayoutDashboard, Menu, Search, Bell, Trophy, Mail } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
 import { TekkenStatsPanel } from './TekkenStatsPanel';
@@ -57,6 +57,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLogin, setIsLogin] = useState(true);
+  const [awaitingEmailConfirmation, setAwaitingEmailConfirmation] = useState(false);
 
   // Cloud state
   const [tournaments, setTournaments] = useState<any[]>([]);
@@ -552,6 +553,8 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
           } catch (e) {
             console.error('Failed to sync profile data to backend on signup', e);
           }
+        } else {
+          setAwaitingEmailConfirmation(true);
         }
         toast.success('Signed up successfully. If email confirmation is off, you are logged in.');
       }
@@ -831,6 +834,25 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
   };
 
   if (!user) {
+    if (awaitingEmailConfirmation) {
+      return (
+        <div className="flex flex-col items-center justify-center p-8 mt-12 w-full max-w-md mx-auto relative z-10" style={{ background: 'var(--card)', border: `1px solid ${theme.primaryColor}40`, borderRadius: 16 }}>
+          <Mail size={48} className="mb-4" style={{ color: theme.primaryColor }} />
+          <h2 className="text-2xl font-bold tracking-widest mb-4 text-center" style={{ fontFamily: 'Rajdhani, sans-serif' }}>CHECK YOUR EMAIL</h2>
+          <p className="text-center opacity-70 mb-6" style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 13 }}>
+            We've sent a confirmation link to <strong>{email}</strong>. Please click the link to verify your account before logging in.
+          </p>
+          <button 
+            onClick={() => setAwaitingEmailConfirmation(false)}
+            className="px-6 py-2 rounded font-bold tracking-widest transition-opacity hover:opacity-100 opacity-80"
+            style={{ border: `1px solid ${theme.primaryColor}80`, color: theme.primaryColor, fontFamily: 'JetBrains Mono, monospace', fontSize: 13 }}
+          >
+            BACK TO LOGIN
+          </button>
+        </div>
+      );
+    }
+
     const handleDiscordLogin = async () => {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'discord',
