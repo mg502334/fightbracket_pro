@@ -320,7 +320,7 @@ function BracketSection({
           <span className="text-xs font-mono opacity-50 font-normal">POOL {selectedPool}</span>
         )}
       </div>
-      <div className="flex gap-12 min-w-max pb-4 overflow-x-auto custom-scrollbar">
+      <div className="flex gap-12 min-w-max px-4 py-4 pr-36 overflow-x-auto custom-scrollbar">
         {rounds.map((round, rIdx) => {
           let roundMatches = matches.filter(m => m.round === round);
           roundMatches.sort((a, b) => {
