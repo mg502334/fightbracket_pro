@@ -105,7 +105,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
   });
   const [startggTournaments, setStartggTournaments] = useState<any[]>([]);
   const [fetchingStartgg, setFetchingStartgg] = useState(false);
-  
+
   // Local Tournament History state
   const [localHistory, setLocalHistory] = useState<any[]>([]);
   const [fetchingLocalHistory, setFetchingLocalHistory] = useState(false);
@@ -504,10 +504,35 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
 
     const getFriendlyError = (err: any) => {
       if (!err) return '';
-      const msg = err.message;
-      if (!msg || msg === '{}' || typeof msg !== 'string') {
-        return 'Supabase server error (500). Please check your Supabase dashboard logs and SMTP configuration.';
+      console.error('Supabase Auth error details:', err);
+
+      let msg = typeof err === 'string' ? err : (err?.message || err?.error_description || err?.msg || '');
+
+      if (typeof msg === 'object' && msg !== null) {
+        try {
+          msg = JSON.stringify(msg);
+        } catch {
+          msg = '';
+        }
       }
+
+      if (!msg || msg === '{}' || msg === 'null' || msg === 'undefined') {
+        const statusCode = err?.status || err?.statusCode || err?.code;
+        return `Supabase server error (${statusCode || '500'}). Please check your Supabase dashboard logs, database triggers, and SMTP configuration.`;
+      }
+
+      if (msg.includes('User already registered') || msg.includes('user_already_exists')) {
+        return 'An account with this email already exists. Please log in instead.';
+      }
+
+      if (msg.includes('Error sending confirmation mail') || msg.includes('email_rate_limit') || msg.includes('over_email_send_rate_limit')) {
+        return 'Unable to send confirmation email. Your Supabase SMTP provider settings may be unconfigured or rate-limited.';
+      }
+
+      if (msg.includes('Database error saving new user')) {
+        return 'Database error saving new user. Check your Supabase database trigger (on_auth_user_created) and public.users schema in the SQL Editor.';
+      }
+
       return msg;
     };
 
@@ -521,7 +546,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
       }
     } else {
       const { data: authData, error } = await supabase.auth.signUp({
-        email, 
+        email,
         password,
         options: {
           data: {
@@ -842,7 +867,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
           <p className="text-center opacity-70 mb-6" style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 13 }}>
             We've sent a confirmation link to <strong>{email}</strong>. Please click the link to verify your account before logging in.
           </p>
-          <button 
+          <button
             onClick={() => setAwaitingEmailConfirmation(false)}
             className="px-6 py-2 rounded font-bold tracking-widest transition-opacity hover:opacity-100 opacity-80"
             style={{ border: `1px solid ${theme.primaryColor}80`, color: theme.primaryColor, fontFamily: 'JetBrains Mono, monospace', fontSize: 13 }}
@@ -903,8 +928,8 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
               type="button"
               onClick={() => setIsLogin(true)}
               className={`py-4 text-xs sm:text-sm font-bold tracking-widest uppercase transition-all relative flex items-center justify-center font-rajdhani ${isLogin
-                  ? 'text-white bg-white/[0.03]'
-                  : 'text-gray-500 hover:text-gray-300'
+                ? 'text-white bg-white/[0.03]'
+                : 'text-gray-500 hover:text-gray-300'
                 }`}
             >
               SIGN IN
@@ -916,8 +941,8 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
               type="button"
               onClick={() => setIsLogin(false)}
               className={`py-4 text-xs sm:text-sm font-bold tracking-widest uppercase transition-all relative flex items-center justify-center font-rajdhani ${!isLogin
-                  ? 'text-white bg-white/[0.03]'
-                  : 'text-gray-500 hover:text-gray-300'
+                ? 'text-white bg-white/[0.03]'
+                : 'text-gray-500 hover:text-gray-300'
                 }`}
             >
               REGISTER
@@ -1092,7 +1117,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
                     className="mt-1 shrink-0 accent-[#00E5FF] w-4 h-4 rounded-sm border-white/20 bg-[#111]"
                   />
                   <label htmlFor="tos-consent" className="text-xs text-gray-400 font-mono leading-tight">
-                    I agree to the FightBracket Pro <button type="button" onClick={() => window.dispatchEvent(new Event('open-tos'))} className="text-[#00E5FF] hover:underline">Terms of Service</button> and <button type="button" onClick={() => window.dispatchEvent(new Event('open-privacy'))} className="text-[#00E5FF] hover:underline">Privacy Policy</button>.
+                    I agree to the FightBracket Pro <button type="button" onClick={() => window.dispatchEvent(new Event('open-tos'))} className="text-[#00E5FF] hover:underline">Terms of Service</button> and <button type="button" onClick={() => window.dispatchEvent(new Event('open-privacy'))} className="text-[#00E5FF] hover:underline">Privacy Policy</button>
                   </label>
                 </div>
               )}
@@ -1201,9 +1226,8 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
     >
       {/* Sidebar */}
       <aside
-        className={`fixed lg:static inset-y-0 left-0 z-40 flex flex-col transition-transform duration-300 ${
-          sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
-        }`}
+        className={`fixed lg:static inset-y-0 left-0 z-40 flex flex-col transition-transform duration-300 ${sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+          }`}
         style={{
           width: "220px",
           background: "#0f0f12",
@@ -1239,7 +1263,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
             <LayoutDashboard size={15} />
             Dashboard
           </button>
-          
+
           {onViewOwnProfile && (
             <button
               onClick={onViewOwnProfile}
@@ -1363,7 +1387,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
           </div>
 
           <div className="ml-auto flex items-center gap-3">
-            <button 
+            <button
               onClick={() => supabase.auth.signOut()}
               className="flex items-center gap-2 h-9 px-4 mr-2 text-xs font-semibold text-[#050A14] transition-all duration-150"
               style={{
@@ -1423,411 +1447,411 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
             />
           )}
           <div style={{ display: activeTab === "Settings" ? 'none' : 'block' }}>
-          {/* Page heading */}
-          <div className="mb-6">
-            <h1
-              className="text-white uppercase tracking-wide mb-0.5"
-              style={{
-                fontFamily: "'Barlow Condensed', sans-serif",
-                fontWeight: 700,
-                fontSize: "1.5rem",
-                letterSpacing: "0.05em",
-              }}
-            >
-              Dashboard
-            </h1>
-            <p className="text-sm" style={{ color: "#8a8a9a" }}>
-              Welcome back, {userProfile?.first_name ? `${userProfile.first_name} ${userProfile.last_name || ''}` : (userProfile?.gamer_tag || user.user_metadata?.displayName || 'User')}{userProfile?.first_name && userProfile?.gamer_tag ? ` (${userProfile.gamer_tag})` : ''}.
-            </p>
-          </div>
-          
-          <div className="max-w-6xl space-y-8 animate-in fade-in duration-300">
-
-      {/* Full Width Tekken 8 Live Stats Box */}
-      <div className="bg-[#050A14] border border-white/10 rounded-2xl shadow-2xl overflow-hidden w-full">
-        <div className="px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/10 bg-black/40">
-          <div>
-            <h3 className="text-xl font-bold font-rajdhani text-[#00E5FF] tracking-widest flex items-center gap-2">
-              TEKKEN 8 LIVE STATS & RANKING
-            </h3>
-            <p className="text-[11px] font-mono text-gray-400 tracking-wider mt-0.5">
-              Live ranking & battle history synced from EWGF · updates on demand
-            </p>
-          </div>
-          {!userProfile?.tekken_id && (
-            <button
-              onClick={() => setActiveTab('Settings')}
-              className="text-xs font-mono text-[#00E5FF] bg-[#00E5FF]/10 border border-[#00E5FF]/30 px-3 py-1.5 rounded-lg hover:bg-[#00E5FF]/20 transition-all shrink-0"
-            >
-              + SET POLARIS ID IN SETTINGS
-            </button>
-          )}
-        </div>
-        <div className="p-6">
-          <TekkenStatsPanel 
-            tekkenId={userProfile?.tekken_id} 
-            steamId={userProfile?.steam_id}
-            gamerTag={userProfile?.gamer_tag}
-          />
-        </div>
-      </div>
-
-      {/* Full Width Steam Live Gamer Card Box */}
-      <div className="bg-[#050A14] border border-white/10 rounded-2xl shadow-2xl overflow-hidden w-full">
-        <div className="px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/10 bg-black/40">
-          <div>
-            <h3 className="text-xl font-bold font-rajdhani text-[#00E5FF] tracking-widest flex items-center gap-2">
-              STEAM PLAYER CARD & LIVE STATUS
-            </h3>
-            <p className="text-[11px] font-mono text-gray-400 tracking-wider mt-0.5">
-              Live status, avatar, and Steam profile connection
-            </p>
-          </div>
-          {!userProfile?.steam_id && (
-            <button
-              onClick={() => setActiveTab('Settings')}
-              className="text-xs font-mono text-[#00E5FF] bg-[#00E5FF]/10 border border-[#00E5FF]/30 px-3 py-1.5 rounded-lg hover:bg-[#00E5FF]/20 transition-all shrink-0"
-            >
-              + SET STEAM ID IN SETTINGS
-            </button>
-          )}
-        </div>
-        <div className="p-6">
-          <SteamStatsPanel steamId={userProfile?.steam_id} />
-        </div>
-      </div>
-
-      {/* 2-Column Grid for Games & Mains + Start.gg Past Events & Cloud Saves */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-
-        {/* Left Column: Main Games & Characters */}
-        <div className="space-y-6">
-          <div className="bg-[#050A14] border border-white/10 p-6 rounded-2xl shadow-xl space-y-4">
-            <div className="flex justify-between items-center border-b border-white/10 pb-4">
-              <h3 className="text-xl font-bold font-rajdhani text-[#00E5FF] tracking-widest flex items-center gap-2">
-                MAIN GAMES & CHARACTERS
-              </h3>
+            {/* Page heading */}
+            <div className="mb-6">
+              <h1
+                className="text-white uppercase tracking-wide mb-0.5"
+                style={{
+                  fontFamily: "'Barlow Condensed', sans-serif",
+                  fontWeight: 700,
+                  fontSize: "1.5rem",
+                  letterSpacing: "0.05em",
+                }}
+              >
+                Dashboard
+              </h1>
+              <p className="text-sm" style={{ color: "#8a8a9a" }}>
+                Welcome back, {userProfile?.first_name ? `${userProfile.first_name} ${userProfile.last_name || ''}` : (userProfile?.gamer_tag || user.user_metadata?.displayName || 'User')}{userProfile?.first_name && userProfile?.gamer_tag ? ` (${userProfile.gamer_tag})` : ''}.
+              </p>
             </div>
 
-            {/* Quick Add */}
-            <div className="bg-black/40 border border-white/10 p-3.5 rounded-xl space-y-3">
-              <div className="text-xs font-mono text-gray-400 font-bold">ADD OR UPDATE YOUR MAIN</div>
-              <div className="flex flex-col sm:flex-row gap-2">
-                <input
-                  list="games-datalist"
-                  value={newGameName}
-                  onChange={e => setNewGameName(e.target.value)}
-                  placeholder="Game Name (e.g. Tekken 8)"
-                  className="bg-[#111] border border-gray-800 rounded-lg px-3 py-2 text-white font-mono text-xs outline-none focus:border-[#00E5FF] min-w-[150px]"
-                />
-                <datalist id="games-datalist">
-                  <option value="Tekken 8" />
-                  <option value="Tekken 7" />
-                  <option value="Tekken 6" />
-                  <option value="Tekken 5" />
-                  <option value="Street Fighter 6" />
-                  <option value="Street Fighter V" />
-                  <option value="Street Fighter IV" />
-                  <option value="Street Fighter III: 3rd Strike" />
-                  <option value="Soul Calibur VI" />
-                  <option value="Soul Calibur V" />
-                  <option value="Guilty Gear Strive" />
-                  <option value="Guilty Gear Xrd" />
-                  <option value="Fatal Fury: City of the Wolves" />
-                  <option value="2XKO" />
-                  <option value="Avatar: The Last Airbender" />
-                  <option value="Smash Ultimate" />
-                  <option value="Smash Melee" />
-                  <option value="Mortal Kombat 1" />
-                  <option value="Mortal Kombat 11" />
-                  <option value="GBVSR" />
-                  <option value="UNI2" />
-                  <option value="DBFZ" />
-                  <option value="KOF XV" />
-                  <option value="Marvel vs. Capcom 3" />
-                  <option value="Marvel vs. Capcom 2" />
-                  <option value="BlazBlue: Central Fiction" />
-                </datalist>
-                <input
-                  type="text"
-                  placeholder="Main Character (Optional)"
-                  value={newMainChar}
-                  onChange={e => setNewMainChar(e.target.value)}
-                  className="flex-1 bg-[#111] border border-gray-800 rounded-lg px-3 py-2 text-white font-mono text-xs outline-none focus:border-[#00E5FF]"
-                />
-                <button
-                  onClick={handleAddGameMain}
-                  className="px-4 py-2 bg-[#00E5FF] text-[#050A14] font-bold font-rajdhani tracking-wider rounded-lg text-xs hover:bg-[#00B3CC] transition-all shrink-0"
-                >
-                  ADD
-                </button>
-              </div>
-            </div>
+            <div className="max-w-6xl space-y-8 animate-in fade-in duration-300">
 
-            {/* List of games & mains */}
-            {gamesList.length === 0 ? (
-              <div className="text-center py-8 text-xs font-mono text-gray-500">
-                No main games added yet. Add your main characters above to display them on your profile!
+              {/* Full Width Tekken 8 Live Stats Box */}
+              <div className="bg-[#050A14] border border-white/10 rounded-2xl shadow-2xl overflow-hidden w-full">
+                <div className="px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/10 bg-black/40">
+                  <div>
+                    <h3 className="text-xl font-bold font-rajdhani text-[#00E5FF] tracking-widest flex items-center gap-2">
+                      TEKKEN 8 LIVE STATS & RANKING
+                    </h3>
+                    <p className="text-[11px] font-mono text-gray-400 tracking-wider mt-0.5">
+                      Live ranking & battle history synced from EWGF · updates on demand
+                    </p>
+                  </div>
+                  {!userProfile?.tekken_id && (
+                    <button
+                      onClick={() => setActiveTab('Settings')}
+                      className="text-xs font-mono text-[#00E5FF] bg-[#00E5FF]/10 border border-[#00E5FF]/30 px-3 py-1.5 rounded-lg hover:bg-[#00E5FF]/20 transition-all shrink-0"
+                    >
+                      + SET POLARIS ID IN SETTINGS
+                    </button>
+                  )}
+                </div>
+                <div className="p-6">
+                  <TekkenStatsPanel
+                    tekkenId={userProfile?.tekken_id}
+                    steamId={userProfile?.steam_id}
+                    gamerTag={userProfile?.gamer_tag}
+                  />
+                </div>
               </div>
-            ) : (
-              <div className="space-y-4">
-                {/* Top 3 Games Preview */}
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                  {gamesList.slice(0, 3).map(item => {
-                    const coverUrl = GAME_COVERS[item.game];
-                    return (
-                      <div 
-                        key={item.game} 
-                        title={`${item.game}${item.main ? ` - ${item.main}` : ''}`}
-                        className="relative aspect-[2/3] rounded-xl overflow-hidden border border-white/10 group shadow-lg flex flex-col justify-end bg-[#050A14]"
-                      >
-                        {/* Background Cover */}
-                        {coverUrl ? (
-                          <img src={coverUrl} alt={item.game} className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
-                        ) : (
-                          <div className="absolute inset-0 w-full h-full bg-gradient-to-br from-indigo-900 to-[#050A14] flex flex-col items-center justify-center p-4 text-center">
-                            <Swords size={24} className="text-white/20 mb-2" />
-                            <span className="font-bold font-rajdhani text-lg text-white/40 leading-tight">{item.game}</span>
-                          </div>
-                        )}
-                        
-                        {/* Remove Button */}
+
+              {/* Full Width Steam Live Gamer Card Box */}
+              <div className="bg-[#050A14] border border-white/10 rounded-2xl shadow-2xl overflow-hidden w-full">
+                <div className="px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/10 bg-black/40">
+                  <div>
+                    <h3 className="text-xl font-bold font-rajdhani text-[#00E5FF] tracking-widest flex items-center gap-2">
+                      STEAM PLAYER CARD & LIVE STATUS
+                    </h3>
+                    <p className="text-[11px] font-mono text-gray-400 tracking-wider mt-0.5">
+                      Live status, avatar, and Steam profile connection
+                    </p>
+                  </div>
+                  {!userProfile?.steam_id && (
+                    <button
+                      onClick={() => setActiveTab('Settings')}
+                      className="text-xs font-mono text-[#00E5FF] bg-[#00E5FF]/10 border border-[#00E5FF]/30 px-3 py-1.5 rounded-lg hover:bg-[#00E5FF]/20 transition-all shrink-0"
+                    >
+                      + SET STEAM ID IN SETTINGS
+                    </button>
+                  )}
+                </div>
+                <div className="p-6">
+                  <SteamStatsPanel steamId={userProfile?.steam_id} />
+                </div>
+              </div>
+
+              {/* 2-Column Grid for Games & Mains + Start.gg Past Events & Cloud Saves */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+
+                {/* Left Column: Main Games & Characters */}
+                <div className="space-y-6">
+                  <div className="bg-[#050A14] border border-white/10 p-6 rounded-2xl shadow-xl space-y-4">
+                    <div className="flex justify-between items-center border-b border-white/10 pb-4">
+                      <h3 className="text-xl font-bold font-rajdhani text-[#00E5FF] tracking-widest flex items-center gap-2">
+                        MAIN GAMES & CHARACTERS
+                      </h3>
+                    </div>
+
+                    {/* Quick Add */}
+                    <div className="bg-black/40 border border-white/10 p-3.5 rounded-xl space-y-3">
+                      <div className="text-xs font-mono text-gray-400 font-bold">ADD OR UPDATE YOUR MAIN</div>
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        <input
+                          list="games-datalist"
+                          value={newGameName}
+                          onChange={e => setNewGameName(e.target.value)}
+                          placeholder="Game Name (e.g. Tekken 8)"
+                          className="bg-[#111] border border-gray-800 rounded-lg px-3 py-2 text-white font-mono text-xs outline-none focus:border-[#00E5FF] min-w-[150px]"
+                        />
+                        <datalist id="games-datalist">
+                          <option value="Tekken 8" />
+                          <option value="Tekken 7" />
+                          <option value="Tekken 6" />
+                          <option value="Tekken 5" />
+                          <option value="Street Fighter 6" />
+                          <option value="Street Fighter V" />
+                          <option value="Street Fighter IV" />
+                          <option value="Street Fighter III: 3rd Strike" />
+                          <option value="Soul Calibur VI" />
+                          <option value="Soul Calibur V" />
+                          <option value="Guilty Gear Strive" />
+                          <option value="Guilty Gear Xrd" />
+                          <option value="Fatal Fury: City of the Wolves" />
+                          <option value="2XKO" />
+                          <option value="Avatar: The Last Airbender" />
+                          <option value="Smash Ultimate" />
+                          <option value="Smash Melee" />
+                          <option value="Mortal Kombat 1" />
+                          <option value="Mortal Kombat 11" />
+                          <option value="GBVSR" />
+                          <option value="UNI2" />
+                          <option value="DBFZ" />
+                          <option value="KOF XV" />
+                          <option value="Marvel vs. Capcom 3" />
+                          <option value="Marvel vs. Capcom 2" />
+                          <option value="BlazBlue: Central Fiction" />
+                        </datalist>
+                        <input
+                          type="text"
+                          placeholder="Main Character (Optional)"
+                          value={newMainChar}
+                          onChange={e => setNewMainChar(e.target.value)}
+                          className="flex-1 bg-[#111] border border-gray-800 rounded-lg px-3 py-2 text-white font-mono text-xs outline-none focus:border-[#00E5FF]"
+                        />
                         <button
-                          onClick={() => handleRemoveGameMain(item.game)}
-                          className="absolute top-2 right-2 z-20 text-white/50 bg-black/50 p-1.5 rounded-full hover:text-red-400 hover:bg-black/80 opacity-0 group-hover:opacity-100 transition-all backdrop-blur-sm shadow-md"
-                          title="Remove"
+                          onClick={handleAddGameMain}
+                          className="px-4 py-2 bg-[#00E5FF] text-[#050A14] font-bold font-rajdhani tracking-wider rounded-lg text-xs hover:bg-[#00B3CC] transition-all shrink-0"
                         >
-                          <Trash2 size={12} />
+                          ADD
                         </button>
                       </div>
-                    );
-                  })}
-                </div>
+                    </div>
 
-                {/* Text List of All Games with Expansion */}
-                <div className="bg-black/40 border border-white/5 rounded-lg p-3">
-                  <div className="text-[10px] font-mono text-gray-400 mb-2 flex justify-between items-center font-bold tracking-wider">
-                    <span>ALL GAMES ({gamesList.length})</span>
-                    {gamesList.length > 3 && (
-                      <button 
-                        onClick={() => setGamesListExpanded(!gamesListExpanded)}
-                        className="text-[#00E5FF] hover:underline flex items-center gap-1"
-                      >
-                        {gamesListExpanded ? (
-                          <>COLLAPSE <ChevronUp size={12} /></>
-                        ) : (
-                          <>VIEW ALL <ChevronDown size={12} /></>
-                        )}
-                      </button>
-                    )}
-                  </div>
-                  <div className="space-y-1.5">
-                    {(gamesListExpanded ? gamesList : gamesList.slice(0, 3)).map((item, idx) => (
-                      <div key={idx} className="flex justify-between items-center text-xs font-mono border-b border-white/5 pb-1.5 last:border-0 last:pb-0">
-                        <span className="text-white font-bold">{item.game}</span>
-                        {item.main && <span className="text-white text-[10px] bg-white/10 px-2 py-0.5 rounded">{item.main}</span>}
+                    {/* List of games & mains */}
+                    {gamesList.length === 0 ? (
+                      <div className="text-center py-8 text-xs font-mono text-gray-500">
+                        No main games added yet. Add your main characters above to display them on your profile!
                       </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {/* Top 3 Games Preview */}
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                          {gamesList.slice(0, 3).map(item => {
+                            const coverUrl = GAME_COVERS[item.game];
+                            return (
+                              <div
+                                key={item.game}
+                                title={`${item.game}${item.main ? ` - ${item.main}` : ''}`}
+                                className="relative aspect-[2/3] rounded-xl overflow-hidden border border-white/10 group shadow-lg flex flex-col justify-end bg-[#050A14]"
+                              >
+                                {/* Background Cover */}
+                                {coverUrl ? (
+                                  <img src={coverUrl} alt={item.game} className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+                                ) : (
+                                  <div className="absolute inset-0 w-full h-full bg-gradient-to-br from-indigo-900 to-[#050A14] flex flex-col items-center justify-center p-4 text-center">
+                                    <Swords size={24} className="text-white/20 mb-2" />
+                                    <span className="font-bold font-rajdhani text-lg text-white/40 leading-tight">{item.game}</span>
+                                  </div>
+                                )}
 
-          {/* Cloud Saves */}
-          <div className="bg-[#050A14] border border-white/10 p-6 rounded-2xl shadow-xl">
-            <div className="flex justify-between items-center mb-6 border-b border-white/10 pb-4">
-              <h3 className="text-xl font-bold font-rajdhani text-[#00E5FF] tracking-widest flex items-center gap-2">
-                <Cloud size={20} /> CLOUD SAVES
-              </h3>
-              <div className="flex gap-2">
-                <button onClick={fetchCloudTournaments} className="p-2 rounded-lg border border-white/10 text-white hover:border-white/30 hover:bg-white/5 transition-all" title="Refresh">
-                  <RefreshCw size={15} />
-                </button>
-                <button onClick={saveToCloud} disabled={saving} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#00E5FF] hover:bg-[#00B3CC] text-[#050A14] font-bold transition-all font-rajdhani tracking-wider text-sm disabled:opacity-50">
-                  <Save size={15} /> {saving ? 'SAVING...' : 'SAVE CURRENT'}
-                </button>
-              </div>
-            </div>
+                                {/* Remove Button */}
+                                <button
+                                  onClick={() => handleRemoveGameMain(item.game)}
+                                  className="absolute top-2 right-2 z-20 text-white/50 bg-black/50 p-1.5 rounded-full hover:text-red-400 hover:bg-black/80 opacity-0 group-hover:opacity-100 transition-all backdrop-blur-sm shadow-md"
+                                  title="Remove"
+                                >
+                                  <Trash2 size={12} />
+                                </button>
+                              </div>
+                            );
+                          })}
+                        </div>
 
-            {loading ? (
-              <div className="text-center py-10 opacity-50 font-mono text-sm">Loading from cloud...</div>
-            ) : tournaments.length === 0 ? (
-              <div className="text-center py-10 opacity-50 font-mono text-sm">No tournaments saved in the cloud.</div>
-            ) : (
-              <div className="space-y-3">
-                {tournaments.map(t => (
-                  <div key={t.id} className="flex items-center justify-between p-3 bg-[#111] border border-gray-800 hover:border-[#00E5FF]/50 rounded-lg transition-colors group">
-                    <div>
-                      <div className="font-bold text-white font-rajdhani text-lg">{t.name}</div>
-                      <div className="text-xs text-gray-500 font-mono">ID: {t.id}</div>
-                    </div>
-                    <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button onClick={() => loadTournament(t.id)} className="flex items-center gap-1 px-3 py-1.5 bg-[#00FF88]/10 text-[#00FF88] hover:bg-[#00FF88]/20 border border-[#00FF88]/30 rounded font-rajdhani font-bold tracking-wider transition-colors text-sm">
-                        <Download size={14} /> LOAD
-                      </button>
-                      <button onClick={() => deleteTournament(t.id)} disabled={deletingId === t.id} className="p-1.5 text-gray-500 hover:text-[#FF006E] hover:bg-[#FF006E]/10 rounded transition-colors">
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Right Column: Start.gg Past Events */}
-        <div className="space-y-6">
-          <div className="bg-[#050A14] border border-white/10 p-6 rounded-2xl shadow-xl">
-            <div className="border-b border-white/10 pb-4 mb-6">
-              <h3 className="text-xl font-bold font-rajdhani text-[#00E5FF] tracking-widest flex items-center gap-2">
-                <Key size={20} /> START.GG PAST EVENTS
-              </h3>
-              <p className="text-xs text-gray-400 font-mono mt-2">Connect your Developer API Token to view and import events you have participated in.</p>
-            </div>
-
-            {!startggToken && (
-              <div className="mb-4 text-xs font-mono text-amber-400 bg-amber-500/10 border border-amber-500/30 p-3 rounded flex items-center gap-2">
-                <AlertTriangle size={14} /> Please add your Start.gg API Token in Account Settings to use this feature.
-              </div>
-            )}
-
-            {/* Display Already Imported Events */}
-            {(() => {
-              if (!userProfile?.startgg_data) return null;
-              try {
-                const startggData = JSON.parse(userProfile.startgg_data);
-                if (!startggData?.events || startggData.events.length === 0) return null;
-                return (
-                  <div className="mb-6 space-y-1.5">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-[10px] font-mono px-2.5 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-400">
-                        {startggData.events.length} imported event{startggData.events.length !== 1 ? 's' : ''} 
-                      </span>
-                    </div>
-                    {startggData.events.slice(0, 5).map((ev: any, i: number) => {
-                      const place = Number(ev.placement);
-                      const medalColor =
-                        place === 1 ? '#FFD700' :
-                        place === 2 ? '#C0C0C0' :
-                        place === 3 ? '#CD7F32' :
-                        place <= 8  ? '#00E5FF' : '#6B7280';
-                      const medalBg =
-                        place === 1 ? 'rgba(255,215,0,0.1)' :
-                        place === 2 ? 'rgba(192,192,192,0.08)' :
-                        place === 3 ? 'rgba(205,127,50,0.1)' :
-                        place <= 8  ? 'rgba(0,229,255,0.08)' : 'rgba(255,255,255,0.04)';
-
-                      return (
-                        <div
-                          key={i}
-                          className="flex items-center justify-between px-3 py-2 rounded-lg border border-white/5 hover:border-white/10 transition-colors"
-                          style={{ background: medalBg }}
-                        >
-                          <div className="min-w-0 pr-2">
-                            <div className="font-bold text-xs font-rajdhani text-white truncate">{ev.event_name}</div>
-                            <div className="text-[10px] font-mono text-gray-500 truncate">{ev.tournament_name}</div>
+                        {/* Text List of All Games with Expansion */}
+                        <div className="bg-black/40 border border-white/5 rounded-lg p-3">
+                          <div className="text-[10px] font-mono text-gray-400 mb-2 flex justify-between items-center font-bold tracking-wider">
+                            <span>ALL GAMES ({gamesList.length})</span>
+                            {gamesList.length > 3 && (
+                              <button
+                                onClick={() => setGamesListExpanded(!gamesListExpanded)}
+                                className="text-[#00E5FF] hover:underline flex items-center gap-1"
+                              >
+                                {gamesListExpanded ? (
+                                  <>COLLAPSE <ChevronUp size={12} /></>
+                                ) : (
+                                  <>VIEW ALL <ChevronDown size={12} /></>
+                                )}
+                              </button>
+                            )}
                           </div>
-                          <div
-                            className="text-xs font-mono font-bold px-2.5 py-1 rounded shrink-0"
-                            style={{ color: medalColor, background: `${medalColor}15`, border: `1px solid ${medalColor}30` }}
-                          >
-                            {place === 1 ? '🥇' : place === 2 ? '🥈' : place === 3 ? '🥉' : `#${ev.placement}`}
+                          <div className="space-y-1.5">
+                            {(gamesListExpanded ? gamesList : gamesList.slice(0, 3)).map((item, idx) => (
+                              <div key={idx} className="flex justify-between items-center text-xs font-mono border-b border-white/5 pb-1.5 last:border-0 last:pb-0">
+                                <span className="text-white font-bold">{item.game}</span>
+                                {item.main && <span className="text-white text-[10px] bg-white/10 px-2 py-0.5 rounded">{item.main}</span>}
+                              </div>
+                            ))}
                           </div>
                         </div>
-                      );
-                    })}
+                      </div>
+                    )}
                   </div>
-                );
-              } catch {
-                return null;
-              }
-            })()}
 
-            <button
-              onClick={fetchStartggHosted}
-              disabled={fetchingStartgg || !startggToken}
-              className="w-full flex items-center justify-center gap-2 py-3 bg-[#00E5FF] hover:bg-[#00B3CC] disabled:opacity-50 text-[#050A14] font-bold rounded-lg transition-colors font-rajdhani tracking-widest mb-6"
-            >
-              <RefreshCw size={16} className={fetchingStartgg ? "animate-spin" : ""} />
-              {fetchingStartgg ? 'FETCHING...' : 'FETCH NEW EVENTS TO IMPORT'}
-            </button>
-
-            {startggTournaments.length > 0 && (
-              <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-                {startggTournaments.map(t => (
-                  <div key={t.id} className="flex flex-col p-4 bg-[#111] border border-gray-800 hover:border-[#00E5FF]/50 rounded-lg transition-colors">
-                    <div className="font-bold text-white font-rajdhani text-lg truncate mb-1">{t.name}</div>
-                    <div className="flex justify-between items-center mt-2">
-                      <span className="text-xs font-mono bg-white/10 px-2 py-0.5 rounded text-gray-300">State: {t.state === 1 ? 'Published' : 'Draft'}</span>
-                      <button
-                        onClick={() => onStartggImport(t.slug)}
-                        className="text-xs font-bold font-rajdhani tracking-widest text-[#FF006E] hover:underline"
-                        title="Import this tournament bracket to run locally"
-                      >
-                        RUN BRACKET →
-                      </button>
+                  {/* Cloud Saves */}
+                  <div className="bg-[#050A14] border border-white/10 p-6 rounded-2xl shadow-xl">
+                    <div className="flex justify-between items-center mb-6 border-b border-white/10 pb-4">
+                      <h3 className="text-xl font-bold font-rajdhani text-[#00E5FF] tracking-widest flex items-center gap-2">
+                        <Cloud size={20} /> CLOUD SAVES
+                      </h3>
+                      <div className="flex gap-2">
+                        <button onClick={fetchCloudTournaments} className="p-2 rounded-lg border border-white/10 text-white hover:border-white/30 hover:bg-white/5 transition-all" title="Refresh">
+                          <RefreshCw size={15} />
+                        </button>
+                        <button onClick={saveToCloud} disabled={saving} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#00E5FF] hover:bg-[#00B3CC] text-[#050A14] font-bold transition-all font-rajdhani tracking-wider text-sm disabled:opacity-50">
+                          <Save size={15} /> {saving ? 'SAVING...' : 'SAVE CURRENT'}
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            )}
-        </div>
 
-        {/* Local Tournament History */}
-        <div className="space-y-6 md:col-span-2">
-          <div className="bg-[#050A14] border border-white/10 p-6 rounded-2xl shadow-xl">
-            <div className="border-b border-white/10 pb-4 mb-6 flex justify-between items-center">
-              <div>
-                <h3 className="text-xl font-bold font-rajdhani text-[#00E5FF] tracking-widest flex items-center gap-2">
-                  <Key size={20} /> LOCAL TOURNAMENT HISTORY
-                </h3>
-                <p className="text-xs text-gray-400 font-mono mt-2">Custom tournaments you've participated in on this platform.</p>
-              </div>
-              <button
-                onClick={() => userProfile?.unique_id && fetchLocalHistory(userProfile.unique_id)}
-                disabled={fetchingLocalHistory}
-                className="p-2 rounded-lg border border-white/10 text-white hover:border-white/30 hover:bg-white/5 transition-all"
-                title="Refresh History"
-              >
-                <RefreshCw size={15} className={fetchingLocalHistory ? "animate-spin" : ""} />
-              </button>
-            </div>
-            
-            {fetchingLocalHistory ? (
-              <div className="text-center py-8 opacity-50 font-mono text-sm">Loading history...</div>
-            ) : localHistory.length === 0 ? (
-              <div className="text-center py-8 opacity-50 font-mono text-sm">No local tournament history found.</div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {localHistory.map((t, idx) => (
-                  <div key={`${t.tournament_id}-${idx}`} className="flex flex-col p-4 bg-[#111] border border-gray-800 rounded-lg hover:border-[#00E5FF]/30 transition-colors">
-                    <div className="text-xs font-mono text-gray-500 mb-1">{new Date(t.date).toLocaleDateString()}</div>
-                    <div className="font-bold text-white font-rajdhani text-lg truncate mb-2">{t.tournament_name}</div>
-                    <div className="flex justify-between items-end mt-auto pt-2 border-t border-white/5">
-                      <div className="text-xs font-mono text-gray-400">Played as: <span className="text-[#00E5FF]">{t.gamer_tag}</span></div>
-                      {t.placement && (
-                        <div className="text-sm font-bold font-rajdhani text-white bg-white/10 px-2 rounded">
-                          {t.placement}{[11,12,13].includes(t.placement%100) ? 'th' : ['st','nd','rd'][t.placement%10-1] || 'th'} Place
+                    {loading ? (
+                      <div className="text-center py-10 opacity-50 font-mono text-sm">Loading from cloud...</div>
+                    ) : tournaments.length === 0 ? (
+                      <div className="text-center py-10 opacity-50 font-mono text-sm">No tournaments saved in the cloud.</div>
+                    ) : (
+                      <div className="space-y-3">
+                        {tournaments.map(t => (
+                          <div key={t.id} className="flex items-center justify-between p-3 bg-[#111] border border-gray-800 hover:border-[#00E5FF]/50 rounded-lg transition-colors group">
+                            <div>
+                              <div className="font-bold text-white font-rajdhani text-lg">{t.name}</div>
+                              <div className="text-xs text-gray-500 font-mono">ID: {t.id}</div>
+                            </div>
+                            <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <button onClick={() => loadTournament(t.id)} className="flex items-center gap-1 px-3 py-1.5 bg-[#00FF88]/10 text-[#00FF88] hover:bg-[#00FF88]/20 border border-[#00FF88]/30 rounded font-rajdhani font-bold tracking-wider transition-colors text-sm">
+                                <Download size={14} /> LOAD
+                              </button>
+                              <button onClick={() => deleteTournament(t.id)} disabled={deletingId === t.id} className="p-1.5 text-gray-500 hover:text-[#FF006E] hover:bg-[#FF006E]/10 rounded transition-colors">
+                                <Trash2 size={16} />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Right Column: Start.gg Past Events */}
+                <div className="space-y-6">
+                  <div className="bg-[#050A14] border border-white/10 p-6 rounded-2xl shadow-xl">
+                    <div className="border-b border-white/10 pb-4 mb-6">
+                      <h3 className="text-xl font-bold font-rajdhani text-[#00E5FF] tracking-widest flex items-center gap-2">
+                        <Key size={20} /> START.GG PAST EVENTS
+                      </h3>
+                      <p className="text-xs text-gray-400 font-mono mt-2">Connect your Developer API Token to view and import events you have participated in.</p>
+                    </div>
+
+                    {!startggToken && (
+                      <div className="mb-4 text-xs font-mono text-amber-400 bg-amber-500/10 border border-amber-500/30 p-3 rounded flex items-center gap-2">
+                        <AlertTriangle size={14} /> Please add your Start.gg API Token in Account Settings to use this feature.
+                      </div>
+                    )}
+
+                    {/* Display Already Imported Events */}
+                    {(() => {
+                      if (!userProfile?.startgg_data) return null;
+                      try {
+                        const startggData = JSON.parse(userProfile.startgg_data);
+                        if (!startggData?.events || startggData.events.length === 0) return null;
+                        return (
+                          <div className="mb-6 space-y-1.5">
+                            <div className="flex items-center gap-2 mb-2">
+                              <span className="text-[10px] font-mono px-2.5 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-400">
+                                {startggData.events.length} imported event{startggData.events.length !== 1 ? 's' : ''}
+                              </span>
+                            </div>
+                            {startggData.events.slice(0, 5).map((ev: any, i: number) => {
+                              const place = Number(ev.placement);
+                              const medalColor =
+                                place === 1 ? '#FFD700' :
+                                  place === 2 ? '#C0C0C0' :
+                                    place === 3 ? '#CD7F32' :
+                                      place <= 8 ? '#00E5FF' : '#6B7280';
+                              const medalBg =
+                                place === 1 ? 'rgba(255,215,0,0.1)' :
+                                  place === 2 ? 'rgba(192,192,192,0.08)' :
+                                    place === 3 ? 'rgba(205,127,50,0.1)' :
+                                      place <= 8 ? 'rgba(0,229,255,0.08)' : 'rgba(255,255,255,0.04)';
+
+                              return (
+                                <div
+                                  key={i}
+                                  className="flex items-center justify-between px-3 py-2 rounded-lg border border-white/5 hover:border-white/10 transition-colors"
+                                  style={{ background: medalBg }}
+                                >
+                                  <div className="min-w-0 pr-2">
+                                    <div className="font-bold text-xs font-rajdhani text-white truncate">{ev.event_name}</div>
+                                    <div className="text-[10px] font-mono text-gray-500 truncate">{ev.tournament_name}</div>
+                                  </div>
+                                  <div
+                                    className="text-xs font-mono font-bold px-2.5 py-1 rounded shrink-0"
+                                    style={{ color: medalColor, background: `${medalColor}15`, border: `1px solid ${medalColor}30` }}
+                                  >
+                                    {place === 1 ? '🥇' : place === 2 ? '🥈' : place === 3 ? '🥉' : `#${ev.placement}`}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        );
+                      } catch {
+                        return null;
+                      }
+                    })()}
+
+                    <button
+                      onClick={fetchStartggHosted}
+                      disabled={fetchingStartgg || !startggToken}
+                      className="w-full flex items-center justify-center gap-2 py-3 bg-[#00E5FF] hover:bg-[#00B3CC] disabled:opacity-50 text-[#050A14] font-bold rounded-lg transition-colors font-rajdhani tracking-widest mb-6"
+                    >
+                      <RefreshCw size={16} className={fetchingStartgg ? "animate-spin" : ""} />
+                      {fetchingStartgg ? 'FETCHING...' : 'FETCH NEW EVENTS TO IMPORT'}
+                    </button>
+
+                    {startggTournaments.length > 0 && (
+                      <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                        {startggTournaments.map(t => (
+                          <div key={t.id} className="flex flex-col p-4 bg-[#111] border border-gray-800 hover:border-[#00E5FF]/50 rounded-lg transition-colors">
+                            <div className="font-bold text-white font-rajdhani text-lg truncate mb-1">{t.name}</div>
+                            <div className="flex justify-between items-center mt-2">
+                              <span className="text-xs font-mono bg-white/10 px-2 py-0.5 rounded text-gray-300">State: {t.state === 1 ? 'Published' : 'Draft'}</span>
+                              <button
+                                onClick={() => onStartggImport(t.slug)}
+                                className="text-xs font-bold font-rajdhani tracking-widest text-[#FF006E] hover:underline"
+                                title="Import this tournament bracket to run locally"
+                              >
+                                RUN BRACKET →
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Local Tournament History */}
+                  <div className="space-y-6 md:col-span-2">
+                    <div className="bg-[#050A14] border border-white/10 p-6 rounded-2xl shadow-xl">
+                      <div className="border-b border-white/10 pb-4 mb-6 flex justify-between items-center">
+                        <div>
+                          <h3 className="text-xl font-bold font-rajdhani text-[#00E5FF] tracking-widest flex items-center gap-2">
+                            <Key size={20} /> LOCAL TOURNAMENT HISTORY
+                          </h3>
+                          <p className="text-xs text-gray-400 font-mono mt-2">Custom tournaments you've participated in on this platform.</p>
+                        </div>
+                        <button
+                          onClick={() => userProfile?.unique_id && fetchLocalHistory(userProfile.unique_id)}
+                          disabled={fetchingLocalHistory}
+                          className="p-2 rounded-lg border border-white/10 text-white hover:border-white/30 hover:bg-white/5 transition-all"
+                          title="Refresh History"
+                        >
+                          <RefreshCw size={15} className={fetchingLocalHistory ? "animate-spin" : ""} />
+                        </button>
+                      </div>
+
+                      {fetchingLocalHistory ? (
+                        <div className="text-center py-8 opacity-50 font-mono text-sm">Loading history...</div>
+                      ) : localHistory.length === 0 ? (
+                        <div className="text-center py-8 opacity-50 font-mono text-sm">No local tournament history found.</div>
+                      ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                          {localHistory.map((t, idx) => (
+                            <div key={`${t.tournament_id}-${idx}`} className="flex flex-col p-4 bg-[#111] border border-gray-800 rounded-lg hover:border-[#00E5FF]/30 transition-colors">
+                              <div className="text-xs font-mono text-gray-500 mb-1">{new Date(t.date).toLocaleDateString()}</div>
+                              <div className="font-bold text-white font-rajdhani text-lg truncate mb-2">{t.tournament_name}</div>
+                              <div className="flex justify-between items-end mt-auto pt-2 border-t border-white/5">
+                                <div className="text-xs font-mono text-gray-400">Played as: <span className="text-[#00E5FF]">{t.gamer_tag}</span></div>
+                                {t.placement && (
+                                  <div className="text-sm font-bold font-rajdhani text-white bg-white/10 px-2 rounded">
+                                    {t.placement}{[11, 12, 13].includes(t.placement % 100) ? 'th' : ['st', 'nd', 'rd'][t.placement % 10 - 1] || 'th'} Place
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          ))}
                         </div>
                       )}
                     </div>
                   </div>
-                ))}
+
+                </div>
+
+
               </div>
-            )}
+            </div>
           </div>
-        </div>
-
+        </main>
       </div>
-
-      
     </div>
-    </div>
-          </div>
-  </main>
-</div>
-</div>
   );
 }

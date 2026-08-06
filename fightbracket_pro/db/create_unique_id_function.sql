@@ -25,13 +25,22 @@ GRANT EXECUTE ON FUNCTION public.generate_unique_fb_id() TO anon, authenticated,
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS trigger AS $$
 BEGIN
-  INSERT INTO public.users (id, email, unique_id)
+  INSERT INTO public.users (id, unique_id, first_name, last_name, gamer_tag)
   VALUES (
     new.id,
-    new.email,
-    public.generate_unique_fb_id()
+    public.generate_unique_fb_id(),
+    new.raw_user_meta_data->>'first_name',
+    new.raw_user_meta_data->>'last_name',
+    new.raw_user_meta_data->>'gamer_tag'
   )
-  ON CONFLICT (id) DO NOTHING;
+  ON CONFLICT (id) DO UPDATE SET
+    first_name = COALESCE(EXCLUDED.first_name, public.users.first_name),
+    last_name = COALESCE(EXCLUDED.last_name, public.users.last_name),
+    gamer_tag = COALESCE(EXCLUDED.gamer_tag, public.users.gamer_tag);
+  RETURN new;
+EXCEPTION WHEN OTHERS THEN
+  -- Prevent trigger errors from blocking auth.users creation
+  RAISE WARNING 'handle_new_user trigger error: %', SQLERRM;
   RETURN new;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;

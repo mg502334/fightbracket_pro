@@ -35,7 +35,7 @@ checkbox_ui = """
                     className="mt-1 shrink-0 accent-[#00E5FF] w-4 h-4 rounded-sm border-white/20 bg-[#111]"
                   />
                   <label htmlFor="tos-consent" className="text-xs text-gray-400 font-mono leading-tight">
-                    I agree to the FightBracket Pro <button type="button" onClick={() => window.dispatchEvent(new Event('open-tos'))} className="text-[#00E5FF] hover:underline">Terms of Service</button> and <button type="button" onClick={() => window.dispatchEvent(new Event('open-privacy'))} className="text-[#00E5FF] hover:underline">Privacy Policy</button>.
+                    I agree to the FightBracket Pro <button type="button" onClick={() => window.dispatchEvent(new Event('open-tos'))} className="text-[#00E5FF] hover:underline">Terms of Service</button> and <button type="button" onClick={() => window.dispatchEvent(new Event('open-privacy'))} className="text-[#00E5FF] hover:underline">Privacy Policy</button>
                   </label>
                 </div>
               )}
