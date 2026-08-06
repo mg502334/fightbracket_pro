@@ -473,7 +473,9 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
         body: JSON.stringify({ token })
       });
       if (!res.ok) {
-        toast.error('CAPTCHA verification failed. Please try again.');
+        const data = await res.json().catch(() => ({}));
+        const errMsg = data.detail || 'CAPTCHA verification failed. Please try again.';
+        toast.error(errMsg);
         safeResetTurnstile();
         return false;
       }
