@@ -26,8 +26,8 @@ const GLOBAL_RULES = [
     content: 'Players have 10 minutes to report to their station after their match has been called. If a player fails to appear within this time limit, they will forfeit the match.',
   },
   {
-    title: 'Coaching',
-    content: 'Mid-match coaching is strictly prohibited. Players may receive coaching between sets (matches), but not between individual games within a set. Coaching sessions may not exceed 1 minute.',
+    title: 'Coaching & Electronic Devices',
+    content: 'Mid-match coaching is strictly prohibited. Players may receive coaching between games within a set, but for a maximum of 1 minute. Furthermore, the use of personal electronic devices (cellular phones, computers, tablets, smart watches, etc.) during a Match is strictly prohibited.',
   },
 ];
 
