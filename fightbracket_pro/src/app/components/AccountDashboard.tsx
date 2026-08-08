@@ -1388,31 +1388,6 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
           </div>
 
           <div className="ml-auto flex items-center gap-3">
-            <button
-              onClick={() => supabase.auth.signOut()}
-              className="flex items-center gap-2 h-9 px-4 mr-2 text-xs font-semibold text-[#050A14] transition-all duration-150"
-              style={{
-                background: "#00E5FF",
-                borderRadius: "2px",
-                letterSpacing: "0.08em",
-                textTransform: "uppercase",
-                fontFamily: "'Barlow Condensed', sans-serif",
-                fontWeight: 700,
-                fontSize: "0.75rem",
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.background = "#00B3CC")}
-              onMouseLeave={(e) => (e.currentTarget.style.background = "#00E5FF")}
-            >
-              <LogOut size={13} />
-              LOG OUT
-            </button>
-
-            {/* Notification bell */}
-            <button onClick={() => toast.info("No new notifications")} className="relative w-9 h-9 flex items-center justify-center transition-colors hover:bg-white/5" style={{ borderRadius: "2px" }}>
-              <Bell size={16} style={{ color: "#8a8a9a" }} />
-              <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-[#00E5FF] rounded-full" />
-            </button>
-
             {/* Home CTA */}
             {onNavigateHome && (
               <button
@@ -1434,7 +1409,33 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
                 RETURN HOME
               </button>
             )}
+
+            {/* Notification bell */}
+            <button onClick={() => toast.info("No new notifications")} className="relative w-9 h-9 flex items-center justify-center transition-colors hover:bg-white/5" style={{ borderRadius: "2px" }}>
+              <Bell size={16} style={{ color: "#8a8a9a" }} />
+              <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-[#00E5FF] rounded-full" />
+            </button>
+
+            <button
+              onClick={() => supabase.auth.signOut()}
+              className="flex items-center gap-2 h-9 px-4 mr-2 text-xs font-semibold text-[#050A14] transition-all duration-150"
+              style={{
+                background: "#00E5FF",
+                borderRadius: "2px",
+                letterSpacing: "0.08em",
+                textTransform: "uppercase",
+                fontFamily: "'Barlow Condensed', sans-serif",
+                fontWeight: 700,
+                fontSize: "0.75rem",
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = "#00B3CC")}
+              onMouseLeave={(e) => (e.currentTarget.style.background = "#00E5FF")}
+            >
+              <LogOut size={13} />
+              LOG OUT
+            </button>
           </div>
+
         </header>
 
         {/* Page content */}

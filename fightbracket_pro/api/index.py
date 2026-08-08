@@ -874,9 +874,14 @@ def get_friends(user_id: str = Depends(get_current_user_id), db: Session = Depen
     }
 
 @app.post("/api/friends/request")
-def send_friend_request(req: FriendRequestInput, user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
+def send_friend_request(req: FriendRequestInput, payload: dict = Depends(get_current_user_payload), db: Session = Depends(get_db)):
     if not db:
         raise HTTPException(status_code=404, detail="Database not available")
+
+    user_id = payload.get("sub")
+    meta = payload.get("user_metadata", {})
+    # Ensure the requesting user exists in Neon before creating any friendship rows
+    get_or_create_user(db, user_id, meta)
 
     identifier = req.target_identifier.strip()
     target = db.query(DBUser, DBUserIdentifier).outerjoin(DBUserIdentifier, DBUser.id == DBUserIdentifier.id).filter(
