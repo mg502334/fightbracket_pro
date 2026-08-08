@@ -45,25 +45,22 @@ except ImportError:
 
 from fastapi import Header
 
-def get_current_user_id(authorization: str = Header(None)):
+def get_current_user_payload(authorization: str = Header(None)):
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Missing or invalid token")
     token = authorization.split(" ")[1]
     if jwt is None:
-        return "anon-user"
-    jwt_secret = os.environ.get("SUPABASE_JWT_SECRET")
-    if not jwt_secret:
-        try:
-            payload = jwt.decode(token, options={"verify_signature": False}, algorithms=["HS256", "RS256", "EdDSA", "ES256"])
-            return payload.get("sub")
-        except Exception as e:
-            raise HTTPException(status_code=401, detail=f"Invalid token: {e}")
-    else:
-        try:
-            payload = jwt.decode(token, options={"verify_signature": False}, algorithms=["HS256", "RS256", "EdDSA", "ES256"])
-            return payload.get("sub")
-        except Exception as e:
-            raise HTTPException(status_code=401, detail=f"Invalid token: {e}")
+        return {"sub": "anon-user", "user_metadata": {}}
+    try:
+        payload = jwt.decode(token, options={"verify_signature": False}, algorithms=["HS256", "RS256", "EdDSA", "ES256"])
+        return payload
+    except Exception as e:
+        raise HTTPException(status_code=401, detail=f"Invalid token: {e}")
+
+from fastapi import Depends
+def get_current_user_id(payload: dict = Depends(get_current_user_payload)):
+    return payload.get("sub")
+
 
 app = FastAPI()
 
@@ -425,7 +422,7 @@ def verify_auth_turnstile(req: VerifyRequest, request: Request):
 def health_check():
     return {"status": "ok"}
 
-def get_or_create_user(db: Session, user_id: str) -> DBUser:
+def get_or_create_user(db: Session, user_id: str, meta: dict = None) -> DBUser:
     import random
     import string
     import uuid
@@ -440,7 +437,14 @@ def get_or_create_user(db: Session, user_id: str) -> DBUser:
             if not db.query(DBUser).filter(DBUser.unique_id == unique_id).first():
                 break
 
-        user = DBUser(id=user_id, unique_id=unique_id)
+        meta = meta or {}
+        user = DBUser(
+            id=user_id, 
+            unique_id=unique_id,
+            first_name=meta.get("first_name", ""),
+            last_name=meta.get("last_name", ""),
+            gamer_tag=meta.get("gamer_tag", "")
+        )
         db.add(user)
         
         # Sync to user_identifiers table
@@ -533,12 +537,14 @@ def get_or_create_user(db: Session, user_id: str) -> DBUser:
     return user
 
 @app.get("/api/user/profile")
-def get_user_profile(user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
+def get_user_profile(payload: dict = Depends(get_current_user_payload), db: Session = Depends(get_db)):
     if not db:
         raise HTTPException(status_code=404, detail="Database not available")
     
     try:
-        user = get_or_create_user(db, user_id)
+        user_id = payload.get("sub")
+        meta = payload.get("user_metadata", {})
+        user = get_or_create_user(db, user_id, meta)
 
         created_at_val = user.created_at
         if hasattr(created_at_val, "isoformat"):

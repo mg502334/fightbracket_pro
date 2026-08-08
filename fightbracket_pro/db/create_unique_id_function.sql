@@ -27,7 +27,7 @@ RETURNS trigger AS $$
 BEGIN
   INSERT INTO public.users (id, unique_id, first_name, last_name, gamer_tag)
   VALUES (
-    new.id,
+    new.id::text,
     public.generate_unique_fb_id(),
     new.raw_user_meta_data->>'first_name',
     new.raw_user_meta_data->>'last_name',
@@ -44,6 +44,8 @@ EXCEPTION WHEN OTHERS THEN
   RETURN new;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+
+GRANT EXECUTE ON FUNCTION public.handle_new_user() TO anon, authenticated, service_role, postgres, supabase_auth_admin;
 
 -- 3. Re-bind the trigger on auth.users
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
