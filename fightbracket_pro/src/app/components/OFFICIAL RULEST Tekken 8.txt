@@ -1,0 +1,762 @@
+OFFICIAL RULES
+TEKKEN WORLD TOUR 2026
+Effective Date: June 28, 2026
+
+
+
+INTRODUCTION. TEKKEN WORLD TOUR 2026 is a series of tournament events (each a “Tournament Event” and collectively, the "Tournament") brought to you by Bandai Namco Entertainment America Inc. (“BNEA”), Bandai Namco Entertainment Europe S.A.S. (“BNEE”), and Bandai Namco Entertainment Inc. (“BNEI”) (BNEA, BNEE, and BNEI are collectively “BNE”), and is subject to these Official Rules (the “Rules”). The Tournament Group reserves the right, at its discretion, to change, modify, add, or remove portions of these Rules, provided that any changes are effective immediately and will be made available on the Tournament Website, which each Player hereby agrees to periodically visit and check for any changes, updates, or additions to these Rules. These Rules, including any additional terms or conditions incorporated by reference herein, sets forth the entire understanding and agreement between the Tournament Group and Player with respect to Player’s participation in the Tournament.
+DEFINITIONS. Throughout these Rules, certain capitalized words and phrases have been given specific definitions, which can be identified wherever those words or phrases first appear in quotes. Accordingly, in addition to terms that are defined above or below this Section, the following terms are defined as follows:
+“Effective Date” means the date set forth above.
+“Deliverables” means any Tournament images, photographs, audio/visual works, and recordings incorporating the Player’s appearance, including without limitation the Player’s name, user name, image, likeness, voice, and/or related Intellectual Property Rights.
+“Game” means TEKKEN 8.
+"Global Finals" means the final event after the tour season to determine the Global Finals Champion.
+"Global Finals Champion" means the Prize Winner of the Global Finals.
+"Last Chance Qualifier" or "LCQ" means the last event serving as an opportunity for Players to qualify for the Global Finals. 
+“Match” means a competition between two (2) Players consisting of at least two (2) sets, as set forth in Section 4.
+“Player” means each individual player who participates in the Tournament and is subject to the Eligibility Criteria.
+“Prize” means each prize awarded to a Prize Winner, according to the Prize Schedule.
+“Prize Winner” means each Player that is awarded a Prize, subject to verification of such Player’s compliance with these Rules.
+"Rankings" means the rankings available via the Tournament Website.
+"Set" means an in-Game set, played as a best-of-five.
+“Territory” means the countries set forth in Schedule 1, excluding any countries determined by BNE or as required by applicable law.
+"Tournament Event Organizer" means a third party organizer responsible for organizing, managing, and producing Tournament Events, including supplying and fulfilling prizes.
+“Tournament Group” means, collectively: (a) BNE; (b) the Tournament Organizer; and (c) BNE and Tournament Organizer’s respective affiliates, related companies, and authorized agents, including without limitation their parent, sister and subsidiary companies, retailers, franchisees, advertising and promotion agencies, sponsors and suppliers of material and services related to the Tournament (excluding Dojo Events), and any other corporation, partnership, sole proprietorship or other legal entity directly involved in the Tournament (excluding Dojo Events) and their respective officers, directors, employees, agents, and other representatives. For the sake of clarity, any entity involved in organizing, managing, producing, promoting, or sponsoring a Dojo Event shall be excluded from the Tournament Group.
+“Tournament Organizer” means each regional tournament organizer that has been engaged by BNE to organize, manage, and produce the Tournament, including managing Tournament Event Organizers, and supplying and fulfilling prizes, as applicable.
+"Tournament Website" means the official Tournament website, available at: https://tekkenworldtour.com.
+TOURNAMENT STRUCTURE. The Tournament will be divided into different Tournament Events, each with the opportunity to earn Points toward qualifying to compete in the Global Finals, as further set forth below:
+Master Events. “Master+” and “Master”, collectively “Master Events”, are prestigious open offline Tournament Events, designated as Master Events by BNE, where Players from any permitted region can participate to earn large amounts of Points. Master+ or Master designation may be revoked if the tournament is unable to be held offline. 
+Challenger Events. "Challenger Events" are independently operated offline Tournament Events that have been selected by the Tournament Group where Players earn points as set forth below. The Tournament Group is not involved in or responsible for Challenger Events and organizers of Challenger Events shall be solely responsible for organizing, operating, and reporting results from, each Challenger Event. Except for the Prizes provided by BNE, Challenger Events are not sponsored by, endorsed by, administered by, or associated with the Tournament Group. By entering a Challenger Event, each Player hereby releases and agrees to hold the Tournament Group harmless from any liability arising out of such Player’s participation in the applicable Challenger Event. Any questions, comments, or complaints regarding a Challenger Event should be directed to the appropriate organizer of the applicable Challenger Event and not to the Tournament Group. BNE and the Tournament Organizer reserve the right in their sole discretion to disqualify Points earned by Players in any Challenger Event if BNE or the Tournament Organizer suspects any Challenger Event of incorrectly calculating points, engaging in or allowing outcome fixing, failing to comply with any provision of these Rules, or other facts and circumstances that cause BNE or the Tournament Organizer to question the integrity of the results of such Challenger Event. 
+Dojo Events. “Dojo Events”, are independently operated open offline Tournament Events that have opted in to be recognized as part of the Tournament via an application process on the Tournament Portal (as defined below), or other website designated by BNE. Dojo Events are required to use the Tournament Portal (or other websites designated by BNE) to (a) list their Dojo Event; (b) take registration; and (c) setup and record the bracket. Dojo Events are required to comply with these Rules, including the Tournament format and ruleset set forth in Section 4. The Tournament Group is not involved in or responsible for Dojo Events and organizers of Dojo Events shall be solely responsible for organizing, operating, and reporting results from, each Dojo Event. Dojo Events are not sponsored by, endorsed by, administered by, or associated with the Tournament Group. By entering a Dojo Event, each Player hereby releases and agrees to hold the Tournament Group harmless from any liability arising out of such Player’s participation in the applicable Dojo Event. Any questions, comments, or complaints regarding a Dojo Event should be directed to the appropriate organizer of the applicable Dojo Event and not to the Tournament Group. BNE and the Tournament Organizer reserve the right in their sole discretion to disqualify Points earned by Players in any Dojo Event if BNE or the Tournament Organizer suspects any Dojo Event of incorrectly calculating points, engaging in or allowing outcome fixing, failing to comply with any provision of these Rules, or other facts and circumstances that cause BNE or the Tournament Organizer to question the integrity of the results of such Dojo Event. Varying amounts of Points will be available for Players to earn at Dojo Events, based on the number of registrants. The Dojo Event submission process is as follows:
+After a Dojo is created by a Tournament Event Organizer using a tournament platform supported by the Tournament Portal, Dojo Events will be submitted for review through the Tournament Portal. The Tournament Event Organizer must submit the Dojo Event through the Tournament Portal for all platforms, after which BNE and the Tournament Organizer will decide if the Dojo eligibility criteria set forth herein have been met. Tournament Event Organizers are solely responsible for ensuring their Dojo Event meets the eligibility requirements set forth herein. BNE and the Tournament Organizer reserves the right to deny Dojo Event status at their sole discretion.
+ A Tournament Event Organizer is limited to hosting only one (1) Tournament Event within a ninety-six (96) hour time period. Additionally, it is prohibited for a Tournament Event Organizer to reuse a venue that hosted a Tournament Event for hosting additional Tournament Event within the same ninety-six (96) hour timeframe.
+Dojo Events that meet the requirements set forth herein will be added to the tour by BNE and the Tournament Organizer. After the Dojo Event’s conclusion, Dojo Events will be reassessed based on archived stream footage before Points will be allocated based on the Point System set forth below. Dojo Events that are suspected of fraud, manipulation, attempt to mislead BNE and/or the Tournament Organizer, and or are otherwise in violation of these Rules (including Section 10), may face disciplinary action at the sole discretion of BNE and the Tournament Organizer. Falsely reporting Player disqualifications in the tournament can lead to the nullification of points and removal of future Dojo Event eligibility.
+Points System. Points will be available at Master Events, Challenger Events, and Dojo Events as set forth in the chart below. Total Points earned during the Tournament will help determine the list of Players invited to compete and the bracket seeding in the Global Finals.
+If two (2) or more Players in the Global Rankings have the same number of Points, the tiebreaker will be resolved in favor of a single Player by applying the following tiebreaking mechanisms, in order of application: (a) highest Points earned from an individual Master+ Event, Master Event, Challenger Event or Dojo Event; (b) highest total Points earned from all participated  Master+ Events, Master Events, Challenger Events, and Dojo Events; or (c) a custom tie-breaker solution as determined by BNE.
+If two (2) or more Players in the Regional Rankings have the same number of Points, the tiebreaker will be resolved in favor of a single Player by applying the following tiebreaking mechanisms, in order of application: (a) highest Points earned from an individual Dojo Event; (b) highest Point total earned from two (2) highest individual Dojo Events; (c) highest Point total earned from three (3) highest individual Dojo Events; (d) highest Point total earned from four (4) highest individual Dojo Events; (e) highest Point total earned from five (5) highest individual Dojo Events; (f) highest total Points earned from all participated Dojo Events; (g) highest total number of Dojo Events entered; or (h) a custom tie-breaker solution as determined by BNE.
+
+
+Placement
+
+Master Events
+
+Challenger Events
+
+ 
+
+Dojo Events
+
+ 
+
+Master+
+
+Master
+
+Challenger Events
+
+ 
+
+Dojo 96+
+
+ 
+
+Dojo 64+
+
+Dojo 32+
+
+Dojo 16+
+
+1st
+
+800
+
+560
+
+300
+
+150
+
+100
+
+50
+
+20
+
+2nd
+
+560
+
+400
+
+220
+
+100
+
+70
+
+30
+
+10
+
+3rd
+
+400
+
+300
+
+180
+
+70
+
+50
+
+15
+
+5
+
+4th
+
+300
+
+220
+
+150
+
+50
+
+30
+
+10
+
+1
+
+5th
+
+220
+
+180
+
+120
+
+30
+
+15
+
+5
+
+ 
+
+7th
+
+180
+
+150
+
+90
+
+15
+
+10
+
+1
+
+ 
+
+9th
+
+150
+
+120
+
+70
+
+10
+
+5
+
+ 
+
+ 
+
+13th
+
+120
+
+90
+
+50
+
+5
+
+1
+
+ 
+
+ 
+
+17th
+
+90
+
+70
+
+30
+
+1
+
+ 
+
+ 
+
+ 
+
+25th
+
+70
+
+50
+
+15
+
+ 
+
+ 
+
+ 
+
+ 
+
+33rd
+
+50
+
+30
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+49th
+
+30
+
+15
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+65th
+
+15
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+97th
+
+10
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+129th
+
+5
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+193rd
+
+1
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+
+
+
+
+Rankings.
+Global Leaderboard. Players will be ranked based on the highest total Points at Player’s top four (4) placing Master+ and Master events, top two (2) placing Challenger Events, and top two (2) placing Dojo Events. A Player is allowed to enter any number of Master Events, Challenger Events, and Dojo Events. Players can enter Master Events, Challenger Events, and Dojo Events from any region.
+Regional Leaderboard. Players will be ranked based on the highest total Points at Player’s top six (6) placing Dojo Events in their selected Region. A Player is allowed to enter any number of Dojo Events. Players will only be ranked on the Regional Leaderboard for their selected region. Players must be physically located and a legal resident of a country in their selected region and may be asked to provide documentation (e.g., valid government issued ID, utility bill, etc.). Such documentation shall only be used for verification purposes.
+If a Player is in a qualifying Ranking for the Global Finals on both the Global and Regional Leaderboards, the qualifying spot earned from the Global Leaderboard will take priority over the Regional Leaderboard qualification spot. The Regional Leaderboard qualification spot will then be given to the next highest Ranked Player on their Regional Leaderboard.
+Tournament Portal. The Tournament Website will have a link to a separate website (available at: https://tekken-esports.bn-ent.net/) owned and operated by BNEI where players can access Ranking information and participate in Tournament Events (the “Tournament Portal”). For a Player’s Points to be counted and information to be displayed in the Rankings, a Player must: (a) register on the Tournament Portal and consent to applicable terms and conditions; and (b) have a valid account for any applicable tournament platform supported by the Tournament Portal. Accordingly, each Player acknowledges and agrees that if Player does not complete the foregoing requirements, such Player’s Points will not be counted and such Player’s Ranking information will not be displayed in the Rankings, which could result in Player’s being ineligible to receive Prizes. The Tournament Portal may be incomplete or contain errors or inaccuracies that could cause the display of inaccurate or incomplete information, failures, corruption and/or loss of data or information. Players expressly acknowledge and agree that, to the extent permitted by applicable law, all use of the Tournament Portal is at Players’ sole risk and responsibility. BNE IS PROVIDING THE Tournament Portal TO PLAYERS SOLELY ON AN “AS IS” BASIS AND WITHOUT ANY WARRANTY OF ANY KIND, WHETHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF MERCHANTABILITY, NON-INFRINGEMENT, ACCURACY, COMPLETENESS, PERFORMANCE, AND FITNESS FOR A PARTICULAR PURPOSE.
+Live Streaming. Each Tournament Event Organizer will provide BNE and Tournament Organizer a link to their live streaming channel with recorded archives or Video(s) on Demand ("VODs") with a permanent hosting link that does not expire upon registering their event on the Tournament Portal, and must stream at a minimum the Top 8 of their event so that BNE and Tournament Organizer can review the stream for event information and compliance with these Rules. Tournament Organizers must follow any additional requirements listed in the Tournament Organizer Guide available on the Tournament Portal. 
+Global Finals.  
+Global Finals Qualification.
+The Global Finals will feature thirty-six (36) Players qualified through the following pathways:
+Four (4) Players ranked 1st through 4th on the Global Leaderboard Rankings qualified directly for the Final Bracket.
+Sixteen (16) Players qualified for the Global Leaderboard Group Stage, consisting of:
+Players ranked 5th through 16th on the Global Leaderboard Rankings.
+The winner of each Master+ Event.
+The winner of the TEKKEN 8 Esports World Cup 2026 competition.
+Fifteen (15) Players qualified through the Regional Leaderboard Rankings, consisting of the 1st Place Player from each Regional Leaderboard.
+One (1) Player qualified for the Final Bracket through the Last Chance Qualifier (LCQ).
+If a Player qualifies for the Global Finals through multiple qualification pathways, only one (1) qualification slot shall be retained by that Player. Qualification priority and slot reallocation shall be determined as follows:
+If a Player qualifies through the Global Leaderboard, a Master+ Event or the Tekken 8 Esports World Cup 2026 and the Regional Leaderboard Rankings, the qualification slot earned through the Global Leaderboard Rankings or a Master+ Event or the Tekken 8 Esports World Cup 2026 shall take priority. The Regional Leaderboard qualification slot shall then be awarded to the next highest Ranked Player on the applicable Regional Leaderboard.
+If a qualification slot obtained through a Master+ Event and/or the Tekken 8 Esports World Cup 2026 becomes vacant due to a Player already qualifying for the Global Finals through another qualification pathway, the vacant slot shall be reallocated to the next highest Ranked Player on the Global Leaderboard.
+Global Leaderboard Group Stage.
+Participants. The only Players eligible to participate in the Global Leaderboard Group Stage Pools are the following:
+Rankings. Players ranked 5th through 16th on the Global Leaderboard Rankings.
+The winner of each Master+ Event and the winner of the Tekken 8 Esports World Cup 2026.
+Global Leaderboard Group Stage Format.
+The sixteen (16) qualified Players will compete in four (4) round robin groups of four (4) Players.
+Each Group will play a series of round-robin best-of-three Matches, in which the Player who wins two (2) Sets first wins the Match.
+The top two (2) placings from each Group will advance to the Final Bracket phase of the tournament.
+The Players advancing to the Final Bracket from each Group will be determined by the following, in order of priority:
+First: Number of Match wins.
+Second: The net Set win score (Total Set wins minus Set losses).
+Third: The head-to-head Match results between the tied Players.
+In the event of a three (3) Player tie, a best-of-one round robin will take place between these three (3) Players, with the first Player to win two (2) Sets winning the tie. In the event of a three (3) Player tie where the top two (2) Players need to be determined in order to advance to the Final Bracket, then the first Player to lose two (2) Sets will be eliminated.
+Global Leaderboard Group Stage Seeding.
+The selection order will be determined as follows:
+The sixteen (16) Players qualified for the Global Group Stage will be seeded according to their final position on the Tournament's Global Leaderboard Rankings.
+If two (2) or more Players in the Global Leaderboard Rankings have the same number of Points, the tiebreaker will be resolved in favor of a single Player by applying the following tiebreaking mechanisms, in order of application: (a) highest Points earned from an individual Master+ Event, Master Event, Challenger Event or Dojo Event; (b) highest total Points earned from all participated Master+ Events, Master Events, Challenger Events, and Dojo Events; or (c) a custom tie-breaker solution as determined by BNE.
+Players will select their Group Stage placement in the following order:
+Players seeded 13th through 16th will select first, in the following order:16th, 15th, 14th, 13th.
+Players seeded 9th through 12th will then select, in the following order: 9th, 10th, 11th, 12th.
+Players seeded 5th through 8th will then select in the following order: 5th, 6th, 7th, 8th.
+Players seeded 1st through 4th will select last, in the following order: 1st, 2nd, 3rd, 4th.
+Players seeded 1st through 4th can interrupt the Group selection process between the 16th to 5th selections to select a Group.
+If two (2) or more Players seeded 1st through 4th want to interrupt the Group selection process at the same time, the Player with the highest seed decides which Player interrupting the selection process will make a Group selection.
+Players may only select from the remaining available Group Stage positions at the time of their selection.
+Regional Leaderboard Group Stage.
+Participants. The only Players eligible to participate in the Regional Leaderboard Group Stage are the following:
+ Rankings. Top 1 Player from each of the fifteen (15) Regional Leaderboard Rankings.
+Regional Leaderboard Group Stage Format.
+The fifteen (15) qualified Players will compete in three (3) round robin groups of five (5) Players.
+Qualified Players will be placed into one (1) of the three (3) round robin groups of five (5) Players drawn at random.
+Each Group will play a series of round-robin best-of-three Matches, in which the Player who wins two (2) Sets first wins the Match.
+The top one (1) placings from each Group will advance to the Final Bracket phase of the tournament.
+The Players advancing to the Final Bracket from each Group will be determined by the following, in order of priority:
+First: Number of Match wins.
+Second: The net Set win score (Total Set wins minus Set losses).
+Third: The head-to-head Match results between the tied Players.
+In the event of a three (3) Player tie, the tied Players shall compete in a best-of-one round robin tiebreaker. The Player advancing from the Group shall be determined by applying the tiebreaker criteria set forth above to the results of the tiebreaker matches.
+Regional Leaderboard Group Stage Seeding.
+Qualified Players will be placed into one (1) of the three (3) round robin groups of five (5) Players drawn at random.
+Last Chance Qualifier (LCQ).
+Participants & Seeding.
+The LCQ will consist of Players who are eligible to compete from any of the eligible Territories of the Tournament except for the Players already advancing to the Final Bracket.
+Players that did not advance to the Final Bracket from the Global Leaderboard Group Stage and the Regional Leaderboard Group Stage are eligible to participate in the LCQ.
+Players that did not participate in the Global Leaderboard or Regional Leaderboard Group Stages will be seeded by their highest total Points allocation from the Global Leaderboard Rankings.
+Players that participated in the Global Leaderboard or Regional Leaderboard Group Stages will benefit from pre-established seeds decided by the Tournament Group.
+The order in which Players will choose a spot will be determined in the following order:
+Global Leaderboard Group Stage 3rd Place
+The Player with the highest Global Leaderboard Rank will have priority in choosing a spot.
+Global Leaderboard Group Stage 4th Place
+The Player with the highest Global Leaderboard Rank will have priority in choosing a spot.
+Regional Leaderboard Group Stage 2nd Place
+2nd Place Players will participate in a random draw to determine the order of choosing a spot in the LCQ.
+Regional Leaderboard Group Stage 3rd Place
+3rd Place Players will participate in a random draw to determine the order of choosing a spot in the LCQ.
+Regional Leaderboard Group Stage 4th Place
+4th Place Players will participate in a random draw to determine the order of choosing a spot in the LCQ.
+Regional Leaderboard Group Stage 5th Place
+5th Place Players will participate in a random draw to determine the order of choosing a spot in the LCQ.
+LCQ Format.
+The LCQ format will follow that of the Tournament Format & Rules as set forth in Section 4.
+Final Bracket.
+The Top Sixteen (16) Final Bracket will be conducted as a Double Elimination Bracket Competition with the:
+Four (4) Players ranked 1 to 4 from the Global Leaderboard.
+Eight (8) Players that advanced from the Global Leaderboard Group Stage.
+Three (3) Players that advanced from the Regional Leaderboard Group Stage.
+One (1) Player that placed 1st in the Last Chance Qualifier (LCQ).
+Final Bracket Seeding.
+Round 1 Winners Side Bracket.
+Match 1: Global Leaderboard TOP 1 vs. Regional Group C 1st Place
+Match 2: Global Group D 1st Place vs Global Group A 2nd Place.
+Match 3: Global Leaderboard TOP 4 vs. LCQ 1st Place
+Match 4: Global Group C 1st Place vs Global Group B 2nd Place
+Match 5: Global Leaderboard TOP 2 vs Regional Group B 1st Place
+Match 6: Global Group A 1st Place vs. Global Group D 2nd Place
+Match 7: Global Leaderboard TOP 3 vs Regional Group A 1st Place
+Match 8: Global Group B 1st Place vs Global Group C 2nd Place
+Top 16 (sixteen) Matches.
+Round 1 Winners Side Bracket, Winner’s Quarter Finals, Losers Round 1 and Losers Round 2 will be best-of-three in which the Player who wins two (2) Sets first wins the Match.
+Top 8 (eight) Matches.
+Winner's Semi Finals, Losers Top 8 (eight), Losers Quarter Finals, Losers Semi Finals, Winners Finals, Losers Finals, and Grand Finals Matches will be best-of-five in which the Player who wins three (3) Sets first wins the Match.
+TOURNAMENT FORMAT & RULES.
+Double Elimination. Each Tournament Event will be played as a double elimination (a “Double Elimination”) bracket competition, in which Players compete in Matches starting from what is known as the winner’s side of the bracket (the “Winner’s Bracket”). If a Player loses a Match while in the Winner's Bracket, that Player will be moved to the loser’s side of the bracket (the “Loser’s Bracket”). If a Player loses a Match while in the Loser’s Bracket, that Player is eliminated and will no longer advance further in the bracket for that Tournament Event. The winner of the Winner’s Bracket will play against the winner of the Losers Bracket in the Grand Finals of the Tournament Event, as set forth below.
+Match Play.
+Master+ Events:
+All Matches will be best-of-three, in which the Player who wins two (2) Sets first wins the Match, with the exception that the Winner’s Bracket Semi-Finals, Losers Bracket Round 1, Losers Bracket Quarter-Finals, Losers Bracket Semi-Finals, Winners Bracket Finals and Grand Finals in the Top 8 of each Tournament Event bracket will be best-of-five, in which the Player who wins three (3) Sets first wins the Match.
+Master Events:
+All Matches will be best-of-three, in which the Player who wins two (2) Sets first wins the Match, with the exception that the Winner’s Bracket Semi-Finals, Losers Bracket Round 1, Losers Bracket Quarter-Finals, Losers Bracket Semi-Finals, Winners Bracket Finals and Grand Finals in the Top 8 of each Tournament Event bracket will be best-of-five, in which the Player who wins three (3) Sets first wins the Match.
+Challenger and Dojo Events:
+All Matches will be best-of-three, in which the Player who wins two (2) Sets first wins the Match, with the exception that the Winner’s Bracket finals, Losers Bracket semi-finals, Losers Bracket finals, and Grand Finals of each Tournament Event bracket will be best-of-five, in which the Player who wins three (3) Sets first wins the Match.
+Tournament Event Organizers for Challenger and Dojo Events may instead opt for the exception that the Winner’s Bracket Semi-Finals, Losers Bracket Round 1, Losers Bracket Quarter-Finals, Losers Bracket Semi-Finals, Winners Bracket Finals and Grand Finals in the Top 8 of each Tournament Event bracket will be best-of-five, in which the Player who wins three (3) Sets first wins the Match.
+Tournament Event Organizers must make the choice of Top 4 best-of-five or Top 8 best-of-five before their tournament begins.
+The winner of any single Set is determined when the Game awards the win to that Player or upon the opponent causing a match disruption or other violation of the Rules as determined by the Tournament Organizer staff member.
+During a Match, the winner of any single Set must comply with the following winner lock rules: 
+At the start of a Match:
+Players select their sides. Players may mutually agree on who sits on left and right side, corresponding to Player 1 and Player 2, respectively, at the start of a Set. Players are committed to this selection for the entirety of the Match. If Players cannot agree to a Side Selection, they will play a Best-of-Three Rock-Paper-Scissors to determine who picks their side first. The winner of the Best-of-Three Rock-Paper-Scissors picks their side first and will be committed to that selection for the entirety of the Match.
+Each Player selects their character from all selectable characters and the stage is selected at random;
+A Match begins when Players enter the "Get ready for the next battle!" VS screen after Stage selection;
+After any single Set, the winner is "locked" into their character and they are not permitted to switch their character until or unless they lose a subsequent single Set;
+All single Sets are loser's choice; and
+The loser of any single Set may choose between returning to stage select and choosing a new randomly selected stage or returning to character select to choose a new character and a new randomly selected stage.
+All Matches must use the following in-Game Settings:
+Tournament Settings: Default
+The tournament console used for streaming must use Preset 1
+Screen Settings
+In-Battle Status Settings: On
+Versus ("VS") Mode
+Rounds: 3 out of 5
+Time Limit: 60 seconds
+Stage: Random
+Special Style is allowed during Match Play
+Character Customizations: Off
+All Character Preset Costumes are legal for Tournament use, unless BNE determines, in its sole discretion, that certain costumes give an unfair advantage. 
+Players cannot use the same Preset. Should both Players wish to use the same Preset, they will play a Best-Of-One Rock-Paper-Scissors tiebreaker to determine who may use their preferred Preset Costume for the duration of the Match.
+If a Character Customization or one of the above listed Presets that cannot be used are used, the Set is subject to not being scored. Players are responsible for immediately finishing the Set with one (1) Player holding forward for the remainder of the rounds to quickly return to the lobby and restart the Set.
+Players must use a Game version on one of the following platforms as determined by the Tournament Organizer or as otherwise set forth herein:
+PlayStation 5, Xbox Series X|S, or Steam.
+Player Options. Prior to commencement of a Match, Players may exercise the following options:
+Blind Pick. Players may request a method of character selection known as blind pick (“Blind Pick”) to keep their character selection secret until the first Set begins. In the Blind Pick process, the Players will each tell a Tournament Organizer staff member, in secret, their character selection for the first Set. Players will then select their character with the Tournament Organizer staff member validating their selections.  If a Player purposely does not select the character they told the Tournament Organizer staff member, that Player will forfeit that single Set.
+Rule Violations. Players must bring up any rule violations or disruptions prior to starting or restarting a Set. If any rule violation or disruptions occur during a Set, Players must immediately notify the Tournament Organizer. If Players complete a Set without raising a rule violation or disruption, the Set will count.
+Draws. In the event of a tied Set declared by a Double K.O. or timeout on the Game screen, the Set will not be scored and both Players will replay the tied Set with the same character selections.
+Grand Finals. The “Grand Finals” is a Match series comprised of up to two (2) best-of-five Matches between the final two (2) Players left in a Tournament Event. In the event the Player from the Winner’s Bracket wins the first Match, the Grand Finals immediately ends, giving the Player from the Loser’s Bracket their second and eliminating loss, and making the Player from the Winner’s Bracket the overall winner of the Tournament Event. In the event that the Player from the Loser’s Bracket wins the first Match, thereby giving the Player from the Winner’s Bracket their first loss, a second best-of-five Match will be played. The Players may choose different characters and exercise any pre-Match options for this new Match. The Player that wins this final Match, thereby giving the other Player their second and eliminating loss from the Tournament Event, is declared the winner of such Tournament Event. For the sake of clarity, the foregoing shall not apply to Global Finals, the details of which are specified in Section 3.
+Missing Players. Players must be present at the call time for a Match. Players that are not present and ready to play within ten (10) minutes of this call time are subject to Match forfeiture.
+Match Disruptions. If a Player intentionally or accidentally causes a pause in a Match, whether by pressing the Options button or by experiencing a controller disconnection, the Player that caused the pause will forfeit the current round of the Set. If a Match disruption occurs that is out of control of the Players of the Match, such as action of another Player’s un-desynced controller or a Game software crash or console hardware failure making Players unable to continue a Set, the Tournament Organizer staff member shall order the Players to restart the Set, but with the same round count from the point that the Match disruption occurred. Players are responsible for starting a new Set and holding forward for the necessary number of rounds to quickly return to the round count that was achieved before a Match disruption.
+Inevitable Defeat. If a Match Disruption occurs during a move or animation, and after the game has been unpaused, the round ends with no further inputs from either Player, a Player that caused a Match Disruption will not forfeit the current round of the Set.
+Coaching. Each Tournament Organizer may provide their own set of rules for coaching. If none are provided, the following set of rules apply:
+Players may designate one (1) individual to be their coach during a Match.
+Coaching will only be allowed for the Player that lost the previous Set.
+Players may consult with the coach only one (1) time for the Match.
+Players may consult with the coach for a maximum of one (1) minute.
+Coaching while a Set is in play is not allowed and is subject to Set forfeiture.
+Personal electronic devices such as cellular phones, computers, tablets, etc. during a Match is not allowed.
+Reading written notes will only be allowed for the Player that lost the previous Set.
+Players may read written notes only (1) time for the Match.
+Players may read written notes for a maximum of one (1) minute.
+If a rule violation occurs, a Player can notify a Tournament Organizer.
+Tournament Organizers may issue a warning for any rule violations.
+Failure to adhere to coaching rules after a warning from the Judge will result in forfeiting the next Set.
+Controller Usage. A Player may not program functions on a controller using methods outside the basic functions of the Game, including, but not limited to, programmable and turbo controllers. The following are sequences are prohibited:
+A single input that results in the execution of multiple subsequent inputs.
+Combination inputs except for those that can be applied within the game’s controller settings.
+A single button input which results in a directional movement input and an attack input.
+BNE and/or the Tournament Organizer reserve the right to inspect a Player’s controller to ensure compliance with these Rules, non-compliance of which may result in disciplinary action, including, but not limited, to disqualification, suspension, and/or banning.
+New Characters. Players can use DLC characters in the Tournament starting on the character's official date of release (subject to time zone differences based on location). Players cannot use DLC characters in the Tournament during the "early access" window.
+TOURNAMENT SCHEDULE. The Tournament series will commence and end according to the schedule set forth on the Tournament Website, subject to change (“Tournament Schedule”). 
+ELIGIBILITY. This Tournament is only open to Players who, from the time of entry, until all Prizes have been awarded: (a) are of the age of majority in the jurisdiction in which the Tournament is located or who have received explicit permission from their parent or guardian; (b) are legal residents of one of the countries specified in the Territory; (c) possess a valid form of state or federal government-issued identification; (d) are not subject to applicable sanctions prohibitions, including, without limitation, any person listed on the U.S. Department of Treasury Office of Foreign Assets Control’s Specially Designated Nationals and Blocked Persons List; (e) are not officers, directors, employees, agents, or representatives of the Tournament Group or its respective parents, affiliated or related companies, agencies, suppliers of the materials or services related to this Tournament, or members of any immediate families (defined as parents, siblings, children and spouses, regardless of where they live) or households (whether or not related) of such officers, directors, employees, agents, or representatives; and (f) are and remain in compliance with these Rules and any applicable terms and conditions related to the Game, including the Game’s end user license agreement (“EULA”) (collectively, the “Eligibility Criteria”). To the extent applicable, Players are solely responsible, at their sole cost and expense, for obtaining any visa or completing any other entry requirements necessary to enter a country to participate in any Tournament Event. BNEA makes no representations or warranties regarding visas or entry eligibility. If an individual who does not meet the Eligibility Criteria becomes a winner, such Player participation will be void and the Player will be deemed ineligible, which could result in Players being disqualified from the Tournament Event, unable to earn Points, and/or win Prizes. All applicable federal, state, and local laws and regulations apply. Void where prohibited, restricted, or where conducting the Tournament would subject the Tournament Group to any tax, duty, tariff, or other fee mandated by local law.
+HOW TO ENTER & ENTRY CONDITIONS.
+Players that meet the Eligibility Criteria can join the Tournament by registering to enter a Tournament Event by such means of registration as specified for such Tournament Event. As between BNE and the Player, BNE retains all right, title, and interest in any materials or content submitted or provided by a Player, to the extent permitted by applicable law. Players can find more information regarding the Tournament by visiting the Tournament Website.
+By registering or otherwise participating in the Tournament, each Player (and guardians of any minor Player) confirms that such Player meets the Eligibility Criteria and has read, understands, and agrees to abide by these Rules, including the Arbitration Agreement and Class Action Waiver, and all other applicable terms and conditions described or referenced herein. Any Internet access required to register must be obtained by each Player, at no cost to the Tournament Group.
+In connection with the Tournament, each Player represents and warrants that such Player: (a) will not infringe, violate, or misappropriate the rights of any third party, including any copyrights, trademarks, trade secrets, industrial design rights, design and utility patents, rights to likeness, publicity, or privacy, and other similar intellectual property rights, as may be recognized in any territory throughout the World, whether registered or unregistered (collectively, “Intellectual Property Rights”); (b) will submit such photographs, videos, audio clips, or other recordings of the Player as may be requested by the Tournament Group, will license such content or materials to BNE and its nominees for any use related to advertising and marketing the Tournament, and will take care that any such content or materials will be free from all liens, charges, encumbrances, restrictions, licenses, equities, and claims of any third party; and (c) shall not submit any content or material that: (i) promotes or contains libelous or defamatory materials, false or deceptive materials, hate speech, pornography or sexually explicit materials, obscene language, violence, the use of firearms, prescription drugs, alcohol or tobacco, or discrimination against a protected group (whether based on race, color, sex, religion, nationality, disability, sexual orientation, age, or similar category); (ii) is associated with any illegal activity (including gambling, trafficking, or the use of illegal substances); (iii) violates any Intellectual Property Rights of any third party, is invasive of another’s privacy, or is threatening, abusive or harassing; (iv) contains, links to, uses, or otherwise transmits or enables the transmission of any malware, viruses, worms, Trojan horses, adware, spyware, or other harmful code or programs for any purpose, including search hijacking or browser URL hijacking to drive traffic to any website, uses a “BotNet” or other automated or manual means of generating fraudulent traffic, clicks, impressions, or other actions on any website; (v) promotes, facilitates, or enables the illegal downloading of videos, music, or other copyrighted material, (e.g., P2P/BitTorrent/MP3 tracking and indexing apps, “linking” or “leeching” apps, ROMs, “warez,” emulators, hacks, “phreaks,” “cracks,” or ripping software for illegally circumventing DRM or other copy protection devices; or (vi) is associated with any blockchain, cryptocurrency, non-fungible token, or related technology.
+All Player participation is subject to verification. The Tournament Group reserves the right to disqualify any Player that the Tournament Group reasonably believes or suspects provided forged, altered, or false information, or that has otherwise failed to comply with these Rules.
+PRIZES. Prizes will be awarded as set forth in the below chart. Prize payments will be made in United States dollars, in accordance with industry standard payout methods, and the Prize Restrictions set forth in Section 9.
+
+
+Tournament Event
+
+Prize
+
+Master Event*
+
+$6,000 additional per Master Event
+
+Challenger Event*
+
+$2,000 additional per Challenger Event
+
+*Prizes provided by BNE for Master Events and Challenger Events are supplemental to prize pools provided by the respective Tournament Event Organizer. Payout structures for such Tournament Events will be determined by the respective Tournament Event Organizer.
+
+
+
+Master Events Payout Structure
+
+Placement
+
+Prize 
+
+1st
+
+$3,000
+
+2nd
+
+$1,250
+
+3rd
+
+$750
+
+4th
+
+$400
+
+5th (tie)
+
+$200
+
+7th (tie)
+
+$100
+
+
+
+Challenger Events Payout Structure
+
+Placement
+
+Prize 
+
+1st
+
+$1,000
+
+2nd
+
+$500
+
+3rd
+
+$300
+
+4th
+
+$200
+
+
+
+
+
+
+
+Global Finals Prize Pool
+
+
+
+Prize
+
+$300,000 total Prize pool
+
+
+
+
+
+Global Finals Payout Structure
+
+Global Leaderboard Group
+
+Placement
+
+Prize 
+
+3rd (tie)
+
+$2,600
+
+4th (tie)
+
+$2,000
+
+Regional Leaderboard Group
+
+Placement
+
+Prize
+
+2nd (tie)
+
+$1,600
+
+3rd (tie)
+
+$1,400
+
+4th (tie)
+
+$1,200
+
+5th (tie)
+
+$1,000
+
+Top 16
+
+Placement
+
+Prize
+
+1st
+
+$100,000
+
+2nd
+
+$60,000
+
+3rd
+
+$30,000
+
+4th
+
+$15,000
+
+5th (tie)
+
+$9,500
+
+7th (tie)
+
+$6,200
+
+9th (tie)
+
+$4,200
+
+13th (tie)
+
+$3,200
+
+
+
+PRIZE RESTRICTIONS.
+In order to receive a Prize identified in the above-referenced notification, each Prize Winner must: (a) execute, scan and email to the Tournament Organizer, a written affidavit or declaration of eligibility, confirming such Prize Winner’s fulfillment of the Eligibility Criteria and compliance with the Rules (the “Affidavit”), within twenty-four (24) hours of sending such Prize Winner such Affidavit; (b) execute, scan and email to the Tournament Organizer a written release, releasing the Tournament Group from any liability in connection with this Tournament, the acceptance, possession, enjoyment, use or misuse of a Prize, or the public disclosure of such Prize Winner’s identity in connection therewith (the “General Release”) within twenty-four (24) hours of sending such Prize Winner such General Release; (c) in the case of hotel or travel accommodations, complete and return a travel release form, releasing the Tournament Group from any liability, or any harm or injury caused or incurred in connection therewith (the “Travel Release”); and (d) all tax documentation required by the law of such Prize Winner’s jurisdiction (“Tax Documentation”).
+A Prize Winner’s Prize may be forfeited if: (a) Prize Winner fails to respond to the Tournament Organizer within twenty-four (24) hours of the attempted notification described, above; (b) Prize Winner fails to provide proof of fulfillment of the Eligibility Criteria (if requested) in a timely manner; (c) Prize Winner fails to provide a completed Affidavit General Release, Travel Release, or Tax Documentation as described above; (d) a Prize is unable to be paid due to legal restrictions imposed by a country or banking institution; (e) Prize Winner violates or otherwise fails to comply with the Rules; or (f) Prize Winner expressly declines a Prize. In the event a Prize Winner’s Prize is forfeited, the Tournament Group shall have no further obligation to that Prize Winner and, at Tournament Group’s sole discretion, such Prize may be awarded to another Player, within the Tournament Group’s discretion (time-permitting).
+Proof of entry submission does not constitute proof of receipt. Decisions of the Tournament Group will be final and binding on all matters pertaining to this Tournament. This Tournament is subject to all applicable federal, state, and local laws, of all applicable jurisdictions. The Tournament Group reserves the right to correct any typographical, printing, computer programming or operator errors. Should a Prize Winner make any false statement(s) in any document referenced above, such Prize Winner will be required to promptly return to the Tournament Group their Prize. The Tournament Group reserves the right at its sole discretion to disqualify any Player who tampers or attempts to tamper with the registration process, the operation of the Tournament, Tournament Website, and/or Tournament Portal, or violates the Rules or any other applicable terms or conditions, including the EULA. In the event of a dispute as to the identity of the individual who registered, the authorized account holder (i.e., the natural person who is assigned to an email address by an Internet access provider, on-line service provider, or other organization (e.g., business, educational institution, etc.) responsible for assigning email addresses for the domain associated with the email address in a disputed registration) of the email account referenced in such submission will be deemed to be the individual who registered. Prizes will be delivered only to Prize Winners that fulfill all applicable conditions set forth in this Section. Prizes must be accepted as awarded and may not be substituted, transferred, or redeemed for cash or otherwise. Notwithstanding the foregoing, the Tournament Group reserves the right to substitute Prizes for a prize of equal or greater monetary value, in cash or otherwise, at its sole discretion, if a Prize, or any component of any Prize, cannot be awarded for any reason. The Tournament Group will not replace any lost or stolen Prizes. To the extent permitted by law, the Tournament Group makes no representations or warranties with respect to any Prize. If a Prize is valued at US$600 or more, the Prize Winner must provide a valid social security number for tax reporting purposes before such Prize will be awarded. Any Prize Winner who receives from the Tournament Group Prizes valued at US$600 or more in a calendar year will receive an IRS form 1099 after the end of the calendar year in which such Prizes were awarded, and a copy of such form will be filed with the Internal Revenue Service (IRS), or such other tax form as may be required by the laws of the jurisdiction in which such Winner resides. In addition to the tax liability disclosures in these Rules, each Winner shall abide by the laws, rules, and regulations of such Winners legal residence, including without limitation as applicable to income reporting the payment of taxes and withholdings due.
+Except as expressly provided herein, all taxes, costs, and expenses incurred in connection with the Tournament or Prizes shall be paid and borne solely by Prize Winner, as applicable, including without limitation all applicable taxes, costs of transportation to and from the airport of origin, alcoholic beverages, gratuities, insurance, laundry service, merchandise, room service, service charges, activities, souvenirs, and phone and internet charges. Air transportation is subject to all terms, conditions, policies, rules and regulations applicable to other commercial airline passengers on flights within the Territory. Hotel accommodations are subject to all terms, conditions and policies applicable to all other guests at the hotel selected by the Tournament Group. Any violation by a Prize Winner of the foregoing terms, conditions, policies, rules and regulations constitutes a violation by such Prize Winner of these Rules. Tournament Event Organizer may award prizes in addition to the Prizes set forth in Section 8 in their sole discretion (the “Additional Prizes”) in accordance with rules established by the applicable Tournament Event Organizer and not by BNE. Each Player acknowledges and agrees that the Additional Prizes are awarded solely by the Tournament Event Organizers and hereby release and hold BNE harmless from all costs, injuries, losses or damages of any kind, including, without limitation, death and bodily injury, directly or indirectly, in connection with Player’s receipt, use or misuse of any Additional Prize.
+CODE OF CONDUCT. All Players are expected to exhibit good sportsmanship and maintain respect for the Tournament, Tournament Group, and all staff and members thereof, as well as other Players and spectators. Players are expected to exhibit good sportsmanship, honesty, and fair play.  Any Player behaving inappropriately or in violation of the Code of Conduct, or not competing in compliance with these Rules, as determined at the discretion of BNE (or if delegated by BNE, the Tournament Organizer), are subject to immediate disqualification from the Tournament, future participation in the Tournament, and forfeiture of potential Prizes. Behavior that is considered to be inappropriate and in violation of the Code of Conduct includes, but is not limited to, the following:
+Cheating, colluding with other Players, hacking, using exploits, or any other behavior aimed at obtaining an unfair advantage or disrupting the operation of the Tournament Event.
+Impersonating any person or entity, including any BNE, Tournament Organizer, or Tournament Event officials, forum leaders, guides, hosts, employees, or agents, or falsely stating or otherwise misrepresenting your affiliation with a person or entity.
+Harassing, threatening, embarrassing, bullying, intimidating, excessively shouting, using vulgar language, “spamming,” or engaging in hate speech or making statements about race, ethnicity, gender, heritage, sexual orientation, religion, or disability, or using offensive or defamatory usernames or personas.
+Transmitting or facilitating distribution of content that is offensive, harmful, abusive, racially or ethnically offensive, vulgar, sexually explicit, defamatory, invasive of personal privacy, infringes on intellectual property rights or publicity rights, or is objectionable, including wearing or using any apparel, accessories, or equipment that violates the foregoing.
+Inappropriate or unwanted behavior towards other attendees, including sexual advances, comments, photography, or physical contact.
+Violence, threats of violence, or any activity that is immoral, unethical, disgraceful, or contrary to common standards of decency.
+Engaging in conduct determined by BNE and Tournament Organizer which may reflect unfavorably on BNE or its partners.
+Promote or advertise third party content without BNE and Tournament Organizer’s express prior written approval.
+Intentionally disconnecting or quitting during play, except as otherwise requested by Tournament Organizer or Tournament Event Organizer.
+Doing anything that interferes with the ability of other users to enjoy playing the Game, participating in a Tournament Event, or that materially increases the expense or difficulty of BNE, Tournament Organizer, or Tournament Event Organizers in maintaining the Game or Tournament Event for the enjoyment of all its users. This includes impeding or disrupting the normal flow of a Tournament Event by failing to obey any rules of event venues or instructions from BNE, Tournament Organizer, or Tournament Event Organizer staff.
+Promoting or encouraging any illegal activity, including hacking.
+Possessing any firearms or weapons.
+Using, possessing, distributing, or selling any illegal or controlled substance at a Tournament Event. Players may not be under the influence of drugs or alcohol while participating in a Tournament Event. Players with prescribed medication may use such medication as instructed by a medical professional.
+Gambling or betting on a Match, including on its outcome, and gambling or betting of any kind.
+Violating any applicable laws, rules, or regulations.
+Violating any other terms or policies communicated by BNE, Tournament Organizer, or Tournament Event Organizers (subject to Section 17) from time to time, including the Game’s EULA.
+Engaging in any other behavior deemed by BNE and Tournament Organizer to be inappropriate or otherwise tampers with gameplay.
+INTELLECTUAL PROPERTY RIGHTS.
+BNE and/or its nominees retain all right, title, and interest in the Game, including all Intellectual Property Rights therein. All uses of the Game apart from those contemplated by this Agreement shall be subject to BNE’s prior written approval, which may be approved or disapproved in its sole discretion. All rights not expressly granted by BNE herein are hereby reserved by BNE.
+Insofar as permitted by applicable law, all Deliverables, including all Intellectual Property Rights therein, will be and will remain the sole and exclusive property of BNE and/or its nominees, and BNE and/or its nominees will have the sole and exclusive right to use, sell, license, sublicense, translate, publish, disseminate, publicly perform, publicly display, advertise, distribute, transfer, enforce, or otherwise commercially exploit such Deliverables, without any compensation or obligation to any Player.
+Insofar as permitted by applicable law, all Deliverables will be considered “work(s) made for hire” and any copyrights in and to such Deliverables, anywhere in the world, belong and will belong solely and exclusively to BNE and/or its nominees, in perpetuity, throughout the world. Each Player hereby irrevocably assigns and agrees to assign to BNE or its nominees, all right, title, and interest to, (i) all copyrights in the Deliverables, to the extent the foregoing “work for hire” provision is deemed void and severed from these Rules, and (ii) all other Intellectual Property Rights in and to any Deliverables, whether the same is or has been subject to any application or registration with respect thereto. Each Player further acknowledges and agrees that the foregoing assignment is and will be made throughout the world, in perpetuity, solely, and exclusively to BNE and/or its nominees, and will be binding upon all successors to Player. Any attempt by Player to assign, license, transfer, or otherwise exploit any Intellectual Property Rights in or to any Deliverables, shall be null and void. Each Player hereby agrees to take all actions reasonably necessary to fully vest in BNE and/or its nominees all copyrights and other Intellectual Property Rights in and to the Deliverables, throughout the world, and to otherwise satisfy the purpose of this Section.
+To the extent the foregoing provisions regarding Deliverables are deemed void and severed from these Rules, such Player hereby grants BNE and/or its nominees a non-exclusive, perpetual, irrevocable, royalty-free, fully-transferable, and sub-licensable right and license to use any Deliverable in any way, throughout the world, for any purpose, including copying, adapting, modifying, creating derivative works from, publicly performing, displaying, publishing, broadcasting, transmitting, distributing, and otherwise exploiting such Deliverables, by any and all means and media, whether now known or hereafter devised, for the entire duration of any Intellectual Property Rights held by such Player, in whole or in part, without any further notice or compensation of any kind.
+To the extent permitted by applicable law, each Player and each individual entrant hereby waives any moral rights of attribution, publication, reputation, or paternity, with respect to any use or enjoyment of such Deliverables, by BNE and/or its nominees, for the entire duration of such rights under applicable law.
+LIMITATION OF LIABILITY & RELEASES. BY REGISTERING OR OTHERWISE PARTICIPATING IN THE TOURNAMENT, EACH PLAYER AGREES THAT THE TOURNAMENT GROUP HAS NO LIABILITY TO SUCH PLAYER WHATSOEVER FOR, AND EACH PLAYER HEREBY RELEASES AND AGREES TO INDEMNIFY, DEFEND, AND HOLD THE TOURNAMENT GROUP HARMLESS AGAINST ANY LIABILITY FOR ANY INJURIES, CLAIMS, LOSSES, DAMAGES, COSTS OR EXPENSES OF ANY KIND (INCLUDING WITHOUT LIMITATION DIRECT, INDIRECT, INCIDENTAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES) TO PERSONS OR PROPERTY RESULTING FROM: (A) ENTRY OR PARTICIPATION IN THIS TOURNAMENT, INCLUDING ANY HOTEL AND TRAVEL ACCOMMODATIONS, VISA OR COUNTRY ENTRY REQUIREMENTS OR RESTRICTIONS, AND ACCESS TO AND USE OF THE TOURNAMENT WEBSITE AND Tournament Portal; (B) ANY CLAIMS BASED ON PERSONAL OR PRIVACY RIGHTS, INTELLECTUAL PROPERTY RIGHTS, DEFAMATION OR PRIZE DELIVERY; OR (C) THE ACCEPTANCE, POSSESSION, USE OR MISUSE OF ANY PRIZE OR SUPPLIED EQUIPMENT. SOME JURISDICTIONS DO NOT ALLOW THE EXCLUSION OR LIMITATION OF INCIDENTAL OR CONSEQUENTIAL DAMAGES AND, THEREFORE, SUCH EXCLUSIONS MAY NOT APPLY TO YOU. Without limiting the foregoing, but subject to Sections 13 - 14, the Tournament Group shall not be responsible for: (a) any incomplete or inaccurate information that is caused by the Tournament Website or Tournament Portal, or by any of the equipment or programming associated with or utilized in the Tournament, or by any technical or human error which may occur in the processing of entries in the Tournament; (b) lost, interrupted, or unavailable network, server, service provider, on-line systems, telephone networks or telephone lines, or any other connections; (c) the theft, destruction, loss or unauthorized access to, or alteration of, entries; (d) any problems with, or malfunctions or failures of, telephone networks or lines, computers or computer on-line systems, servers or providers, computer equipment, software, viruses or bugs; (e) garbled transmissions or miscommunications; (f) failure of any e-mail to be received by or from the Tournament Group for any reason, including but not limited to traffic congestion on the Internet or at any website or combination thereof or technical incompatibility; (g) damage to a user’s computer equipment (software or hardware) occasioned by participation in, or downloading of materials related to this Tournament; (h) printing, distribution, programming or production errors, and any other errors or malfunctions of any kind, whether human, mechanical, electronic or otherwise; (i) technical, pictorial, typographical or editorial errors or omissions contained herein; or (j) any claims based on the actions or omissions of a Tournament Event Organizer that are outside the control of BNE or the Tournament Organizer. IN NO EVENT WILL ANY WINNER BE ENTITLED TO ANY FEE, ROYALTY, OR OTHER COMPENSATION OF ANY KIND AS A RESULT OF THE TOURNAMENT. BY ENTERING, EACH PLAYER IRREVOCABLY WAIVES ANY RIGHT TO COMPENSATION FROM THE TOURNAMENT GROUP FOR ANY DELIVERABLES OR MATERIALS IN ACCORDANCE WITH THESE RULES. WARNING: ANY ATTEMPT BY A PLAYER OR ANY OTHER INDIVIDUAL TO DELIBERATELY DAMAGE ANY WEBSITE ASSOCIATED WITH THE TOURNAMENT OR UNDERMINE THE LEGITIMATE OPERATION OF THE TOURNAMENT IS IN VIOLATION OF CRIMINAL AND CIVIL LAWS, AND THE TOURNAMENT GROUP RESERVES THE RIGHT TO PROSECUTE AND SEEK DAMAGES TO THE FULLEST EXTENT PERMITTED BY LAW.
+DISPUTE RESOLUTION.
+DISPUTE RESOLUTION (NON-U.S. RESIDENTS ONLY). If a Player is a resident of any nation other than the United States of America, such Player or BNE may refer any dispute relating to or arising from these Rules or the Tournament to alternative dispute resolution (such as conciliation or arbitration) with the prior written consent of the other party. Notwithstanding the foregoing, these Rules will not prevent a Player from bringing any dispute or claim that may be subject to this Subsection 13.a: (a) to the attention of any federal, state, or local government agencies that can, if the law allows, seek relief from BNE on a Player’s behalf; (b) bringing against BNE, in any court of competent jurisdiction, any claim that is not arbitrable or for which arbitration is prohibited or restricted by applicable law; or (c) from bringing any claim before a small claims court, subject to the jurisdictional limitations and requirements of such small claims court.
+DISPUTE RESOLUTION (U.S. RESIDENTS ONLY). If a Player is a resident of the United States of America, by accepting the terms of these Rules, such Player and BNE: (i) agree to resolve certain disputes through mandatory binding arbitration, as set forth in Subsection 13.b, and each subpart thereof (collectively, the “Arbitration Agreement”); and (ii) agree to expressly waive the right to a trial by jury (to the extent permitted by applicable law) or to participate in any class action brought against the other party, pursuant to Subsection 13.c (the “Class Action Waiver”); unless (iii) Player exercises Player’s right to opt out of the Arbitration Agreement and/or the Class Action Waiver, as set forth in Subsection 13.d.
+MANDATORY, BINDING ARBITRATION. TO THE FULLEST EXTENT PERMITTED BY APPLICABLE LAW, EACH PLAYER AND BNE: (A) WILL RESOLVE ALL DISPUTES AND CLAIMS BETWEEN PLAYER AND BNE THAT MAY ARISE OUT OF OR RELATE TO ANY ASPECT OF THE RELATIONSHIP BETWEEN PLAYER AND BNE, ANY TERM OR PROVISION OF THESE RULES, OR PLAYER’S REGISTRATION OR PARTICIPATION IN THE TOURNAMENT (EXCEPT IN EACH CASE AS EXPRESSLY SET FORTH IN THE EXCLUDED CLAIMS SECTION) (EACH, A “CLAIM”) THROUGH BINDING ARBITRATION, PURSUANT TO THE FEDERAL ARBITRATION ACT; (B) EXPRESSLY AND IRREVOCABLY WAIVE ANY RIGHT TO PURSUE ANY CLAIMS IN COURT OR TO HAVE ANY CLAIMS HEARD OR TRIED BEFORE A JUDGE OR JURY; (C) SHALL NOT BRING OR PARTICIPATE IN A CLASS, REPRESENTATIVE, OR COORDINATED ARBITRATION AGAINST THE OTHER PARTY, EVEN IF OTHERWISE PERMITTED BY THE FEDERAL ARBITRATION ACT; AND (D) SHALL NOT SEEK TO CONSOLIDATE OR COMBINE ANY ARBITRATION OF ANY CLAIM WITH ANY ACTION OR ARBITRATION BROUGHT BY OR AGAINST ANY THIRD PARTY, WITHOUT THE EXPRESS WRITTEN CONSENT OF EACH SUCH THIRD PARTY AND BOTH PARTIES TO THESE RULES. UNLESS PLAYER SUBMITS A PROPER OPT OUT NOTICE, PLAYER AND BNE WILL ONLY RESOLVE CLAIMS AGAINST EACH OTHER THROUGH THE MANDATORY, BINDING ARBITRATION PROCESS SET FORTH HEREIN.
+Pre-Arbitration Informal Dispute Resolution. Prior to initiating arbitration of any Claim subject to this Arbitration Agreement, Player and BNE will make reasonable, good faith efforts to informally resolve any Claim between Player and BNE. The party seeking to raise such Claim shall send to the other party a written notice describing the nature and basis of such Claim and identifying the relief sought. All such written notices to BNE must be sent via first class mail to: Bandai Namco Entertainment America Inc., Attn: Legal, 23 Odyssey, Irvine, CA 92618, USA. All such written notices to Player will be sent to the contact information Player provided to BNE. If Player and BNE do not agree to resolve such Claim within thirty (30) days after such written notice is received, the party seeking to raise such Claim may initiate an arbitration action against the other, as permitted by the Arbitration Agreement, above.
+Arbitration Procedure. Arbitration is a legally-binding process, through which a party may seek legal remedies from or against another party, similar to a legal action brought before a court, but that generally imposes fewer strict procedural formalities, is held before a third party, neutral arbitrator (instead of before a judge or jury), provides for more limited discovery and potentially reduced legal fees for each party, and is subject to limited review by courts. The procedure for arbitration of any Claim under this Arbitration Agreement will be governed by the Commercial Arbitration Rules of the American Arbitration Association (“AAA”) and, where applicable, the AAA’s Supplementary Procedures for Consumer Related Disputes, both of which are available at: http://www.adr.org, each as supplemented by the terms of these Rules. Any such arbitration will be conducted in English, and permit the electronic submission of documents and allow participation by phone or by teleconference, or in person, at a mutually agreed location. For any arbitration Player initiates, Player will pay the consumer filing fee, and BNE will pay the remaining AAA fees and costs. For any arbitration initiated by BNE, BNE will pay all AAA fees and costs.
+Confidentiality. If Player or BNE submits a dispute to arbitration and the arbitrator orders any exchange of information, Player and BNE agree to cooperate to seek from the arbitrator protection for any confidential, proprietary, trade secret, or otherwise sensitive information, documents, testimony, and/or other materials that might be exchanged or the subject of discovery in the arbitration. Player and BNE agree to seek such protection before any such information, documents, testimony, and/or materials are exchanged or otherwise become the subject of discovery in the arbitration.
+Excluded Claims. Notwithstanding the foregoing, the terms of this Arbitration Agreement will not prevent Player or BNE from bringing any Claim: (a) to the attention of any federal, state, or local government agencies with the governmental authority and competent jurisdiction to seek relief on Player or BNE’s behalf, from the other party; or (b) before a small claims court, subject to the jurisdictional limitations and requirements of such small claims court.
+CLASS ACTION WAIVER. CLAIMS AND OTHER DISPUTES ARE PERSONAL TO THE PARTIES AND SHALL ONLY BE CONDUCTED AS AN INDIVIDUAL ARBITRATION (OR AN INDIVIDUAL COURT PROCEEDING, WITH RESPECT TO DISPUTES EXCLUDED FROM THE ARBITRATION AGREEMENT). UNLESS PLAYER SUBMITS A PROPER OPT OUT NOTICE, PLAYER AND BNE MAY ONLY BRING CLAIMS AND OTHER ACTIONS AGAINST THE OTHER IN PLAYER OR ITS INDIVIDUAL CAPACITY AND NOT AS A PLAINTIFF OR CLASS MEMBER IN ANY PURPORTED CLASS OR REPRESENTATIVE PROCEEDING.
+OPT OUT PROCEDURE. Player has the right to opt out of the Arbitration Agreement and Class Action Waiver and not have them apply to Player’s relationship with BNE, by sending a written notice to BNEA, in strict compliance with the requirements set forth below (the “Opt Out Notice”). Player’s failure to comply with any of the requirements set forth below means that Player and BNE are still bound by the Arbitration Agreement and Class Action Waiver set forth herein:
+Form & Address. Player’s Opt Out Notice must be sent via email to legal@bnea.com or via mail to the following address: Bandai Namco Entertainment America Inc., ATTN: Legal, 23 Odyssey, Irvine, CA 92618, USA. If Player’s Opt Out Notice is sent by mail, it must be sent using either: (A) first class mail, postage prepaid, certified and return receipt requested; or (B) overnight courier service (such as Federal Express).
+Time Limitations. Unless a longer period is required by applicable law, Player’s Opt Out Notice must be postmarked (if sent by first class mail) or deposited (if sent by overnight courier service) within thirty (30) days of Player’s initial participation in the Tournament.
+Required Information. Player’s Opt Out Notice must include: (A) the title of the Tournament to which the Opt Out Notice is intended to apply; (B) Player’s first and last name; (D) Player’s address; (E) Player’s phone number; (E) Player’s email address; (F) if Player is a registered user of the Game or any other BNE product or service, each of Player’s usernames for the Game and such other BNE products and services; and (G) a statement that Player is opting out of the Arbitration Agreement and/or the Class Action Waiver. BNE may use the foregoing information included in the Opt Out Notice to record, process, maintain, and administer Player opting out of the Arbitration Agreement and/or Class Action Waiver, as applicable, but not for marketing purposes.
+Severability of Arbitration Agreement and Class Action Waiver. If any portion of this Section is found to be unenforceable or unlawful for any reason, including but not limited to because it is found to be unconscionable: (i) the unenforceable or unlawful provision will be severed from this Agreement; (ii) severance of the unenforceable or unlawful provision will have no impact whatsoever on the remainder of this Section or the parties’ ability to compel arbitration of any remaining claims on an individual basis pursuant to this Section; and (iii) to the extent that any claims must therefore proceed on a class, collective, consolidated, or representative basis, such claims must be litigated in a civil court of competent jurisdiction subject to the Governing Law & Venue Sections below and not in arbitration. The litigation of those claims will be stayed pending the outcome of any individual claims in arbitration. Further, if any part of this Section is found to prohibit an individual claim seeking public injunctive relief, that provision will have no effect to the extent such relief is allowed to be sought out of arbitration, and the remainder of this Section will be enforceable.
+GOVERNING LAW, VENUE SELECTION, & INTERPRETATION. All issues and questions concerning the construction, validity, interpretation and enforcement of these Rules, or the rights and obligations of each Player and the Tournament Group in connection with the Tournament, shall be governed by, and construed in accordance with, the laws of the State of California without giving effect to any choice of law or conflict of law rules (whether of the State of California or any other jurisdiction), which would cause the application of the laws of any jurisdiction other than the State of California. Except as prohibited by applicable law, by registering or otherwise participating in this Tournament, each Player and each member of the Tournament Group agrees that: (a) for claims and disputes not subject to the Arbitration Agreement in Section 13.b, above, exclusive jurisdiction for any claim or action arising out of or relating to these Rules and/or the Tournament shall be the federal or state courts that govern Los Angeles County, California, and Player expressly consent to the exercise of personal jurisdiction of such courts; (b) any and all claims, judgments, and awards shall be limited to actual out-of-pocket costs incurred, including costs associated with entering the Tournament; (c) each individual entrant and member of the Tournament Group hereby expressly waives any right to seek attorneys’ fees in connection with any dispute, claim, or cause of action against the other; and (d) under no circumstances will an individual entrant or a member of the Tournament Group be permitted to obtain awards for, and hereby waives all rights to seek, indirect, punitive, incidental and consequential damages, and any other damages, other than for actual out-of-pocket expenses. SOME JURISDICTIONS DO NOT ALLOW THE ABOVE RESTRICTIONS IN THE EVENT OF DISPUTE OR LIMITATIONS OR EXCLUSION OF LIABILITY FOR INCIDENTAL OR CONSEQUENTIAL DAMAGES, SO THE ABOVE MAY NOT APPLY TO. If any provision of these Rules is invalid or unenforceable under applicable law, rules or regulations of a particular jurisdiction, such provision will apply only to the extent permitted by such law, rule or regulation and all other provisions of these Rules shall be construed as if the invalid or unenforceable provision was not contained therein. The invalidity or unenforceability of any provision of these Rules shall not affect the validity or enforceability of any other provision. Tournament Group’s failure to enforce any term of these Rules shall not constitute a waiver of such provision.
+FORCE MAJEURE. Each Player acknowledges and agrees that the Tournament Group will not be liable or responsible to such Player, nor be deemed to have defaulted under or breached these Rules, for any failure or delay in fulfilling or performing any obligation under this Agreement, when and to the extent such failure or delay is caused by or results from: (a) acts of God; (b) flood, fire, earthquake or explosion; (c) war, invasion, hostilities (whether war is declared), terrorist threats or acts, riot or other civil unrest; (d) government order or law; (e) severe impact of the COVID-19 pandemic or any future epidemic with similarly severe impacts on regional or global economy, industry, and travel; and (f) actions, embargoes, blockades, declarations of national or regional emergency, or other acts of governmental authority that commence after the Effective Date of these Rules (each, a “Force Majeure Event”).
+TRANSFER OF INFORMATION. All personal information Players provide when entering the Tournament, and that each Prize Winner provides in accepting a Prize, will be collected, used, and disclosed by the Tournament Group for the purposes of administering the Tournament and Prize fulfillment. Aggregated and anonymized entrant information may be used by the Tournament Group to communicate about the Tournament to its retailers and distributors. By registering for and/or participating in the Tournament, each Player consents and agrees to the collection, transfer, storage, and processing of the Player’s information to and in the United States and/or to other countries outside the country of Player’s country of residence.  Such other countries may not have privacy laws and regulations that are similar to those of the country of Player’s country of residence. Except to the extent prohibited by applicable law, by accepting a Prize, each Prize Winner agrees to Tournament Group’s use of their name, city and state of residence, picture, biographical information, statements, voice, and likeness in any advertising and publicity the Tournament Group may conduct relating to the Tournament in any media or format, whether now known or hereafter developed, including but not limited to on the World Wide Web, at any time or times in perpetuity, without further compensation or notice. Except as otherwise set forth in these Rules, the applicable privacy policy posted on the Tournament Website (or Tournament Portal) will apply to information submitted or collected by the Tournament Organizer in connection with the Tournament. Please note that by accepting these Rules, Player acknowledges and agrees that Player is also accepting the terms such privacy policy. Any information submitted or collected by third parties may be subject to such third parties’ applicable privacy policy, and BNE and the Tournament Organizer is not responsible for examining or evaluating and expressly disclaims all representations and warranties regarding the accuracy, completeness, timeliness, validity, legality, decency, quality, or any other aspect of such policies, or the privacy practices of such third parties.
+ADDITIONAL TOURNAMENT RULES. In addition to abiding by these Rules, Players must agree to abide by any reasonable additional rules that conform to the spirit of and do not conflict with these Rules, as announced in advance and applied by BNE, the Tournament Organizer, or the Tournament Event Organizer at its Tournament Event. In the event that any terms or conditions contained in any such additional rules are inconsistent or conflict with these Rules, the terms and conditions of these Rules will control over the terms of such additional rules.
+WINNER’S LIST & CONTACT INFORMATION. The names of Prize Winners and a copy of the Rules are available on the Tournament Website. Players are hereby authorized to copy these Rules on the condition that it will be for such Player’s personal use only. Any questions, comments, or complaints regarding the Tournament are to be directed to the Tournament Organizer.
+
+
+Schedule 1
+
+Regions and Countries
+
+Subject to the Rules, Players from around the world may participate in the Tournament. However, Players from certain countries, including, but not limited to, Belarus, North Korea, and  Russia, are not eligible for Points, Prizes, or other consideration.
+
+A country’s inclusion in the below chart is illustrative of a country’s placement in a particular Region and does not guarantee that a Player from that country will be allowed to earn Points or win Prizes.
+
+
+
+“Region 1” – Americas 1: United States, Bahamas, Bermuda, Canada, Saint Pierre and Miquelon
+
+“Region 2” – Americas 2: Anguilla, Antigua and Barbuda, Aruba, Barbados, Belize, British Virgin Islands, Caribbean Netherlands, Cayman Islands, Costa Rica, Cuba, Dominica, Dominican Republic, El Salvador, Grenada, Guadeloupe, Guatemala, Haiti, Honduras, Jamaica, Martinique, Mexico, Montserrat, Nicaragua, Panama, Puerto Rico, Roatán, Saint Barthélemy, Saint Kitts and Nevis, Saint Lucia, Saint Martin, Saint Vincent and the Grenadines, San Andrés, Providencia and Santa Catalina, Sint Maarten, Trinidad and Tobago, Turks and Caicos Islands, United States Virgin Islands
+
+“Region 3” – Americas 3: Argentina, Bolivia, Brazil, Chile, Colombia, Curaçao, Ecuador, Falkland Islands, French Guiana, Guyana, Isla de los Estados, Paraguay, Peru, South Georgia and the South Sandwich Islands, Suriname,  Uruguay, Venezuela
+
+“Region 4” – Europe 1: Åland Islands, Andorra, Austria, Belgium, Denmark, England, Faroe Islands, Finland, France, Germany, Gibraltar, Greenland, Guernsey, Iceland, Ireland, Isle of Man, Italy, Jersey, Liechtenstein, Luxembourg, Malta, Monaco, Netherlands, Northern Ireland, Norway, Portugal, San Marino, Sark, Scotland, Spain, Svalbard, Sweden, Switzerland, United Kingdom, Vatican City, Wales
+
+“Region 5” – Europe 2: Albania, Armenia, Azerbaijan, Belarus, Bosnia and Herzegovina, Bulgaria, Croatia, Czechia, Estonia, Georgia, Greece, Hungary, Israel, Kaliningrad, Kosovo, Latvia, Lithuania, Moldova, Montenegro, North Macedonia, Poland, Romania, Russia, Serbia, Slovakia, Slovenia, Ukraine
+
+“Region 6” – MEA 1: Benin, Burkina Faso, Cabo Verde, Cameroon, Central African Republic, Chad, Congo, Democratic Republic of the Congo, Côte d'Ivoire, Equatorial Guinea, Gabon, Gambia, Ghana, Guinea, Guinea-Bissau, Liberia, Mali, Mauritania, Niger, Nigeria, Sao Tome and Principe, Senegal, Sierra Leone, Togo
+
+“Region 7” – MEA 2: Angola, Botswana, Burundi, Comoros, Eswatini, Kenya, Lesotho, Madagascar, Malawi, Mauritius, Mayotte, Mozambique, Namibia, Réunion, Rwanda, Saint Helena Ascension and Tristan da Cunha, Seychelles, South Africa, Tanzania, Uganda, Zambia, Zimbabwe
+
+“Region 8” – MEA 3: Algeria, Bahrain, Ceuta, Cyprus, Djibouti, Egypt, Eritrea, Ethiopia, Iran, Iraq, Jordan, Kuwait, Lebanon, Libya, Melilla, Morocco, Oman, Palestinian Territories, Qatar, Saudi Arabia, Socotra, Somalia, South Sudan, Sudan, Syria, Tunisia, Turkey, United Arab Emirates, Western Sahara, Yemen
+
+“Region 9” – Pakistan: Pakistan
+
+“Region 10” – Asia 1: Afghanistan, Bangladesh, Bhutan, India, Kazakhstan, Kyrgyzstan, Maldives, Nepal, Sri Lanka, Tajikistan, Turkmenistan, Uzbekistan
+
+“Region 11” – Asia 2: Andaman and Nicobar Islands, Brunei, Cambodia, Indonesia, Laos, Malaysia, Myanmar, Palau, Singapore, Thailand, Vietnam
+
+“Region 12” – Asia 3: Mainland China, North Korea, Hong Kong, Macao, Mongolia, Philippines, Chinese Taipei
+
+“Region 13” – Oceania: American Samoa, Australia, Chatham Islands, Christmas Island, Cocos (Keeling) Islands, Cook Islands, Easter Island, Fiji, French Polynesia, Guam, Kiribati, Marshall Islands, Micronesia, Nauru, New Caledonia, New Zealand, Niue, Norfolk Island, Northern Mariana Islands, Papua New Guinea, Pitcairn, Rotuma, Samoa, Solomon Islands, Timor-Leste, Tokelau, Tonga, Tuvalu, United States Minor Outlying Islands, Vanuatu, Wallis and Futuna
+
+“Region 14” – South Korea: South Korea
+
+“Region 15” – Japan: Japan
+
+
+
+
+
+Rules © Bandai Namco Entertainment America Inc. 

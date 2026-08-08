@@ -33,12 +33,14 @@ const GLOBAL_RULES = [
 
 const GAME_RULES: Record<string, { title: string; content: string }[]> = {
   'tekken8': [
-    { title: 'Match Settings', content: '60 Seconds, 3 Rounds per game. Winner of the set advances.' },
-    { title: 'Set Format', content: 'Best-of-3 (First to 2) for standard matches. Best-of-5 (First to 3) for Winners Final, Losers Final, and Grand Final.' },
-    { title: 'Stage Selection', content: 'Game 1 must be played on a Random stage. For Game 2 and beyond, the loser of the previous game may either choose the next stage OR change their character (but not both).' },
-    { title: 'Character Selection', content: 'Blind pick is available upon request. The winner of the previous game must keep the same character and cannot switch.' },
+    { title: 'Match Settings', content: '60 Seconds, First to 3 Rounds (Best-of-5 rounds) per Game. Character Customizations: Off. (Preset costumes are legal; players cannot use the same Preset).' },
+    { title: 'Set Format', content: 'Best-of-3 Games (First to 2) for standard matches. Top 8 or Top 4 matches (including Grand Finals) are Best-of-5 (First to 3).' },
+    { title: 'Stage Selection', content: 'Game 1 must be played on a Random stage. For subsequent games, the loser may choose a new Random stage OR change their character and get a new Random stage.' },
+    { title: 'Character Selection', content: 'Blind pick is available upon request for Game 1. The winner of the previous Game must keep the same character and cannot switch.' },
     { title: 'Special Style', content: 'The use of Special Style is permitted in all official matches.' },
-    { title: 'Customizations', content: 'Players are highly encouraged to use default costumes. Disruptive customizations (e.g. obscuring weapons, large accessories blocking vision) may be banned at the TO’s discretion.' },
+    { title: 'Draws (Ties)', content: 'In the event of a tied Game declared by a Double K.O. or timeout, the Game will not be scored and both players will replay the tied Game with the same characters.' },
+    { title: 'Match Disruptions', content: 'Accidental pauses or controller disconnects result in forfeiting the current round (not the set), unless the pause occurs during an "Inevitable Defeat" animation. Setup malfunctions warrant a round-count restart.' },
+    { title: 'Coaching', content: 'Coaching is only allowed for the player that lost the previous Game. A player may consult a coach for a maximum of 1 minute, and only one (1) time per Match.' },
   ],
   'sf6': [
     { title: 'Match Settings', content: '99 Seconds, Best of 3 Rounds per game.' },
