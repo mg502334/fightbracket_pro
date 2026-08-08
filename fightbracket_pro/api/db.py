@@ -14,6 +14,7 @@ class DBUser(Base):
     gamer_tag = Column(String, nullable=True)
     bio = Column(String, nullable=True)
     avatar_url = Column(String, nullable=True)
+    profile_color = Column(String, nullable=True) # Custom color for profile modal
     startgg_slug = Column(String, nullable=True)
     startgg_token = Column(String, nullable=True) # Start.gg API Token
     startgg_data = Column(Text, nullable=True) # Stored JSON string of Start.gg events & stats

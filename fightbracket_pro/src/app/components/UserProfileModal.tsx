@@ -123,6 +123,9 @@ export function UserProfileModal({ isOpen, onClose, targetUserId, supabaseToken,
 
   if (!isOpen) return null;
 
+  const primaryColor = profile?.profile_color || theme.primaryColor;
+  const bgFrom = profile?.profile_color ? `${profile.profile_color}40` : theme.bgFrom;
+
   return (
     <AnimatePresence>
       <motion.div
@@ -137,14 +140,14 @@ export function UserProfileModal({ isOpen, onClose, targetUserId, supabaseToken,
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.95, opacity: 0 }}
           className="relative w-full max-w-lg overflow-hidden rounded-2xl border bg-[#050A14] shadow-2xl flex flex-col"
-          style={{ borderColor: `${theme.primaryColor}40` }}
+          style={{ borderColor: `${primaryColor}40` }}
           onClick={e => e.stopPropagation()}
         >
           {/* Header Banner */}
           <div
             className="p-6 relative border-b"
             style={{
-              background: `linear-gradient(135deg, ${theme.bgFrom} 0%, #050A14 100%)`,
+              background: `linear-gradient(135deg, ${bgFrom} 0%, #050A14 100%)`,
               borderColor: 'rgba(255,255,255,0.08)',
             }}
           >
@@ -165,14 +168,14 @@ export function UserProfileModal({ isOpen, onClose, targetUserId, supabaseToken,
 
             <div className="flex items-center gap-4">
               {profile?.avatar_url ? (
-                <img src={profile.avatar_url} alt="Avatar" className="w-16 h-16 rounded-2xl object-cover border-2 shadow-lg" style={{ borderColor: theme.primaryColor }} />
+                <img src={profile.avatar_url} alt="Avatar" className="w-16 h-16 rounded-2xl object-cover border-2 shadow-lg" style={{ borderColor: primaryColor }} />
               ) : (
                 <div
                   className="w-16 h-16 rounded-2xl flex items-center justify-center text-2xl font-bold border-2 shadow-lg"
                   style={{
-                    background: `${theme.primaryColor}20`,
-                    color: theme.primaryColor,
-                    borderColor: theme.primaryColor,
+                    background: `${primaryColor}20`,
+                    color: primaryColor,
+                    borderColor: primaryColor,
                     fontFamily: 'Rajdhani, sans-serif',
                   }}
                 >

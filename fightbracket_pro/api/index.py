@@ -117,6 +117,7 @@ class ProfileUpdateRequest(BaseModel):
     gamer_tag: Optional[str] = None
     bio: Optional[str] = None
     avatar_url: Optional[str] = None
+    profile_color: Optional[str] = None
     startgg_slug: Optional[str] = None
     startgg_token: Optional[str] = None
     tekken_id: Optional[str] = None
@@ -565,6 +566,7 @@ def get_user_profile(payload: dict = Depends(get_current_user_payload), db: Sess
                 "gamer_tag": getattr(user, 'gamer_tag', '') or "",
                 "bio": user.bio or "",
                 "avatar_url": user.avatar_url or "",
+                "profile_color": getattr(user, 'profile_color', '') or "",
                 "startgg_slug": user.startgg_slug or "",
                             "startgg_token": "SECURE_HIDDEN" if (getattr(user, 'startgg_token', '') or db.query(DBUserIntegration).filter(DBUserIntegration.user_id == user.id, DBUserIntegration.integration_type == 'startgg').first()) else "", 
                 "startgg_data": user.startgg_data or "",
@@ -608,6 +610,8 @@ def update_user_profile(req: ProfileUpdateRequest, user_id: str = Depends(get_cu
         user.bio = req.bio.strip() # type: ignore
     if req.avatar_url is not None:
         user.avatar_url = req.avatar_url.strip() # type: ignore
+    if req.profile_color is not None:
+        user.profile_color = req.profile_color.strip() # type: ignore
     if req.startgg_slug is not None:
         user.startgg_slug = req.startgg_slug.strip() # type: ignore
     if req.startgg_token is not None:
@@ -1239,6 +1243,7 @@ def get_target_user_profile(target_user_id: str, user_id: str = Depends(get_curr
             "unique_id": uid_str,
             "gamer_tag": target_user.gamer_tag or "",
             "avatar_url": target_user.avatar_url or "",
+            "profile_color": getattr(target_user, 'profile_color', '') or "",
             "bio": "" if privacy_restricted else (target_user.bio or ""),
             "startgg_slug": "" if privacy_restricted else (target_user.startgg_slug or ""),
             "startgg_data": startgg_data_parsed,

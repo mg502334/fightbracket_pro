@@ -22,6 +22,7 @@ export function AccountSettingsPanel({ user, userProfile, fetchUserProfile, getH
   const [lastName, setLastName] = useState(userProfile?.last_name || '');
   const [displayName, setDisplayName] = useState(userProfile?.gamer_tag || user?.user_metadata?.displayName || '');
   const [bio, setBio] = useState(userProfile?.bio || '');
+  const [profileColor, setProfileColor] = useState(userProfile?.profile_color || '');
   const [newAvatarUrl, setNewAvatarUrl] = useState('');
   const [newEmail, setNewEmail] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -46,7 +47,7 @@ export function AccountSettingsPanel({ user, userProfile, fetchUserProfile, getH
       await fetch('/api/user/profile', {
         method: 'PUT',
         headers,
-        body: JSON.stringify({ first_name: firstName, last_name: lastName, gamer_tag: displayName, bio })
+        body: JSON.stringify({ first_name: firstName, last_name: lastName, gamer_tag: displayName, bio, profile_color: profileColor })
       });
       fetchUserProfile();
       toast.success('Profile updated successfully');
@@ -179,6 +180,35 @@ export function AccountSettingsPanel({ user, userProfile, fetchUserProfile, getH
               </div>
               <div className="mb-5">
                 <SettingsInput label="Bio" value={bio} onChange={e => setBio(e.target.value)} placeholder="Main character, stream schedule, etc..." />
+              </div>
+              <div className="mb-5">
+                <label className="block text-xs font-rajdhani font-bold text-gray-400 uppercase tracking-wider mb-2">Profile Modal Color</label>
+                <div className="flex flex-wrap items-center gap-3">
+                  {['#00E5FF', '#FF006E', '#FF3366', '#00F0FF', '#FFB800', '#9D4EDD', '#00FF9D'].map(color => (
+                    <button
+                      key={color}
+                      onClick={() => setProfileColor(color)}
+                      className="w-8 h-8 rounded-full border-2 transition-transform hover:scale-110"
+                      style={{ 
+                        backgroundColor: color,
+                        borderColor: profileColor === color ? 'white' : 'transparent',
+                        boxShadow: profileColor === color ? `0 0 10px ${color}` : 'none'
+                      }}
+                    />
+                  ))}
+                  <div className="flex items-center gap-2 ml-2">
+                    <input 
+                      type="color" 
+                      value={profileColor || '#00E5FF'} 
+                      onChange={e => setProfileColor(e.target.value)}
+                      className="w-8 h-8 rounded cursor-pointer bg-transparent border-0 p-0"
+                    />
+                    <span className="text-xs font-mono text-gray-500 uppercase">Custom</span>
+                  </div>
+                  {profileColor && (
+                    <button onClick={() => setProfileColor('')} className="ml-auto text-xs font-mono text-red-400 hover:text-red-300 transition-colors">Clear</button>
+                  )}
+                </div>
               </div>
               <div className="flex justify-end"><SaveButton onClick={handleUpdateProfile} loading={updatingProfile} /></div>
             </SettingsCard>
