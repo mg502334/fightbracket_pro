@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Users, UserPlus, MessageSquare, X, Check, CheckCheck, Trash2, Send, MailOpen } from 'lucide-react';
+import { Users, UserPlus, MessageSquare, X, Check, CheckCheck, Trash2, Send, MailOpen, Search, Loader2, User } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_URL || '';
 
@@ -56,6 +56,9 @@ export function FriendsModal({ isOpen, onClose, theme, currentUserId, supabaseTo
   const [addIdentifier, setAddIdentifier] = useState('');
   const [loading, setLoading] = useState(false);
   const [statusMsg, setStatusMsg] = useState<{ text: string; isError: boolean } | null>(null);
+  const [searchResults, setSearchResults] = useState<Friend[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [addingFriendId, setAddingFriendId] = useState<string | null>(null);
 
   // DM state
   const [activeChatFriend, setActiveChatFriend] = useState<Friend | null>(null);
@@ -103,6 +106,31 @@ export function FriendsModal({ isOpen, onClose, theme, currentUserId, supabaseTo
       fetchInbox();
     }
   }, [isOpen, supabaseToken]);
+
+  // Debounced live search
+  useEffect(() => {
+    if (!addIdentifier.trim() || !supabaseToken) {
+      setSearchResults([]);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      setSearching(true);
+      try {
+        const res = await fetch(`${API_URL}/api/users/search?q=${encodeURIComponent(addIdentifier.trim())}`, {
+          headers: { Authorization: `Bearer ${supabaseToken}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setSearchResults((data.users || []).filter((u: Friend) => u.id !== currentUserId));
+        }
+      } catch (e) {
+        console.error('Search error:', e);
+      } finally {
+        setSearching(false);
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [addIdentifier, supabaseToken, currentUserId]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -619,23 +647,98 @@ export function FriendsModal({ isOpen, onClose, theme, currentUserId, supabaseTo
                 </div>
               ) : (
                 /* Add Friend Tab */
-                <div className="p-6 flex-1 space-y-6">
+                <div className="p-6 flex-1 space-y-5 overflow-y-auto">
                   <div>
                     <h3 className="text-base font-bold font-rajdhani text-cyan-400 mb-1">ADD A FRIEND</h3>
                     <p className="text-xs font-mono opacity-60">
-                      Enter a player's unique FightBracket ID (e.g. <span className="text-cyan-400">FB-A1B2-C3D4</span>) or their Gamer Tag.
+                      Search by Gamer Tag or FightBracket ID to find and add players.
                     </p>
                   </div>
 
                   <div className="space-y-3">
-                    <input
-                      type="text"
-                      placeholder="e.g. FB-XXXX-YYYY or GamerTag"
-                      value={addIdentifier}
-                      onChange={e => setAddIdentifier(e.target.value)}
-                      className="w-full bg-black/50 border border-white/15 rounded-xl px-4 py-3 text-sm outline-none focus:border-cyan-400 font-mono"
-                    />
+                    {/* Search input */}
+                    <div className="relative">
+                      <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" />
+                      <input
+                        type="text"
+                        placeholder="e.g. ArslanAsh or FB-XXXX-YYYY"
+                        value={addIdentifier}
+                        onChange={e => { setAddIdentifier(e.target.value); setStatusMsg(null); }}
+                        className="w-full bg-black/50 border border-white/15 rounded-xl pl-10 pr-4 py-3 text-sm outline-none focus:border-cyan-400 font-mono transition-colors"
+                      />
+                      {searching && (
+                        <Loader2 size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-cyan-400 animate-spin" />
+                      )}
+                    </div>
 
+                    {/* Live search results dropdown */}
+                    {searchResults.length > 0 && (
+                      <div className="rounded-xl border border-white/10 bg-[#0A1020] overflow-hidden divide-y divide-white/5">
+                        {searchResults.map(u => (
+                          <div key={u.id} className="flex items-center gap-3 px-4 py-3 hover:bg-white/5 transition-colors">
+                            {/* Avatar */}
+                            {u.avatar_url ? (
+                              <img src={u.avatar_url} alt={u.gamer_tag} className="w-9 h-9 rounded-full object-cover border border-cyan-500/30 shrink-0" />
+                            ) : (
+                              <div className="w-9 h-9 rounded-full bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center shrink-0">
+                                <User size={14} className="text-cyan-400" />
+                              </div>
+                            )}
+                            {/* Info */}
+                            <div className="flex-1 min-w-0">
+                              <div className="font-bold text-sm text-white font-rajdhani truncate">{u.gamer_tag}</div>
+                              <div className="text-[10px] font-mono text-cyan-400/60 truncate">{u.unique_id}</div>
+                            </div>
+                            {/* Quick-add */}
+                            <button
+                              onClick={async () => {
+                                if (addingFriendId === u.id || !supabaseToken) return;
+                                setAddingFriendId(u.id);
+                                setStatusMsg(null);
+                                try {
+                                  const res = await fetch(`${API_URL}/api/friends/request`, {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${supabaseToken}` },
+                                    body: JSON.stringify({ target_identifier: u.unique_id })
+                                  });
+                                  const data = await res.json();
+                                  if (res.ok) {
+                                    setStatusMsg({ text: data.message || `Friend request sent to ${u.gamer_tag}!`, isError: false });
+                                    setSearchResults(prev => prev.filter(r => r.id !== u.id));
+                                    fetchFriends();
+                                  } else {
+                                    setStatusMsg({ text: data.detail || 'Failed to send request', isError: true });
+                                  }
+                                } catch (e: any) {
+                                  setStatusMsg({ text: e.message || 'Error', isError: true });
+                                } finally {
+                                  setAddingFriendId(null);
+                                }
+                              }}
+                              disabled={addingFriendId === u.id}
+                              className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold font-mono transition-all disabled:opacity-50"
+                              style={{ background: 'rgba(0,229,255,0.12)', color: '#00E5FF', border: '1px solid rgba(0,229,255,0.25)' }}
+                            >
+                              {addingFriendId === u.id ? (
+                                <Loader2 size={12} className="animate-spin" />
+                              ) : (
+                                <UserPlus size={12} />
+                              )}
+                              ADD
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* No results hint */}
+                    {addIdentifier.trim() && !searching && searchResults.length === 0 && (
+                      <div className="text-center py-4 text-xs font-mono text-gray-600">
+                        No matching players found. You can still send by exact FB-ID below.
+                      </div>
+                    )}
+
+                    {/* Status message */}
                     {statusMsg && (
                       <div className={`text-xs font-mono p-3 rounded-lg border ${
                         statusMsg.isError ? 'bg-red-500/10 text-red-400 border-red-500/30' : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
