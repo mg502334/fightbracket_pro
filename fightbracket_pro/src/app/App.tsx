@@ -28,6 +28,7 @@ import { FriendsModal } from "./components/FriendsModal";
 import { UserProfileModal } from "./components/UserProfileModal";
 import { UserDirectoryModal } from "./components/UserDirectoryModal";
 import { StaticPageModal, type StaticPageId } from "./components/StaticPageModal";
+import { OfficialRulesModal } from "./components/OfficialRulesModal";
 import { TermsOfServiceModal } from "./components/TermsOfServiceModal";
 import { NewsPage } from "./components/NewsPage";
 import { PasswordResetModal } from "./components/PasswordResetModal";
@@ -104,6 +105,7 @@ export default function App() {
   const [supabaseToken, setSupabaseToken] = useState<string | null>(null);
   const [showFriendsModal, setShowFriendsModal] = useState(false);
   const [showDirectoryModal, setShowDirectoryModal] = useState(false);
+  const [showRulesModal, setShowRulesModal] = useState(false);
   const [targetProfileUserId, setTargetProfileUserId] = useState<string | null>(null);
   const [showStaticPage, setShowStaticPage] = useState<StaticPageId | null>(null);
   const [showTerms, setShowTerms] = useState(false);
@@ -1446,6 +1448,12 @@ export default function App() {
         theme={theme || { id: 'default', displayName: 'FightBracket', shortName: 'FB', primaryColor: '#00E5FF', secondaryColor: '#FF006E', bgFrom: '#050A14', glowColor: 'rgba(0,229,255,0.4)', description: '', publisher: '' }}
       />
 
+      <OfficialRulesModal
+        isOpen={showRulesModal}
+        onClose={() => setShowRulesModal(false)}
+        theme={theme || { id: 'default', displayName: 'FightBracket', shortName: 'FB', primaryColor: '#00E5FF', secondaryColor: '#FF006E', bgFrom: '#050A14', glowColor: 'rgba(0,229,255,0.4)', description: '', publisher: '' }}
+      />
+
       <PasswordResetModal
         isOpen={showPasswordReset}
         onClose={() => setShowPasswordReset(false)}
@@ -1482,6 +1490,12 @@ export default function App() {
                 {link.label}
               </button>
             ))}
+            <button
+              onClick={() => setShowRulesModal(true)}
+              className="hover:text-[#00E5FF] transition-colors"
+            >
+              Official Rules
+            </button>
             <button
               onClick={() => setShowSupportModal(true)}
               className="hover:text-[#00E5FF] transition-colors"
