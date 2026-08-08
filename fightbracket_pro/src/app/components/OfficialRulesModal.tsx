@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, ShieldAlert, Gavel, Gamepad2, AlertTriangle, BookOpen, ChevronDown } from 'lucide-react';
+import { X, ShieldAlert, Gavel, Gamepad2, AlertTriangle, BookOpen, ChevronDown, ExternalLink } from 'lucide-react';
 
 interface OfficialRulesModalProps {
   isOpen: boolean;
@@ -60,6 +60,10 @@ const GAME_NAMES = {
   'tekken8': 'Tekken 8 (TWT Rules)',
   'sf6': 'Street Fighter 6',
   'ggst': 'Guilty Gear -Strive-',
+};
+
+const GAME_LINKS: Record<string, string> = {
+  'tekken8': 'https://www.bandainamcoent.com/legal/community-events/official-rules-twt',
 };
 
 export function OfficialRulesModal({ isOpen, onClose, theme }: OfficialRulesModalProps) {
@@ -182,6 +186,14 @@ export function OfficialRulesModal({ isOpen, onClose, theme }: OfficialRulesModa
                   </div>
                 ))}
               </div>
+
+              {GAME_LINKS[selectedGame] && (
+                <div className="mt-4 text-right pr-2">
+                  <a href={GAME_LINKS[selectedGame]} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-xs font-bold font-rajdhani hover:brightness-125 transition-all" style={{ color: theme.primaryColor }}>
+                    VIEW FULL OFFICIAL RULES <ExternalLink size={12} />
+                  </a>
+                </div>
+              )}
               
               <div className="mt-6 flex items-start gap-3 p-4 rounded-xl border border-yellow-500/20 bg-yellow-500/10">
                 <ShieldAlert className="text-yellow-500 shrink-0 mt-0.5" size={16} />
