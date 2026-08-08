@@ -43,10 +43,17 @@ const GAME_RULES: Record<string, { title: string; content: string }[]> = {
     { title: 'Coaching', content: 'Coaching is only allowed for the player that lost the previous Game. A player may consult a coach for a maximum of 1 minute, and only one (1) time per Match.' },
   ],
   'sf6': [
-    { title: 'Match Settings', content: '99 Seconds, Best of 3 Rounds per game.' },
-    { title: 'Set Format', content: 'Best-of-3 (First to 2) for standard matches. Best-of-5 (First to 3) for Top 8.' },
-    { title: 'Stage Selection', content: 'Game 1 must be Random stage (or Training Room if both agree). The loser of the previous game may change stage or character (but not both).' },
+    { title: 'Match Settings', content: '99 Seconds, First to 2 Rounds (Best-of-3 rounds) per Battle. Played through in-game Versus menu. Sound/Voice: English.' },
+    { title: 'Set Format', content: 'Player Matches 1 & 2: Best-of-3 Battles. Player Match 3: Best-of-5 Battles. Playoffs use a points-based format (First to 50 in QF/SF; First to 70 in Grand Final).' },
+    { title: 'Character Selection', content: 'The player who LOST the previous Battle may change character AND control type. The player who WON must keep the same character and control type.' },
     { title: 'Control Type', content: 'Both Classic and Modern control types are completely legal and permitted.' },
+    { title: 'Stage Selection', content: 'Stages are determined by the Organizer or Tournament Organizer. Players do not independently select stages.' },
+    { title: 'Bugs & Glitches', content: 'Using any known bug or glitch to gain an unfair advantage is prohibited, even if not specifically listed. Organizer determines at sole discretion if a bug was used intentionally.' },
+    { title: 'Disconnections', content: 'Involuntary disconnections allow the Organizer to restart the game, return to pre-issue state, or designate a winner. A player who voluntarily interrupts a round forfeits that round.' },
+    { title: 'Pauses', content: 'Players may not pause a game in progress. If hardware fails mid-match, the player must forfeit the current round to stop play and request a replacement controller (must be obtained within 5 minutes).' },
+    { title: 'Double KO', content: 'In the event of a Double KO, the battle is replayed with no round results carried over.' },
+    { title: 'Coaching', content: 'No communication with any third party (including coaches) is allowed during a Player Match in progress. Breaks: 30 sec between battles, 1 min between Player Matches, 5 min between Team Matches.' },
+    { title: 'Controllers', content: 'Macros, turbo functions, and disallowed compound inputs are prohibited. A max of 11 attacking action inputs are allowed. Organizer may inspect controllers at any time. Keyboards are only allowed on Steam (must be paired with a controller).' },
   ],
   'ggst': [
     { title: 'Match Settings', content: '99 Seconds, Best of 3 Rounds per game.' },
@@ -64,6 +71,7 @@ const GAME_NAMES = {
 
 const GAME_LINKS: Record<string, string> = {
   'tekken8': 'https://www.bandainamcoent.com/legal/community-events/official-rules-twt',
+  'sf6': 'https://www.streetfighterleague.com/official-rules/',
 };
 
 export function OfficialRulesModal({ isOpen, onClose, theme }: OfficialRulesModalProps) {
