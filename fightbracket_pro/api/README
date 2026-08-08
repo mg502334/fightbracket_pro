@@ -1,0 +1,14 @@
+Overview
+The /api/admin directory contains all server‑side API routes used by the FightBracket Pro Admin Dashboard. These routes are protected, server‑only, and rely on the Supabase Service Role Key to access privileged data such as:
+
+Full user records
+
+FB identifiers
+
+User profiles
+
+Audit logs
+
+System statistics
+
+These routes are intended for internal admin use only and must never be exposed to client‑side code.
