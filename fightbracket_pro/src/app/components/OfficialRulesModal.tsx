@@ -56,22 +56,27 @@ const GAME_RULES: Record<string, { title: string; content: string }[]> = {
     { title: 'Controllers', content: 'Macros, turbo functions, and disallowed compound inputs are prohibited. A max of 11 attacking action inputs are allowed. Organizer may inspect controllers at any time. Keyboards are only allowed on Steam (must be paired with a controller).' },
   ],
   'ggst': [
-    { title: 'Match Settings', content: '99 Seconds, Best of 3 Rounds per game.' },
-    { title: 'Set Format', content: 'Best-of-5 (First to 3) for ALL matches in the tournament.' },
-    { title: 'Stage Selection', content: 'Stages must be selected on Random or set to Council of Three. Stages with significant visual clutter or lag issues may be banned by the TO.' },
-    { title: 'Character Selection', content: 'The winner of the previous game must keep the same character.' },
+    { title: 'Match Settings', content: '99 Seconds, First to 2 Rounds per Game. Played on PlayStation 5.' },
+    { title: 'Set Format', content: 'Best-of-3 Games (First to 2) for standard matches. Best-of-5 (First to 3) for Winners Finals, Losers Finals, and Grand Finals.' },
+    { title: 'Character Selection', content: 'The winner of the previous Game is locked into their character and may NOT switch. The loser of the previous Game may freely switch characters.' },
+    { title: 'Stage / BGM', content: 'Stage is set to "Auto" by default. Both players may mutually agree to select a specific stage or background music before a game begins.' },
+    { title: 'DLC Characters', content: 'Newly released DLC characters are restricted from tournament play for the first two (2) weeks following their official release.' },
+    { title: 'Banned Content', content: 'Ultimate Edition colors are banned for all characters in official Arc World Tour events.' },
+    { title: 'Controllers', content: 'Legacy PS3 native controllers are prohibited. Hardware-level macros, turbo functions, programmable inputs, and illegal SOCD cleaning methods are strictly forbidden.' },
+    { title: 'Disconnects', content: 'A player who causes an unintentional disconnect must forfeit the current round. If the issue cannot be resolved within 5 minutes, the player responsible must forfeit the entire set.' },
   ],
 };
 
 const GAME_NAMES = {
   'tekken8': 'Tekken 8 (TWT Rules)',
-  'sf6': 'Street Fighter 6',
-  'ggst': 'Guilty Gear -Strive-',
+  'sf6': 'Street Fighter 6 (SFL)',
+  'ggst': 'Guilty Gear -Strive- (AWT)',
 };
 
 const GAME_LINKS: Record<string, string> = {
   'tekken8': 'https://www.bandainamcoent.com/legal/community-events/official-rules-twt',
   'sf6': 'https://www.streetfighterleague.com/official-rules/',
+  'ggst': 'https://www.arcsystemworks.jp/awt2024/',
 };
 
 export function OfficialRulesModal({ isOpen, onClose, theme }: OfficialRulesModalProps) {
