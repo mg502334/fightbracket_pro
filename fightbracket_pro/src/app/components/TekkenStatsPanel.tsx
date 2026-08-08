@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { formatDistanceToNow, format } from 'date-fns';
 import { RefreshCw, Swords, Trophy, TrendingUp, Shield, Zap, AlertCircle } from 'lucide-react';
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -11,6 +12,10 @@ interface TekkenMatch {
   player_character?: string;
   character?: string;
   opponent_character?: string;
+  opponent_name?: string;
+  player_rank?: string;
+  opponent_rank?: string;
+  battle_type?: string;
   result?: string;
   timestamp?: number | string;
   stage?: string;
@@ -162,45 +167,82 @@ function WinRateBar({ winRate, wins, losses }: { winRate: number; wins: number; 
   );
 }
 
-function MatchRow({ match, index }: { match: TekkenMatch; index: number }) {
+function MatchRow({ match, index, playerName }: { match: TekkenMatch; index: number; playerName: string }) {
   const isWin = (match.result || '').toUpperCase() === 'WIN';
   const playerChar = getPlayerChar(match);
   const oppChar = match.opponent_character || '?';
 
+  const playerImg = getCharacterPortraitUrl(playerChar);
+  const oppImg = getCharacterPortraitUrl(oppChar);
+
+  const playerRank = match.player_rank || 'Unranked';
+  const oppRank = match.opponent_rank || 'Unranked';
+  const oppName = match.opponent_name || 'Unknown';
+  
+  const scoreStr = `${match.rounds_won || 0}-${match.rounds_lost || 0}`;
+  const battleType = match.battle_type || 'Ranked Match';
+
+  const ts = match.timestamp;
+  const d = ts ? (typeof ts === 'number' ? new Date(ts * 1000) : new Date(ts)) : null;
+  const timeAgo = d && !isNaN(d.getTime()) ? formatDistanceToNow(d, { addSuffix: true }) : '';
+  const exactTime = d && !isNaN(d.getTime()) ? format(d, 'MMM d, yyyy, h:mm a') : '';
+
   return (
     <motion.div
-      initial={{ opacity: 0, x: -8 }}
-      animate={{ opacity: 1, x: 0 }}
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.04, duration: 0.2 }}
-      className="flex items-center justify-between px-3 py-2 rounded-lg bg-white/5 border border-white/5 hover:border-white/10 transition-colors"
+      className="grid grid-cols-[140px_minmax(180px,2fr)_minmax(180px,2fr)_80px_80px_minmax(120px,1.5fr)] gap-4 items-center px-4 py-3 bg-[#111620] border-b border-white/5 hover:bg-[#161c28] transition-colors min-w-[800px]"
     >
-      <div className="flex items-center gap-2 min-w-0">
-        <span
-          className="w-1.5 h-1.5 rounded-full shrink-0"
-          style={{ background: isWin ? '#00FF88' : '#FF006E' }}
-        />
-        <span className="text-xs font-mono text-white truncate">
-          <span style={{ color: '#00E5FF' }}>{playerChar}</span>
-          <span className="text-gray-500 mx-1">vs</span>
-          <span className="text-gray-300">{oppChar}</span>
-        </span>
+      {/* Date */}
+      <div className="flex flex-col">
+        <span className="text-[13px] font-bold text-gray-200">{timeAgo}</span>
+        <span className="text-[11px] text-gray-500 mt-0.5">{exactTime}</span>
       </div>
-      <div className="flex items-center gap-2 shrink-0">
-        {match.timestamp && (
-          <span className="text-[10px] font-mono text-gray-600">
-            {formatTimestamp(match.timestamp)}
-          </span>
+
+      {/* Player */}
+      <div className="flex items-center gap-3">
+        {playerImg ? (
+          <img src={playerImg} alt={playerChar} className="w-10 h-10 object-cover rounded shadow" />
+        ) : (
+          <div className="w-10 h-10 rounded bg-[#1A202C] border border-[#2A3441] flex items-center justify-center text-xs font-bold text-gray-500">
+            {playerChar.substring(0, 3)}
+          </div>
         )}
-        <span
-          className="text-[10px] font-bold font-mono px-2 py-0.5 rounded"
-          style={{
-            color: isWin ? '#00FF88' : '#FF006E',
-            background: isWin ? 'rgba(0,255,136,0.1)' : 'rgba(255,0,110,0.1)',
-            border: `1px solid ${isWin ? 'rgba(0,255,136,0.25)' : 'rgba(255,0,110,0.25)'}`,
-          }}
-        >
-          {isWin ? 'WIN' : 'LOSS'}
-        </span>
+        <div className="flex flex-col">
+          <span className="text-[13px] font-bold text-gray-200">{playerName}</span>
+          <span className="text-[11px] text-gray-400 mt-0.5">{playerRank}</span>
+        </div>
+      </div>
+
+      {/* Opponent */}
+      <div className="flex items-center gap-3">
+        {oppImg ? (
+          <img src={oppImg} alt={oppChar} className="w-10 h-10 object-cover rounded shadow" />
+        ) : (
+          <div className="w-10 h-10 rounded bg-[#1A202C] border border-[#2A3441] flex items-center justify-center text-xs font-bold text-gray-500">
+            {oppChar.substring(0, 3)}
+          </div>
+        )}
+        <div className="flex flex-col">
+          <span className="text-[13px] font-bold text-[#60A5FA] truncate max-w-[120px]">{oppName}</span>
+          <span className="text-[11px] text-gray-400 mt-0.5">{oppRank}</span>
+        </div>
+      </div>
+
+      {/* Result */}
+      <div className={`text-[13px] font-bold ${isWin ? 'text-[#00FF88]' : 'text-[#EF4444]'}`}>
+        {isWin ? 'WIN' : 'LOSS'}
+      </div>
+
+      {/* Score */}
+      <div className={`text-[13px] font-bold ${isWin ? 'text-[#00FF88]' : 'text-[#EF4444]'}`}>
+        {scoreStr}
+      </div>
+
+      {/* Battle Type */}
+      <div className="text-[13px] font-medium text-gray-300">
+        {battleType}
       </div>
     </motion.div>
   );
@@ -493,14 +535,26 @@ export function TekkenStatsPanel({ tekkenId, compact = false, steamId, psnId, xb
 
           {/* ── Recent Matches ── */}
           {matches.length > 0 && (
-            <div>
-              <div className="text-[10px] font-mono text-gray-400 tracking-widest mb-2 flex items-center gap-1">
-                RECENT MATCHES
-              </div>
-              <div className="space-y-1.5">
-                {matches.slice(0, compact ? 5 : 10).map((match, i) => (
-                  <MatchRow key={match.id || i} match={match} index={i} />
-                ))}
+            <div className="mt-4 border border-white/5 rounded-lg overflow-hidden bg-[#0A0D14]">
+              <div className="overflow-x-auto">
+                <div className="grid grid-cols-[140px_minmax(180px,2fr)_minmax(180px,2fr)_80px_80px_minmax(120px,1.5fr)] gap-4 px-4 py-3 text-[12px] font-semibold text-gray-400 border-b border-white/5 min-w-[800px] bg-[#0A0D14]">
+                  <div>Date</div>
+                  <div>Player</div>
+                  <div>Opponent</div>
+                  <div>Result</div>
+                  <div>Score</div>
+                  <div>Battle Type</div>
+                </div>
+                <div className="flex flex-col">
+                  {matches.slice(0, compact ? 5 : 10).map((match, i) => (
+                    <MatchRow 
+                      key={match.id || i} 
+                      match={match} 
+                      index={i} 
+                      playerName={data?.profile?.playerName || gamerTag || 'Player'} 
+                    />
+                  ))}
+                </div>
               </div>
             </div>
           )}

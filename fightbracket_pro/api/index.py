@@ -1894,6 +1894,8 @@ def get_tekken_stats(tekken_id: str):
             player_char = m.get("p1_char", "?")
             opp_char = m.get("p2_char", "?")
             opp_name = m.get("p2_name", "?")
+            player_rank = m.get("p1_dan_rank", "")
+            opp_rank = m.get("p2_dan_rank", "")
             rounds_won = m.get("p1_rounds_won", 0)
             rounds_lost = m.get("p2_rounds_won", 0)
         else:
@@ -1901,6 +1903,8 @@ def get_tekken_stats(tekken_id: str):
             player_char = m.get("p2_char", "?")
             opp_char = m.get("p1_char", "?")
             opp_name = m.get("p1_name", "?")
+            player_rank = m.get("p2_dan_rank", "")
+            opp_rank = m.get("p1_dan_rank", "")
             rounds_won = m.get("p2_rounds_won", 0)
             rounds_lost = m.get("p1_rounds_won", 0)
         normalized_matches.append({
@@ -1909,6 +1913,8 @@ def get_tekken_stats(tekken_id: str):
             "player_character": player_char,
             "opponent_character": opp_char,
             "opponent_name": opp_name,
+            "player_rank": player_rank,
+            "opponent_rank": opp_rank,
             "battle_type": m.get("battle_type", ""),
             "timestamp": m.get("battle_at", ""),
             "rounds_won": rounds_won,
