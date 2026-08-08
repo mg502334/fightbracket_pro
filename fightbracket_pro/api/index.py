@@ -792,7 +792,7 @@ def import_startgg_profile(req: StartggImportRequest, user_id: str = Depends(get
                         event_list.append({
                             "event_name": ev.get("name"),
                             "tournament_name": tourney.get("name") if isinstance(tourney, dict) else "",
-                            "tournament_slug": tourney.get("slug") if isinstance(tourney, dict) else "",
+                            "tournament_slug": (tourney.get("slug") or "").replace("tournament/", "") if isinstance(tourney, dict) else "",
                             "placement": standing.get("placement", "N/A") if isinstance(standing, dict) else "N/A"
                         })
                     profile_info = {

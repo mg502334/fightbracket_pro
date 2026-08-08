@@ -24,6 +24,7 @@ interface UserProfileData {
       event_name: string;
       tournament_name: string;
       placement: string | number;
+      tournament_slug?: string;
     }>;
   };
   games_data?: string;
@@ -42,13 +43,16 @@ interface UserProfileModalProps {
   supabaseToken: string | null;
   theme: any;
   onOpenDM?: (user: { id: string; unique_id: string; gamer_tag: string }) => void;
+  onImportBracket?: (slug: string) => Promise<void>;
 }
 
-export function UserProfileModal({ isOpen, onClose, targetUserId, supabaseToken, theme, onOpenDM }: UserProfileModalProps) {
+export function UserProfileModal({ isOpen, onClose, targetUserId, supabaseToken, theme, onOpenDM, onImportBracket }: UserProfileModalProps) {
   const [profile, setProfile] = useState<UserProfileData | null>(null);
   const [loading, setLoading] = useState(false);
   const [friendActionMsg, setFriendActionMsg] = useState<string | null>(null);
   const [gamesListExpanded, setGamesListExpanded] = useState(false);
+  const [importingSlug, setImportingSlug] = useState<string | null>(null);
+  const [importedSlugs, setImportedSlugs] = useState<Set<string>>(new Set());
 
   const [showReportModal, setShowReportModal] = useState(false);
   const [reportReason, setReportReason] = useState('Inappropriate Behavior');
@@ -341,7 +345,7 @@ export function UserProfileModal({ isOpen, onClose, targetUserId, supabaseToken,
 
                       {/* Event rows */}
                       <div className="space-y-1.5">
-                        {profile.startgg_data.events.map((ev, i) => {
+                        {profile.startgg_data.events.slice(0, 3).map((ev, i) => {
                           const place = Number(ev.placement);
                           const medalColor =
                             place === 1 ? '#FFD700' :
@@ -354,16 +358,62 @@ export function UserProfileModal({ isOpen, onClose, targetUserId, supabaseToken,
                             place === 3 ? 'rgba(205,127,50,0.1)' :
                             place <= 8  ? 'rgba(0,229,255,0.08)' : 'rgba(255,255,255,0.04)';
 
+                          // Derive the importable tournament slug
+                          let tSlug = ev.tournament_slug || '';
+                          if (!tSlug && ev.tournament_name) {
+                            tSlug = ev.tournament_name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+                          }
+                          const isImporting = importingSlug === tSlug;
+                          const isImported = importedSlugs.has(tSlug);
+
+                          const handleImport = async () => {
+                            if (!tSlug || !onImportBracket || isImporting || isImported) return;
+                            setImportingSlug(tSlug);
+                            try {
+                              await onImportBracket(tSlug);
+                              setImportedSlugs(prev => new Set([...prev, tSlug]));
+                            } catch (e) {
+                              console.error('Import failed', e);
+                            } finally {
+                              setImportingSlug(null);
+                            }
+                          };
+
                           return (
                             <div
                               key={i}
-                              className="flex items-center justify-between px-3 py-2 rounded-lg border border-white/5 hover:border-white/10 transition-colors"
+                              className="flex items-center justify-between px-3 py-2.5 rounded-lg border border-white/5 hover:border-white/10 transition-colors gap-3"
                               style={{ background: medalBg }}
                             >
-                              <div className="min-w-0 pr-2">
+                              <div className="min-w-0 flex-1 pr-2">
                                 <div className="font-bold text-xs font-rajdhani text-white truncate">{ev.event_name}</div>
                                 <div className="text-[10px] font-mono text-gray-500 truncate">{ev.tournament_name}</div>
                               </div>
+                              {/* Import bracket button */}
+                              {onImportBracket && tSlug && (
+                                <button
+                                  onClick={handleImport}
+                                  disabled={isImporting || isImported}
+                                  className="shrink-0 flex items-center gap-1 text-[10px] font-bold font-mono px-2.5 py-1 rounded transition-all"
+                                  style={{
+                                    background: isImported ? 'rgba(0,255,136,0.12)' : 'rgba(0,229,255,0.1)',
+                                    color: isImported ? '#00FF88' : '#00E5FF',
+                                    border: `1px solid ${isImported ? 'rgba(0,255,136,0.3)' : 'rgba(0,229,255,0.25)'}`,
+                                    opacity: isImporting ? 0.7 : 1,
+                                    cursor: (isImporting || isImported) ? 'default' : 'pointer',
+                                  }}
+                                  title={isImported ? 'Already imported' : `Import ${ev.tournament_name} bracket`}
+                                >
+                                  {isImporting ? (
+                                    <svg className="animate-spin" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" strokeOpacity="0.25"/><path d="M12 2a10 10 0 0 1 10 10" /></svg>
+                                  ) : isImported ? (
+                                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12" /></svg>
+                                  ) : (
+                                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                                  )}
+                                  {isImporting ? 'IMPORTING…' : isImported ? 'IMPORTED' : 'IMPORT'}
+                                </button>
+                              )}
                               <div
                                 className="text-xs font-mono font-bold px-2.5 py-1 rounded shrink-0"
                                 style={{ color: medalColor, background: `${medalColor}15`, border: `1px solid ${medalColor}30` }}
@@ -376,8 +426,18 @@ export function UserProfileModal({ isOpen, onClose, targetUserId, supabaseToken,
                       </div>
                     </>
                   ) : (
-                    <div className="py-6 text-center text-xs font-mono text-gray-600">
-                      No Start.gg event history imported yet.
+                    <div className="py-6 text-center">
+                      <div className="text-xs font-mono text-gray-500 mb-1">No Start.gg event history on this profile.</div>
+                      {profile?.startgg_slug && (
+                        <a
+                          href={`https://start.gg/user/${profile.startgg_slug}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-[10px] font-mono text-cyan-700 hover:text-cyan-400 transition-colors"
+                        >
+                          View on Start.gg ↗
+                        </a>
+                      )}
                     </div>
                   )}
                 </div>
