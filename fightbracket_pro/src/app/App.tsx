@@ -392,17 +392,26 @@ export default function App() {
     }
   });
 
-  // Find the tournament champion: prefer Grand Final match, else highest round winners match
-  const grandFinalMatch = gameMatches.find(m =>
+  // Find the tournament champion
+  // 1. If start.gg provided official placement data, use the player with placement 1
+  const startGgChampion = activeGame ? players.find(p => p.gameId === activeGame && p.placement === 1) : null;
+
+  // 2. Fallback to bracket match calculation (for local tournaments)
+  const grandFinalMatches = gameMatches.filter(m =>
     m.roundName && (
       m.roundName.toLowerCase().includes('grand final') ||
       m.roundName.toLowerCase() === 'grand finals'
     )
   );
-  const maxRoundMatch = grandFinalMatch ||
+  const grandFinalMatch = grandFinalMatches.length > 0 
+    ? grandFinalMatches.reduce((prev, current) => (Math.abs(prev.round) > Math.abs(current.round)) ? prev : current)
+    : null;
+
+  const maxRoundMatch = grandFinalMatch || (gameMatches.length > 0 ?
     gameMatches.reduce((prev, current) =>
-      (prev && Math.abs(prev.round) > Math.abs(current.round)) ? prev : current, gameMatches[0]);
-  const championId = maxRoundMatch && maxRoundMatch.state === 'completed' ? maxRoundMatch.winnerId : null;
+      (prev && Math.abs(prev.round) > Math.abs(current.round)) ? prev : current, gameMatches[0]) : null);
+      
+  const championId = startGgChampion ? startGgChampion.id : (maxRoundMatch && maxRoundMatch.state === 'completed' ? maxRoundMatch.winnerId : null);
 
   const gamePlayers = activeGame ? players.filter(p => p.gameId === activeGame).map(p => ({
     ...p,
