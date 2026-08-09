@@ -20,8 +20,6 @@ const STATE_CONFIG = {
   completed: { label: 'DONE', color: '#3A5A7A', bg: 'rgba(58,90,122,0.1)', icon: CheckCircle2 },
 };
 
-type Phase = 'ALL' | 'POOLS' | 'TOP_24' | 'TOP_8';
-
 export function BracketView({
   matches,
   players,
@@ -35,7 +33,7 @@ export function BracketView({
   const [hoveredMatchId, setHoveredMatchId] = useState<string | null>(null);
   const [selectedFormat, setSelectedFormat] = useState<BracketType>(BracketType.SINGLE_ELIMINATION);
   const [internalPool, setInternalPool] = useState<string>('ALL');
-  const [selectedPhase, setSelectedPhase] = useState<Phase>('ALL');
+  const [selectedPhase, setSelectedPhase] = useState<string>('ALL');
   const [playerSearch, setPlayerSearch] = useState<string>('');
   const [filterMatchesOnly, setFilterMatchesOnly] = useState<boolean>(false);
 
@@ -86,23 +84,53 @@ export function BracketView({
 
   const playerMap = Object.fromEntries(players.map(p => [p.id, p]));
 
-  // Extract unique pools if present
-  const availablePools = Array.from(new Set(matches.map(m => m.pool).filter(Boolean))) as string[];
+  // Extract unique phases
+  const availablePhases = Array.from(new Set(matches.map(m => m.phase).filter(Boolean))) as string[];
+  
+  const activePhase = selectedPhase;
+
+  // Extract unique pools based ONLY on the active phase
+  const availablePools = Array.from(new Set(matches.filter(m => activePhase === 'ALL' || m.phase === activePhase).map(m => m.pool).filter(Boolean))) as string[];
   availablePools.sort();
 
   // Filter matches by Phase & Pool & Search
-  let processedMatches = matches;
+  let processedMatches = matches.map(m => ({ ...m }));
 
-  if (selectedPhase === 'POOLS') {
-    processedMatches = processedMatches.filter(m => m.pool !== undefined || m.round <= 3);
-  } else if (selectedPhase === 'TOP_24') {
-    processedMatches = processedMatches.filter(m => Math.abs(m.round) >= 2 && Math.abs(m.round) <= 5);
-  } else if (selectedPhase === 'TOP_8') {
-    processedMatches = processedMatches.filter(m => Math.abs(m.round) >= 4 || m.roundName.toLowerCase().includes('final'));
+  if (activePhase === 'ALL' && availablePhases.length > 0) {
+    let currentWinnersOffset = 0;
+    let currentLosersOffset = 0;
+    
+    availablePhases.forEach(phase => {
+      let maxW = 0;
+      let minL = 0;
+      
+      processedMatches.forEach(m => {
+        if (m.phase === phase) {
+          if (m.round > 0) {
+            m.round += currentWinnersOffset;
+            const relativeRound = m.round - currentWinnersOffset;
+            if (relativeRound > maxW) maxW = relativeRound;
+          } else if (m.round < 0) {
+            m.round += currentLosersOffset;
+            const relativeRound = m.round - currentLosersOffset;
+            if (relativeRound < minL) minL = relativeRound;
+          }
+        }
+      });
+      
+      currentWinnersOffset += maxW;
+      currentLosersOffset += minL;
+    });
+  } else if (activePhase !== 'ALL') {
+    processedMatches = processedMatches.filter(m => m.phase === activePhase);
   }
 
-  if (selectedPool !== 'ALL') {
-    processedMatches = processedMatches.filter(m => m.pool === selectedPool);
+  // Ensure selectedPool is valid for the current phase, otherwise reset to 'ALL'
+  const isSelectedPoolValid = selectedPool === 'ALL' || availablePools.includes(selectedPool as string);
+  const activePool = isSelectedPoolValid ? selectedPool : 'ALL';
+
+  if (activePool !== 'ALL') {
+    processedMatches = processedMatches.filter(m => m.pool === activePool);
   }
 
   // Handle Player Search
@@ -149,44 +177,59 @@ export function BracketView({
         {/* Left: Phase & Pool Selectors */}
         <div className="flex flex-wrap items-center gap-3">
           {/* Phase Selector */}
-          <div className="flex items-center gap-1.5 bg-black/40 p-1 rounded-lg border border-white/10">
-            <Layers size={14} className="ml-2 opacity-50" style={{ color: theme.primaryColor }} />
-            <span className="text-[10px] font-mono tracking-widest opacity-50 mr-1">PHASE:</span>
-            {[
-              { id: 'ALL', label: 'ALL PHASES' },
-              { id: 'POOLS', label: 'POOLS' },
-              { id: 'TOP_24', label: 'TOP 24' },
-              { id: 'TOP_8', label: 'TOP 8' },
-            ].map(p => (
-              <button
-                key={p.id}
-                onClick={() => setSelectedPhase(p.id as Phase)}
-                className={`px-2.5 py-1 rounded text-xs font-bold transition-all ${
-                  selectedPhase === p.id
-                    ? 'text-black'
-                    : 'text-white/70 hover:text-white hover:bg-white/10'
-                }`}
-                style={{
-                  fontFamily: 'Rajdhani, sans-serif',
-                  background: selectedPhase === p.id ? theme.primaryColor : 'transparent',
-                }}
-              >
-                {p.label}
-              </button>
-            ))}
-          </div>
+          {availablePhases.length > 0 && (
+            <div className="flex items-center gap-1.5 bg-black/40 p-1 rounded-lg border border-white/10">
+              <Layers size={14} className="ml-2 opacity-50" style={{ color: theme.primaryColor }} />
+              <span className="text-[10px] font-mono tracking-widest opacity-50 mr-1">PHASE:</span>
+              
+              {availablePhases.length > 1 && (
+                <button
+                  onClick={() => setSelectedPhase('ALL')}
+                  className={`px-2.5 py-1 rounded text-xs font-bold transition-all ${
+                    activePhase === 'ALL'
+                      ? 'text-black'
+                      : 'text-white/70 hover:text-white hover:bg-white/10'
+                  }`}
+                  style={{
+                    fontFamily: 'Rajdhani, sans-serif',
+                    background: activePhase === 'ALL' ? theme.primaryColor : 'transparent',
+                  }}
+                >
+                  ALL PHASES
+                </button>
+              )}
+
+              {availablePhases.map(p => (
+                <button
+                  key={p}
+                  onClick={() => setSelectedPhase(p)}
+                  className={`px-2.5 py-1 rounded text-xs font-bold transition-all ${
+                    activePhase === p
+                      ? 'text-black'
+                      : 'text-white/70 hover:text-white hover:bg-white/10'
+                  }`}
+                  style={{
+                    fontFamily: 'Rajdhani, sans-serif',
+                    background: activePhase === p ? theme.primaryColor : 'transparent',
+                  }}
+                >
+                  {p.toUpperCase()}
+                </button>
+              ))}
+            </div>
+          )}
 
           {/* Pool Dropdown Selector */}
           {availablePools.length > 0 && (
             <div className="flex items-center gap-2 bg-black/40 px-3 py-1.5 rounded-lg border border-white/10">
               <span className="text-xs font-mono font-bold opacity-60 tracking-wider">POOL:</span>
               <select
-                value={selectedPool}
-                onChange={e => setSelectedPool(e.target.value)}
-                className="bg-transparent text-xs font-bold font-mono outline-none cursor-pointer"
+                value={activePool}
+                onChange={(e) => setSelectedPool(e.target.value)}
+                className="bg-black/40 border border-white/10 rounded-lg px-3 py-1.5 text-xs font-bold font-rajdhani focus:outline-none transition-colors hover:border-white/20"
                 style={{ color: theme.primaryColor }}
               >
-                <option value="ALL" className="bg-[#050A14] text-white">ALL POOLS ({availablePools.length})</option>
+                <option value="ALL">ALL POOLS ({availablePools.length})</option>
                 {availablePools.map(pool => (
                   <option key={pool} value={pool} className="bg-[#050A14] text-white">
                     POOL {pool}
