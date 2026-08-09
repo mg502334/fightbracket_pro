@@ -211,7 +211,7 @@ export function PoolsPanel({
     : [];
 
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-6">
+    <div className="p-6 max-w-6xl mx-auto space-y-6 overflow-y-auto pb-20">
       {/* Top Header & Pool View Navigator Bar */}
       <div
         className="flex flex-wrap justify-between items-center p-6 rounded-xl border gap-4"
@@ -434,7 +434,7 @@ export function PoolsPanel({
                   </div>
 
                   {/* Player list subset */}
-                  <div className={`transition-all overflow-hidden ${isExpanded ? 'max-h-[600px]' : 'max-h-[190px]'}`}>
+                  <div className={`transition-all ${isExpanded ? 'max-h-[600px] overflow-y-auto' : 'overflow-hidden max-h-[190px]'} custom-scrollbar`}>
                     <div className="p-3 space-y-1.5">
                       {poolPlayers.slice(0, isExpanded ? undefined : 4).map(p => (
                         <div
