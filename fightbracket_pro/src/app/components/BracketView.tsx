@@ -440,10 +440,45 @@ function BracketSection({
                     >
                       {/* Connection Line */}
                       {!isLast && (
-                        <div 
-                          className="absolute top-1/2 -right-6 h-px w-6" 
-                          style={{ background: isLive || matchesSearch ? theme.primaryColor : 'rgba(122,158,192,0.2)' }} 
-                        />
+                        (() => {
+                          const nextMatch = matches.find(m => m.prereqSetIds?.includes(match.id));
+                          if (nextMatch && slotMap) {
+                            const nextSlot = slotMap.slots.get(nextMatch.id);
+                            if (nextSlot !== undefined) {
+                              const nextRoundIndex = rounds.indexOf(nextMatch.round);
+                              const colsDiff = nextRoundIndex - rIdx;
+                              if (colsDiff > 0) {
+                                const dx = colsDiff * 48 + (colsDiff - 1) * 250;
+                                const dy = (nextSlot - slot) * SLOT_SIZE;
+                                const color = isLive || matchesSearch ? theme.primaryColor : 'rgba(122,158,192,0.25)';
+                                const strokeW = isLive || matchesSearch ? 2 : 1.5;
+
+                                return (
+                                  <svg 
+                                    className="absolute top-1/2 left-full pointer-events-none"
+                                    style={{ width: dx, height: 1, overflow: 'visible', zIndex: 0 }}
+                                  >
+                                    <path 
+                                      d={`M 0 0 C ${dx / 2} 0, ${dx / 2} ${dy}, ${dx} ${dy}`}
+                                      fill="none"
+                                      stroke={color}
+                                      strokeWidth={strokeW}
+                                      className={isLive || matchesSearch ? 'animate-pulse' : ''}
+                                    />
+                                  </svg>
+                                );
+                              }
+                            }
+                          }
+                          
+                          // Fallback to generic stub if no explicit destination found or tree data is missing
+                          return (
+                            <div 
+                              className="absolute top-1/2 -right-6 h-px w-6" 
+                              style={{ background: isLive || matchesSearch ? theme.primaryColor : 'rgba(122,158,192,0.2)' }} 
+                            />
+                          );
+                        })()
                       )}
 
                       {/* Start.gg Style Progression Destination Pill for Pool Finals */}
