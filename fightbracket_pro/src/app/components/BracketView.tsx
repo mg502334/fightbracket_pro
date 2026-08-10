@@ -449,27 +449,36 @@ function BracketSection({
                       {/* Start.gg Style Progression Destination Pill for Pool Finals */}
                       {isLast && selectedPool && selectedPool !== 'ALL' && (
                         (() => {
-                          let nextPhaseName = "Next Phase";
+                          let winDest = "Next Phase";
+                          let loseDest = "Next Phase";
+                          
                           const isWinnersFinal = match.roundName?.toLowerCase().includes('winners final');
                           const isLosersFinal = match.roundName?.toLowerCase().includes('losers final');
 
-                          if (isWinnersFinal || isLosersFinal) {
-                            nextPhaseName = "Grand Finals";
+                          if (isWinnersFinal) {
+                            winDest = "Grand Finals";
+                            loseDest = "Losers Final";
+                          } else if (isLosersFinal) {
+                            winDest = "Grand Finals";
+                            loseDest = "Eliminated";
                           } else {
-                            const nextMatch = allMatches.find(m => m.prereqSetIds?.includes(match.id));
-                            if (nextMatch) {
-                              if (nextMatch.roundName?.toLowerCase().includes('grand final')) {
-                                nextPhaseName = "Grand Finals";
-                              } else if (nextMatch.phase) {
-                                nextPhaseName = nextMatch.phase;
-                              }
+                            const destMatches = allMatches.filter(m => m.prereqSetIds?.includes(match.id));
+                            if (destMatches.length > 0) {
+                              const wMatch = destMatches.find(m => m.round > 0 || m.roundName?.toLowerCase().includes('grand'));
+                              const lMatch = destMatches.find(m => m.round < 0 || m.roundName?.toLowerCase().includes('loser'));
+                              
+                              if (wMatch) winDest = wMatch.roundName?.toLowerCase().includes('grand') ? "Grand Finals" : (wMatch.phase || winDest);
+                              if (lMatch) loseDest = lMatch.phase || loseDest;
+                              
+                              if (!wMatch && destMatches[0]) winDest = destMatches[0].phase || winDest;
                             } else {
                               const currentPhase = match.phase;
                               if (currentPhase) {
                                  const availablePhases = Array.from(new Set(allMatches.map(m => m.phase).filter(Boolean))) as string[];
                                  const idx = availablePhases.indexOf(currentPhase);
                                  if (idx >= 0 && idx < availablePhases.length - 1) {
-                                    nextPhaseName = availablePhases[idx + 1];
+                                    winDest = availablePhases[idx + 1];
+                                    loseDest = availablePhases[idx + 1];
                                  }
                               }
                             }
@@ -478,11 +487,13 @@ function BracketSection({
                           return (
                             <div className="absolute top-1/2 -right-28 -translate-y-1/2 flex flex-col gap-1 z-10 pointer-events-none">
                               <div className="flex items-center gap-1 text-[10px] font-mono font-bold px-2 py-1 rounded-full bg-cyan-500/20 text-cyan-400 border border-cyan-500/40 shadow-lg whitespace-nowrap">
-                                <span>→</span> {nextPhaseName} [W]
+                                <span>→</span> {winDest} [W]
                               </div>
-                              <div className="flex items-center gap-1 text-[10px] font-mono font-bold px-2 py-1 rounded-full bg-slate-800 text-slate-400 border border-slate-700 whitespace-nowrap opacity-60">
-                                <span>→</span> {nextPhaseName} [L]
-                              </div>
+                              {!isLosers && loseDest !== "Eliminated" && (
+                                <div className="flex items-center gap-1 text-[10px] font-mono font-bold px-2 py-1 rounded-full bg-slate-800 text-slate-400 border border-slate-700 whitespace-nowrap opacity-60">
+                                  <span>→</span> {loseDest} [L]
+                                </div>
+                              )}
                             </div>
                           );
                         })()
