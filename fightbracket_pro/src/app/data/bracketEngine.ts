@@ -51,9 +51,12 @@ export function computeBracketSlots(matches: MinimalMatch[]): SlotMap {
     }
   }
 
-  // Leaf matches: not fed into by any other match within this phase
+  // Leaf matches: not fed by any other match within this phase
   // (i.e., first-round matches)
-  const leafMatches = matches.filter(m => !feedsInto.has(m.id));
+  const leafMatches = matches.filter(m => {
+    const prereqs = prereqMap.get(m.id) || [];
+    return prereqs.length === 0;
+  });
 
   // Sort leaves by identifier, then by round, then by numeric id
   leafMatches.sort((a, b) => {
