@@ -350,7 +350,7 @@ function BracketSection({
   const hasTreeData = matches.some(m => m.prereqSetIds && m.prereqSetIds.length > 0);
   const slotMap = hasTreeData ? computeBracketSlots(matches) : null;
 
-  const SLOT_SIZE = 120; // 120px per slot (card height + vertical gap)
+  const SLOT_SIZE = 144; // 144px per slot (card height + vertical gap) to prevent overlap
 
 
   // Sort rounds chronologically: winners 1→N, losers by absolute value ascending (earliest first)

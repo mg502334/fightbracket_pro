@@ -934,6 +934,8 @@ export default function App() {
             if (c1) parent.prereqSetIds.push(c1.id);
             if (c2) parent.prereqSetIds.push(c2.id);
           }
+        } // END OF WINNERS LOOP
+
         const lMatches = pMatches.filter(m => m.round < 0);
         const lMap = new Map<number, typeof newMatches>();
         for (const m of lMatches) {
