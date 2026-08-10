@@ -503,7 +503,7 @@ function BracketSection({
                           if (winDest === "Next Phase" && loseDest === "Next Phase") return null;
 
                           return (
-                            <div className="absolute top-1/2 -right-28 -translate-y-1/2 flex flex-col gap-1 z-10 pointer-events-none">
+                            <div className="absolute top-1/2 left-full ml-6 -translate-y-1/2 flex flex-col gap-1 z-10 pointer-events-none">
                               <div className="flex items-center gap-1 text-[10px] font-mono font-bold px-2 py-1 rounded-full bg-cyan-500/20 text-cyan-400 border border-cyan-500/40 shadow-lg whitespace-nowrap">
                                 <span>→</span> {winDest} [W]
                               </div>
