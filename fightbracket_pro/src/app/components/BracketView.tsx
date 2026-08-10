@@ -473,7 +473,7 @@ function BracketSection({
                                   <svg 
                                     className="absolute left-full pointer-events-none"
                                     style={{ 
-                                      top: dy < 0 ? `calc(50% - ${absDy}px)` : '50%',
+                                      top: dy < 0 ? `calc(50px - ${absDy}px)` : '50px',
                                       width: dx, 
                                       height: svgHeight, 
                                       overflow: 'visible',
