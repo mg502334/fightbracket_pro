@@ -765,7 +765,6 @@ function PlayerSlot({
         >
           {player.countryFlag} {player.tag}
           {isSearched && <Sparkles size={10} className="text-cyan-400 animate-pulse" />}
-          <span className="text-[8px] opacity-30">{JSON.stringify(slots)}</span>
         </span>
       </div>
       <span
