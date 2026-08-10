@@ -880,6 +880,7 @@ export default function App() {
           streamUrl,
           bestOf: 3,
           pool: poolIdentifier,
+          phase: phaseName,
           identifier: set.identifier || undefined,
           prereqSetIds: prereqSetIds.length > 0 ? prereqSetIds : undefined,
         });
