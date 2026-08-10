@@ -478,6 +478,20 @@ function BracketSection({
                               const currentPhase = match.phase;
                               if (currentPhase) {
                                  const availablePhases = Array.from(new Set(allMatches.map(m => m.phase).filter(Boolean))) as string[];
+                                 
+                                 availablePhases.sort((a, b) => {
+                                    const aPool = a.toLowerCase().includes('pool');
+                                    const bPool = b.toLowerCase().includes('pool');
+                                    if (aPool && !bPool) return -1;
+                                    if (!aPool && bPool) return 1;
+                                    
+                                    const aTop = a.match(/top\s*(\d+)/i);
+                                    const bTop = b.match(/top\s*(\d+)/i);
+                                    if (aTop && bTop) return parseInt(bTop[1]) - parseInt(aTop[1]);
+                                    
+                                    return a.localeCompare(b);
+                                 });
+
                                  const idx = availablePhases.indexOf(currentPhase);
                                  if (idx >= 0 && idx < availablePhases.length - 1) {
                                     winDest = availablePhases[idx + 1];
