@@ -450,16 +450,38 @@ function BracketSection({
                               if (colsDiff > 0) {
                                 const dx = colsDiff * 48 + (colsDiff - 1) * 250;
                                 const dy = (nextSlot - slot) * SLOT_SIZE;
+                                const absDy = Math.abs(dy);
                                 const color = isLive || matchesSearch ? theme.primaryColor : 'rgba(122,158,192,0.25)';
                                 const strokeW = isLive || matchesSearch ? 2 : 1.5;
+                                
+                                // To avoid SVG clipping issues, we make the SVG exactly the height of the curve
+                                // and position it accordingly.
+                                const svgHeight = Math.max(absDy, 2);
+                                
+                                let pathD = "";
+                                if (dy === 0) {
+                                  pathD = `M 0 1 L ${dx} 1`;
+                                } else if (dy > 0) {
+                                  // Curves down
+                                  pathD = `M 0 0 C ${dx / 2} 0, ${dx / 2} ${absDy}, ${dx} ${absDy}`;
+                                } else {
+                                  // Curves up
+                                  pathD = `M 0 ${absDy} C ${dx / 2} ${absDy}, ${dx / 2} 0, ${dx} 0`;
+                                }
 
                                 return (
                                   <svg 
-                                    className="absolute top-1/2 left-full pointer-events-none"
-                                    style={{ width: dx, height: 1, overflow: 'visible', zIndex: 0 }}
+                                    className="absolute left-full pointer-events-none"
+                                    style={{ 
+                                      top: dy < 0 ? `calc(50% - ${absDy}px)` : '50%',
+                                      width: dx, 
+                                      height: svgHeight, 
+                                      overflow: 'visible',
+                                      zIndex: 0
+                                    }}
                                   >
                                     <path 
-                                      d={`M 0 0 C ${dx / 2} 0, ${dx / 2} ${dy}, ${dx} ${dy}`}
+                                      d={pathD}
                                       fill="none"
                                       stroke={color}
                                       strokeWidth={strokeW}
