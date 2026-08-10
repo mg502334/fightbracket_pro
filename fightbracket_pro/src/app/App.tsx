@@ -934,6 +934,40 @@ export default function App() {
             if (c1) parent.prereqSetIds.push(c1.id);
             if (c2) parent.prereqSetIds.push(c2.id);
           }
+        const lMatches = pMatches.filter(m => m.round < 0);
+        const lMap = new Map<number, typeof newMatches>();
+        for (const m of lMatches) {
+          if (!lMap.has(m.round)) lMap.set(m.round, []);
+          lMap.get(m.round)!.push(m);
+        }
+
+        const lRounds = Array.from(lMap.keys()).sort((a,b)=>Math.abs(a)-Math.abs(b));
+        for (let i = 0; i < lRounds.length - 1; i++) {
+          const currRound = lMap.get(lRounds[i])!;
+          const nextRound = lMap.get(lRounds[i+1])!;
+          
+          currRound.sort(sortByIndentifier);
+          nextRound.sort(sortByIndentifier);
+
+          if (currRound.length === nextRound.length) {
+            // Drop round: 1-to-1 progression
+            for (let j = 0; j < nextRound.length; j++) {
+              const parent = nextRound[j];
+              const child = currRound[j];
+              parent.prereqSetIds = parent.prereqSetIds || [];
+              if (child) parent.prereqSetIds.push(child.id);
+            }
+          } else if (currRound.length === nextRound.length * 2) {
+            // Standard progression round: 2-to-1
+            for (let j = 0; j < nextRound.length; j++) {
+              const parent = nextRound[j];
+              const c1 = currRound[j * 2];
+              const c2 = currRound[j * 2 + 1];
+              parent.prereqSetIds = parent.prereqSetIds || [];
+              if (c1) parent.prereqSetIds.push(c1.id);
+              if (c2) parent.prereqSetIds.push(c2.id);
+            }
+          }
         }
       }
     }
