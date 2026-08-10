@@ -653,7 +653,8 @@ export default function App() {
               slots {
                 entrant { id name }
                 standing { stats { score { value } } }
-                prereqSet { id }
+                prereqId
+                prereqType
               }
               phaseGroup {
                 displayIdentifier
@@ -849,9 +850,8 @@ export default function App() {
 
         // Extract prereqSet IDs so BracketEngine can build the true bracket tree
         const prereqSetIds = slots
-          .map((s: any) => s.prereqSet?.id)
-          .filter(Boolean)
-          .map(String);
+          .filter((s: any) => s.prereqType === 'set' && !!s.prereqId)
+          .map((s: any) => String(s.prereqId));
 
         const poolIdentifier = set.phaseGroup?.displayIdentifier;
         const phaseName = set.phaseGroup?.phase?.name;
