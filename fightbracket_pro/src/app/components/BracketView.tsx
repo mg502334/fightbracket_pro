@@ -288,6 +288,7 @@ export function BracketView({
       <BracketSection 
         title="WINNERS BRACKET" 
         matches={winnersMatches} 
+        allMatches={matches}
         playerMap={playerMap} 
         theme={theme} 
         hoveredMatchId={hoveredMatchId} 
@@ -299,6 +300,7 @@ export function BracketView({
       <BracketSection 
         title="LOSERS BRACKET" 
         matches={losersMatches} 
+        allMatches={matches}
         playerMap={playerMap} 
         theme={theme} 
         hoveredMatchId={hoveredMatchId} 
@@ -310,6 +312,7 @@ export function BracketView({
       <BracketSection 
         title="GRAND FINALS" 
         matches={grandFinalsMatches} 
+        allMatches={matches}
         playerMap={playerMap} 
         theme={theme} 
         hoveredMatchId={hoveredMatchId} 
@@ -325,10 +328,11 @@ export function BracketView({
 import { computeBracketSlots } from '../data/bracketEngine';
 
 function BracketSection({ 
-  title, matches, playerMap, theme, hoveredMatchId, setHoveredMatchId, onCallMatch, searchMatchingPlayerIds, selectedPool
+  title, matches, allMatches, playerMap, theme, hoveredMatchId, setHoveredMatchId, onCallMatch, searchMatchingPlayerIds, selectedPool
 }: { 
   title: string; 
   matches: BracketMatch[]; 
+  allMatches: BracketMatch[];
   playerMap: Record<string, Player>;
   theme: GameTheme;
   hoveredMatchId: string | null;
@@ -444,14 +448,33 @@ function BracketSection({
 
                       {/* Start.gg Style Progression Destination Pill for Pool Finals */}
                       {isLast && selectedPool && selectedPool !== 'ALL' && (
-                        <div className="absolute top-1/2 -right-28 -translate-y-1/2 flex flex-col gap-1 z-10 pointer-events-none">
-                          <div className="flex items-center gap-1 text-[10px] font-mono font-bold px-2 py-1 rounded-full bg-cyan-500/20 text-cyan-400 border border-cyan-500/40 shadow-lg whitespace-nowrap">
-                            <span>→</span> T8 Top 24 [W]
-                          </div>
-                          <div className="flex items-center gap-1 text-[10px] font-mono font-bold px-2 py-1 rounded-full bg-slate-800 text-slate-400 border border-slate-700 whitespace-nowrap opacity-60">
-                            <span>→</span> T8 Top 24 [L]
-                          </div>
-                        </div>
+                        (() => {
+                          let nextPhaseName = "Next Phase";
+                          const nextMatch = allMatches.find(m => m.prereqSetIds?.includes(match.id));
+                          if (nextMatch && nextMatch.phase) {
+                            nextPhaseName = nextMatch.phase;
+                          } else {
+                            const currentPhase = match.phase;
+                            if (currentPhase) {
+                               const availablePhases = Array.from(new Set(allMatches.map(m => m.phase).filter(Boolean))) as string[];
+                               const idx = availablePhases.indexOf(currentPhase);
+                               if (idx >= 0 && idx < availablePhases.length - 1) {
+                                  nextPhaseName = availablePhases[idx + 1];
+                               }
+                            }
+                          }
+                          
+                          return (
+                            <div className="absolute top-1/2 -right-28 -translate-y-1/2 flex flex-col gap-1 z-10 pointer-events-none">
+                              <div className="flex items-center gap-1 text-[10px] font-mono font-bold px-2 py-1 rounded-full bg-cyan-500/20 text-cyan-400 border border-cyan-500/40 shadow-lg whitespace-nowrap">
+                                <span>→</span> {nextPhaseName} [W]
+                              </div>
+                              <div className="flex items-center gap-1 text-[10px] font-mono font-bold px-2 py-1 rounded-full bg-slate-800 text-slate-400 border border-slate-700 whitespace-nowrap opacity-60">
+                                <span>→</span> {nextPhaseName} [L]
+                              </div>
+                            </div>
+                          );
+                        })()
                       )}
 
                       <div

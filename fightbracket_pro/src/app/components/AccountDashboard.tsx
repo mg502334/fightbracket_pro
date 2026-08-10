@@ -105,6 +105,8 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
   });
   const [startggTournaments, setStartggTournaments] = useState<any[]>([]);
   const [fetchingStartgg, setFetchingStartgg] = useState(false);
+  const [showAllStartggTournaments, setShowAllStartggTournaments] = useState(false);
+  const [importingSlug, setImportingSlug] = useState<string | null>(null);
 
   // Local Tournament History state
   const [localHistory, setLocalHistory] = useState<any[]>([]);
@@ -773,8 +775,11 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
     }
   };
 
-  const fetchStartggHosted = async () => {
-    if (!startggToken) return toast.error("Please enter a Start.gg token first");
+  const fetchStartggHosted = async (isAutoFetch = false) => {
+    if (!startggToken) {
+      if (!isAutoFetch) toast.error("Please enter a Start.gg token first");
+      return;
+    }
     setFetchingStartgg(true);
     try {
       const query = `
@@ -803,12 +808,18 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
       if (data.errors) throw new Error(data.errors[0].message);
       const tourneys = data.data?.currentUser?.tournaments?.nodes || [];
       setStartggTournaments(tourneys);
-      if (tourneys.length === 0) toast.info("No hosted tournaments found on Start.gg");
+      if (tourneys.length === 0 && !isAutoFetch) toast.info("No hosted tournaments found on Start.gg");
     } catch (err: any) {
-      toast.error(`Start.gg Error: ${err.message}`);
+      if (!isAutoFetch) toast.error(`Start.gg Error: ${err.message}`);
     }
     setFetchingStartgg(false);
   };
+
+  useEffect(() => {
+    if (startggToken && startggToken !== 'SECURE_HIDDEN' && startggTournaments.length === 0) {
+      fetchStartggHosted(true);
+    }
+  }, [startggToken]);
 
   const saveDisplayName = async () => {
     if (!displayName.trim()) return;
@@ -1772,7 +1783,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
                     })()}
 
                     <button
-                      onClick={fetchStartggHosted}
+                      onClick={() => fetchStartggHosted(false)}
                       disabled={fetchingStartgg || !startggToken}
                       className="w-full flex items-center justify-center gap-2 py-3 bg-[#00E5FF] hover:bg-[#00B3CC] disabled:opacity-50 text-[#050A14] font-bold rounded-lg transition-colors font-rajdhani tracking-widest mb-6"
                     >
@@ -1781,23 +1792,48 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
                     </button>
 
                     {startggTournaments.length > 0 && (
-                      <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-                        {startggTournaments.map(t => (
-                          <div key={t.id} className="flex flex-col p-4 bg-[#111] border border-gray-800 hover:border-[#00E5FF]/50 rounded-lg transition-colors">
-                            <div className="font-bold text-white font-rajdhani text-lg truncate mb-1">{t.name}</div>
-                            <div className="flex justify-between items-center mt-2">
-                              <span className="text-xs font-mono bg-white/10 px-2 py-0.5 rounded text-gray-300">State: {t.state === 1 ? 'Published' : 'Draft'}</span>
-                              <button
-                                onClick={() => onStartggImport(t.slug)}
-                                className="text-xs font-bold font-rajdhani tracking-widest text-[#FF006E] hover:underline"
-                                title="Import this tournament bracket to run locally"
-                              >
-                                RUN BRACKET →
-                              </button>
+                      <>
+                        <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                          {(showAllStartggTournaments ? startggTournaments : startggTournaments.slice(0, 5)).map(t => (
+                            <div key={t.id} className="flex flex-col p-4 bg-[#111] border border-gray-800 hover:border-[#00E5FF]/50 rounded-lg transition-colors">
+                              <div className="font-bold text-white font-rajdhani text-lg truncate mb-1">{t.name}</div>
+                              <div className="flex justify-between items-center mt-2">
+                                <span className="text-xs font-mono bg-white/10 px-2 py-0.5 rounded text-gray-300">State: {t.state === 1 ? 'Published' : 'Draft'}</span>
+                                <button
+                                  onClick={async () => {
+                                    setImportingSlug(t.slug);
+                                    try {
+                                      await onStartggImport(t.slug);
+                                    } finally {
+                                      setImportingSlug(null);
+                                    }
+                                  }}
+                                  disabled={importingSlug === t.slug}
+                                  className="text-xs font-bold font-rajdhani tracking-widest text-[#050A14] bg-[#FF006E] hover:bg-[#D4005B] px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 disabled:opacity-50"
+                                  title="Import this tournament bracket to run locally"
+                                >
+                                  {importingSlug === t.slug ? (
+                                    <>
+                                      <RefreshCw size={12} className="animate-spin" />
+                                      LOADING...
+                                    </>
+                                  ) : (
+                                    <>RUN BRACKET →</>
+                                  )}
+                                </button>
+                              </div>
                             </div>
-                          </div>
-                        ))}
-                      </div>
+                          ))}
+                        </div>
+                        {startggTournaments.length > 5 && (
+                          <button
+                            onClick={() => setShowAllStartggTournaments(!showAllStartggTournaments)}
+                            className="w-full mt-3 py-2 text-xs font-bold font-rajdhani tracking-widest text-[#00E5FF] hover:bg-[#00E5FF]/10 border border-[#00E5FF]/30 rounded-lg transition-colors"
+                          >
+                            {showAllStartggTournaments ? 'VIEW LESS' : `VIEW MORE (${startggTournaments.length - 5})`}
+                          </button>
+                        )}
+                      </>
                     )}
                   </div>
 
