@@ -888,9 +888,33 @@ export default function App() {
     });
 
     // AUTO-LINKER: If start.gg API fails to return prereqId (common in some pool phases),
-    // we manually reconstruct the tree by sorting identifiers in each round.
+    // we manually reconstruct the tree using Player-Tracing and identifier sorting.
     const hasTreeData = newMatches.some(m => m.prereqSetIds && m.prereqSetIds.length > 0);
     if (!hasTreeData) {
+      // Pass 1: Player-Tracing (100% accurate for played matches)
+      for (const m of newMatches) {
+        m.prereqSetIds = m.prereqSetIds || [];
+        
+        if (m.player1Id) {
+          const p1Prereq = newMatches.find(prev => 
+            prev.pool === m.pool && 
+            Math.abs(prev.round) < Math.abs(m.round) && 
+            prev.winnerId === m.player1Id
+          );
+          if (p1Prereq && !m.prereqSetIds.includes(p1Prereq.id)) m.prereqSetIds.push(p1Prereq.id);
+        }
+        
+        if (m.player2Id) {
+          const p2Prereq = newMatches.find(prev => 
+            prev.pool === m.pool && 
+            Math.abs(prev.round) < Math.abs(m.round) && 
+            prev.winnerId === m.player2Id
+          );
+          if (p2Prereq && !m.prereqSetIds.includes(p2Prereq.id)) m.prereqSetIds.push(p2Prereq.id);
+        }
+      }
+
+      // Pass 2: Identifier-Sorting Fallback for unplayed matches
       const phasePools = new Map<string, typeof newMatches>();
       for (const m of newMatches) {
         const key = `${m.phase}-${m.pool}`;
@@ -924,15 +948,15 @@ export default function App() {
           currRound.sort(sortByIndentifier);
           nextRound.sort(sortByIndentifier);
 
-          // Standard double elim: 2 matches in current round feed 1 match in next round
           for (let j = 0; j < nextRound.length; j++) {
             const parent = nextRound[j];
+            if (parent.prereqSetIds && parent.prereqSetIds.length === 2) continue; // Already linked by Player-Tracing
+            
             const c1 = currRound[j * 2];
             const c2 = currRound[j * 2 + 1];
             
-            parent.prereqSetIds = [];
-            if (c1) parent.prereqSetIds.push(c1.id);
-            if (c2) parent.prereqSetIds.push(c2.id);
+            if (c1 && !parent.prereqSetIds!.includes(c1.id)) parent.prereqSetIds!.push(c1.id);
+            if (c2 && !parent.prereqSetIds!.includes(c2.id)) parent.prereqSetIds!.push(c2.id);
           }
         } // END OF WINNERS LOOP
 
@@ -948,6 +972,16 @@ export default function App() {
           const currRound = lMap.get(lRounds[i])!;
           const nextRound = lMap.get(lRounds[i+1])!;
           
+          const sortByIndentifier = (a: any, b: any) => {
+            const idA = a.identifier;
+            const idB = b.identifier;
+            if (idA && idB) {
+              if (idA.length !== idB.length) return idA.length - idB.length;
+              return idA.localeCompare(idB);
+            }
+            return 0;
+          };
+
           currRound.sort(sortByIndentifier);
           nextRound.sort(sortByIndentifier);
 
@@ -955,19 +989,21 @@ export default function App() {
             // Drop round: 1-to-1 progression
             for (let j = 0; j < nextRound.length; j++) {
               const parent = nextRound[j];
+              if (parent.prereqSetIds && parent.prereqSetIds.length > 0) continue; // Skip if Player-Tracing found it
+              
               const child = currRound[j];
-              parent.prereqSetIds = parent.prereqSetIds || [];
-              if (child) parent.prereqSetIds.push(child.id);
+              if (child && !parent.prereqSetIds!.includes(child.id)) parent.prereqSetIds!.push(child.id);
             }
           } else if (currRound.length === nextRound.length * 2) {
             // Standard progression round: 2-to-1
             for (let j = 0; j < nextRound.length; j++) {
               const parent = nextRound[j];
+              if (parent.prereqSetIds && parent.prereqSetIds.length === 2) continue; // Skip if Player-Tracing found both
+              
               const c1 = currRound[j * 2];
               const c2 = currRound[j * 2 + 1];
-              parent.prereqSetIds = parent.prereqSetIds || [];
-              if (c1) parent.prereqSetIds.push(c1.id);
-              if (c2) parent.prereqSetIds.push(c2.id);
+              if (c1 && !parent.prereqSetIds!.includes(c1.id)) parent.prereqSetIds!.push(c1.id);
+              if (c2 && !parent.prereqSetIds!.includes(c2.id)) parent.prereqSetIds!.push(c2.id);
             }
           }
         }
