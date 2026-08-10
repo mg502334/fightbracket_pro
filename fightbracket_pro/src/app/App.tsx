@@ -850,7 +850,7 @@ export default function App() {
 
         // Extract prereqSet IDs so BracketEngine can build the true bracket tree
         const prereqSetIds = slots
-          .filter((s: any) => s.prereqType === 'set' && !!s.prereqId)
+          .filter((s: any) => !!s.prereqId)
           .map((s: any) => String(s.prereqId));
 
         const poolIdentifier = set.phaseGroup?.displayIdentifier;
@@ -1199,7 +1199,7 @@ export default function App() {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;
               return (
-                <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+                <button key={tab.id} onClick={() => React.startTransition(() => setActiveTab(tab.id))}
                   className="flex items-center gap-1.5 px-4 py-2.5 transition-all text-xs tracking-widest"
                   style={{
                     fontFamily: 'JetBrains Mono, monospace',
