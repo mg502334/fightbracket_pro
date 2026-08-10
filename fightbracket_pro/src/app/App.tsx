@@ -880,13 +880,62 @@ export default function App() {
           streamUrl,
           bestOf: 3,
           pool: poolIdentifier,
-          phase: phaseName,
           identifier: set.identifier || undefined,
           prereqSetIds: prereqSetIds.length > 0 ? prereqSetIds : undefined,
-          rawSlots: JSON.stringify(slots), // DEBUG
         });
       });
     });
+
+    // AUTO-LINKER: If start.gg API fails to return prereqId (common in some pool phases),
+    // we manually reconstruct the tree by sorting identifiers in each round.
+    const hasTreeData = newMatches.some(m => m.prereqSetIds && m.prereqSetIds.length > 0);
+    if (!hasTreeData) {
+      const phasePools = new Map<string, typeof newMatches>();
+      for (const m of newMatches) {
+        const key = `${m.phase}-${m.pool}`;
+        if (!phasePools.has(key)) phasePools.set(key, []);
+        phasePools.get(key)!.push(m);
+      }
+
+      for (const pMatches of phasePools.values()) {
+        const wMatches = pMatches.filter(m => m.round > 0);
+        const rMap = new Map<number, typeof newMatches>();
+        for (const m of wMatches) {
+          if (!rMap.has(m.round)) rMap.set(m.round, []);
+          rMap.get(m.round)!.push(m);
+        }
+
+        const rounds = Array.from(rMap.keys()).sort((a,b)=>a-b);
+        for (let i = 0; i < rounds.length - 1; i++) {
+          const currRound = rMap.get(rounds[i])!;
+          const nextRound = rMap.get(rounds[i+1])!;
+          
+          const sortByIndentifier = (a: any, b: any) => {
+            const idA = a.identifier;
+            const idB = b.identifier;
+            if (idA && idB) {
+              if (idA.length !== idB.length) return idA.length - idB.length;
+              return idA.localeCompare(idB);
+            }
+            return 0;
+          };
+
+          currRound.sort(sortByIndentifier);
+          nextRound.sort(sortByIndentifier);
+
+          // Standard double elim: 2 matches in current round feed 1 match in next round
+          for (let j = 0; j < nextRound.length; j++) {
+            const parent = nextRound[j];
+            const c1 = currRound[j * 2];
+            const c2 = currRound[j * 2 + 1];
+            
+            parent.prereqSetIds = [];
+            if (c1) parent.prereqSetIds.push(c1.id);
+            if (c2) parent.prereqSetIds.push(c2.id);
+          }
+        }
+      }
+    }
 
     if (newGameIds.length > 0) {
       setGameThemes(prev => ({ ...prev, ...newThemes }));

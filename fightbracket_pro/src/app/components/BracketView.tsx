@@ -502,10 +502,6 @@ function BracketSection({
                               <div className="absolute -top-3 left-0 text-[8px] text-red-500 whitespace-nowrap">
                                 n:{nextMatch ? nextMatch.id : 'null'} sm:{slotMap ? '1' : '0'} 
                                 {nextMatch && slotMap ? ` ns:${slotMap.slots.get(nextMatch.id)} cd:${rounds.indexOf(nextMatch.round) - rIdx}` : ''}
-                                <div className="absolute top-full left-0 mt-1 max-w-[200px] text-[7px] text-yellow-500 overflow-hidden whitespace-normal leading-tight bg-black/80 p-1">
-                                  {/* @ts-ignore */}
-                                  {match.rawSlots}
-                                </div>
                               </div>
                             </div>
                           );
