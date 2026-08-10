@@ -450,17 +450,28 @@ function BracketSection({
                       {isLast && selectedPool && selectedPool !== 'ALL' && (
                         (() => {
                           let nextPhaseName = "Next Phase";
-                          const nextMatch = allMatches.find(m => m.prereqSetIds?.includes(match.id));
-                          if (nextMatch && nextMatch.phase) {
-                            nextPhaseName = nextMatch.phase;
+                          const isWinnersFinal = match.roundName?.toLowerCase().includes('winners final');
+                          const isLosersFinal = match.roundName?.toLowerCase().includes('losers final');
+
+                          if (isWinnersFinal || isLosersFinal) {
+                            nextPhaseName = "Grand Finals";
                           } else {
-                            const currentPhase = match.phase;
-                            if (currentPhase) {
-                               const availablePhases = Array.from(new Set(allMatches.map(m => m.phase).filter(Boolean))) as string[];
-                               const idx = availablePhases.indexOf(currentPhase);
-                               if (idx >= 0 && idx < availablePhases.length - 1) {
-                                  nextPhaseName = availablePhases[idx + 1];
-                               }
+                            const nextMatch = allMatches.find(m => m.prereqSetIds?.includes(match.id));
+                            if (nextMatch) {
+                              if (nextMatch.roundName?.toLowerCase().includes('grand final')) {
+                                nextPhaseName = "Grand Finals";
+                              } else if (nextMatch.phase) {
+                                nextPhaseName = nextMatch.phase;
+                              }
+                            } else {
+                              const currentPhase = match.phase;
+                              if (currentPhase) {
+                                 const availablePhases = Array.from(new Set(allMatches.map(m => m.phase).filter(Boolean))) as string[];
+                                 const idx = availablePhases.indexOf(currentPhase);
+                                 if (idx >= 0 && idx < availablePhases.length - 1) {
+                                    nextPhaseName = availablePhases[idx + 1];
+                                 }
+                              }
                             }
                           }
                           
