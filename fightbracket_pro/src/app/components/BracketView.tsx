@@ -502,15 +502,31 @@ function BracketSection({
                           }
                           if (winDest === "Next Phase" && loseDest === "Next Phase") return null;
 
+                          const p2Won = match.winnerId === match.player2Id;
+                          
+                          const wPill = (
+                            <div className="flex items-center gap-1 text-[10px] font-mono font-bold px-2 py-1 rounded-full bg-cyan-500/20 text-cyan-400 border border-cyan-500/40 shadow-lg whitespace-nowrap">
+                              <span>→</span> {winDest} [W]
+                            </div>
+                          );
+                          const lPill = !isLosers && loseDest !== "Eliminated" ? (
+                            <div className="flex items-center gap-1 text-[10px] font-mono font-bold px-2 py-1 rounded-full bg-slate-800 text-slate-400 border border-slate-700 whitespace-nowrap opacity-60">
+                              <span>→</span> {loseDest} [L]
+                            </div>
+                          ) : null;
+
                           return (
                             <div className="absolute top-1/2 left-full ml-6 -translate-y-1/2 flex flex-col gap-1 z-10 pointer-events-none">
-                              <div className="flex items-center gap-1 text-[10px] font-mono font-bold px-2 py-1 rounded-full bg-cyan-500/20 text-cyan-400 border border-cyan-500/40 shadow-lg whitespace-nowrap">
-                                <span>→</span> {winDest} [W]
-                              </div>
-                              {!isLosers && loseDest !== "Eliminated" && (
-                                <div className="flex items-center gap-1 text-[10px] font-mono font-bold px-2 py-1 rounded-full bg-slate-800 text-slate-400 border border-slate-700 whitespace-nowrap opacity-60">
-                                  <span>→</span> {loseDest} [L]
-                                </div>
+                              {p2Won ? (
+                                <>
+                                  {lPill}
+                                  {wPill}
+                                </>
+                              ) : (
+                                <>
+                                  {wPill}
+                                  {lPill}
+                                </>
                               )}
                             </div>
                           );
