@@ -497,8 +497,13 @@ function BracketSection({
                           return (
                             <div 
                               className="absolute top-1/2 -right-6 h-px w-6" 
-                              style={{ background: isLive || matchesSearch ? theme.primaryColor : 'rgba(122,158,192,0.2)' }} 
-                            />
+                              style={{ background: 'rgba(122,158,192,0.2)' }} 
+                            >
+                              <div className="absolute -top-3 left-0 text-[8px] text-red-500 whitespace-nowrap">
+                                n:{nextMatch ? nextMatch.id : 'null'} sm:{slotMap ? '1' : '0'} 
+                                {nextMatch && slotMap ? ` ns:${slotMap.slots.get(nextMatch.id)} cd:${rounds.indexOf(nextMatch.round) - rIdx}` : ''}
+                              </div>
+                            </div>
                           );
                         })()
                       )}
