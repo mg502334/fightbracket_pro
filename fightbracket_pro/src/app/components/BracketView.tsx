@@ -295,7 +295,7 @@ export function BracketView({
         setHoveredMatchId={setHoveredMatchId} 
         onCallMatch={onCallMatch} 
         searchMatchingPlayerIds={searchMatchingPlayerIds}
-        selectedPool={selectedPool}
+        selectedPool={activePool}
       />
       <BracketSection 
         title="LOSERS BRACKET" 
@@ -307,7 +307,7 @@ export function BracketView({
         setHoveredMatchId={setHoveredMatchId} 
         onCallMatch={onCallMatch} 
         searchMatchingPlayerIds={searchMatchingPlayerIds}
-        selectedPool={selectedPool}
+        selectedPool={activePool}
       />
       <BracketSection 
         title="GRAND FINALS" 
@@ -319,7 +319,7 @@ export function BracketView({
         setHoveredMatchId={setHoveredMatchId} 
         onCallMatch={onCallMatch} 
         searchMatchingPlayerIds={searchMatchingPlayerIds}
-        selectedPool={selectedPool}
+        selectedPool={activePool}
       />
     </div>
   );
@@ -447,7 +447,7 @@ function BracketSection({
                       )}
 
                       {/* Start.gg Style Progression Destination Pill for Pool Finals */}
-                      {isLast && selectedPool && selectedPool !== 'ALL' && (
+                      {isLast && (
                         (() => {
                           let winDest = "Next Phase";
                           let loseDest = "Next Phase";
