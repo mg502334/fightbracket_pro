@@ -883,6 +883,7 @@ export default function App() {
           phase: phaseName,
           identifier: set.identifier || undefined,
           prereqSetIds: prereqSetIds.length > 0 ? prereqSetIds : undefined,
+          rawSlots: JSON.stringify(slots), // DEBUG
         });
       });
     });
