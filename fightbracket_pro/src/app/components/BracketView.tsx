@@ -516,18 +516,26 @@ function BracketSection({
                           ) : null;
 
                           return (
-                            <div className="absolute top-1/2 left-full ml-6 -translate-y-1/2 flex flex-col gap-1 z-10 pointer-events-none">
-                              {p2Won ? (
-                                <>
-                                  {lPill}
-                                  {wPill}
-                                </>
-                              ) : (
-                                <>
-                                  {wPill}
-                                  {lPill}
-                                </>
-                              )}
+                            <div className="absolute top-0 left-full ml-4 h-full flex flex-col z-10 pointer-events-none">
+                              {/* Header Ghost Spacer */}
+                              <div className="px-2.5 py-1 border-b border-transparent flex items-center">
+                                <span className="text-xs invisible leading-tight" style={{ fontSize: 10 }}>S</span>
+                              </div>
+                              
+                              {/* Player 1 Pill */}
+                              <div className="px-3 py-2 flex items-center">
+                                <span className="text-sm invisible leading-tight w-0">S</span>
+                                {p2Won ? lPill : wPill}
+                              </div>
+
+                              {/* Divider Ghost Spacer */}
+                              <div className="h-px" />
+
+                              {/* Player 2 Pill */}
+                              <div className="px-3 py-2 flex items-center">
+                                <span className="text-sm invisible leading-tight w-0">S</span>
+                                {p2Won ? wPill : lPill}
+                              </div>
                             </div>
                           );
                         })()
