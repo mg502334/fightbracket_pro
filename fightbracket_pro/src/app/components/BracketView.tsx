@@ -180,7 +180,7 @@ export function BracketView({
           {availablePhases.length > 0 && (
             <div className="flex items-center gap-1.5 bg-black/40 p-1 rounded-lg border border-white/10 h-10">
               <Layers size={14} className="ml-2 opacity-50" style={{ color: theme.primaryColor }} />
-              <span className="text-[10px] font-mono tracking-widest opacity-50 mr-1">PHASE:</span>
+              <span className="text-[10px] font-mono font-bold tracking-widest opacity-50 mr-1">PHASE:</span>
               
               {availablePhases.length > 1 && (
                 <button
@@ -222,12 +222,12 @@ export function BracketView({
           {/* Pool Dropdown Selector */}
           {availablePools.length > 0 && (
             <div className="flex items-center gap-2 bg-black/40 px-3 rounded-lg border border-white/10 h-10">
-              <span className="text-xs font-mono font-bold opacity-60 tracking-wider">POOL:</span>
+              <span className="text-[10px] font-mono font-bold tracking-widest opacity-50 mr-1">POOL:</span>
               <select
                 value={activePool}
                 onChange={(e) => setSelectedPool(e.target.value)}
-                className="bg-black/40 border border-white/10 rounded-md px-2 py-1 text-xs font-bold font-rajdhani focus:outline-none transition-colors hover:border-white/20"
-                style={{ color: theme.primaryColor }}
+                className="bg-black/40 border border-white/10 rounded-md px-2 py-1 text-xs font-bold focus:outline-none transition-colors hover:border-white/20"
+                style={{ color: theme.primaryColor, fontFamily: 'Rajdhani, sans-serif' }}
               >
                 <option value="ALL">ALL POOLS ({availablePools.length})</option>
                 {availablePools.map(pool => (
@@ -249,8 +249,8 @@ export function BracketView({
               placeholder="Search player in bracket..."
               value={playerSearch}
               onChange={e => setPlayerSearch(e.target.value)}
-              className="w-full h-10 pl-9 pr-8 text-xs rounded-lg bg-black/50 border border-white/15 outline-none focus:border-cyan-400 transition-colors"
-              style={{ fontFamily: 'JetBrains Mono, monospace', color: 'var(--foreground)' }}
+              className="w-full h-10 pl-9 pr-8 text-xs font-bold rounded-lg bg-black/50 border border-white/15 outline-none focus:border-cyan-400 transition-colors"
+              style={{ fontFamily: 'Rajdhani, sans-serif', color: 'var(--foreground)' }}
             />
             {playerSearch && (
               <button
