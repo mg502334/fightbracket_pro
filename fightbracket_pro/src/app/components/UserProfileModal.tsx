@@ -514,7 +514,7 @@ export function UserProfileModal({ isOpen, onClose, targetUserId, supabaseToken,
                   </div>
                 )}
 
-                {activeTab === 'Feed' && (
+                {activeTab === 'activity feed' && (
                   <div className="space-y-4">
                     {fetchingPosts ? (
                       <div className="text-center py-8 opacity-50 font-mono text-sm">Loading activity...</div>
@@ -566,7 +566,7 @@ export function UserProfileModal({ isOpen, onClose, targetUserId, supabaseToken,
                 {friendActionMsg && (
                   <div className="text-xs font-mono text-center text-cyan-400">{friendActionMsg}</div>
                 )}
-              </div>
+              </>
             )}
           </div>
         </motion.div>
