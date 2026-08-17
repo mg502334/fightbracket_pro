@@ -26,6 +26,10 @@ class DBUser(Base):
     station_names = Column(Text, nullable=True) # Stored JSON list of custom station names
     is_public = Column(Boolean, default=True) # Publicly viewable vs hidden
     friends_only = Column(Boolean, default=False) # Only friends can view Start.gg stats
+    notify_announcements = Column(Boolean, default=True)
+    notify_messages = Column(Boolean, default=True)
+    sound_notifications = Column(Boolean, default=True)
+    sound_messages = Column(Boolean, default=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
@@ -113,6 +117,27 @@ class DBUserReport(Base):
     reason = Column(String, nullable=False)
     description = Column(Text, nullable=True)
     status = Column(String, default="pending")
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+class DBPost(Base):
+    __tablename__ = "posts"
+    id = Column(String, primary_key=True, index=True)
+    user_id = Column(String, index=True, nullable=False)
+    content = Column(Text, nullable=False)
+    image = Column(String, nullable=True)
+    tags = Column(String, nullable=True)
+    type = Column(String, nullable=False)
+    likes = Column(Integer, default=0)
+    comments = Column(Integer, default=0)
+    shares = Column(Integer, default=0)
+    pinned = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+class DBPostLike(Base):
+    __tablename__ = "post_likes"
+    id = Column(String, primary_key=True, index=True)
+    post_id = Column(String, index=True, nullable=False)
+    user_id = Column(String, index=True, nullable=False)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 # Lazy engine — only created when first needed, prevents cold-start crash on Vercel

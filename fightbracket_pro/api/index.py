@@ -24,20 +24,20 @@ except ImportError:
 
 from typing import TYPE_CHECKING, Optional
 if TYPE_CHECKING:
-    from api.db import get_db, DBPlayer, DBStation, DBSMSLog, DBTournament, DBTournamentParticipant, DBUser, DBFriendship, DBDirectMessage, DBUserIdentifier, DBUserIntegration
+    from api.db import get_db, DBPlayer, DBStation, DBSMSLog, DBTournament, DBTournamentParticipant, DBUser, DBFriendship, DBDirectMessage, DBUserIdentifier, DBUserIntegration, DBPost, DBPostLike
 
 else:
     try:
         try:
-            from api.db import get_db, DBPlayer, DBStation, DBSMSLog, DBTournament, DBTournamentParticipant, DBUser, DBFriendship, DBDirectMessage, DBUserIdentifier, DBUserIntegration
+            from api.db import get_db, DBPlayer, DBStation, DBSMSLog, DBTournament, DBTournamentParticipant, DBUser, DBFriendship, DBDirectMessage, DBUserIdentifier, DBUserIntegration, DBPost, DBPostLike
         except Exception:
-            from db import get_db, DBPlayer, DBStation, DBSMSLog, DBTournament, DBTournamentParticipant, DBUser, DBFriendship, DBDirectMessage, DBUserIdentifier  # type: ignore
+            from db import get_db, DBPlayer, DBStation, DBSMSLog, DBTournament, DBTournamentParticipant, DBUser, DBFriendship, DBDirectMessage, DBUserIdentifier, DBUserIntegration, DBPost, DBPostLike  # type: ignore
     except Exception as _db_err:
         print(f"DB import warning: {_db_err}")
         def get_db():
             yield None
         class _DummyModel: pass
-        DBPlayer = DBStation = DBSMSLog = DBTournament = DBTournamentParticipant = DBFriendship = DBDirectMessage = DBUser = DBUserIdentifier = _DummyModel # type: ignore
+        DBPlayer = DBStation = DBSMSLog = DBTournament = DBTournamentParticipant = DBFriendship = DBDirectMessage = DBUser = DBUserIdentifier = DBPost = DBPostLike = _DummyModel # type: ignore
 try:
     import jwt
 except ImportError:
@@ -128,10 +128,20 @@ class ProfileUpdateRequest(BaseModel):
     station_names: Optional[str] = None
     is_public: Optional[bool] = None
     friends_only: Optional[bool] = None
+    notify_announcements: Optional[bool] = None
+    notify_messages: Optional[bool] = None
+    sound_notifications: Optional[bool] = None
+    sound_messages: Optional[bool] = None
 
 class StartggImportRequest(BaseModel):
     startgg_slug_or_url: str
     api_token: Optional[str] = None
+
+class CreatePostRequest(BaseModel):
+    content: str
+    type: str
+    tags: Optional[list[str]] = None
+    image: Optional[str] = None
 
 class FriendRequestInput(BaseModel):
     target_identifier: str
@@ -556,6 +566,7 @@ def get_user_profile(payload: dict = Depends(get_current_user_payload), db: Sess
             created_at_str = datetime.now(timezone.utc).isoformat()
 
         unread_count = db.query(DBDirectMessage).filter(DBDirectMessage.recipient_id == user_id, DBDirectMessage.read == False).count()
+        pending_friend_requests_count = db.query(DBFriendship).filter(DBFriendship.friend_id == user_id, DBFriendship.status == "pending").count()
 
         return {
             "user": {
@@ -577,8 +588,13 @@ def get_user_profile(payload: dict = Depends(get_current_user_payload), db: Sess
                 "games_data": getattr(user, 'games_data', '') or "",
                 "is_public": user.is_public if user.is_public is not None else True,
                 "friends_only": user.friends_only if user.friends_only is not None else False,
+                "notify_announcements": user.notify_announcements if hasattr(user, 'notify_announcements') and user.notify_announcements is not None else True,
+                "notify_messages": user.notify_messages if hasattr(user, 'notify_messages') and user.notify_messages is not None else True,
+                "sound_notifications": user.sound_notifications if hasattr(user, 'sound_notifications') and user.sound_notifications is not None else True,
+                "sound_messages": user.sound_messages if hasattr(user, 'sound_messages') and user.sound_messages is not None else True,
                 "created_at": created_at_str,
-                "unread_messages_count": unread_count
+                "unread_messages_count": unread_count,
+                "pending_friend_requests_count": pending_friend_requests_count
             }
         }
     except Exception as e:
@@ -646,6 +662,14 @@ def update_user_profile(req: ProfileUpdateRequest, user_id: str = Depends(get_cu
         user.is_public = req.is_public # type: ignore
     if req.friends_only is not None:
         user.friends_only = req.friends_only # type: ignore
+    if req.notify_announcements is not None:
+        user.notify_announcements = req.notify_announcements # type: ignore
+    if req.notify_messages is not None:
+        user.notify_messages = req.notify_messages # type: ignore
+    if req.sound_notifications is not None:
+        user.sound_notifications = req.sound_notifications # type: ignore
+    if req.sound_messages is not None:
+        user.sound_messages = req.sound_messages # type: ignore
 
     db.commit()
     db.refresh(user)
@@ -667,6 +691,10 @@ def update_user_profile(req: ProfileUpdateRequest, user_id: str = Depends(get_cu
             "games_data": getattr(user, 'games_data', '') or "",
             "is_public": user.is_public,
             "friends_only": user.friends_only,
+            "notify_announcements": getattr(user, 'notify_announcements', True),
+            "notify_messages": getattr(user, 'notify_messages', True),
+            "sound_notifications": getattr(user, 'sound_notifications', True),
+            "sound_messages": getattr(user, 'sound_messages', True),
             "created_at": user.created_at.isoformat() if user.created_at else datetime.now(timezone.utc).isoformat()
         }
     }
@@ -1223,14 +1251,17 @@ def get_target_user_profile(target_user_id: str, user_id: str = Depends(get_curr
     is_public = target_user.is_public if target_user.is_public is not None else True
     friends_only = target_user.friends_only if target_user.friends_only is not None else False
 
-    privacy_restricted = False
+    public_restricted = False
+    startgg_restricted = False
     if not is_self:
+        if not is_public:
+            public_restricted = True
         if not is_public or (friends_only and not is_friend):
-            privacy_restricted = True
+            startgg_restricted = True
 
     import json
     startgg_data_parsed = None
-    if target_user.startgg_data and not privacy_restricted:
+    if target_user.startgg_data and not startgg_restricted:
         try:
             startgg_data_parsed = json.loads(target_user.startgg_data)
         except Exception:
@@ -1244,19 +1275,19 @@ def get_target_user_profile(target_user_id: str, user_id: str = Depends(get_curr
             "gamer_tag": target_user.gamer_tag or "",
             "avatar_url": target_user.avatar_url or "",
             "profile_color": getattr(target_user, 'profile_color', '') or "",
-            "bio": "" if privacy_restricted else (target_user.bio or ""),
-            "startgg_slug": "" if privacy_restricted else (target_user.startgg_slug or ""),
+            "bio": "" if public_restricted else (target_user.bio or ""),
+            "startgg_slug": "" if startgg_restricted else (target_user.startgg_slug or ""),
             "startgg_data": startgg_data_parsed,
-            "tekken_id": "" if privacy_restricted else (target_user.tekken_id or ""),
-            "steam_id": "" if privacy_restricted else (getattr(target_user, 'steam_id', '') or ""),
-            "twitch_id": "" if privacy_restricted else (getattr(target_user, 'twitch_id', '') or ""),
-            "twitch_url": "" if privacy_restricted else (getattr(target_user, 'twitch_url', '') or ""),
-            "games_data": "" if privacy_restricted else (getattr(target_user, 'games_data', '') or ""),
+            "tekken_id": "" if public_restricted else (target_user.tekken_id or ""),
+            "steam_id": "" if public_restricted else (getattr(target_user, 'steam_id', '') or ""),
+            "twitch_id": "" if public_restricted else (getattr(target_user, 'twitch_id', '') or ""),
+            "twitch_url": "" if public_restricted else (getattr(target_user, 'twitch_url', '') or ""),
+            "games_data": "" if public_restricted else (getattr(target_user, 'games_data', '') or ""),
             "is_public": is_public,
             "friends_only": friends_only,
             "is_friend": is_friend,
             "friend_status": friend_status,
-            "privacy_restricted": privacy_restricted,
+            "privacy_restricted": public_restricted,
             "is_self": is_self
         }
     }
@@ -1806,35 +1837,38 @@ def get_tekken_stats(tekken_id: str):
     matches = battles_data.get("data") or []
     meta = battles_data.get("_metadata") or {}
 
-    # Build a profile from the first match record that belongs to this player
+    # Aggregate characters and ranks
+    characters = {}
     profile: dict = {}
     for m in matches:
-        if (m.get("p1_tekken_id") or "").replace("-", "").lower() == api_id.lower():
+        is_p1 = (m.get("p1_tekken_id") or "").replace("-", "").lower() == api_id.lower()
+        is_p2 = (m.get("p2_tekken_id") or "").replace("-", "").lower() == api_id.lower()
+        
+        if not is_p1 and not is_p2:
+            continue
+            
+        p_prefix = "p1" if is_p1 else "p2"
+        char_name = m.get(f"{p_prefix}_char", "")
+        rank_name = m.get(f"{p_prefix}_dan_rank", "")
+        
+        if not profile: # Set initial profile info from the most recent match
             profile = {
-                "playerName": m.get("p1_name", ""),
-                "player_name": m.get("p1_name", ""),
-                "rankName": m.get("p1_dan_rank", ""),
-                "rank_name": m.get("p1_dan_rank", ""),
-                "tekkenPower": m.get("p1_tekken_power"),
-                "rank_points": m.get("p1_tekken_power"),
-                "region": m.get("p1_region", ""),
-                "mainChar": m.get("p1_char", ""),
+                "playerName": m.get(f"{p_prefix}_name", ""),
+                "player_name": m.get(f"{p_prefix}_name", ""),
+                "rankName": rank_name,
+                "rank_name": rank_name,
+                "tekkenPower": m.get(f"{p_prefix}_tekken_power"),
+                "rank_points": m.get(f"{p_prefix}_tekken_power"),
+                "region": m.get(f"{p_prefix}_region", ""),
+                "mainChar": char_name,
             }
-            break
-        elif (m.get("p2_tekken_id") or "").replace("-", "").lower() == api_id.lower():
-            profile = {
-                "playerName": m.get("p2_name", ""),
-                "player_name": m.get("p2_name", ""),
-                "rankName": m.get("p2_dan_rank", ""),
-                "rank_name": m.get("p2_dan_rank", ""),
-                "tekkenPower": m.get("p2_tekken_power"),
-                "rank_points": m.get("p2_tekken_power"),
-                "region": m.get("p2_region", ""),
-                "mainChar": m.get("p2_char", ""),
-            }
-            break
+        
+        if char_name and char_name not in characters:
+            characters[char_name] = rank_name
 
-    # Fetch Glicko-2 ratings from Wavu Wank
+    profile["characters"] = [{"name": c, "rankName": r} for c, r in characters.items()]
+
+    # Fetch Glicko-2 ratings and true recent character from Wavu Wank
     try:
         wank_resp = requests.get(
             f"https://wank.wavu.wiki/player/{tekken_id}",
@@ -1849,6 +1883,25 @@ def get_tekken_stats(tekken_id: str):
                 profile["glicko_mu"] = mu_match.group(1).strip()
             if sigma_match:
                 profile["glicko_sigma"] = sigma_match.group(1).strip()
+                
+            # Extract true most recent character to bypass EWGF delay
+            char_spans = re.findall(r'<span class="char">([^<]+)</span>', html)
+            char_divs = re.findall(r'<div class="char">([^<]+)</div>', html)
+            true_main_char = None
+            if char_spans:
+                true_main_char = char_spans[0].strip()
+            elif char_divs:
+                true_main_char = char_divs[0].strip()
+            
+            if true_main_char:
+                profile["mainChar"] = true_main_char
+                if true_main_char in characters:
+                    profile["rankName"] = characters[true_main_char]
+                    profile["rank_name"] = characters[true_main_char]
+                else:
+                    profile["characters"].insert(0, {"name": true_main_char, "rankName": "Syncing..."})
+                    profile["rankName"] = "Syncing..."
+                    profile["rank_name"] = "Syncing..."
     except Exception as e:
         print(f"Warning: Failed to fetch from Wavu Wank: {e}")
 
@@ -2060,3 +2113,116 @@ def proxy_startgg(req: StartggProxyRequest, user_id: str = Depends(get_current_u
         return response.json()
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+# --- Feed API ---
+
+@app.get("/api/feed")
+def get_feed(user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    if not db:
+        raise HTTPException(status_code=404, detail="Database not available")
+    
+    posts = db.query(DBPost).order_by(DBPost.created_at.desc()).all()
+    results = []
+    
+    import json
+    for post in posts:
+        author = db.query(DBUser).filter(DBUser.id == post.user_id).first()
+        liked = db.query(DBPostLike).filter(DBPostLike.post_id == post.id, DBPostLike.user_id == user_id).first() is not None
+        
+        tags = []
+        if post.tags:
+            try:
+                tags = json.loads(post.tags)
+            except:
+                pass
+                
+        # Generate initials
+        initials = "U"
+        if author:
+            if getattr(author, 'first_name', None) and getattr(author, 'last_name', None):
+                initials = (author.first_name[0] + author.last_name[0]).upper()
+            elif getattr(author, 'gamer_tag', None):
+                initials = author.gamer_tag[0:2].upper()
+
+        name = "Unknown"
+        if author:
+            if getattr(author, 'first_name', None):
+                name = (author.first_name + " " + (getattr(author, 'last_name', "") or "")).strip()
+            elif getattr(author, 'gamer_tag', None):
+                name = author.gamer_tag
+                
+        results.append({
+            "id": post.id,
+            "author": {
+                "name": name,
+                "handle": getattr(author, 'gamer_tag', None) or "unknown",
+                "initials": initials,
+                "color": getattr(author, 'profile_color', None) or "#06b6d4"
+            },
+            "time": post.created_at.isoformat() if post.created_at else "",
+            "content": post.content,
+            "image": post.image,
+            "tags": tags,
+            "likes": post.likes,
+            "comments": post.comments,
+            "shares": post.shares,
+            "liked": liked,
+            "bookmarked": False,
+            "type": post.type,
+            "pinned": post.pinned
+        })
+        
+    return results
+
+@app.post("/api/feed")
+def create_post(req: CreatePostRequest, user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    if not db:
+        raise HTTPException(status_code=404, detail="Database not available")
+        
+    import uuid, json
+    
+    new_post = DBPost(
+        id=str(uuid.uuid4()),
+        user_id=user_id,
+        content=req.content,
+        type=req.type,
+        tags=json.dumps(req.tags) if req.tags else None,
+        image=req.image
+    )
+    
+    db.add(new_post)
+    db.commit()
+    db.refresh(new_post)
+    
+    return {"message": "Post created", "post_id": new_post.id}
+
+@app.post("/api/feed/{post_id}/like")
+def toggle_like(post_id: str, user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    if not db:
+        raise HTTPException(status_code=404, detail="Database not available")
+        
+    import uuid
+    
+    post = db.query(DBPost).filter(DBPost.id == post_id).first()
+    if not post:
+        raise HTTPException(status_code=404, detail="Post not found")
+        
+    existing_like = db.query(DBPostLike).filter(DBPostLike.post_id == post_id, DBPostLike.user_id == user_id).first()
+    
+    if existing_like:
+        db.delete(existing_like)
+        post.likes = max(0, post.likes - 1)
+        action = "unliked"
+    else:
+        new_like = DBPostLike(
+            id=str(uuid.uuid4()),
+            post_id=post_id,
+            user_id=user_id
+        )
+        db.add(new_like)
+        post.likes += 1
+        action = "liked"
+        
+    db.commit()
+    
+    return {"message": f"Post {action}", "likes": post.likes, "liked": action == "liked"}

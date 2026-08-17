@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
-import { Trash2, Save, Download, RefreshCw, Key, LogOut, ArrowLeft, Globe, ExternalLink, Settings, X, AlertTriangle, User, Shield, Swords, Sparkles, Cloud, Users, Eye, EyeOff, ChevronRight, ChevronDown, ChevronUp, LayoutDashboard, Menu, Search, Bell, Trophy, Mail } from 'lucide-react';
+import { Trash2, Save, Download, RefreshCw, Key, LogOut, ArrowLeft, Globe, ExternalLink, Settings, X, AlertTriangle, User, Shield, Swords, Sparkles, Cloud, Users, Eye, EyeOff, ChevronRight, ChevronDown, ChevronUp, LayoutDashboard, Menu, Search, Bell, Trophy, Mail, Rss } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
 import { TekkenStatsPanel } from './TekkenStatsPanel';
 import { GAME_COVERS } from '../data/gameCovers';
 import { SteamStatsPanel } from './SteamStatsPanel';
 import { AccountSettingsPanel } from './AccountSettingsPanel';
+import { FeedPanel } from './FeedPanel';
 
 const API_URL = import.meta.env.VITE_API_URL || '';
 
@@ -82,6 +83,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
     is_public?: boolean;
     friends_only?: boolean;
     unread_messages_count?: number;
+    pending_friend_requests_count?: number;
   } | null>(null);
   const [profileLoading, setProfileLoading] = useState(true);
   const [profileError, setProfileError] = useState<string | null>(null);
@@ -1207,6 +1209,8 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
               </>
             )}
 
+
+
             {/* Bottom Toggle Text */}
             <div className="text-center pt-2 border-t border-white/10">
               <p className="text-xs text-gray-400 font-mono">
@@ -1276,6 +1280,20 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
             Dashboard
           </button>
 
+          <button
+            onClick={() => setActiveTab("Feed")}
+            className="flex items-center gap-3 px-3 py-2.5 text-sm font-medium transition-all duration-150 text-left w-full group"
+            style={{
+              color: activeTab === "Feed" ? "#f0ede8" : "#8a8a9a",
+              background: activeTab === "Feed" ? "rgba(0, 229, 255, 0.1)" : "transparent",
+              borderLeft: activeTab === "Feed" ? "2px solid #00E5FF" : "2px solid transparent",
+              borderRadius: "2px",
+            }}
+          >
+            <Rss size={15} />
+            Feed
+          </button>
+
           {onViewOwnProfile && (
             <button
               onClick={onViewOwnProfile}
@@ -1295,9 +1313,9 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
             >
               <Users size={15} />
               Friends & DMs
-              {userProfile?.unread_messages_count ? (
+              {((userProfile?.unread_messages_count || 0) + (userProfile?.pending_friend_requests_count || 0)) > 0 ? (
                 <span className="ml-auto bg-[#00E5FF] text-[#050A14] text-[10px] font-bold px-1.5 py-0.5 rounded">
-                  {userProfile.unread_messages_count}
+                  {(userProfile?.unread_messages_count || 0) + (userProfile?.pending_friend_requests_count || 0)}
                 </span>
               ) : null}
             </button>
@@ -1422,9 +1440,22 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
             )}
 
             {/* Notification bell */}
-            <button onClick={() => toast.info("No new notifications")} className="relative w-9 h-9 flex items-center justify-center transition-colors hover:bg-white/5" style={{ borderRadius: "2px" }}>
+            <button 
+              onClick={() => {
+                const hasNotifs = (userProfile?.unread_messages_count || 0) > 0 || (userProfile?.pending_friend_requests_count || 0) > 0;
+                if (hasNotifs && onOpenFriendsModal) {
+                  onOpenFriendsModal();
+                } else {
+                  toast.info("No new notifications");
+                }
+              }} 
+              className="relative w-9 h-9 flex items-center justify-center transition-colors hover:bg-white/5" 
+              style={{ borderRadius: "2px" }}
+            >
               <Bell size={16} style={{ color: "#8a8a9a" }} />
-              <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-[#00E5FF] rounded-full" />
+              {((userProfile?.unread_messages_count || 0) > 0 || (userProfile?.pending_friend_requests_count || 0) > 0) && (
+                <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-[#00E5FF] rounded-full shadow-[0_0_5px_#00E5FF]" />
+              )}
             </button>
 
             <button
@@ -1459,7 +1490,12 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
               getHeaders={getHeaders}
             />
           )}
-          <div style={{ display: activeTab === "Settings" ? 'none' : 'block' }}>
+          {activeTab === "Feed" && (
+            <div className="-m-6">
+              <FeedPanel userProfile={userProfile} getHeaders={getHeaders} />
+            </div>
+          )}
+          <div style={{ display: activeTab === "Dashboard" ? 'block' : 'none' }}>
             {/* Page heading */}
             <div className="mb-6">
               <h1

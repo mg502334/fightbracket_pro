@@ -107,18 +107,9 @@ export function SteamStatsPanel({ steamId, compact = false }: SteamStatsPanelPro
   const steamUrl = profile?.profileurl || `https://steamcommunity.com/profiles/${profile?.steamid || steamId}`;
 
   return (
-    <div
-      className={`rounded-xl border bg-[#050A14] space-y-4 overflow-hidden ${compact ? 'p-4' : 'p-5'}`}
-      style={{ borderColor: 'rgba(87, 203, 222, 0.25)' }}
-    >
+    <div className="space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Gamepad2 size={18} className="text-[#57CBDE]" />
-          <h3 className={`font-bold font-rajdhani tracking-widest ${compact ? 'text-base' : 'text-lg'} text-[#57CBDE]`}>
-            STEAM GAMER CARD
-          </h3>
-        </div>
+      <div className="flex items-center justify-end -mt-2 mb-2">
         <div className="flex items-center gap-2">
           {lastSynced && (
             <span className="text-[10px] font-mono text-gray-600 hidden sm:block">

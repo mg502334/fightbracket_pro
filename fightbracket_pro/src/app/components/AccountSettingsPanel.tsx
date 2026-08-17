@@ -100,7 +100,7 @@ export function AccountSettingsPanel({ user, userProfile, fetchUserProfile, getH
     setUpdatingPassword(false);
   };
 
-  const handleTogglePrivacy = async (field: 'is_public' | 'friends_only', currentValue: boolean) => {
+  const handleToggleSetting = async (field: 'is_public' | 'friends_only' | 'notify_announcements' | 'notify_messages' | 'sound_notifications' | 'sound_messages', currentValue: boolean) => {
     try {
       const headers = await getHeaders();
       await fetch('/api/user/profile', {
@@ -110,7 +110,7 @@ export function AccountSettingsPanel({ user, userProfile, fetchUserProfile, getH
       });
       fetchUserProfile();
     } catch {
-      toast.error('Failed to update privacy settings');
+      toast.error('Failed to update settings');
     }
   };
 
@@ -266,8 +266,8 @@ export function AccountSettingsPanel({ user, userProfile, fetchUserProfile, getH
         {activeTab === "privacy" && (
           <div className="animate-in fade-in duration-300">
             <SettingsCard title="Profile Visibility" description="Control who can find and view your player profile.">
-              <Toggle label="Publicly Searchable Profile" description="Allow other users to find you by name or tag." checked={userProfile?.is_public ?? true} onChange={() => handleTogglePrivacy('is_public', userProfile?.is_public ?? true)} />
-              <Toggle label="Friends-Only Start.gg Stats" description="Limit Start.gg placement records to friends only." checked={userProfile?.friends_only ?? false} onChange={() => handleTogglePrivacy('friends_only', userProfile?.friends_only ?? false)} />
+              <Toggle label="Publicly Searchable Profile" description="Allow other users to find you by name or tag." checked={userProfile?.is_public ?? true} onChange={() => handleToggleSetting('is_public', userProfile?.is_public ?? true)} />
+              <Toggle label="Friends-Only Start.gg Stats" description="Limit Start.gg placement records to friends only." checked={userProfile?.friends_only ?? false} onChange={() => handleToggleSetting('friends_only', userProfile?.friends_only ?? false)} />
             </SettingsCard>
           </div>
         )}
@@ -324,9 +324,15 @@ export function AccountSettingsPanel({ user, userProfile, fetchUserProfile, getH
         {activeTab === "notifications" && (
           <div className="animate-in fade-in duration-300">
             <SettingsCard title="Email Notifications">
-              <Toggle label="Platform announcements" description="New features and platform updates." checked={true} onChange={() => {}} />
-              <Toggle label="Direct Messages" description="When you receive a new message from a friend." checked={true} onChange={() => {}} />
+              <Toggle label="Platform announcements" description="New features and platform updates." checked={userProfile?.notify_announcements ?? true} onChange={() => handleToggleSetting('notify_announcements', userProfile?.notify_announcements ?? true)} />
+              <Toggle label="Direct Messages" description="When you receive a new message from a friend." checked={userProfile?.notify_messages ?? true} onChange={() => handleToggleSetting('notify_messages', userProfile?.notify_messages ?? true)} />
             </SettingsCard>
+            <div className="mt-4">
+              <SettingsCard title="In-App Sounds">
+                <Toggle label="Sound on Notification" description="Play a subtle ping when you receive a new platform notification." checked={userProfile?.sound_notifications ?? true} onChange={() => handleToggleSetting('sound_notifications', userProfile?.sound_notifications ?? true)} />
+                <Toggle label="Sound on Message" description="Play a subtle ping when you receive a direct message." checked={userProfile?.sound_messages ?? true} onChange={() => handleToggleSetting('sound_messages', userProfile?.sound_messages ?? true)} />
+              </SettingsCard>
+            </div>
           </div>
         )}
 

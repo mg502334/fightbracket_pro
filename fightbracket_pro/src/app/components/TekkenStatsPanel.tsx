@@ -36,6 +36,7 @@ interface TekkenProfile {
   total_matches?: number;
   region?: string;
   mainChar?: string;
+  characters?: { name: string; rankName: string }[];
   glicko_mu?: string | number;
   glicko_sigma?: string | number;
 }
@@ -258,6 +259,7 @@ export function TekkenStatsPanel({ tekkenId, compact = false, steamId, psnId, xb
   const [error, setError] = useState<string | null>(null);
   const [lastSynced, setLastSynced] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
+  const [selectedChar, setSelectedChar] = useState<string | null>(null);
 
   const fetchStats = useCallback(async () => {
     if (!tekkenId || !tekkenId.trim()) return;
@@ -289,6 +291,12 @@ export function TekkenStatsPanel({ tekkenId, compact = false, steamId, psnId, xb
     }
   }, [tekkenId, fetchStats]);
 
+  useEffect(() => {
+    if (data?.profile?.mainChar && !selectedChar) {
+      setSelectedChar(data.profile.mainChar);
+    }
+  }, [data, selectedChar]);
+
   // ── No Tekken ID ──
   if (!tekkenId || !tekkenId.trim()) {
     return (
@@ -315,12 +323,14 @@ export function TekkenStatsPanel({ tekkenId, compact = false, steamId, psnId, xb
     );
   }
 
-  const rankName = data?.profile ? getRankName(data.profile) : null;
+  const mainCharName = selectedChar || data?.profile?.mainChar || data?.derived?.top_characters?.[0]?.name;
+  const selectedCharObj = data?.profile?.characters?.find((c: any) => c.name === mainCharName);
+  const rankName = selectedCharObj ? selectedCharObj.rankName : (data?.profile ? getRankName(data.profile) : null);
+  
   const rankPoints = data?.profile ? getRankPoints(data.profile) : null;
   const playerName = data?.profile ? getPlayerName(data.profile) : null;
   const rankColor = getRankColor(rankName ?? undefined);
   const rankImageUrl = getRankImageUrl(rankName ?? undefined);
-  const mainCharName = data?.profile?.mainChar || data?.derived?.top_characters?.[0]?.name;
   const charPortrait = getCharacterPortraitUrl(mainCharName);
   
   const derived = data?.derived || { wins: 0, losses: 0, win_rate: 0, top_characters: [] };
@@ -328,20 +338,9 @@ export function TekkenStatsPanel({ tekkenId, compact = false, steamId, psnId, xb
   const matches = data?.matches || [];
 
   return (
-    <div
-      className={`rounded-xl border bg-[#050A14] space-y-5 overflow-hidden ${compact ? 'p-4' : 'p-5'}`}
-      style={{ borderColor: 'rgba(255,0,60,0.25)' }}
-    >
+    <div className="space-y-5">
       {/* ── Header ── */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <h3
-            className={`font-bold font-rajdhani tracking-widest ${compact ? 'text-base' : 'text-lg'}`}
-            style={{ color: '#ff003c' }}
-          >
-            TEKKEN 8 STATS
-          </h3>
-        </div>
+      <div className="flex items-center justify-end -mt-2 mb-2">
         <div className="flex items-center gap-2">
           {lastSynced && (
             <span className="text-[10px] font-mono text-gray-600 hidden sm:block">
@@ -396,6 +395,21 @@ export function TekkenStatsPanel({ tekkenId, compact = false, steamId, psnId, xb
 
             {/* Column 1: Character Portrait & Stats */}
             <div className="relative flex flex-col gap-3 items-center md:items-start z-10 w-full">
+              {data?.profile?.characters && data.profile.characters.length > 1 && (
+                <div className="w-full max-w-[200px] mt-1 mb-1">
+                  <select
+                    className="w-full bg-[#0A101C]/80 border border-white/10 rounded-lg px-2 py-1.5 text-xs font-bold text-white/90 outline-none focus:border-[#ff003c]/50 transition-colors"
+                    value={selectedChar || ''}
+                    onChange={e => setSelectedChar(e.target.value)}
+                  >
+                    {data.profile.characters.map(c => (
+                      <option key={c.name} value={c.name}>
+                        {c.name.toUpperCase()} - {c.rankName}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <div className="w-full max-w-[200px] aspect-[4/3] rounded-lg overflow-hidden bg-[#0A101C] border border-white/5 relative flex items-center justify-center">
                 {charPortrait ? (
                   <img src={charPortrait} alt={mainCharName} className="w-full h-full object-cover opacity-90 drop-shadow-xl" />
@@ -477,7 +491,7 @@ export function TekkenStatsPanel({ tekkenId, compact = false, steamId, psnId, xb
               
               <div className="text-center mt-2">
                 <div className="text-[10px] font-mono text-gray-400 uppercase tracking-widest mb-1">
-                  All Time Highest Rank
+                  {selectedCharObj ? 'Character Rank' : 'All Time Highest Rank'}
                 </div>
                 <div className="text-lg sm:text-xl font-bold font-rajdhani tracking-widest" style={{ color: rankColor }}>
                   {rankName || 'Unranked'}
