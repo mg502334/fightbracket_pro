@@ -25,16 +25,16 @@ interface Post {
 type FeedFilter = "all" | "results" | "brackets" | "discussions";
 
 const trendingTags = [
-  { tag: "SoutheastOpen", posts: "2.4k" },
-  { tag: "CombatClassic", posts: "1.8k" },
-  { tag: "GGs", posts: "14.2k" },
-  { tag: "BJJ", posts: "9.1k" },
-  { tag: "MMA", posts: "31.6k" },
-  { tag: "Upsets", posts: "872" },
+  { tag: "EVO2026", posts: "32.4k" },
+  { tag: "Tekken8", posts: "18.1k" },
+  { tag: "StreetFighter6", posts: "14.2k" },
+  { tag: "FGC", posts: "9.1k" },
+  { tag: "GuiltyGearStrive", posts: "4.6k" },
+  { tag: "StartGG", posts: "2.1k" },
   { tag: "FightBracketPro", posts: "5.5k" },
 ];
 
-const upcomingEvents = [
+const defaultUpcomingEvents = [
   { id: 1, name: "Southeast Regional Open", date: "Aug 17, 2026", location: "Atlanta, GA", fighters: 48, status: "registration", sport: "BJJ" },
   { id: 2, name: "Iron Fist Championships", date: "Aug 29, 2026", location: "Miami, FL", fighters: 32, status: "locked", sport: "Kickboxing" },
   { id: 3, name: "Combat Classic Vol. 8", date: "Sep 6, 2026", location: "Houston, TX", fighters: 64, status: "registration", sport: "MMA" },
@@ -47,7 +47,7 @@ const statusColors: Record<string, { bg: string; text: string; label: string }> 
   live: { bg: "rgba(34,197,94,0.12)", text: "#22c55e", label: "Live" },
 };
 
-const suggestedUsers = [
+const defaultSuggestedUsers = [
   { name: "Diego Salazar", handle: "diegoGrapples", initials: "DS", color: "#8b5cf6", sport: "BJJ · -77kg" },
   { name: "Priya Nair", handle: "PriyaKicks", initials: "PN", color: "#ec4899", sport: "Kickboxing · -60kg" },
   { name: "Gulf Coast Promos", handle: "gulfCoastPromos", initials: "GC", color: "#06b6d4", sport: "Promoter" },
@@ -117,7 +117,7 @@ function PostCard({ post, onLike, onBookmark }: { post: Post; onLike: (id: strin
                 {post.author.badge}
               </span>
             )}
-            <span className="text-xs" style={{ color: "#8a8a9a" }}>@{post.author.handle}</span>
+            <span className="text-xs" style={{ color: "#06b6d4" }}>{post.author.handle}</span>
           </div>
           <div className="flex items-center gap-2 mt-0.5">
             <span className="text-[10px]" style={{ color: "#8a8a9a" }}>{handleDate(post.time)}</span>
@@ -208,6 +208,8 @@ function PostCard({ post, onLike, onBookmark }: { post: Post; onLike: (id: strin
 
 export function FeedPanel({ userProfile, getHeaders }: { userProfile: any, getHeaders: () => Promise<HeadersInit> }) {
   const [posts, setPosts] = useState<Post[]>([]);
+  const [events, setEvents] = useState<any[]>(defaultUpcomingEvents);
+  const [users, setUsers] = useState<any[]>(defaultSuggestedUsers);
   const [filter, setFilter] = useState<FeedFilter>("all");
   const [composerText, setComposerText] = useState("");
   const [composerFocused, setComposerFocused] = useState(false);
@@ -215,7 +217,26 @@ export function FeedPanel({ userProfile, getHeaders }: { userProfile: any, getHe
 
   useEffect(() => {
     fetchFeed();
+    fetchSidebar();
   }, []);
+
+  const fetchSidebar = async () => {
+    try {
+      const headers = await getHeaders();
+      const res = await fetch('/api/feed/sidebar', { headers });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.upcoming_events && data.upcoming_events.length > 0) {
+          setEvents(data.upcoming_events);
+        }
+        if (data.suggested_users && data.suggested_users.length > 0) {
+          setUsers(data.suggested_users);
+        }
+      }
+    } catch (e) {
+      console.error("Failed to load sidebar", e);
+    }
+  };
 
   const fetchFeed = async () => {
     try {
@@ -300,7 +321,7 @@ export function FeedPanel({ userProfile, getHeaders }: { userProfile: any, getHe
             <div className="p-4" style={{ background: "#141418", border: "1px solid rgba(255,255,255,0.06)", borderRadius: "2px" }}>
               <div className="flex gap-3">
                 <div className="w-9 h-9 flex items-center justify-center text-xs font-bold text-white flex-shrink-0 mt-0.5" style={{ background: userProfile?.profile_color || "#06b6d4", borderRadius: "2px", fontFamily: "'Barlow Condensed', sans-serif" }}>
-                  {userProfile?.first_name ? userProfile.first_name[0] + (userProfile.last_name?.[0] || "") : userProfile?.gamer_tag?.substring(0, 2).toUpperCase() || "U"}
+                  {userProfile?.gamer_tag ? userProfile.gamer_tag.substring(0, 2).toUpperCase() : userProfile?.first_name ? userProfile.first_name[0] + (userProfile.last_name?.[0] || "") : "U"}
                 </div>
                 <div className="flex-1 min-w-0">
                   <textarea
@@ -432,16 +453,19 @@ export function FeedPanel({ userProfile, getHeaders }: { userProfile: any, getHe
               </div>
             </div>
 
-            {/* Upcoming events mini */}
-            <div className="p-4" style={{ background: "#141418", border: "1px solid rgba(255,255,255,0.06)", borderRadius: "2px" }}>
-              <h3 className="text-white uppercase tracking-wide text-xs mb-3 flex items-center gap-2" style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, letterSpacing: "0.1em" }}>
-                <Calendar size={13} className="text-cyan-400" />Upcoming Events
-              </h3>
-              <div className="flex flex-col gap-3">
-                {upcomingEvents.map((ev) => {
-                  const s = statusColors[ev.status];
+            {/* Upcoming events */}
+            <div className="rounded-xl overflow-hidden mb-6" style={{ background: "#141418", border: "1px solid rgba(255,255,255,0.06)", borderRadius: "2px" }}>
+              <div className="px-5 py-4 border-b border-white/5 flex items-center gap-2">
+                <Calendar size={13} className="text-cyan-400" />
+                <h3 className="text-white uppercase tracking-wide text-xs" style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, letterSpacing: "0.1em" }}>
+                  UPCOMING EVENTS
+                </h3>
+              </div>
+              <div className="p-3">
+                {events.map((ev) => {
+                  const s = statusColors[ev.status as keyof typeof statusColors] || { bg: "#1e1e24", text: "#8a8a9a", label: "TBD" };
                   return (
-                    <div key={ev.id} className="flex items-start gap-2.5">
+                    <div key={ev.id} className="flex items-start gap-2.5 mb-3 last:mb-0">
                       <div className="w-8 h-8 flex items-center justify-center flex-shrink-0" style={{ background: "#1e1e24", borderRadius: "2px" }}>
                         <Swords size={13} style={{ color: "#06b6d4" }} />
                       </div>
@@ -454,9 +478,6 @@ export function FeedPanel({ userProfile, getHeaders }: { userProfile: any, getHe
                   );
                 })}
               </div>
-              <button className="w-full mt-3 pt-3 text-xs text-center transition-colors hover:text-cyan-300" style={{ color: "#06b6d4", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-                View all events <ExternalLink size={10} className="inline ml-1" />
-              </button>
             </div>
 
             {/* Suggested */}
@@ -465,7 +486,7 @@ export function FeedPanel({ userProfile, getHeaders }: { userProfile: any, getHe
                 <UserPlus size={13} className="text-cyan-400" />Suggested
               </h3>
               <div className="flex flex-col gap-3">
-                {suggestedUsers.map((u) => (
+                {users.map((u) => (
                   <div key={u.handle} className="flex items-center gap-2.5">
                     <div className="w-8 h-8 flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0" style={{ background: u.color, borderRadius: "2px", fontFamily: "'Barlow Condensed', sans-serif" }}>{u.initials}</div>
                     <div className="flex-1 min-w-0">

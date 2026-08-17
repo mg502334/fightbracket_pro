@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
-import { Trash2, Save, Download, RefreshCw, Key, LogOut, ArrowLeft, Globe, ExternalLink, Settings, X, AlertTriangle, User, Shield, Swords, Sparkles, Cloud, Users, Eye, EyeOff, ChevronRight, ChevronDown, ChevronUp, LayoutDashboard, Menu, Search, Bell, Trophy, Mail, Rss } from 'lucide-react';
+import { Trash2, Save, Download, RefreshCw, Key, LogOut, ArrowLeft, Globe, ExternalLink, Settings, X, AlertTriangle, User, Shield, Swords, Sparkles, Cloud, Users, Eye, EyeOff, ChevronRight, ChevronDown, ChevronUp, LayoutDashboard, Menu, Search, Bell, Trophy, Mail, Rss, Calendar } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
 import { TekkenStatsPanel } from './TekkenStatsPanel';
@@ -8,6 +8,7 @@ import { GAME_COVERS } from '../data/gameCovers';
 import { SteamStatsPanel } from './SteamStatsPanel';
 import { AccountSettingsPanel } from './AccountSettingsPanel';
 import { FeedPanel } from './FeedPanel';
+import { EventsPanel } from './EventsPanel';
 
 const API_URL = import.meta.env.VITE_API_URL || '';
 
@@ -1294,6 +1295,20 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
             Feed
           </button>
 
+          <button
+            onClick={() => setActiveTab("Events")}
+            className="flex items-center gap-3 px-3 py-2.5 text-sm font-medium transition-all duration-150 text-left w-full group"
+            style={{
+              color: activeTab === "Events" ? "#f0ede8" : "#8a8a9a",
+              background: activeTab === "Events" ? "rgba(0, 229, 255, 0.1)" : "transparent",
+              borderLeft: activeTab === "Events" ? "2px solid #00E5FF" : "2px solid transparent",
+              borderRadius: "2px",
+            }}
+          >
+            <Calendar size={15} />
+            Events
+          </button>
+
           {onViewOwnProfile && (
             <button
               onClick={onViewOwnProfile}
@@ -1493,6 +1508,11 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
           {activeTab === "Feed" && (
             <div className="-m-6">
               <FeedPanel userProfile={userProfile} getHeaders={getHeaders} />
+            </div>
+          )}
+          {activeTab === "Events" && (
+            <div className="-m-6 h-full">
+              <EventsPanel getHeaders={getHeaders} onNavigateHome={onNavigateHome} />
             </div>
           )}
           <div style={{ display: activeTab === "Dashboard" ? 'block' : 'none' }}>

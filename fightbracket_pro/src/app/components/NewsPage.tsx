@@ -9,6 +9,7 @@ interface NewsItem {
   body: string;
   badge?: string;
   link?: string;
+  archived?: boolean;
 }
 
 const NEWS_ITEMS: NewsItem[] = [
@@ -104,6 +105,31 @@ const NEWS_ITEMS: NewsItem[] = [
     badge: 'SALE',
     link: 'https://www.bandainamcoent.com/games/tekken-8',
   },
+  // Archived items
+  {
+    id: 'n_arch1',
+    type: 'feature',
+    date: 'Jul 15, 2026',
+    title: 'Initial Alpha Release',
+    body: 'FightBracket Pro alpha is now live for testing. We are starting with core bracket imports from Start.gg and basic stat tracking. Let us know your feedback on the Discord.',
+    archived: true,
+  },
+  {
+    id: 'n_arch2',
+    type: 'update',
+    date: 'Jul 20, 2026',
+    title: 'Performance Improvements for Large Brackets',
+    body: 'Optimized rendering for tournaments with 256+ entrants. Scrolling and zooming should now remain locked at 60fps even on mobile devices.',
+    archived: true,
+  },
+  {
+    id: 'n_arch3',
+    type: 'fix',
+    date: 'Jul 22, 2026',
+    title: 'Fixed Bracket Node Overlap',
+    body: 'Resolved an issue where bracket nodes would occasionally overlap vertically when Losers round counts did not perfectly align with Winners.',
+    archived: true,
+  }
 ];
 
 const TYPE_CONFIG = {
@@ -129,14 +155,22 @@ interface NewsPageProps {
 
 export function NewsPage({ onNavigateHome }: NewsPageProps) {
   const [filter, setFilter] = useState<string>('all');
+  const [isArchive, setIsArchive] = useState(false);
 
-  const filtered = filter === 'all' ? NEWS_ITEMS : NEWS_ITEMS.filter(n => n.type === filter);
+  const filtered = NEWS_ITEMS.filter(n => {
+    // Separate active vs archived items
+    if (isArchive && !n.archived) return false;
+    if (!isArchive && n.archived) return false;
+    // Apply category filter
+    if (filter !== 'all' && n.type !== filter) return false;
+    return true;
+  });
 
   return (
-    <div className="min-h-full p-6 md:p-10" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
+    <div className="min-h-full p-6 md:p-10 animate-in fade-in duration-300" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
       {/* Header */}
       <div className="max-w-4xl mx-auto">
-        <div className="flex items-center gap-4 mb-2">
+        <div className="flex items-center justify-between mb-2">
           <button
             onClick={onNavigateHome}
             className="text-xs text-gray-500 hover:text-[#00E5FF] transition-colors flex items-center gap-1"
@@ -145,30 +179,43 @@ export function NewsPage({ onNavigateHome }: NewsPageProps) {
           </button>
         </div>
         <div className="flex items-center gap-3 mb-2">
-          <Megaphone size={28} className="text-[#00E5FF]" />
+          <Megaphone size={28} className={isArchive ? "text-[#a78bfa]" : "text-[#00E5FF]"} />
           <h1 className="text-4xl font-bold tracking-widest text-white" style={{ fontFamily: 'Rajdhani, sans-serif' }}>
-            NEWS & UPDATES
+            {isArchive ? "NEWS ARCHIVE" : "NEWS & UPDATES"}
           </h1>
         </div>
         <p className="text-xs text-gray-500 mb-8">
-          Latest FightBracket Pro patches, features, community events, and game news.
+          {isArchive ? "Browse past updates and historical patch notes." : "Latest FightBracket Pro patches, features, community events, and game news."}
         </p>
 
-        {/* Filter Tabs */}
-        <div className="flex flex-wrap gap-2 mb-8">
-          {FILTERS.map(f => (
-            <button
-              key={f.id}
-              onClick={() => setFilter(f.id)}
-              className={`px-4 py-1.5 rounded-lg text-xs font-bold tracking-widest transition-all border ${
-                filter === f.id
-                  ? 'bg-[#00E5FF]/10 border-[#00E5FF]/60 text-[#00E5FF]'
-                  : 'border-white/10 text-gray-500 hover:border-white/20 hover:text-gray-300'
-              }`}
-            >
-              {f.label}
-            </button>
-          ))}
+        {/* Filter Tabs & Archive Toggle */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+          <div className="flex flex-wrap gap-2">
+            {FILTERS.map(f => (
+              <button
+                key={f.id}
+                onClick={() => setFilter(f.id)}
+                className={`px-4 py-1.5 rounded-lg text-xs font-bold tracking-widest transition-all border ${
+                  filter === f.id
+                    ? 'bg-[#00E5FF]/10 border-[#00E5FF]/60 text-[#00E5FF]'
+                    : 'border-white/10 text-gray-500 hover:border-white/20 hover:text-gray-300'
+                }`}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+
+          <button
+            onClick={() => setIsArchive(!isArchive)}
+            className={`px-4 py-1.5 rounded-lg text-xs font-bold tracking-widest transition-all border shrink-0 ${
+              isArchive
+                ? 'bg-[#a78bfa]/10 border-[#a78bfa]/60 text-[#a78bfa]'
+                : 'border-white/10 text-gray-500 hover:border-white/20 hover:text-gray-300'
+            }`}
+          >
+            {isArchive ? '← BACK TO RECENT' : 'VIEW ARCHIVE'}
+          </button>
         </div>
 
         {/* News Cards */}

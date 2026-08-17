@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Users, UserPlus, MessageSquare, X, Check, CheckCheck, Trash2, Send, MailOpen, Search, Loader2, User } from 'lucide-react';
+import { Users, UserPlus, MessageSquare, X, Check, CheckCheck, Trash2, Send, MailOpen, Search, Loader2, User, MoreHorizontal, Share, Flag } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_URL || '';
 
@@ -45,9 +45,11 @@ interface FriendsModalProps {
   theme: any;
   currentUserId: string | null;
   supabaseToken: string | null;
+  onViewProfile?: (userId: string) => void;
 }
 
-export function FriendsModal({ isOpen, onClose, theme, currentUserId, supabaseToken }: FriendsModalProps) {
+export function FriendsModal({ isOpen, onClose, theme, currentUserId, supabaseToken, onViewProfile }: FriendsModalProps) {
+  const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'friends' | 'pending' | 'add' | 'inbox'>('inbox');
   const [friends, setFriends] = useState<Friend[]>([]);
   const [pendingIncoming, setPendingIncoming] = useState<PendingRequest[]>([]);
@@ -556,30 +558,63 @@ export function FriendsModal({ isOpen, onClose, theme, currentUserId, supabaseTo
                         key={friend.id}
                         className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5 hover:border-white/15 transition-all"
                       >
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-cyan-500/20 border border-cyan-400/40 flex items-center justify-center font-bold text-cyan-400 text-sm">
+                        <div 
+                          className="flex items-center gap-3 cursor-pointer group/profile"
+                          onClick={() => onViewProfile?.(friend.id)}
+                        >
+                          <div className="w-10 h-10 rounded-full bg-cyan-500/20 border border-cyan-400/40 flex items-center justify-center font-bold text-cyan-400 text-sm group-hover/profile:bg-cyan-500/30 transition-colors">
                             {friend.gamer_tag.substring(0, 2).toUpperCase()}
                           </div>
                           <div>
-                            <div className="font-bold text-sm font-rajdhani text-white">{friend.gamer_tag}</div>
+                            <div className="font-bold text-sm font-rajdhani text-white group-hover/profile:text-cyan-400 transition-colors">{friend.gamer_tag}</div>
                             <div className="text-[10px] font-mono opacity-50">{friend.unique_id}</div>
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 relative">
                           <button
                             onClick={() => openChat(friend)}
                             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 text-xs font-mono font-bold hover:bg-cyan-500/30 transition-all"
                           >
                             <MessageSquare size={12} /> DM
                           </button>
+
                           <button
-                            onClick={() => handleRemoveFriend(friend.id)}
-                            className="p-1.5 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-all opacity-60 hover:opacity-100"
-                            title="Remove Friend"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setOpenDropdownId(openDropdownId === friend.id ? null : friend.id);
+                            }}
+                            className="p-1.5 rounded-lg bg-white/5 text-white/60 hover:text-white hover:bg-white/10 transition-all relative z-10"
                           >
-                            <Trash2 size={14} />
+                            <MoreHorizontal size={14} />
                           </button>
+
+                          {openDropdownId === friend.id && (
+                            <>
+                              <div className="fixed inset-0 z-40" onClick={() => setOpenDropdownId(null)} />
+                              <div className="absolute right-0 top-full mt-2 w-48 bg-[#111116] border border-white/10 rounded-xl shadow-xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-100">
+                                <button
+                                  onClick={() => { setOpenDropdownId(null); onViewProfile?.(friend.id); }}
+                                  className="w-full text-left px-4 py-2.5 text-xs font-mono text-white/80 hover:text-white hover:bg-white/5 transition-colors flex items-center gap-2"
+                                >
+                                  <Share size={12} /> Share profile
+                                </button>
+                                <button
+                                  onClick={() => { setOpenDropdownId(null); toast.success("User reported"); }}
+                                  className="w-full text-left px-4 py-2.5 text-xs font-mono text-white/80 hover:text-white hover:bg-white/5 transition-colors flex items-center gap-2"
+                                >
+                                  <Flag size={12} /> Report user
+                                </button>
+                                <div className="h-px bg-white/10 my-1" />
+                                <button
+                                  onClick={() => { setOpenDropdownId(null); handleRemoveFriend(friend.id); }}
+                                  className="w-full text-left px-4 py-2.5 text-xs font-mono text-red-400 hover:bg-red-500/10 transition-colors flex items-center gap-2"
+                                >
+                                  <Trash2 size={12} /> Delete friend
+                                </button>
+                              </div>
+                            </>
+                          )}
                         </div>
                       </div>
                     ))

@@ -2218,6 +2218,198 @@ def toggle_like(post_id: str, user_id: str = Depends(get_current_user_id), db: S
             id=str(uuid.uuid4()),
             post_id=post_id,
             user_id=user_id
+            params={"key": STEAM_API_KEY, "steamids": actual_steam_id},
+            timeout=10
+        )
+        if prof_resp.ok:
+            pdata = prof_resp.json()
+            players = pdata.get("response", {}).get("players", [])
+            if players:
+                profile_data = players[0]
+    except Exception as e:
+        print(f"Steam profile error: {e}")
+
+    return {
+        "status": "ok",
+        "query_id": steam_id_clean,
+        "steam_id_64": actual_steam_id,
+        "profile": profile_data
+    }
+
+# ---------------------------------------------------------------------------
+# LOCAL TOURNAMENT HISTORY
+# ---------------------------------------------------------------------------
+
+@app.get("/api/users/{unique_id}/local-history")
+def get_user_local_history(unique_id: str, db: Session = Depends(get_db)):
+    if not db:
+        return {"tournaments": []}
+        
+    try:
+        # Query tournament participants matching this unique_id
+        participants = db.query(DBTournamentParticipant).filter(DBTournamentParticipant.fb_user_id == unique_id).all()
+        
+        history = []
+        for p in participants:
+            # Fetch the tournament details
+            tournament = db.query(DBTournament).filter(DBTournament.id == p.tournament_id).first()
+            if tournament:
+                history.append({
+                    "tournament_id": tournament.id,
+                    "tournament_name": tournament.name,
+                    "date": tournament.updated_at.isoformat(),
+                    "placement": p.placement,
+                    "gamer_tag": p.gamer_tag
+                })
+        
+        # Sort by date descending
+        history.sort(key=lambda x: x["date"], reverse=True)
+        return {"tournaments": history}
+    except Exception as e:
+        print(f"Error fetching local history: {e}")
+        return {"tournaments": []}
+
+
+class StartggProxyRequest(BaseModel):
+    query: str
+    variables: dict = {}
+
+@app.post("/api/startgg/proxy")
+def proxy_startgg(req: StartggProxyRequest, user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    integration = db.query(DBUserIntegration).filter(
+        DBUserIntegration.user_id == user_id, 
+        DBUserIntegration.integration_type == "startgg"
+    ).first()
+    
+    token = None
+    if integration:
+        token = decrypt_text(integration.encrypted_api_key)  # type: ignore
+    else:
+        user = db.query(DBUser).filter(DBUser.id == user_id).first()
+        if user and getattr(user, 'startgg_token', None):
+            token = getattr(user, 'startgg_token')
+            
+    if not token:
+        raise HTTPException(status_code=404, detail="Start.gg integration not found. Please set your token in settings.")
+
+    import requests
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json"
+    }
+    
+    try:
+        response = requests.post(
+            "https://api.start.gg/gql/alpha", 
+            json={"query": req.query, "variables": req.variables},
+            headers=headers,
+            timeout=10
+        )
+        return response.json()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# --- Feed API ---
+
+@app.get("/api/feed")
+def get_feed(user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    if not db:
+        raise HTTPException(status_code=404, detail="Database not available")
+    
+    posts = db.query(DBPost).order_by(DBPost.created_at.desc()).all()
+    results = []
+    
+    import json
+    for post in posts:
+        author = db.query(DBUser).filter(DBUser.id == post.user_id).first()
+        liked = db.query(DBPostLike).filter(DBPostLike.post_id == post.id, DBPostLike.user_id == user_id).first() is not None
+        
+        tags = []
+        if post.tags:
+            try:
+                tags = json.loads(post.tags)
+            except:
+                pass
+                
+        # Generate initials
+        initials = "U"
+        if author:
+            if getattr(author, 'first_name', None) and getattr(author, 'last_name', None):
+                initials = (author.first_name[0] + author.last_name[0]).upper()
+            elif getattr(author, 'gamer_tag', None):
+                initials = author.gamer_tag[0:2].upper()
+
+        name = "Unknown"
+        if author and getattr(author, 'gamer_tag', None):
+            name = author.gamer_tag
+                
+        results.append({
+            "id": post.id,
+            "author": {
+                "name": name,
+                "handle": getattr(author, 'unique_id', None) or "FB-UNKNOWN",
+                "initials": initials,
+                "color": getattr(author, 'profile_color', None) or "#06b6d4"
+            },
+            "time": post.created_at.isoformat() if post.created_at else "",
+            "content": post.content,
+            "image": post.image,
+            "tags": tags,
+            "likes": post.likes,
+            "comments": post.comments,
+            "shares": post.shares,
+            "liked": liked,
+            "bookmarked": False,
+            "type": post.type,
+            "pinned": post.pinned
+        })
+        
+    return results
+
+@app.post("/api/feed")
+def create_post(req: CreatePostRequest, user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    if not db:
+        raise HTTPException(status_code=404, detail="Database not available")
+        
+    import uuid, json
+    
+    new_post = DBPost(
+        id=str(uuid.uuid4()),
+        user_id=user_id,
+        content=req.content,
+        type=req.type,
+        tags=json.dumps(req.tags) if req.tags else None,
+        image=req.image
+    )
+    
+    db.add(new_post)
+    db.commit()
+    db.refresh(new_post)
+    
+    return {"message": "Post created", "post_id": new_post.id}
+
+@app.post("/api/feed/{post_id}/like")
+def toggle_like(post_id: str, user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    if not db:
+        raise HTTPException(status_code=404, detail="Database not available")
+        
+    import uuid
+    
+    post = db.query(DBPost).filter(DBPost.id == post_id).first()
+    if not post:
+        raise HTTPException(status_code=404, detail="Post not found")
+        
+    existing_like = db.query(DBPostLike).filter(DBPostLike.post_id == post_id, DBPostLike.user_id == user_id).first()
+    
+    if existing_like:
+        db.delete(existing_like)
+        post.likes = max(0, post.likes - 1)
+        action = "unliked"
+    else:
+        new_like = DBPostLike(
+            id=str(uuid.uuid4()),
+            post_id=post_id,
+            user_id=user_id
         )
         db.add(new_like)
         post.likes += 1
@@ -2226,3 +2418,225 @@ def toggle_like(post_id: str, user_id: str = Depends(get_current_user_id), db: S
     db.commit()
     
     return {"message": f"Post {action}", "likes": post.likes, "liked": action == "liked"}
+
+@app.get("/api/feed/sidebar")
+def get_feed_sidebar(user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    if not db:
+        raise HTTPException(status_code=404, detail="Database not available")
+        
+    import random
+    all_users = db.query(DBUser).filter(DBUser.id != user_id).all()
+    suggested = random.sample(all_users, min(3, len(all_users)))
+    
+    suggested_results = []
+    for u in suggested:
+        initials = "U"
+        if getattr(u, 'first_name', None) and getattr(u, 'last_name', None):
+            initials = (u.first_name[0] + u.last_name[0]).upper()
+        elif getattr(u, 'gamer_tag', None) and len(u.gamer_tag) >= 2:
+            initials = u.gamer_tag[0:2].upper()
+            
+        name = "Unknown"
+        if getattr(u, 'gamer_tag', None):
+            name = u.gamer_tag
+            
+        suggested_results.append({
+            "name": name,
+            "handle": getattr(u, 'unique_id', None) or "FB-UNKNOWN",
+            "initials": initials,
+            "color": getattr(u, 'profile_color', None) or "#06b6d4",
+            "sport": "Player"
+        })
+        
+    events_results = []
+    token = None
+    integration = db.query(DBUserIntegration).filter(
+        DBUserIntegration.user_id == user_id, 
+        DBUserIntegration.integration_type == "startgg"
+    ).first()
+    if integration:
+        token = decrypt_text(integration.encrypted_api_key)  # type: ignore
+    else:
+        user = db.query(DBUser).filter(DBUser.id == user_id).first()
+        if user and getattr(user, 'startgg_token', None):
+            token = getattr(user, 'startgg_token')
+            
+    if token:
+        import requests
+        query = """
+        query Tournaments {
+          tournaments(query: {
+            perPage: 3,
+            page: 1,
+            filter: {
+              upcoming: true
+            }
+          }) {
+            nodes {
+              id
+              name
+              startAt
+              city
+              addrState
+              numEntrants
+            }
+          }
+        }
+        """
+        headers = {
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json"
+        }
+        try:
+            resp = requests.post("https://api.start.gg/gql/alpha", json={"query": query}, headers=headers, timeout=5)
+            data = resp.json()
+            nodes = data.get("data", {}).get("tournaments", {}).get("nodes", [])
+            for node in nodes:
+                from datetime import datetime
+                d = datetime.fromtimestamp(node.get("startAt", 0))
+                date_str = d.strftime("%b %d, %Y")
+                
+                location = node.get("city")
+                if node.get("addrState"):
+                    location = f"{location}, {node.get('addrState')}" if location else node.get("addrState")
+                    
+                events_results.append({
+                    "id": node.get("id"),
+                    "name": node.get("name"),
+                    "date": date_str,
+                    "location": location or "Online",
+                    "fighters": node.get("numEntrants") or 0,
+                    "status": "registration",
+                    "sport": "FGC"
+                })
+        except Exception as e:
+            print("Start.gg error in sidebar:", e)
+            pass
+            
+    return {
+        "suggested_users": suggested_results,
+        "upcoming_events": events_results
+    }
+
+class EventSearchRequest(BaseModel):
+    query: str = ""
+    upcoming: bool = True
+    videogameId: Optional[int] = None
+    page: int = 1
+    perPage: int = 20
+
+@app.post("/api/events/search")
+def search_events(req: EventSearchRequest, user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    if not db:
+        raise HTTPException(status_code=404, detail="Database not available")
+        
+    token = None
+    integration = db.query(DBUserIntegration).filter(
+        DBUserIntegration.user_id == user_id, 
+        DBUserIntegration.integration_type == "startgg"
+    ).first()
+    if integration:
+        token = decrypt_text(integration.encrypted_api_key)  # type: ignore
+    else:
+        user = db.query(DBUser).filter(DBUser.id == user_id).first()
+        if user and getattr(user, 'startgg_token', None):
+            token = getattr(user, 'startgg_token')
+            
+    if not token:
+        raise HTTPException(status_code=401, detail="Start.gg integration required. Please link your Start.gg account in Settings.")
+        
+    import requests
+    
+    query = """
+    query SearchTournaments($name: String, $perPage: Int, $page: Int, $videogameId: [ID]) {
+      tournaments(query: {
+        perPage: $perPage,
+        page: $page,
+        filter: {
+          name: $name,
+          videogameIds: $videogameId,
+          upcoming: true
+        }
+      }) {
+        pageInfo { totalPages }
+        nodes {
+          id
+          name
+          slug
+          startAt
+          city
+          addrState
+          numEntrants
+          images {
+            url
+            type
+          }
+        }
+      }
+    }
+    """
+    
+    variables = {
+        "perPage": req.perPage,
+        "page": req.page
+    }
+    
+    if req.query:
+        variables["name"] = req.query
+    if req.videogameId:
+        variables["videogameId"] = [str(req.videogameId)]
+        
+    if not req.upcoming:
+        query = query.replace("upcoming: true", "past: true")
+        
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json"
+    }
+    
+    try:
+        resp = requests.post("https://api.start.gg/gql/alpha", json={"query": query, "variables": variables}, headers=headers, timeout=10)
+        data = resp.json()
+        if "errors" in data:
+            raise HTTPException(status_code=400, detail=str(data["errors"]))
+            
+        nodes = data.get("data", {}).get("tournaments", {}).get("nodes", [])
+        totalPages = data.get("data", {}).get("tournaments", {}).get("pageInfo", {}).get("totalPages", 1)
+        
+        events_results = []
+        for node in nodes:
+            from datetime import datetime
+            d = datetime.fromtimestamp(node.get("startAt", 0))
+            date_str = d.strftime("%b %d, %Y")
+            
+            location = node.get("city")
+            if node.get("addrState"):
+                location = f"{location}, {node.get('addrState')}" if location else node.get("addrState")
+                
+            images = node.get("images", [])
+            image_url = None
+            for img in images:
+                if img.get("type") == "profile":
+                    image_url = img.get("url")
+                    break
+            if not image_url and images:
+                image_url = images[0].get("url")
+                
+            events_results.append({
+                "id": node.get("id"),
+                "name": node.get("name"),
+                "slug": node.get("slug"),
+                "date": date_str,
+                "location": location or "Online",
+                "fighters": node.get("numEntrants") or 0,
+                "image": image_url
+            })
+            
+        return {
+            "events": events_results,
+            "totalPages": totalPages
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

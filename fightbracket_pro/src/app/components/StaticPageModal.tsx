@@ -30,6 +30,15 @@ If players enter conflicting scores, a red alert will appear on your TO Dashboar
 
 ### How do I add physical stations/setups?
 Go to your Tournament Settings panel, navigate to "Station Management," and add your available tables and setup variants (e.g., Table 1 - Setup A, Table 1 - Setup B).
+
+## Start.gg Integration
+### How do I link my Start.gg account?
+To import your brackets and search for Start.gg events directly from FightBracket Pro, you need to provide a Personal Access Token. Here is how you can get one and link your account:
+1. Log in to your [Start.gg](https://start.gg) account and go to your **Profile Settings**.
+2. Scroll down to the bottom of the menu and click on **Developer API**.
+3. Click **Create new token**, give it a description (like "FightBracket Pro"), and securely copy the generated token key.
+4. Back in FightBracket Pro, open the left-hand sidebar menu and navigate to **Settings**.
+5. Scroll down to the **Start.gg Integration** section, paste your token into the field, and click **Connect**.
 `
   },
   privacy: {
@@ -236,7 +245,11 @@ export function StaticPageModal({ pageId, onClose, theme }: StaticPageModalProps
                 <h2 className="font-bold tracking-wider text-base font-rajdhani text-white">
                   {doc.title}
                 </h2>
-                <p className="text-[11px] font-mono opacity-50">FightBracket Pro Legal & Info Center</p>
+                <p className="text-[11px] font-mono opacity-50">
+                  {pageId === 'help' ? 'FightBracket Pro Help Center' : 
+                   pageId === 'resources' ? 'FightBracket Pro Resources Center' : 
+                   'FightBracket Pro Legal & Info Center'}
+                </p>
               </div>
             </div>
             <button onClick={onClose} className="p-1 opacity-60 hover:opacity-100 transition-opacity">

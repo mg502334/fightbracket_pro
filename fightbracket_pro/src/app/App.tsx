@@ -1553,6 +1553,7 @@ export default function App() {
         theme={theme || { id: 'default', displayName: 'FightBracket', shortName: 'FB', primaryColor: '#00E5FF', secondaryColor: '#FF006E', bgFrom: '#050A14', glowColor: 'rgba(0,229,255,0.4)', description: '', publisher: '' }}
         currentUserId={supabaseUser?.id ?? null}
         supabaseToken={supabaseToken}
+        onViewProfile={(userId) => setTargetProfileUserId(userId)}
       />
 
       <UserProfileModal
