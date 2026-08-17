@@ -435,11 +435,12 @@ export function FriendsModal({ isOpen, onClose, theme, currentUserId, supabaseTo
                               )}
 
                               <div
-                                className={`max-w-[85%] w-fit px-4 py-2.5 rounded-2xl text-[13px] leading-relaxed break-words whitespace-pre-wrap flex-shrink-0 ${
+                                className={`max-w-[85%] px-4 py-2.5 rounded-2xl text-[13px] leading-relaxed break-words whitespace-pre-wrap ${
                                   isMe
                                     ? 'bg-cyan-500 text-black font-medium rounded-tr-sm'
                                     : 'bg-white/10 text-white rounded-tl-sm border border-white/10'
                                 }`}
+                                style={{ overflowWrap: 'anywhere' }}
                               >
                                 {m.message}
                               </div>
