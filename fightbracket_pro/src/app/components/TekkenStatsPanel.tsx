@@ -99,7 +99,11 @@ function getRankColor(rankName: string | undefined): string {
 
 function getRankImageUrl(rankName: string | undefined): string | null {
   if (!rankName || rankName.toLowerCase() === 'unranked') return null;
-  const formatted = rankName
+  
+  // Strip trailing Roman numerals (e.g. "God of Destruction I") sometimes added by external APIs
+  const cleanName = rankName.replace(/\s+(I|II|III|IV|V|VI|VII|VIII|IX|X)+$/i, '');
+  
+  const formatted = cleanName
     .split(' ')
     .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
     .join('');
