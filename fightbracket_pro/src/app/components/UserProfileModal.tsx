@@ -307,27 +307,26 @@ export function UserProfileModal({ isOpen, onClose, targetUserId, supabaseToken,
                                   <div 
                                     key={item.game} 
                                     title={`${item.game}${item.main ? ` - ${item.main}` : ''}`}
-                                    className="relative aspect-[2/3] rounded-xl overflow-hidden border border-white/10 group shadow-lg flex flex-col justify-end bg-[#050A14]"
+                                    className="flex flex-col gap-2 group"
                                   >
-                                    <div className="absolute inset-0 z-0">
+                                    <div className="aspect-[2/3] rounded-xl overflow-hidden border border-white/10 shadow-lg bg-[#050A14]">
                                       {coverUrl ? (
-                                        <img src={coverUrl} alt={item.game} className="w-full h-full object-cover opacity-30 group-hover:opacity-40 transition-opacity duration-300" />
+                                        <img src={coverUrl} alt={item.game} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                                       ) : (
                                         <div className="w-full h-full bg-gradient-to-br from-white/5 to-transparent flex items-center justify-center">
                                           <Trophy size={24} className="opacity-20" />
                                         </div>
                                       )}
-                                      <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent" />
                                     </div>
-                                    <div className="relative z-10 p-3 w-full">
-                                      <div className="text-[10px] font-mono text-cyan-400 truncate mb-0.5" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.8)' }}>
+                                    <div className="px-1 w-full">
+                                      <div className="text-[10px] font-mono text-cyan-400 truncate mb-0.5">
                                         {item.game}
                                       </div>
-                                      <div className="font-rajdhani font-bold text-sm text-white truncate drop-shadow-md">
+                                      <div className="font-rajdhani font-bold text-sm text-white truncate">
                                         {item.main || 'No Main Set'}
                                       </div>
                                       {item.rank && (
-                                        <div className="text-[9px] font-mono text-amber-400 mt-1 uppercase tracking-wider truncate">
+                                        <div className="text-[9px] font-mono text-amber-400 mt-0.5 uppercase tracking-wider truncate">
                                           {cleanRankText(item.rank)}
                                         </div>
                                       )}
@@ -362,34 +361,33 @@ export function UserProfileModal({ isOpen, onClose, targetUserId, supabaseToken,
                                       const coverUrl = GAME_COVERS[item.game];
                                       return (
                                         <div 
-                                          key={item.game} 
-                                          title={`${item.game}${item.main ? ` - ${item.main}` : ''}`}
-                                          className="relative aspect-[2/3] rounded-xl overflow-hidden border border-white/10 group shadow-lg flex flex-col justify-end bg-[#050A14]"
-                                        >
-                                          <div className="absolute inset-0 z-0">
-                                            {coverUrl ? (
-                                              <img src={coverUrl} alt={item.game} className="w-full h-full object-cover opacity-20 group-hover:opacity-30 transition-opacity duration-300" />
-                                            ) : (
-                                              <div className="w-full h-full bg-gradient-to-br from-white/5 to-transparent flex items-center justify-center">
-                                                <Trophy size={20} className="opacity-10" />
-                                              </div>
-                                            )}
-                                            <div className="absolute inset-0 bg-gradient-to-t from-black via-black/80 to-transparent" />
+                                      key={item.game} 
+                                      title={`${item.game}${item.main ? ` - ${item.main}` : ''}`}
+                                      className="flex flex-col gap-2 group"
+                                    >
+                                      <div className="aspect-[2/3] rounded-xl overflow-hidden border border-white/10 shadow-lg bg-[#050A14]">
+                                        {coverUrl ? (
+                                          <img src={coverUrl} alt={item.game} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                                        ) : (
+                                          <div className="w-full h-full bg-gradient-to-br from-white/5 to-transparent flex items-center justify-center">
+                                            <Trophy size={24} className="opacity-20" />
                                           </div>
-                                          <div className="relative z-10 p-2 w-full">
-                                            <div className="text-[9px] font-mono text-cyan-400/80 truncate mb-0.5">
-                                              {item.game}
-                                            </div>
-                                            <div className="font-rajdhani font-bold text-xs text-white/80 truncate">
-                                              {item.main || 'No Main Set'}
-                                            </div>
-                                            {item.rank && (
-                                              <div className="text-[8px] font-mono text-amber-400/70 mt-0.5 uppercase tracking-wider truncate">
-                                                {cleanRankText(item.rank)}
-                                              </div>
-                                            )}
-                                          </div>
+                                        )}
+                                      </div>
+                                      <div className="px-1 w-full">
+                                        <div className="text-[10px] font-mono text-cyan-400 truncate mb-0.5">
+                                          {item.game}
                                         </div>
+                                        <div className="font-rajdhani font-bold text-sm text-white truncate">
+                                          {item.main || 'No Main Set'}
+                                        </div>
+                                        {item.rank && (
+                                          <div className="text-[9px] font-mono text-amber-400 mt-0.5 uppercase tracking-wider truncate">
+                                            {cleanRankText(item.rank)}
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
                                       );
                                     })}
                                   </div>
