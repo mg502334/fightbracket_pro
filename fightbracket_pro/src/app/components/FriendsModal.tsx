@@ -376,15 +376,18 @@ export function FriendsModal({ isOpen, onClose, theme, currentUserId, supabaseTo
                 <div className="flex-1 flex flex-col h-full">
                   {/* Chat Header */}
                   <div className="p-3 border-b bg-white/5 flex items-center justify-between" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-full bg-cyan-500/20 border border-cyan-400/40 flex items-center justify-center font-bold text-cyan-400 text-xs">
+                    <button 
+                      onClick={() => onViewProfile?.(activeChatFriend.id)}
+                      className="flex items-center gap-2 group text-left hover:bg-white/5 p-1 -m-1 rounded transition-colors"
+                    >
+                      <div className="w-8 h-8 rounded-full bg-cyan-500/20 border border-cyan-400/40 flex items-center justify-center font-bold text-cyan-400 text-xs group-hover:bg-cyan-500/30 transition-colors">
                         {activeChatFriend.gamer_tag.substring(0, 2).toUpperCase()}
                       </div>
                       <div>
-                        <div className="font-bold text-sm font-rajdhani">{activeChatFriend.gamer_tag}</div>
+                        <div className="font-bold text-sm font-rajdhani group-hover:text-cyan-400 transition-colors">{activeChatFriend.gamer_tag}</div>
                         <div className="text-[10px] font-mono opacity-40">{activeChatFriend.unique_id}</div>
                       </div>
-                    </div>
+                    </button>
                     <button
                       onClick={() => setActiveChatFriend(null)}
                       className="text-xs font-mono opacity-60 hover:opacity-100 bg-white/5 px-2 py-1 rounded"
