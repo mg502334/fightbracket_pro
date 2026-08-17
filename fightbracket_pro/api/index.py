@@ -2326,10 +2326,10 @@ def get_feed(
         # Privacy check: If public_only is True, and the author's profile is friends_only,
         # we only return the post if the viewer is the author themselves or a friend.
         if public_only and author and author.friends_only and author.id != user_id:
-            friend_record = db.query(DBFriend).filter(
-                ((DBFriend.user_id == user_id) & (DBFriend.friend_id == author.id)) |
-                ((DBFriend.user_id == author.id) & (DBFriend.friend_id == user_id)),
-                DBFriend.status == "accepted"
+            friend_record = db.query(DBFriendship).filter(
+                ((DBFriendship.user_id == user_id) & (DBFriendship.friend_id == author.id)) |
+                ((DBFriendship.user_id == author.id) & (DBFriendship.friend_id == user_id)),
+                DBFriendship.status == "accepted"
             ).first()
             if not friend_record:
                 continue
