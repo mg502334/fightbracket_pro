@@ -435,10 +435,10 @@ export function FriendsModal({ isOpen, onClose, theme, currentUserId, supabaseTo
                               )}
 
                               <div
-                                className={`max-w-[75%] px-3 py-2 rounded-xl text-xs ${
+                                className={`max-w-[85%] w-fit px-4 py-2.5 rounded-2xl text-[13px] leading-relaxed break-words whitespace-pre-wrap flex-shrink-0 ${
                                   isMe
-                                    ? 'bg-cyan-500 text-black font-medium rounded-tr-none'
-                                    : 'bg-white/10 text-white rounded-tl-none border border-white/10'
+                                    ? 'bg-cyan-500 text-black font-medium rounded-tr-sm'
+                                    : 'bg-white/10 text-white rounded-tl-sm border border-white/10'
                                 }`}
                               >
                                 {m.message}
