@@ -323,11 +323,11 @@ export function FriendsModal({ isOpen, onClose, theme, currentUserId, supabaseTo
             <div className="w-48 border-r bg-black/40 p-3 space-y-2 shrink-0" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
               <button
                 onClick={() => { setActiveTab('inbox'); setActiveChatFriend(null); }}
-                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-mono font-bold transition-all ${
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
                   activeTab === 'inbox' && !activeChatFriend ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' : 'text-white/70 hover:bg-white/5'
                 }`}
               >
-                <span className="flex items-center gap-2"><MessageSquare size={14} /> INBOX</span>
+                <span className="flex items-center gap-3"><MessageSquare size={16} /> Inbox</span>
                 {inboxConversations.some(c => c.unread_count > 0) && (
                   <span className="text-[10px] px-1.5 py-0.5 rounded bg-cyan-500 text-black font-bold animate-pulse">
                     {inboxConversations.filter(c => c.unread_count > 0).length}
@@ -337,21 +337,21 @@ export function FriendsModal({ isOpen, onClose, theme, currentUserId, supabaseTo
 
               <button
                 onClick={() => { setActiveTab('friends'); setActiveChatFriend(null); }}
-                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-mono font-bold transition-all ${
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
                   activeTab === 'friends' && !activeChatFriend ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' : 'text-white/70 hover:bg-white/5'
                 }`}
               >
-                <span className="flex items-center gap-2"><Users size={14} /> FRIENDS</span>
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/10">{friends.length}</span>
+                <span className="flex items-center gap-3"><Users size={16} /> Friends</span>
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/10 font-bold">{friends.length}</span>
               </button>
 
               <button
                 onClick={() => { setActiveTab('pending'); setActiveChatFriend(null); }}
-                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-mono font-bold transition-all ${
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
                   activeTab === 'pending' && !activeChatFriend ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' : 'text-white/70 hover:bg-white/5'
                 }`}
               >
-                <span className="flex items-center gap-2"><UserPlus size={14} /> REQUESTS</span>
+                <span className="flex items-center gap-3"><UserPlus size={16} /> Requests</span>
                 {pendingIncoming.length > 0 && (
                   <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500 text-black font-bold animate-pulse">
                     {pendingIncoming.length}
@@ -361,11 +361,13 @@ export function FriendsModal({ isOpen, onClose, theme, currentUserId, supabaseTo
 
               <button
                 onClick={() => { setActiveTab('add'); setActiveChatFriend(null); }}
-                className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-mono font-bold transition-all ${
-                  activeTab === 'add' && !activeChatFriend ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' : 'text-white/70 hover:bg-white/5'
+                className={`w-full flex items-center justify-center gap-2 mt-4 px-3 py-2.5 rounded-lg text-sm font-medium transition-all border ${
+                  activeTab === 'add' && !activeChatFriend
+                    ? 'bg-cyan-500 text-black border-cyan-400 shadow-[0_0_10px_rgba(6,182,212,0.5)]'
+                    : 'bg-white/5 text-cyan-400 border-cyan-400/30 hover:bg-cyan-500/10'
                 }`}
               >
-                <UserPlus size={14} /> ADD FRIEND
+                <UserPlus size={16} /> Add Friend
               </button>
             </div>
 
