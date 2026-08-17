@@ -48,6 +48,11 @@ interface UserProfileModalProps {
   onImportBracket?: (slug: string) => Promise<void>;
 }
 
+function cleanRankText(rankName: string | undefined): string {
+  if (!rankName) return 'Unranked';
+  return rankName.replace(/\s+(I|II|III|IV|V|VI|VII|VIII|IX|X)+$/i, '');
+}
+
 export function UserProfileModal({ isOpen, onClose, targetUserId, supabaseToken, theme, onOpenDM, onImportBracket }: UserProfileModalProps) {
   const [profile, setProfile] = useState<UserProfileData | null>(null);
   const [loading, setLoading] = useState(false);
@@ -323,7 +328,7 @@ export function UserProfileModal({ isOpen, onClose, targetUserId, supabaseToken,
                                       </div>
                                       {item.rank && (
                                         <div className="text-[9px] font-mono text-amber-400 mt-1 uppercase tracking-wider truncate">
-                                          {item.rank}
+                                          {cleanRankText(item.rank)}
                                         </div>
                                       )}
                                     </div>
@@ -380,7 +385,7 @@ export function UserProfileModal({ isOpen, onClose, targetUserId, supabaseToken,
                                             </div>
                                             {item.rank && (
                                               <div className="text-[8px] font-mono text-amber-400/70 mt-0.5 uppercase tracking-wider truncate">
-                                                {item.rank}
+                                                {cleanRankText(item.rank)}
                                               </div>
                                             )}
                                           </div>

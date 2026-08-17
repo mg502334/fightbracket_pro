@@ -97,11 +97,15 @@ function getRankColor(rankName: string | undefined): string {
   return '#00E5FF';
 }
 
+function cleanRankText(rankName: string | undefined): string {
+  if (!rankName) return 'Unranked';
+  return rankName.replace(/\s+(I|II|III|IV|V|VI|VII|VIII|IX|X)+$/i, '');
+}
+
 function getRankImageUrl(rankName: string | undefined): string | null {
   if (!rankName || rankName.toLowerCase() === 'unranked') return null;
   
-  // Strip trailing Roman numerals (e.g. "God of Destruction I") sometimes added by external APIs
-  const cleanName = rankName.replace(/\s+(I|II|III|IV|V|VI|VII|VIII|IX|X)+$/i, '');
+  const cleanName = cleanRankText(rankName);
   
   const formatted = cleanName
     .split(' ')
@@ -122,7 +126,7 @@ function getPlayerName(profile: TekkenProfile): string {
 }
 
 function getRankName(profile: TekkenProfile): string {
-  return profile.rankName || profile.rank_name || 'Unranked';
+  return cleanRankText(profile.rankName || profile.rank_name);
 }
 
 function getRankPoints(profile: TekkenProfile): number | null {
@@ -402,13 +406,13 @@ export function TekkenStatsPanel({ tekkenId, compact = false, steamId, psnId, xb
               {data?.profile?.characters && data.profile.characters.length > 1 && (
                 <div className="w-full max-w-[200px] mt-1 mb-1">
                   <select
-                    className="w-full bg-[#0A101C]/80 border border-white/10 rounded-lg px-2 py-1.5 text-xs font-bold text-white/90 outline-none focus:border-[#ff003c]/50 transition-colors"
+                    className="bg-black/80 border border-white/20 rounded-md text-xs font-bold font-mono text-white px-3 py-1.5 focus:outline-none focus:border-cyan-400 appearance-none pr-8 cursor-pointer w-full"
                     value={selectedChar || ''}
                     onChange={e => setSelectedChar(e.target.value)}
                   >
-                    {data.profile.characters.map(c => (
+                    {data.profile.characters.map((c: any) => (
                       <option key={c.name} value={c.name}>
-                        {c.name.toUpperCase()} - {c.rankName}
+                        {c.name.toUpperCase()} - {cleanRankText(c.rankName)}
                       </option>
                     ))}
                   </select>
@@ -498,7 +502,7 @@ export function TekkenStatsPanel({ tekkenId, compact = false, steamId, psnId, xb
                   {selectedCharObj ? 'Character Rank' : 'All Time Highest Rank'}
                 </div>
                 <div className="text-lg sm:text-xl font-bold font-rajdhani tracking-widest" style={{ color: rankColor }}>
-                  {rankName || 'Unranked'}
+                  {cleanRankText(rankName)}
                 </div>
               </div>
 
