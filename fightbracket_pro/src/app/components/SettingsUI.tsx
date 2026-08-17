@@ -67,8 +67,8 @@ export function Toggle({ label, description, checked, onChange }: { label: strin
   return (
     <div className="flex items-center justify-between py-3" style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
       <div>
-        <div className="text-sm text-white font-mono">{label}</div>
-        {description && <div className="text-xs mt-0.5 text-gray-400 font-mono">{description}</div>}
+        <div className="text-sm font-rajdhani font-bold tracking-wider uppercase text-white">{label}</div>
+        {description && <div className="text-xs mt-0.5 text-gray-400 font-mono leading-relaxed">{description}</div>}
       </div>
       <button
         onClick={onChange}
@@ -86,8 +86,8 @@ export function VisibilitySelect({ label, description, options, value, onChange 
   return (
     <div className="flex items-center justify-between py-3" style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
       <div>
-        <div className="text-sm text-white font-mono">{label}</div>
-        {description && <div className="text-xs mt-0.5 text-gray-400 font-mono">{description}</div>}
+        <div className="text-sm font-rajdhani font-bold tracking-wider uppercase text-white">{label}</div>
+        {description && <div className="text-xs mt-0.5 text-gray-400 font-mono leading-relaxed">{description}</div>}
       </div>
       <div className="relative flex-shrink-0">
         <select

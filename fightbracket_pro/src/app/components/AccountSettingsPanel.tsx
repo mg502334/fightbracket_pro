@@ -32,6 +32,16 @@ export function AccountSettingsPanel({ user, userProfile, fetchUserProfile, getH
   const [userSteamId, setUserSteamId] = useState(userProfile?.steam_id || '');
   const [userTwitchId, setUserTwitchId] = useState(userProfile?.twitch_id || '');
   const [userTwitchUrl, setUserTwitchUrl] = useState(userProfile?.twitch_url || '');
+  
+  // Toggles State
+  const [toggles, setToggles] = useState({
+    notify_announcements: userProfile?.notify_announcements ?? true,
+    notify_messages: userProfile?.notify_messages ?? true,
+    sound_notifications: userProfile?.sound_notifications ?? true,
+    sound_messages: userProfile?.sound_messages ?? true,
+    is_public: userProfile?.is_public ?? true,
+    friends_only: userProfile?.friends_only ?? false
+  });
 
   // Updating States
   const [updatingProfile, setUpdatingProfile] = useState(false);
@@ -53,6 +63,15 @@ export function AccountSettingsPanel({ user, userProfile, fetchUserProfile, getH
       setUserSteamId(userProfile.steam_id || '');
       setUserTwitchId(userProfile.twitch_id || '');
       setUserTwitchUrl(userProfile.twitch_url || '');
+      
+      setToggles({
+        notify_announcements: userProfile.notify_announcements ?? true,
+        notify_messages: userProfile.notify_messages ?? true,
+        sound_notifications: userProfile.sound_notifications ?? true,
+        sound_messages: userProfile.sound_messages ?? true,
+        is_public: userProfile.is_public ?? true,
+        friends_only: userProfile.friends_only ?? false
+      });
     }
   }, [userProfile, user]);
   
@@ -117,16 +136,20 @@ export function AccountSettingsPanel({ user, userProfile, fetchUserProfile, getH
   };
 
   const handleToggleSetting = async (field: 'is_public' | 'friends_only' | 'notify_announcements' | 'notify_messages' | 'sound_notifications' | 'sound_messages', currentValue: boolean) => {
+    const newValue = !currentValue;
+    setToggles(prev => ({ ...prev, [field]: newValue }));
+    
     try {
       const headers = await getHeaders();
       await fetch('/api/user/profile', {
         method: 'PUT',
         headers,
-        body: JSON.stringify({ [field]: !currentValue })
+        body: JSON.stringify({ [field]: newValue })
       });
       fetchUserProfile();
     } catch {
       toast.error('Failed to update settings');
+      setToggles(prev => ({ ...prev, [field]: currentValue }));
     }
   };
 
@@ -286,8 +309,8 @@ export function AccountSettingsPanel({ user, userProfile, fetchUserProfile, getH
         {activeTab === "privacy" && (
           <div className="animate-in fade-in duration-300">
             <SettingsCard title="Profile Visibility" description="Control who can find and view your player profile.">
-              <Toggle label="Publicly Searchable Profile" description="Allow other users to find you by name or tag." checked={userProfile?.is_public ?? true} onChange={() => handleToggleSetting('is_public', userProfile?.is_public ?? true)} />
-              <Toggle label="Friends-Only Start.gg Stats" description="Limit Start.gg placement records to friends only." checked={userProfile?.friends_only ?? false} onChange={() => handleToggleSetting('friends_only', userProfile?.friends_only ?? false)} />
+              <Toggle label="Publicly Searchable Profile" description="Allow other users to find you by name or tag." checked={toggles.is_public} onChange={() => handleToggleSetting('is_public', toggles.is_public)} />
+              <Toggle label="Friends-Only Start.gg Stats" description="Limit Start.gg placement records to friends only." checked={toggles.friends_only} onChange={() => handleToggleSetting('friends_only', toggles.friends_only)} />
             </SettingsCard>
           </div>
         )}
@@ -344,13 +367,13 @@ export function AccountSettingsPanel({ user, userProfile, fetchUserProfile, getH
         {activeTab === "notifications" && (
           <div className="animate-in fade-in duration-300">
             <SettingsCard title="Email Notifications">
-              <Toggle label="Platform announcements" description="New features and platform updates." checked={userProfile?.notify_announcements ?? true} onChange={() => handleToggleSetting('notify_announcements', userProfile?.notify_announcements ?? true)} />
-              <Toggle label="Direct Messages" description="When you receive a new message from a friend." checked={userProfile?.notify_messages ?? true} onChange={() => handleToggleSetting('notify_messages', userProfile?.notify_messages ?? true)} />
+              <Toggle label="Platform announcements" description="New features and platform updates." checked={toggles.notify_announcements} onChange={() => handleToggleSetting('notify_announcements', toggles.notify_announcements)} />
+              <Toggle label="Direct Messages" description="When you receive a new message from a friend." checked={toggles.notify_messages} onChange={() => handleToggleSetting('notify_messages', toggles.notify_messages)} />
             </SettingsCard>
             <div className="mt-4">
               <SettingsCard title="In-App Sounds">
-                <Toggle label="Sound on Notification" description="Play a subtle ping when you receive a new platform notification." checked={userProfile?.sound_notifications ?? true} onChange={() => handleToggleSetting('sound_notifications', userProfile?.sound_notifications ?? true)} />
-                <Toggle label="Sound on Message" description="Play a subtle ping when you receive a direct message." checked={userProfile?.sound_messages ?? true} onChange={() => handleToggleSetting('sound_messages', userProfile?.sound_messages ?? true)} />
+                <Toggle label="Sound on Notification" description="Play a subtle ping when you receive a new platform notification." checked={toggles.sound_notifications} onChange={() => handleToggleSetting('sound_notifications', toggles.sound_notifications)} />
+                <Toggle label="Sound on Message" description="Play a subtle ping when you receive a direct message." checked={toggles.sound_messages} onChange={() => handleToggleSetting('sound_messages', toggles.sound_messages)} />
               </SettingsCard>
             </div>
           </div>
