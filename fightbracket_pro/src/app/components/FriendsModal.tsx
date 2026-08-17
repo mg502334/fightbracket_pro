@@ -373,18 +373,15 @@ export function FriendsModal({ isOpen, onClose, theme, currentUserId, supabaseTo
 
               <button
                 onClick={() => { setActiveTab('add'); setActiveChatFriend(null); }}
-                className="flex items-center justify-center gap-2 mt-4 px-3 py-2.5 text-sm font-medium transition-all duration-150 w-full group"
+                className="flex items-center justify-between gap-3 px-3 py-2.5 text-sm font-medium transition-all duration-150 text-left w-full group mt-4"
                 style={{
-                  color: activeTab === 'add' && !activeChatFriend ? "#00E5FF" : "#8a8a9a",
-                  background: activeTab === 'add' && !activeChatFriend ? "rgba(0, 229, 255, 0.1)" : "rgba(255,255,255,0.02)",
-                  border: activeTab === 'add' && !activeChatFriend ? "1px solid rgba(0, 229, 255, 0.3)" : "1px solid rgba(255,255,255,0.05)",
-                  borderRadius: "4px",
-                  textTransform: "uppercase",
-                  letterSpacing: "0.05em",
-                  fontFamily: "'Barlow Condensed', sans-serif"
+                  color: activeTab === 'add' && !activeChatFriend ? "#f0ede8" : "#8a8a9a",
+                  background: activeTab === 'add' && !activeChatFriend ? "rgba(0, 229, 255, 0.1)" : "transparent",
+                  borderLeft: activeTab === 'add' && !activeChatFriend ? "2px solid #00E5FF" : "2px solid transparent",
+                  borderRadius: "2px",
                 }}
               >
-                <Search size={14} /> Add Friend
+                <span className="flex items-center gap-3"><Search size={15} /> Add Friend</span>
               </button>
             </div>
 
