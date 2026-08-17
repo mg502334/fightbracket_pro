@@ -150,7 +150,7 @@ export function AccountSettingsPanel({ user, userProfile, fetchUserProfile, getH
           <button
             key={id}
             onClick={() => setActiveTab(id)}
-            className="flex items-center gap-3 px-4 py-3 text-sm font-rajdhani font-bold tracking-wider transition-all duration-150 whitespace-nowrap flex-shrink-0 lg:w-full text-left uppercase"
+            className="flex items-center gap-3 px-3 py-2.5 text-sm font-medium transition-all duration-150 whitespace-nowrap flex-shrink-0 lg:w-full text-left group"
             style={{
               color: activeTab === id ? "#00E5FF" : "#8a8a9a",
               background: activeTab === id ? "rgba(0, 229, 255, 0.1)" : "transparent",
@@ -254,11 +254,15 @@ export function AccountSettingsPanel({ user, userProfile, fetchUserProfile, getH
               </div>
             </SettingsCard>
 
-            <SettingsCard title="Login Email" description="Your account email. Used for login and notifications.">
+            <SettingsCard title="Account Credentials" description="Update your login email or password.">
               <div className="mb-4">
-                <SettingsInput label="New Email Address" value={newEmail} onChange={e => setNewEmail(e.target.value)} type="email" />
+                <SettingsInput label="Email Address" value={newEmail} onChange={e => setNewEmail(e.target.value)} type="email" />
+                <div className="flex justify-end mt-2"><SaveButton label="UPDATE EMAIL" onClick={handleUpdateEmail} disabled={!newEmail} loading={updatingEmail} /></div>
               </div>
-              <div className="flex justify-end"><SaveButton label="UPDATE EMAIL" onClick={handleUpdateEmail} disabled={!newEmail} loading={updatingEmail} /></div>
+              <div className="mb-2 pt-4 border-t border-white/5">
+                <SettingsInput label="New Password" type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="••••••••" helper="Minimum 8 characters." />
+                <div className="flex justify-end mt-2"><SaveButton label="UPDATE PASSWORD" onClick={handleUpdatePassword} disabled={!newPassword} loading={updatingPassword} /></div>
+              </div>
             </SettingsCard>
           </div>
         )}
@@ -338,12 +342,7 @@ export function AccountSettingsPanel({ user, userProfile, fetchUserProfile, getH
 
         {activeTab === "danger" && (
           <div className="animate-in fade-in duration-300">
-            <SettingsCard title="Change Password">
-              <div className="flex flex-col gap-3 mb-4">
-                <SettingsInput label="New Password" type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="••••••••" helper="Minimum 8 characters." />
-              </div>
-              <div className="flex justify-end"><SaveButton label="UPDATE PASSWORD" onClick={handleUpdatePassword} disabled={!newPassword} loading={updatingPassword} /></div>
-            </SettingsCard>
+
 
             <SettingsCard title="Export Account Data" description="Download a full copy of your account data including events, brackets, and fighter records.">
               <button className="flex items-center gap-2 h-10 px-4 text-sm font-rajdhani font-bold tracking-wider transition-all bg-white/5 border border-white/10 text-white rounded-lg hover:bg-white/10">

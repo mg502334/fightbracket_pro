@@ -72,12 +72,10 @@ export function Toggle({ label, description, checked, onChange }: { label: strin
       </div>
       <button
         onClick={onChange}
-        className="relative flex-shrink-0 w-10 h-5 transition-colors duration-200"
-        style={{ background: checked ? "#00E5FF" : "#2a2a34", borderRadius: "10px" }}
+        className={`relative flex-shrink-0 w-9 h-5 rounded-full transition-colors duration-200 ${checked ? 'bg-[#00E5FF]' : 'bg-[#2a2a34]'}`}
       >
         <span
-          className="absolute top-0.5 w-4 h-4 bg-white transition-transform duration-200"
-          style={{ borderRadius: "8px", transform: checked ? "translateX(22px)" : "translateX(2px)" }}
+          className={`absolute top-[2px] left-[2px] w-4 h-4 bg-white rounded-full transition-transform duration-200 ${checked ? 'translate-x-4' : 'translate-x-0'}`}
         />
       </button>
     </div>
