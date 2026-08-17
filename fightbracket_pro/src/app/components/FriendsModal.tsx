@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Users, UserPlus, MessageSquare, X, Check, CheckCheck, Trash2, Send, MailOpen, Search, Loader2, User, MoreHorizontal, Share, Flag } from 'lucide-react';
+import { toast } from 'sonner';
 
 const API_URL = import.meta.env.VITE_API_URL || '';
 

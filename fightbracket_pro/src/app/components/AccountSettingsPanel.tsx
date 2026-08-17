@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { toast } from 'sonner';
 import { User, Shield, Link, Bell, AlertTriangle, Globe } from 'lucide-react';
@@ -39,6 +39,22 @@ export function AccountSettingsPanel({ user, userProfile, fetchUserProfile, getH
   const [updatingEmail, setUpdatingEmail] = useState(false);
   const [updatingPassword, setUpdatingPassword] = useState(false);
   const [savingIntegration, setSavingIntegration] = useState(false);
+
+  useEffect(() => {
+    if (userProfile) {
+      setFirstName(userProfile.first_name || '');
+      setLastName(userProfile.last_name || '');
+      setDisplayName(userProfile.gamer_tag || user?.user_metadata?.displayName || '');
+      setBio(userProfile.bio || '');
+      setProfileColor(userProfile.profile_color || '');
+      setUserStartggInput(userProfile.startgg_slug || '');
+      setStartggToken(userProfile.startgg_token === 'SECURE_HIDDEN' ? '' : (userProfile.startgg_token || ''));
+      setUserTekkenId(userProfile.tekken_id || '');
+      setUserSteamId(userProfile.steam_id || '');
+      setUserTwitchId(userProfile.twitch_id || '');
+      setUserTwitchUrl(userProfile.twitch_url || '');
+    }
+  }, [userProfile, user]);
   
   const handleUpdateProfile = async () => {
     setUpdatingProfile(true);

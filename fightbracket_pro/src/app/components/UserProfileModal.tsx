@@ -10,6 +10,7 @@ interface UserProfileData {
   unique_id: string;
   gamer_tag: string;
   avatar_url?: string;
+  profile_color?: string;
   bio?: string;
   startgg_slug?: string;
   tekken_id?: string;
