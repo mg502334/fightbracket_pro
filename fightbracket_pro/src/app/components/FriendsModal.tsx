@@ -323,11 +323,15 @@ export function FriendsModal({ isOpen, onClose, theme, currentUserId, supabaseTo
             <div className="w-48 border-r bg-black/40 p-3 space-y-2 shrink-0" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
               <button
                 onClick={() => { setActiveTab('inbox'); setActiveChatFriend(null); }}
-                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
-                  activeTab === 'inbox' && !activeChatFriend ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' : 'text-white/70 hover:bg-white/5'
-                }`}
+                className="flex items-center justify-between gap-3 px-3 py-2.5 text-sm font-medium transition-all duration-150 text-left w-full group"
+                style={{
+                  color: activeTab === 'inbox' && !activeChatFriend ? "#f0ede8" : "#8a8a9a",
+                  background: activeTab === 'inbox' && !activeChatFriend ? "rgba(0, 229, 255, 0.1)" : "transparent",
+                  borderLeft: activeTab === 'inbox' && !activeChatFriend ? "2px solid #00E5FF" : "2px solid transparent",
+                  borderRadius: "2px",
+                }}
               >
-                <span className="flex items-center gap-3"><MessageSquare size={16} /> Inbox</span>
+                <span className="flex items-center gap-3"><MessageSquare size={15} /> Inbox</span>
                 {inboxConversations.some(c => c.unread_count > 0) && (
                   <span className="text-[10px] px-1.5 py-0.5 rounded bg-cyan-500 text-black font-bold animate-pulse">
                     {inboxConversations.filter(c => c.unread_count > 0).length}
@@ -337,21 +341,29 @@ export function FriendsModal({ isOpen, onClose, theme, currentUserId, supabaseTo
 
               <button
                 onClick={() => { setActiveTab('friends'); setActiveChatFriend(null); }}
-                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
-                  activeTab === 'friends' && !activeChatFriend ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' : 'text-white/70 hover:bg-white/5'
-                }`}
+                className="flex items-center justify-between gap-3 px-3 py-2.5 text-sm font-medium transition-all duration-150 text-left w-full group"
+                style={{
+                  color: activeTab === 'friends' && !activeChatFriend ? "#f0ede8" : "#8a8a9a",
+                  background: activeTab === 'friends' && !activeChatFriend ? "rgba(0, 229, 255, 0.1)" : "transparent",
+                  borderLeft: activeTab === 'friends' && !activeChatFriend ? "2px solid #00E5FF" : "2px solid transparent",
+                  borderRadius: "2px",
+                }}
               >
-                <span className="flex items-center gap-3"><Users size={16} /> Friends</span>
+                <span className="flex items-center gap-3"><Users size={15} /> Friends</span>
                 <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/10 font-bold">{friends.length}</span>
               </button>
 
               <button
                 onClick={() => { setActiveTab('pending'); setActiveChatFriend(null); }}
-                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
-                  activeTab === 'pending' && !activeChatFriend ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' : 'text-white/70 hover:bg-white/5'
-                }`}
+                className="flex items-center justify-between gap-3 px-3 py-2.5 text-sm font-medium transition-all duration-150 text-left w-full group"
+                style={{
+                  color: activeTab === 'pending' && !activeChatFriend ? "#f0ede8" : "#8a8a9a",
+                  background: activeTab === 'pending' && !activeChatFriend ? "rgba(0, 229, 255, 0.1)" : "transparent",
+                  borderLeft: activeTab === 'pending' && !activeChatFriend ? "2px solid #00E5FF" : "2px solid transparent",
+                  borderRadius: "2px",
+                }}
               >
-                <span className="flex items-center gap-3"><UserPlus size={16} /> Requests</span>
+                <span className="flex items-center gap-3"><UserPlus size={15} /> Requests</span>
                 {pendingIncoming.length > 0 && (
                   <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500 text-black font-bold animate-pulse">
                     {pendingIncoming.length}
@@ -361,13 +373,18 @@ export function FriendsModal({ isOpen, onClose, theme, currentUserId, supabaseTo
 
               <button
                 onClick={() => { setActiveTab('add'); setActiveChatFriend(null); }}
-                className={`w-full flex items-center justify-center gap-2 mt-4 px-3 py-2.5 rounded-lg text-sm font-medium transition-all border ${
-                  activeTab === 'add' && !activeChatFriend
-                    ? 'bg-cyan-500 text-black border-cyan-400 shadow-[0_0_10px_rgba(6,182,212,0.5)]'
-                    : 'bg-white/5 text-cyan-400 border-cyan-400/30 hover:bg-cyan-500/10'
-                }`}
+                className="flex items-center justify-center gap-2 mt-4 px-3 py-2.5 text-sm font-medium transition-all duration-150 w-full group"
+                style={{
+                  color: activeTab === 'add' && !activeChatFriend ? "#00E5FF" : "#8a8a9a",
+                  background: activeTab === 'add' && !activeChatFriend ? "rgba(0, 229, 255, 0.1)" : "rgba(255,255,255,0.02)",
+                  border: activeTab === 'add' && !activeChatFriend ? "1px solid rgba(0, 229, 255, 0.3)" : "1px solid rgba(255,255,255,0.05)",
+                  borderRadius: "4px",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.05em",
+                  fontFamily: "'Barlow Condensed', sans-serif"
+                }}
               >
-                <UserPlus size={16} /> Add Friend
+                <Search size={14} /> Add Friend
               </button>
             </div>
 
