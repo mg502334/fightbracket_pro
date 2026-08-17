@@ -197,7 +197,7 @@ function MatchRow({ match, index, playerName }: { match: TekkenMatch; index: num
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.04, duration: 0.2 }}
-      className="grid grid-cols-[140px_minmax(180px,2fr)_minmax(180px,2fr)_80px_80px_minmax(120px,1.5fr)] gap-4 items-center px-4 py-3 bg-[#111620] border-b border-white/5 hover:bg-[#161c28] transition-colors min-w-[800px]"
+      className="grid grid-cols-[140px_minmax(180px,2fr)_minmax(180px,2fr)_80px_80px_minmax(120px,1.5fr)] gap-4 items-center px-4 py-3 bg-[#111620] border-b border-white/5 hover:bg-[#161c28] transition-colors min-w-[900px]"
     >
       {/* Date */}
       <div className="flex flex-col">
@@ -555,7 +555,7 @@ export function TekkenStatsPanel({ tekkenId, compact = false, steamId, psnId, xb
           {matches.length > 0 && (
             <div className="mt-4 border border-white/5 rounded-lg overflow-hidden bg-[#0A0D14]">
               <div className="overflow-x-auto">
-                <div className="grid grid-cols-[140px_minmax(180px,2fr)_minmax(180px,2fr)_80px_80px_minmax(120px,1.5fr)] gap-4 px-4 py-3 text-[12px] font-semibold text-gray-400 border-b border-white/5 min-w-[800px] bg-[#0A0D14]">
+                <div className="grid grid-cols-[140px_minmax(180px,2fr)_minmax(180px,2fr)_80px_80px_minmax(120px,1.5fr)] gap-4 px-4 py-3 text-[12px] font-semibold text-gray-400 border-b border-white/5 min-w-[900px] bg-[#0A0D14]">
                   <div>Date</div>
                   <div>Player</div>
                   <div>Opponent</div>
