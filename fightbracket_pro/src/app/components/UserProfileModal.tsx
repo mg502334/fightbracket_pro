@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Shield, Lock, Globe, UserPlus, MessageSquare, Check, X, Trophy, ExternalLink, Sparkles, AlertTriangle, Swords, ChevronDown, ChevronUp } from 'lucide-react';
+import { Shield, Lock, Globe, UserPlus, MessageSquare, Check, X, Trophy, ExternalLink, Sparkles, AlertTriangle, Swords, ChevronDown, ChevronUp, Eye, EyeOff } from 'lucide-react';
 import { TekkenStatsPanel } from './TekkenStatsPanel';
 import { SteamStatsPanel } from './SteamStatsPanel';
 import { GAME_COVERS } from '../data/gameCovers';
@@ -60,6 +60,7 @@ export function UserProfileModal({ isOpen, onClose, targetUserId, supabaseToken,
   const [reportDescription, setReportDescription] = useState('');
   const [isReporting, setIsReporting] = useState(false);
   const [reportSuccess, setReportSuccess] = useState(false);
+  const [showFbId, setShowFbId] = useState(false);
 
   useEffect(() => {
     if (isOpen && targetUserId && supabaseToken) {
@@ -199,8 +200,20 @@ export function UserProfileModal({ isOpen, onClose, targetUserId, supabaseToken,
                     </span>
                   )}
                 </div>
-                <div className="text-xs font-mono text-cyan-400 mt-0.5">
-                  {profile?.unique_id || 'FB-USER'}
+                <div className="text-xs font-mono text-cyan-400 mt-1 flex items-center gap-1.5 h-4">
+                  {showFbId ? (
+                    <>
+                      <span>{profile?.unique_id || 'FB-USER'}</span>
+                      <button onClick={() => setShowFbId(false)} className="opacity-60 hover:opacity-100 transition-opacity" title="Hide FB-ID">
+                        <EyeOff size={12} />
+                      </button>
+                    </>
+                  ) : (
+                    <button onClick={() => setShowFbId(true)} className="flex items-center gap-1.5 opacity-60 hover:opacity-100 transition-opacity" title="Show FB-ID">
+                      <Eye size={12} />
+                      <span className="text-[10px] uppercase tracking-wider text-cyan-400/80">Show FB-ID</span>
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
