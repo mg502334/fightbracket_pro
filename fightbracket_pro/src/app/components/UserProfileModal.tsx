@@ -4,6 +4,7 @@ import { Shield, Lock, Globe, UserPlus, MessageSquare, Check, X, Trophy, Externa
 import { TekkenStatsPanel } from './TekkenStatsPanel';
 import { SteamStatsPanel } from './SteamStatsPanel';
 import { GAME_COVERS } from '../data/gameCovers';
+import { PostCard, Post } from './FeedPanel';
 
 interface UserProfileData {
   id: string;
@@ -61,6 +62,10 @@ export function UserProfileModal({ isOpen, onClose, targetUserId, supabaseToken,
   const [isReporting, setIsReporting] = useState(false);
   const [reportSuccess, setReportSuccess] = useState(false);
   const [showFbId, setShowFbId] = useState(false);
+  
+  const [activeTab, setActiveTab] = useState<'Stats' | 'Feed'>('Stats');
+  const [userPosts, setUserPosts] = useState<Post[]>([]);
+  const [fetchingPosts, setFetchingPosts] = useState(false);
 
   useEffect(() => {
     if (isOpen && targetUserId && supabaseToken) {
@@ -78,6 +83,23 @@ export function UserProfileModal({ isOpen, onClose, targetUserId, supabaseToken,
         .finally(() => setLoading(false));
     }
   }, [isOpen, targetUserId, supabaseToken]);
+
+  const fetchUserPosts = async (authorId: string) => {
+    setFetchingPosts(true);
+    try {
+      const res = await fetch(`/api/feed?author_id=${authorId}&public_only=true`, {
+        headers: { Authorization: `Bearer ${supabaseToken}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setUserPosts(data);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setFetchingPosts(false);
+    }
+  };
 
   const handleAddFriend = async () => {
     if (!profile || !supabaseToken) return;
@@ -246,248 +268,272 @@ export function UserProfileModal({ isOpen, onClose, targetUserId, supabaseToken,
                 )}
               </div>
             ) : (
-              /* Full Profile View */
-              <div className="space-y-6">
-                {/* Main Games & Characters */}
-                {(() => {
-                  if (!profile?.games_data) return null;
-                  try {
-                    const parsed = JSON.parse(profile.games_data);
-                    if (!Array.isArray(parsed) || parsed.length === 0) return null;
-                    return (
-                      <div className="space-y-4">
-                        {/* Top 3 Games Preview */}
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                          {parsed.slice(0, 3).map((item: any) => {
-                            const coverUrl = GAME_COVERS[item.game];
-                            return (
-                              <div 
-                                key={item.game} 
-                                title={`${item.game}${item.main ? ` - ${item.main}` : ''}`}
-                                className="relative aspect-[2/3] rounded-xl overflow-hidden border border-white/10 group shadow-lg flex flex-col justify-end bg-[#050A14]"
-                              >
-                                {/* Background Cover */}
-                                {coverUrl ? (
-                                  <img src={coverUrl} alt={item.game} className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
-                                ) : (
-                                  <div className="absolute inset-0 w-full h-full bg-gradient-to-br from-indigo-900 to-[#050A14] flex flex-col items-center justify-center p-4 text-center">
-                                    <Swords size={24} className="text-white/20 mb-2" />
-                                    <span className="font-bold font-rajdhani text-lg text-white/40 leading-tight">{item.game}</span>
+              <>
+                {/* Tabs */}
+                <div className="flex items-center gap-4 border-b border-white/10 pb-2 mb-4">
+                  <button
+                    onClick={() => setActiveTab('Stats')}
+                    className={`text-sm font-rajdhani font-bold tracking-wider uppercase transition-colors px-2 py-1 ${activeTab === 'Stats' ? 'text-cyan-400 border-b-2 border-cyan-400' : 'text-white/40 hover:text-white/80'}`}
+                  >
+                    Stats
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('Feed')}
+                    className={`text-sm font-rajdhani font-bold tracking-wider uppercase transition-colors px-2 py-1 ${activeTab === 'Feed' ? 'text-cyan-400 border-b-2 border-cyan-400' : 'text-white/40 hover:text-white/80'}`}
+                  >
+                    Activity Feed
+                  </button>
+                </div>
+
+                {activeTab === 'Stats' && (
+                  <div className="space-y-6">
+                    {/* Top 3 Games Preview */}
+                    {(() => {
+                      if (!profile?.games_data) return null;
+                      try {
+                        const parsed = JSON.parse(profile.games_data);
+                        if (!Array.isArray(parsed) || parsed.length === 0) return null;
+                        return (
+                          <div className="space-y-4">
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                              {parsed.slice(0, 3).map((item: any) => {
+                                const coverUrl = GAME_COVERS[item.game];
+                                return (
+                                  <div 
+                                    key={item.game} 
+                                    title={`${item.game}${item.main ? ` - ${item.main}` : ''}`}
+                                    className="relative aspect-[2/3] rounded-xl overflow-hidden border border-white/10 group shadow-lg flex flex-col justify-end bg-[#050A14]"
+                                  >
+                                    <div className="absolute inset-0 z-0">
+                                      {coverUrl ? (
+                                        <img src={coverUrl} alt={item.game} className="w-full h-full object-cover opacity-30 group-hover:opacity-40 transition-opacity duration-300" />
+                                      ) : (
+                                        <div className="w-full h-full bg-gradient-to-br from-white/5 to-transparent flex items-center justify-center">
+                                          <Trophy size={24} className="opacity-20" />
+                                        </div>
+                                      )}
+                                      <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent" />
+                                    </div>
+                                    <div className="relative z-10 p-3 w-full">
+                                      <div className="text-[10px] font-mono text-cyan-400 truncate mb-0.5" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.8)' }}>
+                                        {item.game}
+                                      </div>
+                                      <div className="font-rajdhani font-bold text-sm text-white truncate drop-shadow-md">
+                                        {item.main || 'No Main Set'}
+                                      </div>
+                                      {item.rank && (
+                                        <div className="text-[9px] font-mono text-amber-400 mt-1 uppercase tracking-wider truncate">
+                                          {item.rank}
+                                        </div>
+                                      )}
+                                    </div>
                                   </div>
+                                );
+                              })}
+                            </div>
+                            {parsed.length > 3 && (
+                              <button
+                                onClick={() => setGamesListExpanded(!gamesListExpanded)}
+                                className="w-full py-2 text-xs font-mono text-white/50 hover:text-cyan-400 flex items-center justify-center gap-1 transition-colors bg-white/5 hover:bg-white/10 rounded-lg"
+                              >
+                                {gamesListExpanded ? (
+                                  <><ChevronUp size={14} /> SHOW LESS</>
+                                ) : (
+                                  <><ChevronDown size={14} /> VIEW ALL {parsed.length} GAMES</>
                                 )}
+                              </button>
+                            )}
+                            
+                            <AnimatePresence>
+                              {gamesListExpanded && parsed.length > 3 && (
+                                <motion.div
+                                  initial={{ height: 0, opacity: 0 }}
+                                  animate={{ height: 'auto', opacity: 1 }}
+                                  exit={{ height: 0, opacity: 0 }}
+                                  className="overflow-hidden"
+                                >
+                                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 pt-2">
+                                    {parsed.slice(3).map((item: any) => {
+                                      const coverUrl = GAME_COVERS[item.game];
+                                      return (
+                                        <div 
+                                          key={item.game} 
+                                          title={`${item.game}${item.main ? ` - ${item.main}` : ''}`}
+                                          className="relative aspect-[2/3] rounded-xl overflow-hidden border border-white/10 group shadow-lg flex flex-col justify-end bg-[#050A14]"
+                                        >
+                                          <div className="absolute inset-0 z-0">
+                                            {coverUrl ? (
+                                              <img src={coverUrl} alt={item.game} className="w-full h-full object-cover opacity-20 group-hover:opacity-30 transition-opacity duration-300" />
+                                            ) : (
+                                              <div className="w-full h-full bg-gradient-to-br from-white/5 to-transparent flex items-center justify-center">
+                                                <Trophy size={20} className="opacity-10" />
+                                              </div>
+                                            )}
+                                            <div className="absolute inset-0 bg-gradient-to-t from-black via-black/80 to-transparent" />
+                                          </div>
+                                          <div className="relative z-10 p-2 w-full">
+                                            <div className="text-[9px] font-mono text-cyan-400/80 truncate mb-0.5">
+                                              {item.game}
+                                            </div>
+                                            <div className="font-rajdhani font-bold text-xs text-white/80 truncate">
+                                              {item.main || 'No Main Set'}
+                                            </div>
+                                            {item.rank && (
+                                              <div className="text-[8px] font-mono text-amber-400/70 mt-0.5 uppercase tracking-wider truncate">
+                                                {item.rank}
+                                              </div>
+                                            )}
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
+                          </div>
+                        );
+                      } catch {
+                        return null;
+                      }
+                    })()}
+
+                    {/* start.gg Tournament Record */}
+                    {profile?.startgg_data?.events && profile.startgg_data.events.length > 0 && (
+                      <div className="bg-[#111116] border border-white/5 rounded-xl p-4">
+                        <div className="flex items-center gap-2 mb-4">
+                          <Trophy size={16} className="text-amber-500" />
+                          <h3 className="font-rajdhani font-bold text-sm tracking-wider uppercase">start.gg Record</h3>
+                          {profile.startgg_data.slug && (
+                            <a
+                              href={`https://start.gg/user/${profile.startgg_data.slug}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="ml-auto opacity-50 hover:opacity-100 transition-opacity"
+                              title="View start.gg profile"
+                            >
+                              <ExternalLink size={14} />
+                            </a>
+                          )}
+                        </div>
+                        <div className="space-y-2 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
+                          {profile.startgg_data.events.map((ev, i) => {
+                            const isFirst = String(ev.placement) === '1';
+                            const isPodium = !isFirst && ['2', '3'].includes(String(ev.placement));
+                            const medalBg = isFirst ? 'rgba(245,158,11,0.1)' : isPodium ? 'rgba(255,255,255,0.05)' : 'transparent';
+                            
+                            // Derive the importable tournament slug
+                            let tSlug = ev.tournament_slug || '';
+                            if (!tSlug && ev.tournament_name) {
+                              tSlug = ev.tournament_name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+                            }
+                            
+                            return (
+                              <div
+                                key={i}
+                                className="flex items-center justify-between px-3 py-2.5 rounded-lg border border-white/5 hover:border-white/10 transition-colors gap-3"
+                                style={{ background: medalBg }}
+                              >
+                                <div className="min-w-0 flex-1">
+                                  <div className="font-bold text-xs text-white truncate flex items-center gap-1.5">
+                                    {isFirst && <Trophy size={12} className="text-amber-400 shrink-0" />}
+                                    <span className="truncate">{ev.tournament_name}</span>
+                                  </div>
+                                  <div className="text-[10px] text-white/40 truncate font-mono mt-0.5">{ev.event_name}</div>
+                                </div>
+                                <div className="flex items-center gap-3 shrink-0">
+                                  <div className={`font-rajdhani font-bold text-lg ${isFirst ? 'text-amber-400' : isPodium ? 'text-slate-300' : 'text-white/60'}`}>
+                                    {ev.placement}<span className="text-[10px] opacity-50 font-mono ml-0.5">th</span>
+                                  </div>
+                                  {onImportBracket && tSlug && (
+                                    <button
+                                      onClick={() => {
+                                        if (onImportBracket && tSlug && !importedSlugs.has(tSlug)) {
+                                          setImportingSlug(tSlug);
+                                          onImportBracket(tSlug).then(() => {
+                                            setImportedSlugs(prev => new Set([...prev, tSlug]));
+                                          }).finally(() => setImportingSlug(null));
+                                        }
+                                      }}
+                                      disabled={importingSlug === tSlug || importedSlugs.has(tSlug)}
+                                      className={`p-1.5 rounded-md border transition-colors ${
+                                        importedSlugs.has(tSlug) 
+                                          ? 'border-emerald-500/30 text-emerald-400 bg-emerald-500/10'
+                                          : 'border-white/10 hover:border-cyan-500/30 hover:bg-cyan-500/10 hover:text-cyan-400 text-white/40'
+                                      }`}
+                                      title={importedSlugs.has(tSlug) ? "Added to Library" : "Add to Library"}
+                                    >
+                                      {importingSlug === tSlug ? (
+                                        <RefreshCw size={12} className="animate-spin" />
+                                      ) : importedSlugs.has(tSlug) ? (
+                                        <Check size={12} />
+                                      ) : (
+                                        <Swords size={12} />
+                                      )}
+                                    </button>
+                                  )}
+                                </div>
                               </div>
                             );
                           })}
                         </div>
+                      </div>
+                    )}
 
-                        {/* Text List of All Games with Expansion */}
-                        <div className="bg-black/40 border border-[#FF006E]/30 rounded-lg p-3">
-                          <div className="text-[10px] font-mono text-[#FF006E] mb-2 flex justify-between items-center font-bold tracking-wider">
-                            <span>MAIN GAMES & CHARACTERS ({parsed.length})</span>
-                            {parsed.length > 3 && (
-                              <button 
-                                onClick={() => setGamesListExpanded(!gamesListExpanded)}
-                                className="text-white hover:text-gray-300 flex items-center gap-1"
-                              >
-                                {gamesListExpanded ? (
-                                  <>COLLAPSE <ChevronUp size={12} /></>
-                                ) : (
-                                  <>VIEW ALL <ChevronDown size={12} /></>
-                                )}
-                              </button>
-                            )}
-                          </div>
-                          <div className="space-y-1.5">
-                            {(gamesListExpanded ? parsed : parsed.slice(0, 3)).map((item: any, idx: number) => (
-                              <div key={idx} className="flex justify-between items-center text-xs font-mono border-b border-white/5 pb-1.5 last:border-0 last:pb-0">
-                                <span className="text-white font-bold">{item.game}</span>
-                                {item.main && <span className="text-white text-[10px] bg-white/10 px-2 py-0.5 rounded">{item.main}</span>}
-                              </div>
-                            ))}
+                    {(profile?.twitch_url || profile?.twitch_id) && (
+                      <a
+                        href={profile?.twitch_url ? (profile.twitch_url.startsWith('http') ? profile.twitch_url : `https://${profile.twitch_url}`) : `https://twitch.tv/${profile.twitch_id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-3 p-3 rounded-lg bg-[#9146FF]/10 border border-[#9146FF]/30 hover:bg-[#9146FF]/20 transition-all group"
+                      >
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="#9146FF" xmlns="http://www.w3.org/2000/svg">
+                          <path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714Z"/>
+                        </svg>
+                        <div className="flex-1">
+                          <div className="text-xs font-mono font-bold text-[#9146FF]">TWITCH CHANNEL</div>
+                          <div className="text-sm font-rajdhani font-bold text-white group-hover:text-[#9146FF] transition-colors">
+                            {profile?.twitch_id || 'Watch Live'}
                           </div>
                         </div>
-                      </div>
-                    );
-                  } catch {
-                    return null;
-                  }
-                })()}
-
-                {/* Bio */}
-                {profile?.bio && (
-                  <div className="p-4 rounded-xl bg-white/5 border border-white/5 text-xs font-mono opacity-80">
-                    "{profile.bio}"
-                  </div>
-                )}
-
-                {/* ── Start.gg Career Stats Panel ── */}
-                <div className="rounded-xl border bg-[#050A14] space-y-4 p-4 overflow-hidden relative" style={{ borderColor: 'rgba(0,229,255,0.25)' }}>
-                  {/* Glow */}
-                  <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(ellipse at top left, rgba(0,229,255,0.07) 0%, transparent 65%)' }} />
-
-                  {/* Header */}
-                  <div className="relative flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Trophy size={15} style={{ color: '#00E5FF' }} />
-                      <h3 className="text-base font-bold font-rajdhani tracking-widest text-[#00E5FF]">
-                        START.GG CAREER
-                      </h3>
-                    </div>
-                    {profile?.startgg_slug && (
-                      <a
-                        href={`https://start.gg/user/${profile.startgg_slug}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-[10px] font-mono text-white/40 hover:text-cyan-400 flex items-center gap-1 transition-colors"
-                      >
-                        View Profile <ExternalLink size={9} />
                       </a>
                     )}
+
+                    <TekkenStatsPanel 
+                      tekkenId={profile?.tekken_id} 
+                      steamId={profile?.steam_id}
+                      gamerTag={profile?.gamer_tag}
+                      compact 
+                    />
+                    <SteamStatsPanel steamId={profile?.steam_id} compact />
                   </div>
-
-                  {profile?.startgg_data?.events && profile.startgg_data.events.length > 0 ? (
-                    <>
-                      {/* Summary pill */}
-                      <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-mono px-2.5 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-400">
-                          {profile.startgg_data.events.length} event{profile.startgg_data.events.length !== 1 ? 's' : ''} recorded
-                        </span>
-                        {profile.startgg_data.gamerTag && (
-                          <span className="text-[10px] font-mono text-gray-500">{profile.startgg_data.gamerTag}</span>
-                        )}
-                      </div>
-
-                      {/* Event rows */}
-                      <div className="space-y-1.5">
-                        {profile.startgg_data.events.slice(0, 3).map((ev, i) => {
-                          const place = Number(ev.placement);
-                          const medalColor =
-                            place === 1 ? '#FFD700' :
-                            place === 2 ? '#C0C0C0' :
-                            place === 3 ? '#CD7F32' :
-                            place <= 8  ? '#00E5FF' : '#6B7280';
-                          const medalBg =
-                            place === 1 ? 'rgba(255,215,0,0.1)' :
-                            place === 2 ? 'rgba(192,192,192,0.08)' :
-                            place === 3 ? 'rgba(205,127,50,0.1)' :
-                            place <= 8  ? 'rgba(0,229,255,0.08)' : 'rgba(255,255,255,0.04)';
-
-                          // Derive the importable tournament slug
-                          let tSlug = ev.tournament_slug || '';
-                          if (!tSlug && ev.tournament_name) {
-                            tSlug = ev.tournament_name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-                          }
-                          const isImporting = importingSlug === tSlug;
-                          const isImported = importedSlugs.has(tSlug);
-
-                          const handleImport = async () => {
-                            if (!tSlug || !onImportBracket || isImporting || isImported) return;
-                            setImportingSlug(tSlug);
-                            try {
-                              await onImportBracket(tSlug);
-                              setImportedSlugs(prev => new Set([...prev, tSlug]));
-                            } catch (e) {
-                              console.error('Import failed', e);
-                            } finally {
-                              setImportingSlug(null);
-                            }
-                          };
-
-                          return (
-                            <div
-                              key={i}
-                              className="flex items-center justify-between px-3 py-2.5 rounded-lg border border-white/5 hover:border-white/10 transition-colors gap-3"
-                              style={{ background: medalBg }}
-                            >
-                              <div className="min-w-0 flex-1 pr-2">
-                                <div className="font-bold text-xs font-rajdhani text-white truncate">{ev.event_name}</div>
-                                <div className="text-[10px] font-mono text-gray-500 truncate">{ev.tournament_name}</div>
-                              </div>
-                              {/* Import bracket button */}
-                              {onImportBracket && tSlug && (
-                                <button
-                                  onClick={handleImport}
-                                  disabled={isImporting || isImported}
-                                  className="shrink-0 flex items-center gap-1 text-[10px] font-bold font-mono px-2.5 py-1 rounded transition-all"
-                                  style={{
-                                    background: isImported ? 'rgba(0,255,136,0.12)' : 'rgba(0,229,255,0.1)',
-                                    color: isImported ? '#00FF88' : '#00E5FF',
-                                    border: `1px solid ${isImported ? 'rgba(0,255,136,0.3)' : 'rgba(0,229,255,0.25)'}`,
-                                    opacity: isImporting ? 0.7 : 1,
-                                    cursor: (isImporting || isImported) ? 'default' : 'pointer',
-                                  }}
-                                  title={isImported ? 'Already imported' : `Import ${ev.tournament_name} bracket`}
-                                >
-                                  {isImporting ? (
-                                    <svg className="animate-spin" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" strokeOpacity="0.25"/><path d="M12 2a10 10 0 0 1 10 10" /></svg>
-                                  ) : isImported ? (
-                                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12" /></svg>
-                                  ) : (
-                                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                                  )}
-                                  {isImporting ? 'IMPORTING…' : isImported ? 'IMPORTED' : 'IMPORT'}
-                                </button>
-                              )}
-                              <div
-                                className="text-xs font-mono font-bold px-2.5 py-1 rounded shrink-0"
-                                style={{ color: medalColor, background: `${medalColor}15`, border: `1px solid ${medalColor}30` }}
-                              >
-                                {place === 1 ? '🥇' : place === 2 ? '🥈' : place === 3 ? '🥉' : `#${ev.placement}`}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </>
-                  ) : (
-                    <div className="py-6 text-center">
-                      <div className="text-xs font-mono text-gray-500 mb-1">No Start.gg event history on this profile.</div>
-                      {profile?.startgg_slug && (
-                        <a
-                          href={`https://start.gg/user/${profile.startgg_slug}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-[10px] font-mono text-cyan-700 hover:text-cyan-400 transition-colors"
-                        >
-                          View on Start.gg ↗
-                        </a>
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                {/* ── Twitch Integration ── */}
-                {(profile?.twitch_url || profile?.twitch_id) && (
-                  <a
-                    href={profile?.twitch_url ? (profile.twitch_url.startsWith('http') ? profile.twitch_url : `https://${profile.twitch_url}`) : `https://twitch.tv/${profile.twitch_id}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-3 p-3 rounded-lg bg-[#9146FF]/10 border border-[#9146FF]/30 hover:bg-[#9146FF]/20 transition-all group"
-                  >
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="#9146FF" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714Z"/>
-                    </svg>
-                    <div className="flex-1">
-                      <div className="text-xs font-mono font-bold text-[#9146FF]">TWITCH CHANNEL</div>
-                      <div className="text-sm font-rajdhani font-bold text-white group-hover:text-[#9146FF] transition-colors">
-                        {profile?.twitch_id || 'Watch Live'}
-                      </div>
-                    </div>
-                  </a>
                 )}
 
-                {/* ── Tekken 8 Live Stats Panel ── */}
-                <TekkenStatsPanel 
-                  tekkenId={profile?.tekken_id} 
-                  steamId={profile?.steam_id}
-                  gamerTag={profile?.gamer_tag}
-                  compact 
-                />
-                {/* ── Steam Live Gamer Card ── */}
-                <SteamStatsPanel steamId={profile?.steam_id} compact />
+                {activeTab === 'Feed' && (
+                  <div className="space-y-4">
+                    {fetchingPosts ? (
+                      <div className="text-center py-8 opacity-50 font-mono text-sm">Loading activity...</div>
+                    ) : userPosts.length === 0 ? (
+                      <div className="text-center py-8 opacity-50 font-mono text-sm">
+                        No public activity found.
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {userPosts.map((post) => (
+                          <PostCard
+                            key={post.id}
+                            post={post}
+                            onLike={() => {}}
+                            onBookmark={() => {}}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* Friend / DM Actions */}
-                <div className="pt-2 flex gap-3">
+                <div className="pt-2 flex gap-3 mt-4">
                   {profile?.is_friend ? (
                     <button
                       onClick={() => {

@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-interface Post {
+export interface Post {
   id: string;
   author: { name: string; handle: string; initials: string; color: string; badge?: string };
   time: string;
@@ -69,7 +69,7 @@ function ActionBtn({ icon: Icon, label, onClick, active, activeColor, filled }: 
   );
 }
 
-const typeConfig = {
+export const typeConfig: Record<string, { icon: React.ElementType; color: string; label: string }> = {
   result:     { icon: Trophy,      color: "#f59e0b", label: "Result"     },
   bracket:    { icon: GitBranch,   color: "#06b6d4", label: "Bracket"    },
   hype:       { icon: Flame,       color: "#f97316", label: "Hype"       },
@@ -77,7 +77,7 @@ const typeConfig = {
   event:      { icon: Calendar,    color: "#22c55e", label: "Event"      },
 };
 
-function PostCard({ post, onLike, onBookmark }: { post: Post; onLike: (id: string) => void; onBookmark: (id: string) => void }) {
+export function PostCard({ post, onLike, onBookmark }: { post: Post; onLike: (id: string) => void; onBookmark: (id: string) => void }) {
   const [showComments, setShowComments] = useState(false);
   const [commentText, setCommentText] = useState("");
   const tc = typeConfig[post.type] || typeConfig.discussion;

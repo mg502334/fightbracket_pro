@@ -7,7 +7,7 @@ import { TekkenStatsPanel } from './TekkenStatsPanel';
 import { GAME_COVERS } from '../data/gameCovers';
 import { SteamStatsPanel } from './SteamStatsPanel';
 import { AccountSettingsPanel } from './AccountSettingsPanel';
-import { FeedPanel } from './FeedPanel';
+import { FeedPanel, PostCard, Post } from './FeedPanel';
 import { EventsPanel } from './EventsPanel';
 
 const API_URL = import.meta.env.VITE_API_URL || '';
@@ -114,6 +114,9 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
   // Local Tournament History state
   const [localHistory, setLocalHistory] = useState<any[]>([]);
   const [fetchingLocalHistory, setFetchingLocalHistory] = useState(false);
+  
+  const [myFeedPosts, setMyFeedPosts] = useState<Post[]>([]);
+  const [fetchingMyFeed, setFetchingMyFeed] = useState(false);
 
   // Account Settings state
   const [newEmail, setNewEmail] = useState('');
@@ -199,6 +202,9 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
         if (profile?.unique_id) {
           fetchLocalHistory(profile.unique_id);
         }
+        if (profile?.id) {
+          fetchMyFeed(profile.id);
+        }
         if (profile?.startgg_slug) setUserStartggInput(profile.startgg_slug);
         if (profile?.startgg_token && profile.startgg_token !== 'SECURE_HIDDEN') {
           setStartggToken(profile.startgg_token);
@@ -250,6 +256,22 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
       console.error("Failed to fetch local history:", err);
     } finally {
       setFetchingLocalHistory(false);
+    }
+  };
+
+  const fetchMyFeed = async (authorId: string) => {
+    setFetchingMyFeed(true);
+    try {
+      const headers = await getHeaders();
+      const res = await fetch(`/api/feed?author_id=${authorId}`, { headers });
+      if (res.ok) {
+        const data = await res.json();
+        setMyFeedPosts(data);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setFetchingMyFeed(false);
     }
   };
 
@@ -1155,6 +1177,36 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
                   </span>
                 </div>
 
+            {/* My Feed Preview (Stacked Below) */}
+            <div className="mt-8 rounded-xl border border-white/5 bg-[#0A0A0F] p-5 shadow-sm">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-lg font-bold text-white uppercase tracking-wider" style={{ fontFamily: "'Barlow Condensed', sans-serif" }}>Recent Activity</h2>
+                <button
+                  onClick={() => setActiveTab("MyFeed")}
+                  className="text-xs text-[#00E5FF] hover:text-white transition-colors flex items-center gap-1 font-mono uppercase tracking-widest"
+                >
+                  View All <ChevronRight size={14} />
+                </button>
+              </div>
+              
+              {fetchingMyFeed ? (
+                <div className="text-center py-4 opacity-50 font-mono text-xs">Loading activity...</div>
+              ) : myFeedPosts.length === 0 ? (
+                <div className="text-center py-4 opacity-50 font-mono text-xs">No recent activity.</div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {myFeedPosts.slice(0, 3).map((post) => (
+                    <PostCard
+                      key={post.id}
+                      post={post}
+                      onLike={() => {}}
+                      onBookmark={() => {}}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+
                 {/* Social Logins */}
                 <div className="space-y-2.5">
                   <button
@@ -1293,6 +1345,20 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
           >
             <Rss size={15} />
             Feed
+          </button>
+
+          <button
+            onClick={() => setActiveTab("MyFeed")}
+            className="flex items-center gap-3 px-3 py-2.5 text-sm font-medium transition-all duration-150 text-left w-full group"
+            style={{
+              color: activeTab === "MyFeed" ? "#f0ede8" : "#8a8a9a",
+              background: activeTab === "MyFeed" ? "rgba(0, 229, 255, 0.1)" : "transparent",
+              borderLeft: activeTab === "MyFeed" ? "2px solid #00E5FF" : "2px solid transparent",
+              borderRadius: "2px",
+            }}
+          >
+            <User size={15} />
+            My Feed
           </button>
 
           <button
@@ -1508,6 +1574,40 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
           {activeTab === "Feed" && (
             <div className="-m-6">
               <FeedPanel userProfile={userProfile} getHeaders={getHeaders} />
+            </div>
+          )}
+          {activeTab === "MyFeed" && (
+            <div className="max-w-3xl mx-auto space-y-4">
+              <div className="mb-6 flex justify-between items-center">
+                <h1 className="text-white uppercase tracking-wide mb-0.5" style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, fontSize: "1.5rem", letterSpacing: "0.05em" }}>
+                  My Feed
+                </h1>
+                <button
+                  onClick={() => userProfile?.id && fetchMyFeed(userProfile.id)}
+                  disabled={fetchingMyFeed}
+                  className="p-2 rounded-lg border border-white/10 text-white hover:border-white/30 hover:bg-white/5 transition-all"
+                  title="Refresh Feed"
+                >
+                  <RefreshCw size={15} className={fetchingMyFeed ? "animate-spin" : ""} />
+                </button>
+              </div>
+              
+              {fetchingMyFeed ? (
+                <div className="text-center py-8 opacity-50 font-mono text-sm">Loading feed...</div>
+              ) : myFeedPosts.length === 0 ? (
+                <div className="text-center py-8 opacity-50 font-mono text-sm">No posts yet. Post something in the Feed to see it here!</div>
+              ) : (
+                <div className="space-y-4 pb-8">
+                  {myFeedPosts.map((post) => (
+                    <PostCard
+                      key={post.id}
+                      post={post}
+                      onLike={() => {}}
+                      onBookmark={() => {}}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
           )}
           {activeTab === "Events" && (

@@ -1,7 +1,8 @@
 from __future__ import annotations
 from api.crypto import encrypt_text, decrypt_text
 # pyright: reportGeneralTypeIssues=false, reportAttributeAccessIssue=false, reportArgumentType=false
-from fastapi import FastAPI, HTTPException, Depends, Request
+from fastapi import FastAPI, HTTPException, Depends, Request, BackgroundTasks, File, UploadFile
+from typing import Optional
 from fastapi.responses import RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
@@ -2302,16 +2303,36 @@ def proxy_startgg(req: StartggProxyRequest, user_id: str = Depends(get_current_u
 # --- Feed API ---
 
 @app.get("/api/feed")
-def get_feed(user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
+def get_feed(
+    author_id: Optional[str] = None,
+    public_only: bool = False,
+    user_id: str = Depends(get_current_user_id),
+    db: Session = Depends(get_db)
+):
     if not db:
         raise HTTPException(status_code=404, detail="Database not available")
     
-    posts = db.query(DBPost).order_by(DBPost.created_at.desc()).all()
+    query = db.query(DBPost)
+    if author_id:
+        query = query.filter(DBPost.user_id == author_id)
+        
+    posts = query.order_by(DBPost.created_at.desc()).all()
     results = []
     
     import json
     for post in posts:
         author = db.query(DBUser).filter(DBUser.id == post.user_id).first()
+        
+        # Privacy check: If public_only is True, and the author's profile is friends_only,
+        # we only return the post if the viewer is the author themselves or a friend.
+        if public_only and author and author.friends_only and author.id != user_id:
+            friend_record = db.query(DBFriend).filter(
+                ((DBFriend.user_id == user_id) & (DBFriend.friend_id == author.id)) |
+                ((DBFriend.user_id == author.id) & (DBFriend.friend_id == user_id)),
+                DBFriend.status == "accepted"
+            ).first()
+            if not friend_record:
+                continue
         liked = db.query(DBPostLike).filter(DBPostLike.post_id == post.id, DBPostLike.user_id == user_id).first() is not None
         
         tags = []
