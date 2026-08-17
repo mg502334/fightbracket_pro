@@ -2218,23 +2218,13 @@ def toggle_like(post_id: str, user_id: str = Depends(get_current_user_id), db: S
             id=str(uuid.uuid4()),
             post_id=post_id,
             user_id=user_id
-            params={"key": STEAM_API_KEY, "steamids": actual_steam_id},
-            timeout=10
         )
-        if prof_resp.ok:
-            pdata = prof_resp.json()
-            players = pdata.get("response", {}).get("players", [])
-            if players:
-                profile_data = players[0]
-    except Exception as e:
-        print(f"Steam profile error: {e}")
-
-    return {
-        "status": "ok",
-        "query_id": steam_id_clean,
-        "steam_id_64": actual_steam_id,
-        "profile": profile_data
-    }
+        db.add(new_like)
+        post.likes = (post.likes or 0) + 1
+        action = "liked"
+        
+    db.commit()
+    return {"message": "Success", "action": action, "likes": post.likes}
 
 # ---------------------------------------------------------------------------
 # LOCAL TOURNAMENT HISTORY
