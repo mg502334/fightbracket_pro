@@ -429,11 +429,11 @@ export function FriendsModal({ isOpen, onClose, theme, currentUserId, supabaseTo
                             initial={{ opacity: 0, y: 6 }}
                             animate={{ opacity: isDeleting ? 0 : 1, y: 0, scale: isDeleting ? 0.9 : 1 }}
                             transition={{ duration: 0.15 }}
-                            className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}
+                            className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} w-full`}
                             onMouseEnter={() => setHoveredMsgId(m.id)}
                             onMouseLeave={() => setHoveredMsgId(null)}
                           >
-                            <div className={`flex items-end gap-1.5 ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
+                            <div className={`flex items-end gap-1.5 max-w-[80%] ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
                               {/* Delete button — only own messages, on hover */}
                               {isMe && (
                                 <AnimatePresence>
@@ -454,12 +454,12 @@ export function FriendsModal({ isOpen, onClose, theme, currentUserId, supabaseTo
                               )}
 
                               <div
-                                className={`max-w-[85%] px-4 py-2.5 rounded-2xl text-[13px] leading-relaxed break-words whitespace-pre-wrap ${
+                                className={`px-4 py-2.5 rounded-2xl text-[13px] leading-relaxed break-words whitespace-pre-wrap select-text ${
                                   isMe
-                                    ? 'bg-cyan-500 text-black font-medium rounded-tr-sm'
-                                    : 'bg-white/10 text-white rounded-tl-sm border border-white/10'
+                                    ? 'bg-cyan-500 text-black font-medium rounded-tr-sm shadow-sm'
+                                    : 'bg-white/10 text-white rounded-tl-sm border border-white/10 shadow-sm'
                                 }`}
-                                style={{ overflowWrap: 'anywhere' }}
+                                style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}
                               >
                                 {m.message}
                               </div>

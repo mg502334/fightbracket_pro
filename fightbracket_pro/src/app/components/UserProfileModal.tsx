@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Shield, Lock, Globe, UserPlus, MessageSquare, Check, X, Trophy, ExternalLink, Sparkles, AlertTriangle, Swords, ChevronDown, ChevronUp, Eye, EyeOff } from 'lucide-react';
+import { Shield, Lock, Globe, UserPlus, MessageSquare, Check, X, Trophy, ExternalLink, Sparkles, AlertTriangle, Swords, ChevronDown, ChevronUp, Eye, EyeOff, RefreshCw } from 'lucide-react';
 import { TekkenStatsPanel } from './TekkenStatsPanel';
 import { SteamStatsPanel } from './SteamStatsPanel';
 import { GAME_COVERS } from '../data/gameCovers';
@@ -50,7 +50,10 @@ interface UserProfileModalProps {
 
 function cleanRankText(rankName: string | undefined): string {
   if (!rankName) return 'Unranked';
-  return rankName.replace(/\s+(I|II|III|IV|V|VI|VII|VIII|IX|X)+$/i, '');
+  const trimmed = String(rankName).trim();
+  if (trimmed.toLowerCase() === 'unranked' || trimmed.toLowerCase() === 'syncing...') return 'Unranked';
+  if (trimmed.toLowerCase().includes('god of destruction')) return trimmed;
+  return trimmed.replace(/\s+(I|II|III|IV|V|VI|VII|VIII|IX|X)+$/i, '');
 }
 
 export function UserProfileModal({ isOpen, onClose, targetUserId, supabaseToken, theme, onOpenDM, onImportBracket }: UserProfileModalProps) {
@@ -512,7 +515,7 @@ export function UserProfileModal({ isOpen, onClose, targetUserId, supabaseToken,
                   </div>
                 )}
 
-                {activeTab === 'activity feed' && (
+                {activeTab === 'Feed' && (
                   <div className="space-y-4">
                     {fetchingPosts ? (
                       <div className="text-center py-8 opacity-50 font-mono text-sm">Loading activity...</div>

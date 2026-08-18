@@ -32,6 +32,13 @@ const GameLogos: Record<string, React.ReactNode> = {
       </text>
     </svg>
   ),
+  avatarLegends: (
+    <svg viewBox="0 0 220 24" className="h-6" fill="currentColor">
+      <text x="0" y="20" style={{ fontFamily: 'Rajdhani, sans-serif', fontWeight: 700, fontSize: 22, letterSpacing: 2 }}>
+        AVATAR LEGENDS
+      </text>
+    </svg>
+  ),
 };
 
 export function GameBanner({ theme, entrantCount, checkedInCount, activeMatchCount, completionPercentage = 0 }: GameBannerProps) {

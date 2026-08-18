@@ -1,18 +1,16 @@
 /**
  * BracketEngine — FightBracket Pro
  *
- * Builds a complete bracket tree from start.gg match data using
- * prereqSet (parent-match) relationships to compute exact vertical
- * slot positions for each match, producing a layout identical to start.gg.
+ * Builds a complete bracket tree from match data using prereqSet (parent-match)
+ * relationships and round hierarchy to compute exact vertical slot positions
+ * for each match, producing a layout identical to start.gg / Challonge.
  *
  * Algorithm:
  *   1. Build a directed graph: parentMatchId → [child1Id, child2Id]
- *   2. Identify leaf matches (Round 1, no incoming edges from within this phase)
- *   3. Sort leaves by their start.gg identifier (N < O < P < Q...)
- *   4. Assign leaves continuous slot indices: 0, 1, 2, 3, ...
- *   5. Each parent's slot = average of its two children's slots
- *      (so parent appears visually between its two feeders)
- *   6. Return a Map<matchId, slotIndex> for use by BracketView
+ *   2. Identify leaf matches (Round 1 / starting round matches)
+ *   3. Assign continuous slot indices to base matches
+ *   4. Each parent's slot = average of its children's slots (or mathematically centered)
+ *   5. Returns a SlotMap with exact vertical positions and fast connection lookup helpers.
  */
 
 export interface SlotMap {
@@ -21,11 +19,13 @@ export interface SlotMap {
   prereqMap: Map<string, string[]>; // matchId → [prereqMatchId1, prereqMatchId2]
 }
 
-interface MinimalMatch {
+export interface MinimalMatch {
   id: string;
   round: number;
+  matchNumber?: number;
   identifier?: string;
   prereqSetIds?: string[];
+  loserPrereqSetIds?: string[];
 }
 
 /** Sort start.gg identifiers correctly: single char < multi char, then alpha */
@@ -34,11 +34,19 @@ function compareIdentifiers(a: string, b: string): number {
   return a.localeCompare(b);
 }
 
+/**
+ * Computes exact vertical layout slot positions for a set of matches in a bracket section.
+ */
 export function computeBracketSlots(matches: MinimalMatch[]): SlotMap {
-  const allIds = new Set(matches.map(m => m.id));
+  if (matches.length === 0) {
+    return { slots: new Map(), maxSlot: 0, prereqMap: new Map() };
+  }
 
-  // Build parent→children map (which match feeds into which)
-  const prereqMap = new Map<string, string[]>();      // matchId → prereq match IDs within this phase
+  const allIds = new Set(matches.map(m => m.id));
+  const isLosers = matches.some(m => m.round < 0);
+
+  // 1. Build parent→children map (which match feeds into which)
+  const prereqMap = new Map<string, string[]>();      // matchId → prereq match IDs within this set
   const feedsInto = new Map<string, string>();         // prereqMatchId → parentMatchId
 
   for (const match of matches) {
@@ -51,81 +59,7 @@ export function computeBracketSlots(matches: MinimalMatch[]): SlotMap {
     }
   }
 
-  // Leaf matches: not fed by any other match within this phase
-  // (i.e., first-round matches)
-  const leafMatches = matches.filter(m => {
-    const prereqs = prereqMap.get(m.id) || [];
-    return prereqs.length === 0;
-  });
-
-  // Sort leaves by identifier, then by round, then by numeric id
-  leafMatches.sort((a, b) => {
-    if (a.identifier && b.identifier) return compareIdentifiers(a.identifier, b.identifier);
-    if (a.identifier) return -1;
-    if (b.identifier) return 1;
-    return Math.abs(a.round) - Math.abs(b.round) || parseInt(a.id) - parseInt(b.id);
-  });
-
-  const slots = new Map<string, number>();
-
-  // Assign leaf slot positions (integers: 0, 1, 2, 3...)
-  leafMatches.forEach((m, i) => slots.set(m.id, i));
-
-  // Process remaining matches in order of increasing round depth
-  // so that by the time we process a parent, all its children have slots
-  const nonLeaves = matches
-    .filter(m => !slots.has(m.id))
-    .sort((a, b) => Math.abs(a.round) - Math.abs(b.round));
-
-  // Iterative relaxation: keep trying until all slots are assigned
-  let iterations = 0;
-  const remaining = [...nonLeaves];
-  while (remaining.length > 0 && iterations < 20) {
-    iterations++;
-    const stillPending: typeof remaining = [];
-    for (const match of remaining) {
-      const prereqs = prereqMap.get(match.id) || [];
-      const knownSlots = prereqs.filter(id => slots.has(id)).map(id => slots.get(id)!);
-
-      if (knownSlots.length > 0) {
-        // Average of known child slots
-        const avg = knownSlots.reduce((a, b) => a + b, 0) / knownSlots.length;
-        slots.set(match.id, avg);
-      } else {
-        // No prereqs known yet — assign based on identifier or defer
-        if (match.identifier) {
-          // Use a rough position based on identifier sort order
-          const sortIndex = nonLeaves.findIndex(m => m.id === match.id);
-          slots.set(match.id, leafMatches.length + sortIndex);
-        } else {
-          stillPending.push(match);
-        }
-      }
-    }
-    remaining.length = 0;
-    remaining.push(...stillPending);
-  }
-
-  // Any still-unassigned matches get appended at the end
-  let fallbackSlot = slots.size;
-  for (const match of remaining) {
-    slots.set(match.id, fallbackSlot++);
-  }
-
-  const maxSlot = Math.max(0, ...slots.values());
-  return { slots, maxSlot, prereqMap };
-}
-
-/**
- * Groups matches by round and sorts each group by their computed slot position.
- * Returns the rounds in chronological order (winners: ascending, losers: ascending abs value).
- */
-export function sortMatchesByBracketLayout(
-  matches: MinimalMatch[],
-  slotMap: SlotMap
-): { round: number; matches: MinimalMatch[] }[] {
-  const isLosers = matches.some(m => m.round < 0);
-
+  // 2. Group matches by round
   const roundGroups = new Map<number, MinimalMatch[]>();
   for (const m of matches) {
     if (!roundGroups.has(m.round)) roundGroups.set(m.round, []);
@@ -137,14 +71,116 @@ export function sortMatchesByBracketLayout(
     isLosers ? Math.abs(a) - Math.abs(b) : a - b
   );
 
-  return sortedRounds.map(round => {
-    const roundMatches = roundGroups.get(round)!;
-    // Sort matches within round by their computed slot (vertical position)
-    roundMatches.sort((a, b) => {
-      const slotA = slotMap.slots.get(a.id) ?? 999;
-      const slotB = slotMap.slots.get(b.id) ?? 999;
-      return slotA - slotB;
-    });
-    return { round, matches: roundMatches };
+  const initialRound = sortedRounds[0];
+  const initialMatches = roundGroups.get(initialRound) || [];
+
+  // Sort initial round matches
+  initialMatches.sort((a, b) => {
+    if (a.identifier && b.identifier) return compareIdentifiers(a.identifier, b.identifier);
+    if (a.matchNumber !== undefined && b.matchNumber !== undefined) return a.matchNumber - b.matchNumber;
+    return parseInt(a.id) - parseInt(b.id) || 0;
   });
+
+  const slots = new Map<string, number>();
+
+  // 3. Assign base slot positions (0, 1, 2, 3...) to earliest round
+  initialMatches.forEach((m, i) => slots.set(m.id, i));
+
+  // 4. Process subsequent rounds chronologically
+  for (let rIdx = 1; rIdx < sortedRounds.length; rIdx++) {
+    const currentRound = sortedRounds[rIdx];
+    const roundMatches = roundGroups.get(currentRound) || [];
+
+    // Sort matches by matchNumber or identifier
+    roundMatches.sort((a, b) => {
+      if (a.identifier && b.identifier) return compareIdentifiers(a.identifier, b.identifier);
+      if (a.matchNumber !== undefined && b.matchNumber !== undefined) return a.matchNumber - b.matchNumber;
+      return 0;
+    });
+
+    const prevRound = sortedRounds[rIdx - 1];
+    const prevMatches = roundGroups.get(prevRound) || [];
+
+    roundMatches.forEach((match, mIdx) => {
+      const prereqs = prereqMap.get(match.id) || [];
+      const knownSlots = prereqs.filter(id => slots.has(id)).map(id => slots.get(id)!);
+
+      if (knownSlots.length > 0) {
+        // Center parent between its feeding children
+        const avg = knownSlots.reduce((a, b) => a + b, 0) / knownSlots.length;
+        slots.set(match.id, avg);
+      } else {
+        // Fallback: mathematical tree interpolation based on match index and previous round
+        if (prevMatches.length === roundMatches.length * 2) {
+          // Standard 2-to-1 binary tree progression
+          const child1 = prevMatches[mIdx * 2];
+          const child2 = prevMatches[mIdx * 2 + 1];
+          const slot1 = child1 ? slots.get(child1.id) : undefined;
+          const slot2 = child2 ? slots.get(child2.id) : undefined;
+
+          if (slot1 !== undefined && slot2 !== undefined) {
+            slots.set(match.id, (slot1 + slot2) / 2);
+          } else if (slot1 !== undefined) {
+            slots.set(match.id, slot1 + 0.5);
+          } else {
+            const step = Math.pow(2, rIdx);
+            slots.set(match.id, mIdx * step + (step - 1) / 2);
+          }
+        } else if (prevMatches.length === roundMatches.length) {
+          // 1-to-1 progression (e.g. drop round in losers)
+          const directPrev = prevMatches[mIdx];
+          const prevSlot = directPrev ? slots.get(directPrev.id) : undefined;
+          slots.set(match.id, prevSlot !== undefined ? prevSlot : mIdx);
+        } else {
+          // General proportionate distribution
+          const totalInRound = roundMatches.length;
+          const maxBaseSlot = Math.max(1, initialMatches.length - 1);
+          const pos = totalInRound > 1 ? (mIdx / (totalInRound - 1)) * maxBaseSlot : maxBaseSlot / 2;
+          slots.set(match.id, pos);
+        }
+      }
+    });
+  }
+
+  // 5. Ensure all matches have a slot (safety fallback)
+  let fallbackSlot = initialMatches.length;
+  for (const match of matches) {
+    if (!slots.has(match.id)) {
+      slots.set(match.id, fallbackSlot++);
+    }
+  }
+
+  const maxSlot = Math.max(0, ...slots.values());
+  return { slots, maxSlot, prereqMap };
+}
+
+/**
+ * Finds the destination match that a given match feeds into (winners path or losers path).
+ */
+export function findNextMatch(
+  match: MinimalMatch,
+  allMatches: MinimalMatch[],
+  isLoserPath: boolean = false
+): MinimalMatch | null {
+  if (isLoserPath) {
+    // Check if match has explicit loser destination
+    const dest = allMatches.find(m => m.loserPrereqSetIds?.includes(match.id));
+    if (dest) return dest;
+  }
+
+  // Check if any match in allMatches has this match as prereq
+  const destByPrereq = allMatches.find(m => m.prereqSetIds?.includes(match.id));
+  if (destByPrereq) return destByPrereq;
+
+  // Fallback for single-elimination sequential indexing in the same game & bracket
+  if (match.round >= 0 && match.matchNumber !== undefined) {
+    const nextRound = match.round + 1;
+    const targetMatchNum = Math.floor(match.matchNumber / 2);
+    const fallbackMatch = allMatches.find(
+      m => m.round === nextRound && m.matchNumber === targetMatchNum
+    );
+    if (fallbackMatch) return fallbackMatch;
+  }
+
+  return null;
 }

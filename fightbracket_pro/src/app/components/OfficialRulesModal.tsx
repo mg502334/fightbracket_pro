@@ -65,18 +65,30 @@ const GAME_RULES: Record<string, { title: string; content: string }[]> = {
     { title: 'Controllers', content: 'Legacy PS3 native controllers are prohibited. Hardware-level macros, turbo functions, programmable inputs, and illegal SOCD cleaning methods are strictly forbidden.' },
     { title: 'Disconnects', content: 'A player who causes an unintentional disconnect must forfeit the current round. If the issue cannot be resolved within 5 minutes, the player responsible must forfeit the entire set.' },
   ],
+  'avatarLegends': [
+    { title: 'Match Settings', content: '99 Seconds, Best-of-3 Rounds per Game. Played in 1v1 Tournament Versus Mode on PC (Steam) / PS5 / Xbox Series X|S.' },
+    { title: 'Set Format', content: 'Best-of-3 Games (First to 2) for standard pool matches. Best-of-5 Games (First to 3) for Top 8 matches (Winners Semis/Finals, Losers Semis/Finals, and Grand Finals).' },
+    { title: 'Character & Assist Selection', content: 'Blind pick is available upon request for Game 1. The winner of the previous game is locked into their character and support assist. The loser of the previous game may switch character and/or support assist.' },
+    { title: 'Stage Selection', content: 'Game 1 must be played on Random stage selection or a mutually agreed neutral Four Nations arena. The loser of the prior game may pick any legal stage or request Random.' },
+    { title: 'Flow & Energy Mechanics', content: 'All standard in-game elemental bending mechanics, Flow states, and Energy Points systems are active as per latest official balance patch.' },
+    { title: 'Banned Content & Exploits', content: 'Any game-freezing bugs or unrecoverable infinite loop exploits are prohibited. Newly released post-launch seasonal characters are restricted for 14 days following release.' },
+    { title: 'Controllers & Pauses', content: 'All standard tournament-legal controllers/fightsticks/hitboxes are permitted. Hardware macros and rapid-fire turbos are strictly banned. Accidental pauses forfeit the current round.' },
+    { title: 'Coaching', content: 'Coaching is permitted only between games for a maximum duration of 60 seconds. Mid-match coaching is strictly forbidden.' },
+  ],
 };
 
 const GAME_NAMES = {
   'tekken8': 'Tekken 8 (TWT Rules)',
   'sf6': 'Street Fighter 6 (SFL)',
   'ggst': 'Guilty Gear -Strive- (AWT)',
+  'avatarLegends': 'Avatar Legends: The Fighting Game',
 };
 
 const GAME_LINKS: Record<string, string> = {
   'tekken8': 'https://www.bandainamcoent.com/legal/community-events/official-rules-twt',
   'sf6': 'https://www.streetfighterleague.com/official-rules/',
   'ggst': 'https://www.arcsystemworks.jp/awt2024/',
+  'avatarLegends': 'https://www.paramountgames.com/games/avatar-legends-the-fighting-game',
 };
 
 export function OfficialRulesModal({ isOpen, onClose, theme }: OfficialRulesModalProps) {

@@ -37,7 +37,7 @@ import { Users } from "lucide-react";
 
 import {
   type BracketMatch, type Player, type Station, type SMSLog, type GameTheme, type ExhibitionMatch,
-  generateMockDataForGame, generateDynamicBracket, BracketType
+  GAME_THEMES, generateMockDataForGame, generateDynamicBracket, BracketType
 } from "./data/tournamentData";
 
 type Tab = 'overview' | 'bracket' | 'checkin' | 'stations' | 'streams' | 'vods' | 'pools' | 'account' | 'news';
@@ -315,9 +315,19 @@ export default function App() {
       return;
     }
 
-    // Assign random theme colors
+    // Check if preset theme exists in GAME_THEMES
+    const presetThemeKey = Object.keys(GAME_THEMES).find(k => 
+      GAME_THEMES[k].displayName.toLowerCase() === game.name.toLowerCase() ||
+      game.name.toLowerCase().includes(GAME_THEMES[k].displayName.toLowerCase()) ||
+      GAME_THEMES[k].displayName.toLowerCase().includes(game.name.toLowerCase())
+    );
+    const preset = presetThemeKey ? GAME_THEMES[presetThemeKey] : null;
+
     const hue = Math.floor(Math.random() * 360);
-    const newTheme: GameTheme = {
+    const newTheme: GameTheme = preset ? {
+      ...preset,
+      id: newGameId,
+    } : {
       id: newGameId,
       displayName: game.name.toUpperCase(),
       shortName: game.name.substring(0, 3).toUpperCase(),
@@ -1087,21 +1097,40 @@ export default function App() {
 
   const handleReportScore = (matchId: string, p1Score: number, p2Score: number, winnerId: string | null) => {
     setMatches(prev => {
+      const match = prev.find(m => m.id === matchId);
+      if (!match) return prev;
+
+      const loserId = winnerId ? (match.player1Id === winnerId ? match.player2Id : match.player1Id) : null;
+
       const updated = prev.map(m => m.id === matchId ? {
         ...m,
         player1Score: p1Score,
         player2Score: p2Score,
         winnerId,
-        state: 'completed'
-      } : m);
+        state: 'completed' as const
+      } : { ...m });
 
-      // Advance winner to the next round if possible
+      // 1. Advance winner to the next round / destination match
       if (winnerId) {
-        const match = updated.find(m => m.id === matchId);
-        if (match && match.round >= 0) {
+        // Priority 1: Match with prereqSetIds containing this match
+        const destMatch = updated.find(m => m.gameId === match.gameId && m.prereqSetIds?.includes(matchId));
+        if (destMatch) {
+          if (destMatch.prereqSetIds && destMatch.prereqSetIds[0] === matchId) {
+            destMatch.player1Id = winnerId;
+          } else if (destMatch.prereqSetIds && destMatch.prereqSetIds[1] === matchId) {
+            destMatch.player2Id = winnerId;
+          } else if (!destMatch.player1Id || destMatch.player1Id === winnerId) {
+            destMatch.player1Id = winnerId;
+          } else {
+            destMatch.player2Id = winnerId;
+          }
+        } else if (match.round >= 0) {
+          // Priority 2: Fallback for sequential single elimination
           const nextRound = match.round + 1;
           const nextMatchNum = Math.floor(match.matchNumber / 2);
-          const nextMatchIdx = updated.findIndex(m => m.round === nextRound && m.matchNumber === nextMatchNum);
+          const nextMatchIdx = updated.findIndex(
+            m => m.gameId === match.gameId && m.round === nextRound && m.matchNumber === nextMatchNum
+          );
           if (nextMatchIdx >= 0) {
             if (match.matchNumber % 2 === 0) {
               updated[nextMatchIdx].player1Id = winnerId;
@@ -1111,6 +1140,30 @@ export default function App() {
           }
         }
       }
+
+      // 2. Advance loser in Double Elimination / drop brackets
+      if (loserId) {
+        if (match.loserNextMatchId) {
+          const lDest = updated.find(m => m.id === match.loserNextMatchId);
+          if (lDest) {
+            if (!lDest.player1Id) {
+              lDest.player1Id = loserId;
+            } else if (!lDest.player2Id) {
+              lDest.player2Id = loserId;
+            }
+          }
+        } else {
+          const lDest = updated.find(m => m.gameId === match.gameId && m.loserPrereqSetIds?.includes(matchId));
+          if (lDest) {
+            if (lDest.loserPrereqSetIds && lDest.loserPrereqSetIds[0] === matchId) {
+              lDest.player1Id = loserId;
+            } else {
+              lDest.player2Id = loserId;
+            }
+          }
+        }
+      }
+
       return updated as BracketMatch[];
     });
 

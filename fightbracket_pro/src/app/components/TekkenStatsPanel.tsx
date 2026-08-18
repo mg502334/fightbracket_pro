@@ -76,41 +76,307 @@ interface TekkenStatsPanelProps {
 // Helpers
 // ──────────────────────────────────────────────────────────────────────────────
 
+const CHARACTER_PORTRAIT_MAP: Record<string, string> = {
+  'alisa': 'alisa',
+  'alisa bosconovitch': 'alisa',
+  'anna': 'anna',
+  'anna williams': 'anna',
+  'armor-king': 'armor-king',
+  'armor king': 'armor-king',
+  'armorking': 'armor-king',
+  'asuka': 'asuka',
+  'asuka kazama': 'asuka',
+  'azucena': 'azucena',
+  'azucena ortiz': 'azucena',
+  'bryan': 'bryan',
+  'bryan fury': 'bryan',
+  'claudio': 'claudio',
+  'claudio serafino': 'claudio',
+  'clive': 'clive',
+  'devil jin': 'devil-jin',
+  'devil-jin': 'devil-jin',
+  'deviljin': 'devil-jin',
+  'dragunov': 'dragunov',
+  'sergei dragunov': 'dragunov',
+  'eddy': 'eddy',
+  'eddy gordo': 'eddy',
+  'fahkumram': 'fahkumram',
+  'feng': 'feng',
+  'feng wei': 'feng',
+  'heihachi': 'heihachi',
+  'heihachi mishima': 'heihachi',
+  'hwoarang': 'hwoarang',
+  'jack-8': 'jack-8',
+  'jack 8': 'jack-8',
+  'jack8': 'jack-8',
+  'jin': 'jin',
+  'jin kazama': 'jin',
+  'jun': 'jun',
+  'jun kazama': 'jun',
+  'kazuya': 'kazuya',
+  'kazuya mishima': 'kazuya',
+  'king': 'king',
+  'kuma': 'kuma',
+  'kunimitsu': 'kunimitsu',
+  'lars': 'lars',
+  'lars alexandersson': 'lars',
+  'law': 'law',
+  'marshall law': 'law',
+  'forest law': 'law',
+  'lee': 'lee',
+  'lee chaolan': 'lee',
+  'leo': 'leo',
+  'leo kliesen': 'leo',
+  'leroy': 'leroy',
+  'leroy smith': 'leroy',
+  'lidia': 'lidia',
+  'lidia sobieska': 'lidia',
+  'lili': 'lili',
+  'lili de rochefort': 'lili',
+  'emilie de rochefort': 'lili',
+  'miary-zo': 'miary-zo',
+  'miary zo': 'miary-zo',
+  'mokujin': 'mokujin',
+  'nina': 'nina',
+  'nina williams': 'nina',
+  'panda': 'panda',
+  'paul': 'paul',
+  'paul phoenix': 'paul',
+  'raven': 'raven',
+  'master raven': 'raven',
+  'reina': 'reina',
+  'shaheen': 'shaheen',
+  'steve': 'steve',
+  'steve fox': 'steve',
+  'victor': 'victor',
+  'victor chevalier': 'victor',
+  'xiaoyu': 'xiaoyu',
+  'ling xiaoyu': 'xiaoyu',
+  'yoshimitsu': 'yoshimitsu',
+  'zafina': 'zafina',
+};
+
 function getCharacterPortraitUrl(charName: string | undefined): string | null {
-  if (!charName) return null;
-  const formatted = charName.toLowerCase().replace(/\s+/g, '-');
-  return `https://raw.githubusercontent.com/pbruvoll/tekkendocs/main/app/images/t8/avatars/${formatted}-brand-256.webp`;
+  if (!charName || !charName.trim() || charName === '?') return null;
+  const key = charName.trim().toLowerCase().replace(/[_\s]+/g, ' ');
+  const slug = CHARACTER_PORTRAIT_MAP[key] || charName.trim().toLowerCase().replace(/\s+/g, '-');
+  return `https://raw.githubusercontent.com/pbruvoll/tekkendocs/main/app/images/t8/avatars/${slug}-brand-256.webp`;
+}
+
+const RANK_ICON_MAP: Record<string, string> = {
+  // Beginner
+  'beginner': 'Beginner',
+  '0': 'Beginner',
+  // Dans
+  '1st dan': '1stDan',
+  '1st_dan': '1stDan',
+  '1stdan': '1stDan',
+  '1 dan': '1stDan',
+  '1st': '1stDan',
+  '1': '1stDan',
+  '2nd dan': '2ndDan',
+  '2nd_dan': '2ndDan',
+  '2nddan': '2ndDan',
+  '2 dan': '2ndDan',
+  '2nd': '2ndDan',
+  '2': '2ndDan',
+  // Cyan
+  'fighter': 'Fighter',
+  '3': 'Fighter',
+  'strategist': 'Strategist',
+  '4': 'Strategist',
+  'combatant': 'Combatant',
+  '5': 'Combatant',
+  // Green
+  'brawler': 'Brawler',
+  '6': 'Brawler',
+  'ranger': 'Ranger',
+  '7': 'Ranger',
+  'cavalry': 'Cavalry',
+  '8': 'Cavalry',
+  // Yellow
+  'warrior': 'Warrior',
+  '9': 'Warrior',
+  'assailant': 'Assailant',
+  '10': 'Assailant',
+  'dominator': 'Dominator',
+  '11': 'Dominator',
+  // Orange
+  'destroyer': 'Destroyer',
+  '12': 'Destroyer',
+  'eliminator': 'Eliminator',
+  '13': 'Eliminator',
+  'garyu': 'Garyu',
+  '14': 'Garyu',
+  // Red
+  'shinryu': 'Shinryu',
+  '15': 'Shinryu',
+  'tenryu': 'Tenryu',
+  '16': 'Tenryu',
+  // Purple / Ruler
+  'mighty ruler': 'MightyRuler',
+  'mightyruler': 'MightyRuler',
+  '17': 'MightyRuler',
+  'flame ruler': 'FlameRuler',
+  'flameruler': 'FlameRuler',
+  '18': 'FlameRuler',
+  'battle ruler': 'BattleRuler',
+  'battleruler': 'BattleRuler',
+  '19': 'BattleRuler',
+  // Blue
+  'fujin': 'Fujin',
+  '20': 'Fujin',
+  'raijin': 'Raijin',
+  '21': 'Raijin',
+  'kishin': 'Kishin',
+  '22': 'Kishin',
+  'bushin': 'Bushin',
+  '23': 'Bushin',
+  // Gold / King
+  'tekken king': 'TekkenKing',
+  'tekkenking': 'TekkenKing',
+  '24': 'TekkenKing',
+  'tekken emperor': 'TekkenEmperor',
+  'tekkenemperor': 'TekkenEmperor',
+  '25': 'TekkenEmperor',
+  // Supreme Gold
+  'tekken god': 'TekkenGod',
+  'tekkengod': 'TekkenGod',
+  '26': 'TekkenGod',
+  'tekken god supreme': 'TekkenGodSupreme',
+  'tekkengodsupreme': 'TekkenGodSupreme',
+  '27': 'TekkenGodSupreme',
+  // God of Destruction
+  'god of destruction': 'GodOfDestruction',
+  'godofdestruction': 'GodOfDestruction',
+  'god of destruction 1': 'GodOfDestruction1',
+  'god of destruction i': 'GodOfDestruction1',
+  'godofdestruction1': 'GodOfDestruction1',
+  'godofdestructioni': 'GodOfDestruction1',
+  'god of destruction 2': 'GodOfDestruction2',
+  'god of destruction ii': 'GodOfDestruction2',
+  'godofdestruction2': 'GodOfDestruction2',
+  'godofdestructionii': 'GodOfDestruction2',
+  'god of destruction 3': 'GodOfDestruction3',
+  'god of destruction iii': 'GodOfDestruction3',
+  'godofdestruction3': 'GodOfDestruction3',
+  'godofdestructioniii': 'GodOfDestruction3',
+  'god of destruction 4': 'GodOfDestruction4',
+  'god of destruction iv': 'GodOfDestruction4',
+  'godofdestruction4': 'GodOfDestruction4',
+  'godofdestructioniv': 'GodOfDestruction4',
+  'god of destruction 5': 'GodOfDestruction5',
+  'god of destruction v': 'GodOfDestruction5',
+  'godofdestruction5': 'GodOfDestruction5',
+  'godofdestructionv': 'GodOfDestruction5',
+  'god of destruction 6': 'GodOfDestruction6',
+  'god of destruction vi': 'GodOfDestruction6',
+  'godofdestruction6': 'GodOfDestruction6',
+  'godofdestructionvi': 'GodOfDestruction6',
+  'god of destruction 7': 'GodOfDestruction7',
+  'god of destruction vii': 'GodOfDestruction7',
+  'godofdestruction7': 'GodOfDestruction7',
+  'godofdestructionvii': 'GodOfDestruction7',
+  'god of destruction 8': 'GodOfDestructionInf',
+  'god of destruction viii': 'GodOfDestructionInf',
+  'god of destruction inf': 'GodOfDestructionInf',
+  'god of destruction infinity': 'GodOfDestructionInf',
+  'god of destruction ∞': 'GodOfDestructionInf',
+  'godofdestructioninf': 'GodOfDestructionInf',
+  '28': 'GodOfDestruction',
+  '29': 'GodOfDestruction1',
+  '30': 'GodOfDestruction2',
+  '31': 'GodOfDestruction3',
+  '32': 'GodOfDestruction4',
+  '33': 'GodOfDestruction5',
+  '34': 'GodOfDestruction6',
+  '35': 'GodOfDestruction7',
+};
+
+function cleanRankText(rankName: string | undefined): string {
+  if (!rankName) return 'Unranked';
+  const trimmed = String(rankName).trim();
+  if (trimmed.toLowerCase() === 'unranked' || trimmed.toLowerCase() === 'syncing...') return 'Unranked';
+  
+  // If purely a number, map to Tekken 8 rank title
+  const num = parseInt(trimmed, 10);
+  if (!isNaN(num) && RANK_ICON_MAP[String(num)]) {
+    const iconName = RANK_ICON_MAP[String(num)];
+    // Insert spaces before capital letters (e.g. MightyRuler -> Mighty Ruler)
+    return iconName.replace(/([a-z])([A-Z])/g, '$1 $2').replace('1stDan', '1st Dan').replace('2ndDan', '2nd Dan');
+  }
+
+  // Preserve God of Destruction prestige tiers (e.g. God of Destruction V, God of Destruction VI)
+  if (trimmed.toLowerCase().includes('god of destruction')) {
+    return trimmed;
+  }
+
+  // Remove trailing roman numerals (e.g. Garyu I -> Garyu)
+  return trimmed.replace(/\s+(I|II|III|IV|V|VI|VII|VIII|IX|X)+$/i, '');
 }
 
 function getRankColor(rankName: string | undefined): string {
   if (!rankName) return '#00E5FF';
   const r = rankName.toLowerCase();
-  if (r.includes('tekken')) return '#FF8C00';
-  if (r.includes('divine') || r.includes('god')) return '#FFD700';
-  if (r.includes('fujin') || r.includes('bushin')) return '#C084FC';
-  if (r.includes('byakko') || r.includes('tenryu')) return '#60A5FA';
-  if (r.includes('blue')) return '#3B82F6';
-  if (r.includes('green')) return '#22C55E';
-  if (r.includes('yellow')) return '#EAB308';
-  if (r.includes('orange')) return '#F97316';
-  if (r.includes('red')) return '#EF4444';
+  if (r.includes('god of destruction')) return '#FF3D00';
+  if (r.includes('supreme') || r.includes('tekken god')) return '#FFD700';
+  if (r.includes('king') || r.includes('emperor')) return '#FFAB00';
+  if (r.includes('fujin') || r.includes('raijin') || r.includes('kishin') || r.includes('bushin')) return '#3B82F6';
+  if (r.includes('ruler')) return '#D500F9';
+  if (r.includes('garyu') || r.includes('shinryu') || r.includes('tenryu')) return '#EF4444';
+  if (r.includes('destroyer') || r.includes('eliminator')) return '#F97316';
+  if (r.includes('warrior') || r.includes('assailant') || r.includes('dominator')) return '#EAB308';
+  if (r.includes('brawler') || r.includes('ranger') || r.includes('cavalry')) return '#22C55E';
+  if (r.includes('fighter') || r.includes('strategist') || r.includes('combatant')) return '#06B6D4';
+  if (r.includes('dan')) return '#94A3B8';
+  if (r.includes('beginner')) return '#8D6E63';
   return '#00E5FF';
 }
 
-function cleanRankText(rankName: string | undefined): string {
-  if (!rankName) return 'Unranked';
-  return rankName.replace(/\s+(I|II|III|IV|V|VI|VII|VIII|IX|X)+$/i, '');
-}
-
 function getRankImageUrl(rankName: string | undefined): string | null {
-  if (!rankName || rankName.toLowerCase() === 'unranked') return null;
+  if (!rankName) return null;
+  const raw = String(rankName).trim();
+  const lower = raw.toLowerCase().replace(/_/g, ' ');
+  if (lower === 'unranked' || lower === 'syncing...' || lower === 'unknown' || lower === 'none' || lower === '') {
+    return null;
+  }
   
-  const cleanName = cleanRankText(rankName);
+  // Check direct mapping
+  if (RANK_ICON_MAP[lower]) {
+    return `https://raw.githubusercontent.com/ewgf-gg/ewgfgg-frontend/main/static/rank-icons/${RANK_ICON_MAP[lower]}T8.webp`;
+  }
+
+  // Handle God of Destruction variants
+  const godMatch = lower.match(/^god\s*of\s*destruction\s*(vii|vi|iv|v|iii|ii|i|inf|infinity|8|7|6|5|4|3|2|1|∞)?$/i);
+  if (godMatch) {
+    const tier = (godMatch[1] || '').toLowerCase();
+    const tierMap: Record<string, string> = {
+      '1': 'GodOfDestruction1', 'i': 'GodOfDestruction1',
+      '2': 'GodOfDestruction2', 'ii': 'GodOfDestruction2',
+      '3': 'GodOfDestruction3', 'iii': 'GodOfDestruction3',
+      '4': 'GodOfDestruction4', 'iv': 'GodOfDestruction4',
+      '5': 'GodOfDestruction5', 'v': 'GodOfDestruction5',
+      '6': 'GodOfDestruction6', 'vi': 'GodOfDestruction6',
+      '7': 'GodOfDestruction7', 'vii': 'GodOfDestruction7',
+      '8': 'GodOfDestructionInf', 'viii': 'GodOfDestructionInf',
+      'inf': 'GodOfDestructionInf', 'infinity': 'GodOfDestructionInf', '∞': 'GodOfDestructionInf',
+    };
+    const mapped = tierMap[tier] || 'GodOfDestruction';
+    return `https://raw.githubusercontent.com/ewgf-gg/ewgfgg-frontend/main/static/rank-icons/${mapped}T8.webp`;
+  }
   
-  const formatted = cleanName
-    .split(' ')
+  // Clean roman numerals and retry map
+  const clean = cleanRankText(raw).toLowerCase();
+  if (RANK_ICON_MAP[clean]) {
+    return `https://raw.githubusercontent.com/ewgf-gg/ewgfgg-frontend/main/static/rank-icons/${RANK_ICON_MAP[clean]}T8.webp`;
+  }
+  
+  // Fallback to title-cased concatenation
+  const formatted = clean
+    .split(/\s+/)
     .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
     .join('');
+  
   return `https://raw.githubusercontent.com/ewgf-gg/ewgfgg-frontend/main/static/rank-icons/${formatted}T8.webp`;
 }
 
@@ -184,8 +450,8 @@ function MatchRow({ match, index, playerName }: { match: TekkenMatch; index: num
   const playerImg = getCharacterPortraitUrl(playerChar);
   const oppImg = getCharacterPortraitUrl(oppChar);
 
-  const playerRank = match.player_rank || 'Unranked';
-  const oppRank = match.opponent_rank || 'Unranked';
+  const playerRank = cleanRankText(match.player_rank);
+  const oppRank = cleanRankText(match.opponent_rank);
   const oppName = match.opponent_name || 'Unknown';
   
   const scoreStr = `${match.rounds_won || 0}-${match.rounds_lost || 0}`;
@@ -212,12 +478,24 @@ function MatchRow({ match, index, playerName }: { match: TekkenMatch; index: num
       {/* Player */}
       <div className="flex items-center gap-3">
         {playerImg ? (
-          <img src={playerImg} alt={playerChar} className="w-10 h-10 object-cover rounded shadow" />
-        ) : (
-          <div className="w-10 h-10 rounded bg-[#1A202C] border border-[#2A3441] flex items-center justify-center text-xs font-bold text-gray-500">
-            {playerChar.substring(0, 3)}
-          </div>
-        )}
+          <img 
+            src={playerImg} 
+            alt={playerChar} 
+            className="w-10 h-10 object-cover rounded shadow"
+            onError={(e) => {
+              const target = e.currentTarget;
+              target.style.display = 'none';
+              const fallback = target.nextElementSibling as HTMLElement;
+              if (fallback) fallback.style.display = 'flex';
+            }}
+          />
+        ) : null}
+        <div 
+          className="w-10 h-10 rounded bg-[#1A202C] border border-[#2A3441] items-center justify-center text-xs font-bold text-gray-400"
+          style={{ display: playerImg ? 'none' : 'flex' }}
+        >
+          {playerChar.substring(0, 3).toUpperCase()}
+        </div>
         <div className="flex flex-col">
           <span className="text-[13px] font-bold text-gray-200">{playerName}</span>
           <span className="text-[11px] text-gray-400 mt-0.5">{playerRank}</span>
@@ -227,12 +505,24 @@ function MatchRow({ match, index, playerName }: { match: TekkenMatch; index: num
       {/* Opponent */}
       <div className="flex items-center gap-3">
         {oppImg ? (
-          <img src={oppImg} alt={oppChar} className="w-10 h-10 object-cover rounded shadow" />
-        ) : (
-          <div className="w-10 h-10 rounded bg-[#1A202C] border border-[#2A3441] flex items-center justify-center text-xs font-bold text-gray-500">
-            {oppChar.substring(0, 3)}
-          </div>
-        )}
+          <img 
+            src={oppImg} 
+            alt={oppChar} 
+            className="w-10 h-10 object-cover rounded shadow"
+            onError={(e) => {
+              const target = e.currentTarget;
+              target.style.display = 'none';
+              const fallback = target.nextElementSibling as HTMLElement;
+              if (fallback) fallback.style.display = 'flex';
+            }}
+          />
+        ) : null}
+        <div 
+          className="w-10 h-10 rounded bg-[#1A202C] border border-[#2A3441] items-center justify-center text-xs font-bold text-gray-400"
+          style={{ display: oppImg ? 'none' : 'flex' }}
+        >
+          {oppChar.substring(0, 3).toUpperCase()}
+        </div>
         <div className="flex flex-col">
           <span className="text-[13px] font-bold text-[#60A5FA] truncate max-w-[120px]">{oppName}</span>
           <span className="text-[11px] text-gray-400 mt-0.5">{oppRank}</span>
@@ -332,8 +622,8 @@ export function TekkenStatsPanel({ tekkenId, compact = false, steamId, psnId, xb
   }
 
   const mainCharName = selectedChar || data?.profile?.mainChar || data?.derived?.top_characters?.[0]?.name;
-  const selectedCharObj = data?.profile?.characters?.find((c: any) => c.name === mainCharName);
-  const rankName = selectedCharObj ? selectedCharObj.rankName : (data?.profile ? getRankName(data.profile) : null);
+  const selectedCharObj = data?.profile?.characters?.find((c: any) => c.name?.trim().toLowerCase() === mainCharName?.trim().toLowerCase());
+  const rankName = selectedCharObj?.rankName || (selectedChar ? null : (data?.profile ? getRankName(data.profile) : null)) || data?.profile?.rankName || data?.profile?.rank_name || null;
   
   const rankPoints = data?.profile ? getRankPoints(data.profile) : null;
   const playerName = data?.profile ? getPlayerName(data.profile) : null;
@@ -420,10 +710,22 @@ export function TekkenStatsPanel({ tekkenId, compact = false, steamId, psnId, xb
               )}
               <div className="w-full max-w-[200px] aspect-[4/3] rounded-lg overflow-hidden bg-[#0A101C] border border-white/5 relative flex items-center justify-center">
                 {charPortrait ? (
-                  <img src={charPortrait} alt={mainCharName} className="w-full h-full object-cover opacity-90 drop-shadow-xl" />
-                ) : (
-                  <span className="font-mono text-gray-600 text-xs">No Character Info</span>
-                )}
+                  <img 
+                    src={charPortrait} 
+                    alt={mainCharName} 
+                    className="w-full h-full object-cover opacity-90 drop-shadow-xl"
+                    onError={(e) => {
+                      (e.currentTarget as HTMLElement).style.display = 'none';
+                    }}
+                  />
+                ) : null}
+                <div 
+                  className="w-full h-full flex flex-col items-center justify-center p-2 text-center"
+                  style={{ display: charPortrait ? 'none' : 'flex' }}
+                >
+                  <Swords size={28} className="text-white/20 mb-1" />
+                  <span className="font-mono text-gray-500 text-[10px]">No Character Portrait</span>
+                </div>
                 {/* Gradient overlay at the bottom of the portrait */}
                 <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-[#050A14] to-transparent" />
                 <div className="absolute bottom-2 left-0 w-full text-center">
@@ -491,15 +793,26 @@ export function TekkenStatsPanel({ tekkenId, compact = false, steamId, psnId, xb
                 className="w-24 h-24 sm:w-32 sm:h-32 rounded-xl flex items-center justify-center shrink-0 overflow-hidden relative"
               >
                 {rankImageUrl ? (
-                  <img src={rankImageUrl} alt={rankName || 'Rank'} className="w-full h-full object-contain p-2 drop-shadow-[0_0_12px_rgba(0,0,0,0.6)]" />
-                ) : (
+                  <img 
+                    src={rankImageUrl} 
+                    alt={cleanRankText(rankName)} 
+                    className="w-full h-full object-contain p-2 drop-shadow-[0_0_12px_rgba(0,0,0,0.6)]" 
+                    onError={(e) => {
+                      (e.currentTarget as HTMLElement).style.display = 'none';
+                    }}
+                  />
+                ) : null}
+                <div 
+                  className="items-center justify-center"
+                  style={{ display: rankImageUrl ? 'none' : 'flex' }}
+                >
                   <Trophy size={40} style={{ color: rankColor }} />
-                )}
+                </div>
               </div>
               
               <div className="text-center mt-2">
                 <div className="text-[10px] font-mono text-gray-400 uppercase tracking-widest mb-1">
-                  {selectedCharObj ? 'Character Rank' : 'All Time Highest Rank'}
+                  {selectedCharObj ? `${selectedCharObj.name} Rank` : 'Account Main Rank'}
                 </div>
                 <div className="text-lg sm:text-xl font-bold font-rajdhani tracking-widest" style={{ color: rankColor }}>
                   {cleanRankText(rankName)}

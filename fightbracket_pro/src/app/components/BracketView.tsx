@@ -347,17 +347,14 @@ function BracketSection({
 
   // Build bracket tree slot positions using the BracketEngine
   // This gives each match its true vertical position based on parent-child relationships
-  const hasTreeData = matches.some(m => m.prereqSetIds && m.prereqSetIds.length > 0);
-  const slotMap = hasTreeData ? computeBracketSlots(matches) : null;
+  const slotMap = computeBracketSlots(matches);
 
   const SLOT_SIZE = 144; // 144px per slot (card height + vertical gap) to prevent overlap
-
 
   // Sort rounds chronologically: winners 1→N, losers by absolute value ascending (earliest first)
   const rounds = Array.from(new Set(matches.map(m => m.round))).sort((a, b) =>
     isLosers ? Math.abs(a) - Math.abs(b) : a - b
   );
-
 
   return (
     <div>
@@ -372,11 +369,10 @@ function BracketSection({
           let roundMatches = matches.filter(m => m.round === round);
           roundMatches.sort((a, b) => {
             // Priority 1: Use BracketEngine slot positions (most accurate — from prereqSet tree)
-            if (slotMap) {
-              const slotA = slotMap.slots.get(a.id) ?? 9999;
-              const slotB = slotMap.slots.get(b.id) ?? 9999;
-              if (slotA !== slotB) return slotA - slotB;
-            }
+            const slotA = slotMap.slots.get(a.id) ?? 9999;
+            const slotB = slotMap.slots.get(b.id) ?? 9999;
+            if (slotA !== slotB) return slotA - slotB;
+            
             // Priority 2: start.gg identifier letters (N < O < P < Q < W < X...)
             const idA = a.identifier;
             const idB = b.identifier;
@@ -415,8 +411,8 @@ function BracketSection({
                 {roundName}
               </div>
               <div 
-                className={slotMap ? "relative w-full" : "flex flex-col justify-around flex-1 gap-6 relative"}
-                style={slotMap ? { height: (slotMap.maxSlot + 1) * SLOT_SIZE } : undefined}
+                className="relative w-full"
+                style={{ height: (slotMap.maxSlot + 1) * SLOT_SIZE }}
               >
                 {roundMatches.map((match, mIdx) => {
                   const p1 = match.player1Id ? playerMap[match.player1Id] : null;
@@ -430,85 +426,105 @@ function BracketSection({
                   const matchesSearch = (p1 && searchMatchingPlayerIds.has(p1.id)) ||
                                        (p2 && searchMatchingPlayerIds.has(p2.id));
 
-                  const slot = slotMap ? (slotMap.slots.get(match.id) ?? mIdx) : mIdx;
+                  const slot = slotMap.slots.get(match.id) ?? mIdx;
 
                   return (
                     <div 
                       key={match.id} 
-                      className={slotMap ? "absolute w-full" : "relative w-full"}
-                      style={slotMap ? { top: slot * SLOT_SIZE } : undefined}
+                      className="absolute w-full"
+                      style={{ top: slot * SLOT_SIZE }}
                     >
                       {/* Connection Line */}
                       {!isLast && (
                         (() => {
-                          const nextMatch = matches.find(m => m.prereqSetIds?.includes(match.id));
-                          if (nextMatch && slotMap) {
-                            const nextSlot = slotMap.slots.get(nextMatch.id);
-                            if (nextSlot !== undefined) {
-                              const nextRoundIndex = rounds.indexOf(nextMatch.round);
-                              const colsDiff = nextRoundIndex - rIdx;
-                              if (colsDiff > 0) {
-                                const dx = colsDiff * 48 + (colsDiff - 1) * 250;
-                                const dy = (nextSlot - slot) * SLOT_SIZE;
-                                const absDy = Math.abs(dy);
-                                const color = isLive || matchesSearch ? theme.primaryColor : 'rgba(122,158,192,0.25)';
-                                const strokeW = isLive || matchesSearch ? 2 : 1.5;
-                                
-                                let pathD = "";
-                                let svgTop = "50px";
-                                let svgHeight = 2;
+                          let nextMatch = matches.find(m => m.prereqSetIds?.includes(match.id));
+                          if (!nextMatch && rIdx < rounds.length - 1) {
+                            const nextRound = rounds[rIdx + 1];
+                            const nextRoundMatches = matches.filter(m => m.round === nextRound);
+                            const targetIdx = Math.floor((match.matchNumber || mIdx) / 2);
+                            nextMatch = nextRoundMatches[targetIdx] || nextRoundMatches[0];
+                          }
 
-                                if (dy === 0) {
-                                  pathD = `M 0 1 L ${dx} 1`;
-                                } else if (dy > 0) {
-                                  // Curves down (Top feeder -> P1 slot)
-                                  // Start: parent center (50px). End: child P1 center (46px)
-                                  svgHeight = Math.max(absDy - 4, 2);
-                                  pathD = `M 0 0 C ${dx / 2} 0, ${dx / 2} ${svgHeight}, ${dx} ${svgHeight}`;
-                                  svgTop = "50px";
-                                } else {
-                                  // Curves up (Bottom feeder -> P2 slot)
-                                  // Start: parent center (50px). End: child P2 center (82px)
-                                  svgHeight = Math.max(absDy - 32, 2);
-                                  pathD = `M 0 ${svgHeight} C ${dx / 2} ${svgHeight}, ${dx / 2} 0, ${dx} 0`;
-                                  svgTop = `calc(82px - ${absDy}px)`;
-                                }
+                          if (nextMatch) {
+                            const nextSlot = slotMap.slots.get(nextMatch.id) ?? slot;
+                            const nextRoundIndex = rounds.indexOf(nextMatch.round);
+                            const colsDiff = Math.max(1, nextRoundIndex >= 0 ? nextRoundIndex - rIdx : 1);
+                            const dx = (colsDiff - 1) * (250 + 48) + 48;
+                            const dy = (nextSlot - slot) * SLOT_SIZE;
 
-                                return (
-                                  <svg 
-                                    className="absolute left-full pointer-events-none"
-                                    style={{ 
-                                      top: svgTop,
-                                      width: dx, 
-                                      height: svgHeight, 
-                                      overflow: 'visible',
-                                      zIndex: 0
-                                    }}
-                                  >
-                                    <path 
-                                      d={pathD}
-                                      fill="none"
-                                      stroke={color}
-                                      strokeWidth={strokeW}
-                                      className={isLive || matchesSearch ? 'animate-pulse' : ''}
-                                    />
-                                  </svg>
-                                );
-                              }
+                            // Determine inlet position on next match card
+                            let targetSlotY = 48; // default card center
+                            if (nextMatch.prereqSetIds && nextMatch.prereqSetIds[0] === match.id) {
+                              targetSlotY = 38; // P1 top slot
+                            } else if (nextMatch.prereqSetIds && nextMatch.prereqSetIds[1] === match.id) {
+                              targetSlotY = 74; // P2 bottom slot
+                            } else if (slot < nextSlot) {
+                              targetSlotY = 38;
+                            } else if (slot > nextSlot) {
+                              targetSlotY = 74;
                             }
+
+                            const yTarget = dy + targetSlotY;
+                            const pathD = (dy === 0 && targetSlotY === 48)
+                              ? `M 0 48 L ${dx} 48`
+                              : `M 0 48 C ${dx * 0.5} 48, ${dx * 0.5} ${yTarget}, ${dx} ${yTarget}`;
+
+                            const isMatchHovered = hoveredMatchId === match.id || hoveredMatchId === nextMatch.id;
+                            const isWinnerAdvanced = match.winnerId && (nextMatch.player1Id === match.winnerId || nextMatch.player2Id === match.winnerId);
+                            const isPathActive = isLive || matchesSearch || isMatchHovered || isWinnerAdvanced;
+
+                            const strokeColor = matchesSearch
+                              ? '#00FF88'
+                              : isMatchHovered
+                                ? theme.primaryColor
+                                : isLive
+                                  ? theme.primaryColor
+                                  : isWinnerAdvanced
+                                    ? `${theme.primaryColor}90`
+                                    : 'rgba(122,158,192,0.22)';
+                            const strokeW = isPathActive ? 2 : 1.5;
+
+                            return (
+                              <svg 
+                                className="absolute pointer-events-none"
+                                style={{ 
+                                  top: 0,
+                                  left: '100%',
+                                  width: dx, 
+                                  height: 1, 
+                                  overflow: 'visible',
+                                  zIndex: isPathActive ? 2 : 0
+                                }}
+                              >
+                                {isPathActive && (
+                                  <path 
+                                    d={pathD}
+                                    fill="none"
+                                    stroke={strokeColor}
+                                    strokeWidth={4}
+                                    strokeOpacity={0.25}
+                                    style={{ filter: `drop-shadow(0 0 6px ${strokeColor})` }}
+                                  />
+                                )}
+                                <path 
+                                  d={pathD}
+                                  fill="none"
+                                  stroke={strokeColor}
+                                  strokeWidth={strokeW}
+                                  strokeDasharray={isLive ? '6 4' : 'none'}
+                                  className={isLive ? 'animate-pulse' : ''}
+                                />
+                                <circle cx={0} cy={48} r={isPathActive ? 2.5 : 1.5} fill={strokeColor} />
+                                <circle cx={dx} cy={yTarget} r={isPathActive ? 2.5 : 1.5} fill={strokeColor} />
+                              </svg>
+                            );
                           }
                           
-                          // Fallback to generic stub if no explicit destination found or tree data is missing
                           return (
                             <div 
-                              className="absolute top-1/2 -right-6 h-px w-6" 
+                              className="absolute top-[48px] left-full h-px w-6" 
                               style={{ background: 'rgba(122,158,192,0.2)' }} 
-                            >
-                              <div className="absolute -top-3 left-0 text-[8px] text-red-500 whitespace-nowrap">
-                                n:{nextMatch ? nextMatch.id : 'null'} sm:{slotMap ? '1' : '0'} 
-                                {nextMatch && slotMap ? ` ns:${slotMap.slots.get(nextMatch.id)} cd:${rounds.indexOf(nextMatch.round) - rIdx}` : ''}
-                              </div>
-                            </div>
+                            />
                           );
                         })()
                       )}

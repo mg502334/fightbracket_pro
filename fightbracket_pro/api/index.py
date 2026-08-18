@@ -1864,17 +1864,19 @@ def get_tekken_stats(tekken_id: str):
                 "mainChar": char_name,
             }
         
-        if char_name and char_name not in characters:
-            characters[char_name] = rank_name
+        if char_name:
+            clean_c_name = char_name.strip()
+            if clean_c_name and clean_c_name not in characters:
+                characters[clean_c_name] = rank_name
 
     profile["characters"] = [{"name": c, "rankName": r} for c, r in characters.items()]
 
     # Fetch Glicko-2 ratings and true recent character from Wavu Wank
     try:
         wank_resp = requests.get(
-            f"https://wank.wavu.wiki/player/{tekken_id}",
+            f"https://wank.wavu.wiki/player/{api_id}",
             headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"},
-            timeout=3
+            timeout=5
         )
         if wank_resp.ok:
             html = wank_resp.text
@@ -1895,14 +1897,25 @@ def get_tekken_stats(tekken_id: str):
                 true_main_char = char_divs[0].strip()
             
             if true_main_char:
-                profile["mainChar"] = true_main_char
-                if true_main_char in characters:
-                    profile["rankName"] = characters[true_main_char]
-                    profile["rank_name"] = characters[true_main_char]
+                # Find matching character case-insensitively
+                matched_char_key = None
+                for c_k in characters:
+                    if c_k.strip().lower() == true_main_char.strip().lower():
+                        matched_char_key = c_k
+                        break
+                
+                if matched_char_key:
+                    profile["mainChar"] = matched_char_key
+                    profile["rankName"] = characters[matched_char_key]
+                    profile["rank_name"] = characters[matched_char_key]
+                elif characters:
+                    latest_rank = profile.get("rankName") or next(iter(characters.values()), "Beginner")
+                    profile["mainChar"] = true_main_char
+                    profile["characters"].insert(0, {"name": true_main_char, "rankName": latest_rank})
+                    profile["rankName"] = latest_rank
+                    profile["rank_name"] = latest_rank
                 else:
-                    profile["characters"].insert(0, {"name": true_main_char, "rankName": "Syncing..."})
-                    profile["rankName"] = "Syncing..."
-                    profile["rank_name"] = "Syncing..."
+                    profile["mainChar"] = true_main_char
     except Exception as e:
         print(f"Warning: Failed to fetch from Wavu Wank: {e}")
 

@@ -1,74 +1,367 @@
 [
-  { "id": "49783", "name": "Tekken 8", "imageUrl": "https://cdn.cloudflare.steamstatic.com/steam/apps/1778820/header.jpg" },
-  { "id": "43868", "name": "Street Fighter 6", "imageUrl": "https://cdn.cloudflare.steamstatic.com/steam/apps/1364780/header.jpg" },
-  { "id": "1386", "name": "Super Smash Bros. Ultimate", "imageUrl": "https://images.start.gg/images/videogame/1386/image-d24f740623a31f9e1eec2aabc30f4ba2.jpg" },
-  { "id": "33945", "name": "Guilty Gear: Strive", "imageUrl": "https://cdn.cloudflare.steamstatic.com/steam/apps/1384160/header.jpg" },
-  { "id": "48599", "name": "Mortal Kombat 1", "imageUrl": "https://cdn.cloudflare.steamstatic.com/steam/apps/1971870/header.jpg" },
-  { "id": "22406", "name": "Granblue Fantasy Versus: Rising", "imageUrl": "https://cdn.cloudflare.steamstatic.com/steam/apps/2024620/header.jpg" },
-  { "id": "55766", "name": "Fatal Fury: City of Wolves", "imageUrl": "https://cdn.cloudflare.steamstatic.com/steam/apps/3031380/header.jpg" },
-  { "id": "59100", "name": "DRAGON BALL: Sparking! ZERO", "imageUrl": "https://cdn.cloudflare.steamstatic.com/steam/apps/1790600/header.jpg" },
-  { "id": "287", "name": "DRAGON BALL FighterZ", "imageUrl": "https://cdn.cloudflare.steamstatic.com/steam/apps/678950/header.jpg" },
-  { "id": "36963", "name": "Under Night In-Birth II Sys:Celes", "imageUrl": "https://cdn.cloudflare.steamstatic.com/steam/apps/2198460/header.jpg" },
-  { "id": "2907", "name": "BlazBlue: Central Fiction", "imageUrl": "https://cdn.cloudflare.steamstatic.com/steam/apps/586140/header.jpg" },
-  { "id": "32", "name": "Ultimate Marvel vs. Capcom 3", "imageUrl": "https://cdn.cloudflare.steamstatic.com/steam/apps/364910/header.jpg" },
-  { "id": "53945", "name": "Rivals of Aether II", "imageUrl": "https://cdn.cloudflare.steamstatic.com/steam/apps/2217000/header.jpg" },
-  { "id": "35878", "name": "The King of Fighters XV", "imageUrl": "https://cdn.cloudflare.steamstatic.com/steam/apps/1498570/header.jpg" },
-  { "id": "34212", "name": "Melty Blood: Type Lumina", "imageUrl": "https://cdn.cloudflare.steamstatic.com/steam/apps/1372280/header.jpg" },
-  { "id": "1", "name": "Super Smash Bros. Melee", "imageUrl": "https://images.start.gg/images/videogame/1/image-36450d5d1b6f2c693be2abfdbc159106.jpg" },
-  { "id": "17", "name": "Tekken 7", "imageUrl": "https://cdn.cloudflare.steamstatic.com/steam/apps/389730/header.jpg" },
-  { "id": "3200", "name": "Mortal Kombat 11", "imageUrl": "https://cdn.cloudflare.steamstatic.com/steam/apps/976310/header.jpg" },
-  { "id": "36", "name": "Mortal Kombat X", "imageUrl": "https://cdn.cloudflare.steamstatic.com/steam/apps/307780/header.jpg" },
-  { "id": "39", "name": "Street Fighter V", "imageUrl": "https://cdn.cloudflare.steamstatic.com/steam/apps/310950/header.jpg" },
-  { "id": "610", "name": "Street Fighter III: 3rd Strike", "imageUrl": "https://cdn.cloudflare.steamstatic.com/steam/apps/310950/header.jpg" },
-  { "id": "611", "name": "Ultra Street Fighter IV", "imageUrl": "https://cdn.cloudflare.steamstatic.com/steam/apps/45760/header.jpg" },
-  { "id": "18", "name": "Street Fighter Alpha 3", "imageUrl": "https://cdn.cloudflare.steamstatic.com/steam/apps/1172620/header.jpg" },
-  { "id": "101", "name": "Super Street Fighter II Turbo", "imageUrl": "https://cdn.cloudflare.steamstatic.com/steam/apps/1172620/header.jpg" },
-  { "id": "3568", "name": "Power Rangers: Battle for the Grid", "imageUrl": "https://cdn.cloudflare.steamstatic.com/steam/apps/780200/header.jpg" },
-  { "id": "50203", "name": "MultiVersus", "imageUrl": "https://cdn.cloudflare.steamstatic.com/steam/apps/1659420/header.jpg" },
-  { "id": "48548", "name": "Skullgirls 2nd Encore", "imageUrl": "https://cdn.cloudflare.steamstatic.com/steam/apps/245170/header.jpg" },
-  { "id": "35800", "name": "DNF Duel", "imageUrl": "https://cdn.cloudflare.steamstatic.com/steam/apps/1216060/header.jpg" },
-  { "id": "288", "name": "Marvel vs. Capcom: Infinite", "imageUrl": "https://cdn.cloudflare.steamstatic.com/steam/apps/490090/header.jpg" },
-  { "id": "102", "name": "Marvel vs. Capcom 2", "imageUrl": "https://cdn.cloudflare.steamstatic.com/steam/apps/2478950/header.jpg" },
-  { "id": "103", "name": "Capcom vs. SNK 2: Mark of the Millennium 2001", "imageUrl": "https://cdn.cloudflare.steamstatic.com/steam/apps/1172620/header.jpg" },
-  { "id": "35", "name": "Injustice 2", "imageUrl": "https://cdn.cloudflare.steamstatic.com/steam/apps/627270/header.jpg" },
-  { "id": "104", "name": "Injustice: Gods Among Us", "imageUrl": "https://cdn.cloudflare.steamstatic.com/steam/apps/242700/header.jpg" },
-  { "id": "19", "name": "Killer Instinct", "imageUrl": "https://cdn.cloudflare.steamstatic.com/steam/apps/570010/header.jpg" },
-  { "id": "15", "name": "Brawlhalla", "imageUrl": "https://cdn.cloudflare.steamstatic.com/steam/apps/291550/header.jpg" },
-  { "id": "33946", "name": "Guilty Gear Xrd REV 2", "imageUrl": "https://cdn.cloudflare.steamstatic.com/steam/apps/520440/header.jpg" },
-  { "id": "33947", "name": "Guilty Gear XX ACCENT CORE PLUS R", "imageUrl": "https://cdn.cloudflare.steamstatic.com/steam/apps/348550/header.jpg" },
-  { "id": "34213", "name": "BlazBlue: Cross Tag Battle", "imageUrl": "https://cdn.cloudflare.steamstatic.com/steam/apps/702890/header.jpg" },
-  { "id": "105", "name": "Soulcalibur VI", "imageUrl": "https://cdn.cloudflare.steamstatic.com/steam/apps/544750/header.jpg" },
-  { "id": "106", "name": "Soulcalibur II", "imageUrl": "" },
-  { "id": "107", "name": "Virtua Fighter 5 Ultimate Showdown", "imageUrl": "" },
-  { "id": "108", "name": "Samurai Shodown (2019)", "imageUrl": "https://cdn.cloudflare.steamstatic.com/steam/apps/1342260/header.jpg" },
-  { "id": "109", "name": "The King of Fighters XIII Global Match", "imageUrl": "https://cdn.cloudflare.steamstatic.com/steam/apps/2224490/header.jpg" },
-  { "id": "110", "name": "The King of Fighters '98 Ultimate Match Final Edition", "imageUrl": "https://cdn.cloudflare.steamstatic.com/steam/apps/222420/header.jpg" },
-  { "id": "111", "name": "Garou: Mark of the Wolves", "imageUrl": "https://cdn.cloudflare.steamstatic.com/steam/apps/366240/header.jpg" },
-  { "id": "112", "name": "Persona 4 Arena Ultimax", "imageUrl": "https://cdn.cloudflare.steamstatic.com/steam/apps/1602010/header.jpg" },
-  { "id": "113", "name": "JoJo's Bizarre Adventure: All-Star Battle R", "imageUrl": "https://cdn.cloudflare.steamstatic.com/steam/apps/1372300/header.jpg" },
-  { "id": "114", "name": "Naruto Shippuden: Ultimate Ninja STORM 4", "imageUrl": "https://cdn.cloudflare.steamstatic.com/steam/apps/349040/header.jpg" },
-  { "id": "115", "name": "Dead or Alive 6", "imageUrl": "https://cdn.cloudflare.steamstatic.com/steam/apps/838380/header.jpg" },
-  { "id": "116", "name": "Dead or Alive 5 Last Round", "imageUrl": "https://cdn.cloudflare.steamstatic.com/steam/apps/311730/header.jpg" },
-  { "id": "117", "name": "Pokkén Tournament DX", "imageUrl": "" },
-  { "id": "118", "name": "ARMS", "imageUrl": "" },
-  { "id": "119", "name": "Nickelodeon All-Star Brawl 2", "imageUrl": "https://cdn.cloudflare.steamstatic.com/steam/apps/2017080/header.jpg" },
-  { "id": "120", "name": "Rivals of Aether", "imageUrl": "https://cdn.cloudflare.steamstatic.com/steam/apps/383980/header.jpg" },
-  { "id": "121", "name": "Them's Fightin' Herds", "imageUrl": "https://cdn.cloudflare.steamstatic.com/steam/apps/574980/header.jpg" },
-  { "id": "122", "name": "Idol Showdown", "imageUrl": "https://cdn.cloudflare.steamstatic.com/steam/apps/1742020/header.jpg" },
-  { "id": "123", "name": "Pocket Bravery", "imageUrl": "https://cdn.cloudflare.steamstatic.com/steam/apps/1559830/header.jpg" },
-  { "id": "124", "name": "Darkstalkers Resurrection / Vampire Savior", "imageUrl": "https://cdn.cloudflare.steamstatic.com/steam/apps/1172620/header.jpg" },
-  { "id": "125", "name": "Virtua Fighter 4", "imageUrl": "" },
-  { "id": "126", "name": "Tekken 5: Dark Resurrection", "imageUrl": "" },
-  { "id": "127", "name": "Tekken Tag Tournament 2", "imageUrl": "" },
-  { "id": "128", "name": "Tekken 3", "imageUrl": "" },
-  { "id": "129", "name": "Bloody Roar 2", "imageUrl": "" },
-  { "id": "130", "name": "Bushido Blade", "imageUrl": "" },
-  { "id": "131", "name": "Tatsunoko vs. Capcom: Ultimate All-Stars", "imageUrl": "" },
-  { "id": "132", "name": "Battle Arena Toshinden", "imageUrl": "" },
-  { "id": "133", "name": "Fight Night Champion", "imageUrl": "" },
-  { "id": "134", "name": "UFC 5", "imageUrl": "" },
-  { "id": "37", "name": "Super Smash Bros. Brawl", "imageUrl": "https://images.start.gg/images/videogame/37/image-4ee9b30f1b2ec41cf4f8a2bd53fb64ef.jpg" },
-  { "id": "3", "name": "Super Smash Bros. for Wii U", "imageUrl": "https://images.start.gg/images/videogame/3/image-dd1b7f6e5e9104d65ffb6b49ac42f570.jpg" },
-  { "id": "4", "name": "Super Smash Bros. (N64)", "imageUrl": "https://images.start.gg/images/videogame/4/image-925d1f9b7c413618f064a81fea8bb4e4.jpg" },
-  { "id": "2", "name": "Project M", "imageUrl": "https://images.start.gg/images/videogame/2/image-11a8d11dbd2af24429b41b7e6a166f42.png" }
+  {
+    "id": "2424420",
+    "name": "Avatar Legends: The Fighting Game",
+    "imageUrl": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2424420/30d44f94173fde20d7338f01611c6b5c7618e07e/header.jpg?t=1785869384"
+  },
+  {
+    "id": "49783",
+    "name": "Tekken 8",
+    "imageUrl": "https://cdn.cloudflare.steamstatic.com/steam/apps/1778820/header.jpg"
+  },
+  {
+    "id": "43868",
+    "name": "Street Fighter 6",
+    "imageUrl": "https://cdn.cloudflare.steamstatic.com/steam/apps/1364780/header.jpg"
+  },
+  {
+    "id": "1386",
+    "name": "Super Smash Bros. Ultimate",
+    "imageUrl": "https://images.start.gg/images/videogame/1386/image-d24f740623a31f9e1eec2aabc30f4ba2.jpg?ehk=Sn%2F72y2MSZz0neS6sqFNaHrl%2BK4pvHdLB7xd9CDX684%3D&ehkOptimized=Cv4voljXe9IIL1YmYNqg162zjL1hDYQvuyujRyflMX4%3D"
+  },
+  {
+    "id": "33945",
+    "name": "Guilty Gear: Strive",
+    "imageUrl": "https://cdn.cloudflare.steamstatic.com/steam/apps/1384160/header.jpg"
+  },
+  {
+    "id": "48599",
+    "name": "Mortal Kombat 1",
+    "imageUrl": "https://cdn.cloudflare.steamstatic.com/steam/apps/1971870/header.jpg"
+  },
+  {
+    "id": "48548",
+    "name": "Granblue Fantasy Versus: Rising",
+    "imageUrl": "https://cdn.cloudflare.steamstatic.com/steam/apps/2157560/header.jpg"
+  },
+  {
+    "id": "73221",
+    "name": "Fatal Fury: City of Wolves",
+    "imageUrl": "https://cdn.cloudflare.steamstatic.com/steam/apps/2492040/header.jpg"
+  },
+  {
+    "id": "73208",
+    "name": "DRAGON BALL: Sparking! ZERO",
+    "imageUrl": "https://cdn.cloudflare.steamstatic.com/steam/apps/1790600/header.jpg"
+  },
+  {
+    "id": "287",
+    "name": "DRAGON BALL FighterZ",
+    "imageUrl": "https://cdn.cloudflare.steamstatic.com/steam/apps/678950/header.jpg"
+  },
+  {
+    "id": "50203",
+    "name": "Under Night In-Birth II Sys:Celes",
+    "imageUrl": "https://cdn.cloudflare.steamstatic.com/steam/apps/2076010/header.jpg"
+  },
+  {
+    "id": "37",
+    "name": "BlazBlue: Central Fiction",
+    "imageUrl": "https://cdn.cloudflare.steamstatic.com/steam/apps/586140/header.jpg"
+  },
+  {
+    "id": "18",
+    "name": "Ultimate Marvel vs. Capcom 3",
+    "imageUrl": "https://cdn.cloudflare.steamstatic.com/steam/apps/357190/header.jpg"
+  },
+  {
+    "id": "53945",
+    "name": "Rivals of Aether II",
+    "imageUrl": "https://cdn.cloudflare.steamstatic.com/steam/apps/2217000/header.jpg"
+  },
+  {
+    "id": "36963",
+    "name": "The King of Fighters XV",
+    "imageUrl": "https://cdn.cloudflare.steamstatic.com/steam/apps/1498570/header.jpg"
+  },
+  {
+    "id": "36865",
+    "name": "Melty Blood: Type Lumina",
+    "imageUrl": "https://cdn.cloudflare.steamstatic.com/steam/apps/1372280/header.jpg"
+  },
+  {
+    "id": "1",
+    "name": "Super Smash Bros. Melee",
+    "imageUrl": "https://images.start.gg/images/videogame/1/image-36450d5d1b6f2c693be2abfdbc159106.jpg?ehk=kHyxo9ZpitIjPcTdkRi6H4H8JkRXjeM5%2BousqjDV%2B%2FI%3D&ehkOptimized=CRpoBnGE8dtJkSIGcd2811UkurtlEPOKEay%2BqgCETlQ%3D"
+  },
+  {
+    "id": "17",
+    "name": "Tekken 7",
+    "imageUrl": "https://cdn.cloudflare.steamstatic.com/steam/apps/389730/header.jpg"
+  },
+  {
+    "id": "3200",
+    "name": "Mortal Kombat 11",
+    "imageUrl": "https://cdn.cloudflare.steamstatic.com/steam/apps/976310/header.jpg"
+  },
+  {
+    "id": "22",
+    "name": "Mortal Kombat X",
+    "imageUrl": "https://cdn.cloudflare.steamstatic.com/steam/apps/307780/header.jpg"
+  },
+  {
+    "id": "33990",
+    "name": "Street Fighter V",
+    "imageUrl": "https://cdn.cloudflare.steamstatic.com/steam/apps/310950/header.jpg"
+  },
+  {
+    "id": "610",
+    "name": "Street Fighter III: 3rd Strike",
+    "imageUrl": "https://images.start.gg/images/videogame/610/image-74296b7f23af583740fb946903b7f00d.jpg?ehk=gygDK2XW%2FxTSGbd9D37DvbL%2BujdCAgHKjPlqFcxB8aM%3D&ehkOptimized=0xMpj%2FI4VqfA2D5Iu0wCMo53q8TggfeIwdrxplp373Q%3D"
+  },
+  {
+    "id": "16",
+    "name": "Ultra Street Fighter IV",
+    "imageUrl": "https://cdn.cloudflare.steamstatic.com/steam/apps/45760/header.jpg"
+  },
+  {
+    "id": "9012",
+    "name": "Street Fighter Alpha 3",
+    "imageUrl": "https://images.start.gg/images/videogame/9012/image-4e7a76cbc903a5936307834c3c40b479.jpg?ehk=Z5C%2F0i4KtuStTwD1Gd9dVG0IyLyi9Qhg19ug5%2Fwb6gw%3D&ehkOptimized=v4wjLTi8YOUmUP5U5qS5OLOofIFTLYo2zcfnf87OSQs%3D"
+  },
+  {
+    "id": "611",
+    "name": "Super Street Fighter II Turbo",
+    "imageUrl": "https://images.start.gg/images/videogame/611/image-03ea83f2330b377d89f40c429bfa7fae.png?ehk=he2c%2BaAsjUf%2Fw2ra1PBcRGpBdLx330nVGK%2BZhjirRic%3D&ehkOptimized=r3tfrQ%2B1ahYZgBAHwhug10yRMttySpn9eFD49LWmHN4%3D"
+  },
+  {
+    "id": "22156",
+    "name": "Power Rangers: Battle for the Grid",
+    "imageUrl": "https://cdn.cloudflare.steamstatic.com/steam/apps/1039860/header.jpg"
+  },
+  {
+    "id": "40849",
+    "name": "MultiVersus",
+    "imageUrl": "https://cdn.cloudflare.steamstatic.com/steam/apps/1818750/header.jpg"
+  },
+  {
+    "id": "32",
+    "name": "Skullgirls 2nd Encore",
+    "imageUrl": "https://cdn.cloudflare.steamstatic.com/steam/apps/245170/header.jpg"
+  },
+  {
+    "id": "41040",
+    "name": "DNF Duel",
+    "imageUrl": "https://cdn.cloudflare.steamstatic.com/steam/apps/1216060/header.jpg"
+  },
+  {
+    "id": "288",
+    "name": "Marvel vs. Capcom: Infinite",
+    "imageUrl": "https://cdn.cloudflare.steamstatic.com/steam/apps/493840/header.jpg"
+  },
+  {
+    "id": "3742",
+    "name": "Marvel vs. Capcom 2",
+    "imageUrl": "https://cdn.cloudflare.steamstatic.com/steam/apps/2634890/header.jpg"
+  },
+  {
+    "id": "39",
+    "name": "Capcom vs. SNK 2: Mark of the Millennium 2001",
+    "imageUrl": "https://images.start.gg/images/videogame/39/image-d67f88120b2d2fc5709159f9e9539a52.jpg?ehk=2BrNYjBlJuZ4ewaanIXTicUgLuU5%2BfiXoIguVPF9qto%3D&ehkOptimized=jVGbX4lacMcqLGZoQdciMfFBKBXyuNGNnBJiB%2F34CmE%3D"
+  },
+  {
+    "id": "35",
+    "name": "Injustice 2",
+    "imageUrl": "https://cdn.cloudflare.steamstatic.com/steam/apps/627270/header.jpg"
+  },
+  {
+    "id": "5581",
+    "name": "Injustice: Gods Among Us",
+    "imageUrl": "https://cdn.cloudflare.steamstatic.com/steam/apps/242700/header.jpg"
+  },
+  {
+    "id": "19",
+    "name": "Killer Instinct",
+    "imageUrl": "https://cdn.cloudflare.steamstatic.com/steam/apps/577940/header.jpg"
+  },
+  {
+    "id": "15",
+    "name": "Brawlhalla",
+    "imageUrl": "https://cdn.cloudflare.steamstatic.com/steam/apps/291550/header.jpg"
+  },
+  {
+    "id": "36",
+    "name": "Guilty Gear Xrd REV 2",
+    "imageUrl": "https://cdn.cloudflare.steamstatic.com/steam/apps/520440/header.jpg"
+  },
+  {
+    "id": "22406",
+    "name": "Guilty Gear XX ACCENT CORE PLUS R",
+    "imageUrl": "https://cdn.cloudflare.steamstatic.com/steam/apps/348550/header.jpg"
+  },
+  {
+    "id": "1144",
+    "name": "BlazBlue: Cross Tag Battle",
+    "imageUrl": "https://cdn.cloudflare.steamstatic.com/steam/apps/702890/header.jpg"
+  },
+  {
+    "id": "904",
+    "name": "Soulcalibur VI",
+    "imageUrl": "https://cdn.cloudflare.steamstatic.com/steam/apps/544750/header.jpg"
+  },
+  {
+    "id": "5582",
+    "name": "Soulcalibur II",
+    "imageUrl": "https://images.start.gg/images/videogame/5582/image-5860ae3a7766e0202c28244b9c795abc.jpg?ehk=UiguL61zqUm1ZcN1RLvyoh8ZNtyzcS%2F14I%2Fx5%2FStKUU%3D&ehkOptimized=k1BeVGFJQdnvSxMatGeqgENvD%2FdLUaovXXYVhXJmsoQ%3D"
+  },
+  {
+    "id": "13692",
+    "name": "Virtua Fighter 5 Ultimate Showdown",
+    "imageUrl": "https://images.start.gg/images/videogame/13692/image-1b357c007ea6ed03de0099bac93bd70e.jpg?ehk=Y6gRejMPKR%2BsJLTr2FFHO1S65z7JXaS%2FR%2FKh8lMeV7E%3D&ehkOptimized=SavdJNQndOrF%2FskoAaUoKHDR1ojXC38qVjMNxE36gqY%3D"
+  },
+  {
+    "id": "3568",
+    "name": "Samurai Shodown (2019)",
+    "imageUrl": "https://cdn.cloudflare.steamstatic.com/steam/apps/1342260/header.jpg"
+  },
+  {
+    "id": "9690",
+    "name": "The King of Fighters XIII Global Match",
+    "imageUrl": "https://cdn.cloudflare.steamstatic.com/steam/apps/222940/header.jpg"
+  },
+  {
+    "id": "17413",
+    "name": "The King of Fighters '98 Ultimate Match Final Edition",
+    "imageUrl": "https://cdn.cloudflare.steamstatic.com/steam/apps/222420/header.jpg"
+  },
+  {
+    "id": "10838",
+    "name": "Garou: Mark of the Wolves",
+    "imageUrl": "https://cdn.cloudflare.steamstatic.com/steam/apps/366240/header.jpg"
+  },
+  {
+    "id": "11065",
+    "name": "Persona 4 Arena Ultimax",
+    "imageUrl": "https://cdn.cloudflare.steamstatic.com/steam/apps/1602010/header.jpg"
+  },
+  {
+    "id": "44158",
+    "name": "JoJo's Bizarre Adventure: All-Star Battle R",
+    "imageUrl": "https://cdn.cloudflare.steamstatic.com/steam/apps/1372110/header.jpg"
+  },
+  {
+    "id": "11018",
+    "name": "Naruto Shippuden: Ultimate Ninja STORM 4",
+    "imageUrl": "https://cdn.cloudflare.steamstatic.com/steam/apps/349040/header.jpg"
+  },
+  {
+    "id": "3139",
+    "name": "Dead or Alive 6",
+    "imageUrl": "https://cdn.cloudflare.steamstatic.com/steam/apps/838380/header.jpg"
+  },
+  {
+    "id": "10054",
+    "name": "Dead or Alive 5 Last Round",
+    "imageUrl": "https://cdn.cloudflare.steamstatic.com/steam/apps/311730/header.jpg"
+  },
+  {
+    "id": "447",
+    "name": "Pokkén Tournament DX",
+    "imageUrl": "https://images.start.gg/images/videogame/447/image-7b40155dd86baaa2b3ef4007c5757a91.jpg?ehk=pO1h3bcZn7vDBBGwVmI13CSTeIeBCWSDmLZ%2FQF%2FcJHQ%3D&ehkOptimized=dNkqbr%2BgC%2FAh2%2BM%2BdX34bM%2FODRjEgLNIw9MwR3yAaQY%3D"
+  },
+  {
+    "id": "193",
+    "name": "ARMS",
+    "imageUrl": "https://images.start.gg/images/videogame/193/image-d50c91bda32516867120a66db70b91e0.jpg?ehk=WGFRSoYSiz7FdyAHURfGZxg4j4qt9EANyZaYZQqgFf8%3D&ehkOptimized=HPpki%2BhmMuld3s3hFdf3YayX%2FCoLRQiqnm8%2BtYpXPJw%3D"
+  },
+  {
+    "id": "49644",
+    "name": "Nickelodeon All-Star Brawl 2",
+    "imageUrl": "https://cdn.cloudflare.steamstatic.com/steam/apps/2017080/header.jpg"
+  },
+  {
+    "id": "24",
+    "name": "Rivals of Aether",
+    "imageUrl": "https://cdn.cloudflare.steamstatic.com/steam/apps/383980/header.jpg"
+  },
+  {
+    "id": "1150",
+    "name": "Them's Fightin' Herds",
+    "imageUrl": "https://cdn.cloudflare.steamstatic.com/steam/apps/574980/header.jpg"
+  },
+  {
+    "id": "48368",
+    "name": "Idol Showdown",
+    "imageUrl": "https://cdn.cloudflare.steamstatic.com/steam/apps/1742020/header.jpg"
+  },
+  {
+    "id": "44108",
+    "name": "Pocket Bravery",
+    "imageUrl": "https://cdn.cloudflare.steamstatic.com/steam/apps/1555150/header.jpg"
+  },
+  {
+    "id": "13110",
+    "name": "Darkstalkers Resurrection / Vampire Savior",
+    "imageUrl": "https://images.start.gg/images/videogame/13110/image-0a60be5b77f7cc8a5c4dda77f779a835.jpg?ehk=bq8bwrfBUhEjt4ukZJFccHw9wVnH4z2zERZ6c2ukKg8%3D&ehkOptimized=hA6bENAiqGwCmYAPAxeh2hghI5XnH59i6bu9ck9M1qo%3D"
+  },
+  {
+    "id": "5327",
+    "name": "Virtua Fighter 4",
+    "imageUrl": "https://images.start.gg/images/videogame/5327/image-5f33443a3568d16b3c93a23d7f32cc0b.jpg?ehk=oHxSWzGy7%2B26pfyOpOR1HT1JtWqtOx4JVdZNC89%2BSYk%3D&ehkOptimized=svSffF1emAu6FBp9dZ7SD8yRAggBNOu2mSy6g21HbtY%3D"
+  },
+  {
+    "id": "4889",
+    "name": "Tekken 5: Dark Resurrection",
+    "imageUrl": "https://images.start.gg/images/videogame/4889/image-70c37509d6a4c8354f2207d76a4841cf.jpg?ehk=VqDHWLEC4sgYYA59vWCSOh7Wc%2F1puPh%2F5GI3qx1qu7g%3D&ehkOptimized=cRDWAGGJgKhfU2AB8isJ0nyZaqRiAmdGOxOIE0qpMxE%3D"
+  },
+  {
+    "id": "4985",
+    "name": "Tekken Tag Tournament 2",
+    "imageUrl": "https://images.start.gg/images/videogame/4985/image-dad376439edd22f38dbd62b956fd0874.jpg?ehk=tsaqM5dIfvrFxI%2Bu3f8s5lzvQA1wdJ3%2B9QTnRb%2B4lVc%3D&ehkOptimized=zH2zHAKVr8SWuIubEmC7MfNI8UV6mQjJCOxq20YNNhY%3D"
+  },
+  {
+    "id": "5216",
+    "name": "Tekken 3",
+    "imageUrl": "https://images.start.gg/images/videogame/5216/image-8b23abb6bc9b565d25053068a403cb8b.jpg?ehk=qIqoPu27S3r%2FfUXnNRKCrCAIgCGACN%2Fa%2FLZicS9efL8%3D&ehkOptimized=6acvIyEoEFdzmtxziw%2FfLvilRK2azuR7ogwlirWSDy8%3D"
+  },
+  {
+    "id": "6954",
+    "name": "Bloody Roar 2",
+    "imageUrl": "https://images.start.gg/images/videogame/6954/image-fdc8cb181c7dbff105419db7067f0fb7.jpg?ehk=K969PD9HYMwx1GZimja842fF4FXA6cDGyESh7cw8Xl0%3D&ehkOptimized=9M%2BeVOQKCfI%2BxeUJxaKxODSPpA0XPJa5fmGs6%2B6rRsY%3D"
+  },
+  {
+    "id": "4852",
+    "name": "Bushido Blade",
+    "imageUrl": "https://images.start.gg/images/videogame/4852/image-3f267a948cce4a10ce267b03fbe812eb.jpg?ehk=G%2B5CUXA%2BNZaghk8kNbk36SajE%2BI3R57pOOB7jfsXcgU%3D&ehkOptimized=1Hoi37z6lAsUMjyUPsBQ8FaZMUXSmHCY1XdjMRBJKg8%3D"
+  },
+  {
+    "id": "22408",
+    "name": "Tatsunoko vs. Capcom: Ultimate All-Stars",
+    "imageUrl": "https://images.start.gg/images/videogame/22408/image-51dece6bfc6a184892120ebabd0db7cf.jpg?ehk=WwG%2FL7TF64654J2CrbZLXpGluWnmq42jXEzYRSr0x0Y%3D&ehkOptimized=DWZYkleh7Hw5zS7seAFLMFo6NCczGJFN2UW03kSqJU4%3D"
+  },
+  {
+    "id": "5073",
+    "name": "Battle Arena Toshinden",
+    "imageUrl": "https://images.start.gg/images/videogame/5073/image-79793701b6c89c64127c6d148deb3184.jpg?ehk=IO0AzvyvdjOUPT8m%2B3t%2BFpQMo%2Bfsyj4dP8Yi7B%2F2QQU%3D&ehkOptimized=eGC5nC6%2BHXOFix6spb6GWxqsU16xhMRec8IjXZWKxIQ%3D"
+  },
+  {
+    "id": "8712",
+    "name": "Fight Night Champion",
+    "imageUrl": "https://images.start.gg/images/videogame/8712/image-bb4ee1c80faf1bfe8198efc5d4297975.jpg?ehk=MDlKurNqtXnjMj2er6lSCY4VaqS1WOI4SJSc7uORLPk%3D&ehkOptimized=%2Bp5DNUtjfvX0CmiANOFVv78u18Gj4WcCvx%2FEs1NPqyI%3D"
+  },
+  {
+    "id": "49983",
+    "name": "UFC 5",
+    "imageUrl": "https://images.start.gg/images/videogame/49983/image-39d18c2f07396bee49eb1cbde6446ca2.jpg?ehk=KE%2FmqdSuMpiTYzaa5YgFhMSmy6ctVdwkElRZ6TuK3RI%3D&ehkOptimized=xABomVELPUzA6s4mEaTtLYvIciVE1t8i0aU6C1%2BN1Kw%3D"
+  },
+  {
+    "id": "5",
+    "name": "Super Smash Bros. Brawl",
+    "imageUrl": "https://images.start.gg/images/videogame/5/image-dd443b56feac4a67e3d737d7fe671ec8.jpg?ehk=9KhOb0vmY3nUubbjExjFQccxrFZaLETPg%2Be0fTgarIc%3D&ehkOptimized=267nL8W3YQKRqWAEXf0jygt77W8xaeeUypAwr8lBkY0%3D"
+  },
+  {
+    "id": "3",
+    "name": "Super Smash Bros. for Wii U",
+    "imageUrl": "https://images.start.gg/images/videogame/3/image-dd1b7f6e5e9104d65ffb6b49ac42f570.jpg?ehk=7mXPU8anZ47yRhCX3dSKrv5QV9GUKWLJZfdHEmDTt0A%3D&ehkOptimized=xrnrkLVJA60C7ZEOKMo%2BzOoEPQKJUkhffp3aMf%2Fyn4E%3D"
+  },
+  {
+    "id": "4",
+    "name": "Super Smash Bros. (N64)",
+    "imageUrl": "https://images.start.gg/images/videogame/4/image-925d1f9b7c413618f064a81fea8bb4e4.jpg?ehk=fmv3KkkvX8r0F5GcmqqT%2Bm9hTLhWfmTLOEMnGM5l1fk%3D&ehkOptimized=Dlxd3nFLRm9F1cELUZlgzrqrAdyacyP%2FhgxArLCbomo%3D"
+  },
+  {
+    "id": "2",
+    "name": "Project M",
+    "imageUrl": "https://images.start.gg/images/videogame/2/image-11a8d11dbd2af24429b41b7e6a166f42.png?ehk=56H5TXtgC2wZdM7Dk%2FJqnjZdpzgqxe4qfeGJw04MUHU%3D&ehkOptimized=qZF69Z84zyRKRlTZmt45%2Fh59SrDgYRDtc3Gsgmz%2FdPc%3D"
+  }
 ]
