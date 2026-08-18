@@ -1214,6 +1214,24 @@ export default function App() {
               </div>
             )}
           </div>
+          {(activeTournament || totalPlayers > 0) && (
+            <>
+              <div className="w-px h-8 opacity-20" style={{ background: '#00E5FF' }} />
+              <div className="flex items-center gap-4 opacity-70">
+                {[
+                  { label: 'PLAYERS', value: totalPlayers },
+                  { label: 'CHECKED IN', value: totalCheckedIn },
+                  { label: 'LIVE', value: totalActive },
+                  { label: 'BUSY', value: totalStationsActive },
+                ].map(s => (
+                  <div key={s.label} className="text-left">
+                    <div className="text-xs leading-none mb-0.5" style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 8, opacity: 0.6 }}>{s.label}</div>
+                    <div className="text-sm tabular-nums" style={{ fontFamily: 'Rajdhani, sans-serif', fontWeight: 700 }}>{s.value}</div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
         </div>
         <div className="flex items-center gap-3">
           {matches.some(m => m.state === 'in_progress' || m.state === 'called') && (
@@ -1317,7 +1335,7 @@ export default function App() {
               className="relative flex items-center gap-2 px-5 py-3 transition-all"
               style={{
                 background: isActive ? `${gt.primaryColor}10` : 'transparent',
-                borderBottom: isActive ? `2px solid ${gt.primaryColor}` : '2px solid transparent',
+                borderTop: isActive ? `2px solid ${gt.primaryColor}` : '2px solid transparent',
               }}>
               <div className="w-2 h-2 rounded-full" style={{ background: gt.primaryColor, boxShadow: isActive ? `0 0 6px ${gt.primaryColor}` : 'none' }} />
               <span className="text-sm tracking-wider whitespace-nowrap" style={{ fontFamily: 'Rajdhani, sans-serif', fontWeight: 700, color: isActive ? gt.primaryColor : 'var(--muted-foreground)' }}>
@@ -1344,20 +1362,6 @@ export default function App() {
           <span className="text-xl font-light">+</span>
           <span className="text-xs tracking-wider" style={{ fontFamily: 'Rajdhani, sans-serif', fontWeight: 600 }}>ADD GAME</span>
         </button>
-        <div className="flex-1" />
-        <div className="flex items-center gap-5 px-5 opacity-50">
-          {[
-            { label: 'PLAYERS', value: totalPlayers },
-            { label: 'CHECKED IN', value: totalCheckedIn },
-            { label: 'LIVE', value: totalActive },
-            { label: 'BUSY', value: totalStationsActive },
-          ].map(s => (
-            <div key={s.label} className="text-right">
-              <div className="text-xs leading-none mb-0.5" style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 8, opacity: 0.6 }}>{s.label}</div>
-              <div className="text-sm tabular-nums" style={{ fontFamily: 'Rajdhani, sans-serif', fontWeight: 700 }}>{s.value}</div>
-            </div>
-          ))}
-        </div>
       </div>
 
       {/* Game banner */}

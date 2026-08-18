@@ -314,7 +314,7 @@ export function UserProfileModal({ isOpen, onClose, targetUserId, supabaseToken,
                                   >
                                     <div className="aspect-[2/3] rounded-xl overflow-hidden border border-white/10 shadow-lg bg-[#050A14]">
                                       {coverUrl ? (
-                                        <img src={coverUrl} alt={item.game} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                                        <img src={coverUrl} alt={item.game} referrerPolicy="no-referrer" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                                       ) : (
                                         <div className="w-full h-full bg-gradient-to-br from-white/5 to-transparent flex items-center justify-center">
                                           <Trophy size={24} className="opacity-20" />
@@ -370,7 +370,7 @@ export function UserProfileModal({ isOpen, onClose, targetUserId, supabaseToken,
                                     >
                                       <div className="aspect-[2/3] rounded-xl overflow-hidden border border-white/10 shadow-lg bg-[#050A14]">
                                         {coverUrl ? (
-                                          <img src={coverUrl} alt={item.game} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                                          <img src={coverUrl} alt={item.game} referrerPolicy="no-referrer" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                                         ) : (
                                           <div className="w-full h-full bg-gradient-to-br from-white/5 to-transparent flex items-center justify-center">
                                             <Trophy size={24} className="opacity-20" />

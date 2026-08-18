@@ -1776,7 +1776,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
                               >
                                 {/* Background Cover */}
                                 {coverUrl ? (
-                                  <img src={coverUrl} alt={item.game} className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+                                  <img src={coverUrl} alt={item.game} referrerPolicy="no-referrer" className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
                                 ) : (
                                   <div className="absolute inset-0 w-full h-full bg-gradient-to-br from-indigo-900 to-[#050A14] flex flex-col items-center justify-center p-4 text-center">
                                     <Swords size={24} className="text-white/20 mb-2" />

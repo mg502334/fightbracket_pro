@@ -72,6 +72,7 @@ export function GameSelectionModal({ isOpen, onClose, onSelectGame, theme }: Gam
                       <img
                         src={game.imageUrl}
                         alt={game.name}
+                        referrerPolicy="no-referrer"
                         className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-300"
                         onError={(e) => {
                           const target = e.currentTarget;
