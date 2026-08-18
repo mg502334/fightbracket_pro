@@ -320,8 +320,14 @@ export function FeedPanel({ userProfile, getHeaders }: { userProfile: any, getHe
             {/* Composer */}
             <div className="p-4" style={{ background: "#141418", border: "1px solid rgba(255,255,255,0.06)", borderRadius: "2px" }}>
               <div className="flex gap-3">
-                <div className="w-9 h-9 flex items-center justify-center text-xs font-bold text-white flex-shrink-0 mt-0.5" style={{ background: userProfile?.profile_color || "#06b6d4", borderRadius: "2px", fontFamily: "'Barlow Condensed', sans-serif" }}>
-                  {userProfile?.gamer_tag ? userProfile.gamer_tag.substring(0, 2).toUpperCase() : userProfile?.first_name ? userProfile.first_name[0] + (userProfile.last_name?.[0] || "") : "U"}
+                <div className="w-9 h-9 flex-shrink-0 mt-0.5 overflow-hidden" style={{ borderRadius: "2px" }}>
+                  {userProfile?.avatar_url ? (
+                    <img src={userProfile.avatar_url} alt={userProfile.gamer_tag || 'User'} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-xs font-bold text-white" style={{ background: userProfile?.profile_color || "#06b6d4", fontFamily: "'Barlow Condensed', sans-serif" }}>
+                      {userProfile?.gamer_tag ? userProfile.gamer_tag.substring(0, 2).toUpperCase() : "U"}
+                    </div>
+                  )}
                 </div>
                 <div className="flex-1 min-w-0">
                   <textarea
@@ -331,7 +337,7 @@ export function FeedPanel({ userProfile, getHeaders }: { userProfile: any, getHe
                     placeholder="Share results, hype your next event, call out your rivals..."
                     rows={composerFocused ? 3 : 1}
                     className="w-full bg-transparent outline-none resize-none text-sm placeholder:text-white/25 transition-all duration-200"
-                    style={{ color: "#f0ede8", lineHeight: "1.6" }}
+                    style={{ color: "#f0ede8", lineHeight: "1.6", paddingTop: "8px" }}
                   />
                   {composerFocused && (
                     <div className="flex items-center justify-between mt-3 pt-3" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
@@ -413,11 +419,17 @@ export function FeedPanel({ userProfile, getHeaders }: { userProfile: any, getHe
             {/* Your activity */}
             <div className="p-4" style={{ background: "#141418", border: "1px solid rgba(255,255,255,0.06)", borderRadius: "2px" }}>
               <div className="flex items-center gap-3 mb-4 pb-3" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-                <div className="w-10 h-10 flex items-center justify-center text-sm font-bold text-white" style={{ background: userProfile?.profile_color || "#06b6d4", borderRadius: "2px", fontFamily: "'Barlow Condensed', sans-serif" }}>
-                  {userProfile?.first_name ? userProfile.first_name[0] + (userProfile.last_name?.[0] || "") : userProfile?.gamer_tag?.substring(0, 2).toUpperCase() || "U"}
+                <div className="w-10 h-10 overflow-hidden flex-shrink-0" style={{ borderRadius: "2px" }}>
+                  {userProfile?.avatar_url ? (
+                    <img src={userProfile.avatar_url} alt={userProfile.gamer_tag || 'User'} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-sm font-bold text-white" style={{ background: userProfile?.profile_color || "#06b6d4", fontFamily: "'Barlow Condensed', sans-serif" }}>
+                      {userProfile?.gamer_tag?.substring(0, 2).toUpperCase() || "U"}
+                    </div>
+                  )}
                 </div>
                 <div className="min-w-0">
-                  <div className="text-sm font-medium text-white truncate">{userProfile?.first_name ? `${userProfile.first_name} ${userProfile.last_name || ""}` : userProfile?.gamer_tag}</div>
+                  <div className="text-sm font-medium text-white truncate">{userProfile?.gamer_tag}</div>
                   <div className="text-xs truncate" style={{ color: "#8a8a9a" }}>@{userProfile?.gamer_tag}</div>
                 </div>
               </div>
@@ -462,23 +474,40 @@ export function FeedPanel({ userProfile, getHeaders }: { userProfile: any, getHe
                 </h3>
               </div>
               <div className="p-3">
-                {events.map((ev) => {
+                {events.length === 0 ? (
+                  <div className="text-[11px] text-center py-4" style={{ color: "#8a8a9a" }}>Loading events from Start.gg...</div>
+                ) : events.map((ev) => {
                   const s = statusColors[ev.status as keyof typeof statusColors] || { bg: "#1e1e24", text: "#8a8a9a", label: "TBD" };
-                  return (
-                    <div key={ev.id} className="flex items-start gap-2.5 mb-3 last:mb-0">
-                      <div className="w-8 h-8 flex items-center justify-center flex-shrink-0" style={{ background: "#1e1e24", borderRadius: "2px" }}>
-                        <Swords size={13} style={{ color: "#06b6d4" }} />
+                  const content = (
+                    <div key={ev.id} className="flex items-start gap-2.5 mb-3 last:mb-0 group">
+                      <div className="w-8 h-8 flex-shrink-0 overflow-hidden" style={{ borderRadius: "2px" }}>
+                        {ev.image ? (
+                          <img src={ev.image} alt={ev.name} referrerPolicy="no-referrer" className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center" style={{ background: "#1e1e24" }}>
+                            <Swords size={13} style={{ color: "#06b6d4" }} />
+                          </div>
+                        )}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="text-xs font-medium text-white truncate">{ev.name}</div>
+                        <div className="text-xs font-medium text-white truncate group-hover:text-cyan-400 transition-colors">{ev.name}</div>
                         <div className="text-[10px] mt-0.5" style={{ color: "#8a8a9a" }}>{ev.date} · {ev.location}</div>
-                        <span className="text-[9px] font-medium px-1.5 py-0.5 mt-1 inline-block uppercase" style={{ background: s.bg, color: s.text, borderRadius: "1px" }}>{s.label}</span>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-[9px] font-medium px-1.5 py-0.5 uppercase" style={{ background: s.bg, color: s.text, borderRadius: "1px" }}>{s.label}</span>
+                          {ev.fighters > 0 && <span className="text-[9px]" style={{ color: "#8a8a9a" }}>{ev.fighters} entrants</span>}
+                        </div>
                       </div>
                     </div>
                   );
+                  return ev.link ? (
+                    <a key={ev.id} href={ev.link} target="_blank" rel="noopener noreferrer" className="block">
+                      {content}
+                    </a>
+                  ) : content;
                 })}
               </div>
             </div>
+
 
             {/* Suggested */}
             <div className="p-4" style={{ background: "#141418", border: "1px solid rgba(255,255,255,0.06)", borderRadius: "2px" }}>

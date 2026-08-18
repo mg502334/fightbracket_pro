@@ -2485,62 +2485,114 @@ def get_feed_sidebar(user_id: str = Depends(get_current_user_id), db: Session = 
         if user and getattr(user, 'startgg_token', None):
             token = getattr(user, 'startgg_token')
             
-    if token:
+    # Resolve the token: prefer user's personal token, fall back to app-level token
+    effective_token = token or os.environ.get("STARTGG_API_TOKEN") or os.environ.get("STARTGG_API_KEY")
+
+    if effective_token:
         import requests
+        # Major FGC game IDs on start.gg
+        fgc_game_ids = [
+            1, 2, 3, 4, 5,          # Smash titles
+            287, 300, 33602,         # SF6, SF5, SF4
+            1386,                    # Tekken 8
+            33945,                   # Tekken 7
+            34,                      # GGST
+            1146,                    # DBFZ
+            34748,                   # MK1
+            1144,                    # BBTAG
+            43868,                   # SF6
+            49574,                   # Granblue
+        ]
         query = """
-        query Tournaments {
+        query UpcomingTournaments($gameIds: [ID]) {
           tournaments(query: {
-            perPage: 3,
+            perPage: 10,
             page: 1,
+            sortBy: "startAt asc",
             filter: {
-              upcoming: true
+              upcoming: true,
+              videogameIds: $gameIds
             }
           }) {
             nodes {
               id
               name
+              slug
               startAt
               city
               addrState
-              numEntrants
+              countryCode
+              numAttendees
+              images {
+                url
+                type
+              }
             }
           }
         }
         """
         headers = {
-            "Authorization": f"Bearer {token}",
+            "Authorization": f"Bearer {effective_token}",
             "Content-Type": "application/json"
         }
         try:
-            resp = requests.post("https://api.start.gg/gql/alpha", json={"query": query}, headers=headers, timeout=5)
+            resp = requests.post(
+                "https://api.start.gg/gql/alpha",
+                json={"query": query, "variables": {"gameIds": fgc_game_ids}},
+                headers=headers,
+                timeout=8
+            )
             data = resp.json()
             nodes = data.get("data", {}).get("tournaments", {}).get("nodes", [])
-            for node in nodes:
+            # Sort by numAttendees desc so biggest events show first
+            nodes.sort(key=lambda n: n.get("numAttendees") or 0, reverse=True)
+            for node in nodes[:5]:
                 from datetime import datetime
                 d = datetime.fromtimestamp(node.get("startAt", 0))
                 date_str = d.strftime("%b %d, %Y")
-                
-                location = node.get("city")
-                if node.get("addrState"):
-                    location = f"{location}, {node.get('addrState')}" if location else node.get("addrState")
-                    
+
+                city = node.get("city")
+                state = node.get("addrState")
+                country = node.get("countryCode", "US")
+                if city and state:
+                    location = f"{city}, {state}"
+                elif city:
+                    location = city if country == "US" else f"{city}, {country}"
+                elif state:
+                    location = state
+                else:
+                    location = "Online"
+
+                slug = node.get("slug", "")
+                link = f"https://start.gg/{slug}" if slug else "https://start.gg"
+
+                # Pick best image
+                images = node.get("images") or []
+                image_url = next((img["url"] for img in images if img.get("type") == "profile"), None)
+                if not image_url and images:
+                    image_url = images[0].get("url")
+
                 events_results.append({
                     "id": node.get("id"),
                     "name": node.get("name"),
                     "date": date_str,
-                    "location": location or "Online",
-                    "fighters": node.get("numEntrants") or 0,
+                    "location": location,
+                    "fighters": node.get("numAttendees") or 0,
                     "status": "registration",
-                    "sport": "FGC"
+                    "sport": "FGC",
+                    "link": link,
+                    "image": image_url,
                 })
         except Exception as e:
             print("Start.gg error in sidebar:", e)
             pass
-            
+
     return {
         "suggested_users": suggested_results,
         "upcoming_events": events_results
     }
+
+
 
 class EventSearchRequest(BaseModel):
     query: str = ""

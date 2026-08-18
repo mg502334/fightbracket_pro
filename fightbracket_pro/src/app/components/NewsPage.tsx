@@ -14,6 +14,15 @@ interface NewsItem {
 
 const NEWS_ITEMS: NewsItem[] = [
   {
+    id: 'ts_2027',
+    type: 'event',
+    date: 'Upcoming',
+    title: 'Texas Showdown 2027',
+    body: 'Get ready for Texas Showdown 2027! We are bringing the heat to Houston once again. Pre-registration is officially live. Don\'t miss out on one of the longest-running tournaments in the world!',
+    badge: 'EVENT',
+    link: 'https://www.start.gg/tournament/texas-showdown-2027/details',
+  },
+  {
     id: 'n0a',
     type: 'update',
     date: 'Aug 3, 2026',
