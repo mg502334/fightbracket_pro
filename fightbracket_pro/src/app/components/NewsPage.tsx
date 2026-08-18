@@ -7,8 +7,10 @@ interface NewsItem {
   date: string;
   title: string;
   body: string;
+  bullets?: string[];
   badge?: string;
   link?: string;
+  linkLabel?: string;
   archived?: boolean;
 }
 
@@ -21,6 +23,25 @@ const NEWS_ITEMS: NewsItem[] = [
     body: 'Get ready for Texas Showdown 2027! We are bringing the heat to Houston once again. Pre-registration is officially live. Don\'t miss out on one of the longest-running tournaments in the world!',
     badge: 'EVENT',
     link: 'https://www.start.gg/tournament/texas-showdown-2027/details',
+  },
+  {
+    id: 'signup_promo',
+    type: 'feature',
+    date: 'Now Available',
+    title: 'Why Create a FightBracket Pro Account?',
+    body: 'FightBracket Pro is free to join. Create your account in seconds and unlock the full competitive experience — built for the FGC, by the FGC.',
+    badge: 'FREE',
+    link: 'https://fightbracketpro.com',
+    linkLabel: 'Sign Up Free',
+    bullets: [
+      '🏆  Build your public player profile with your game roster & main characters',
+      '📊  Track your tournament history and results imported directly from Start.gg',
+      '🎮  Connect your Tekken 8 Polaris ID for live rank & stats',
+      '📡  Get a unique FB-ID to share your profile across the community',
+      '🗓️  Stay up to date with the latest FGC events and news',
+      '💬  Post on the community feed — share results, hype events, call out rivals',
+      '👥  Find and follow other players in the FGC user directory',
+    ],
   },
   {
     id: 'n0a',
@@ -264,6 +285,26 @@ export function NewsPage({ onNavigateHome }: NewsPageProps) {
                         {item.title}
                       </h2>
                       <p className="text-xs text-gray-400 leading-relaxed">{item.body}</p>
+                      {item.bullets && (
+                        <ul className="mt-3 space-y-1.5">
+                          {item.bullets.map((b, i) => (
+                            <li key={i} className="flex items-start gap-2 text-xs text-gray-300">
+                              <span>{b}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                      {item.linkLabel && item.link && (
+                        <a
+                          href={item.link}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1.5 mt-4 px-4 py-2 rounded-lg text-xs font-bold tracking-widest transition-all"
+                          style={{ background: `${cfg.color}20`, color: cfg.color, border: `1px solid ${cfg.color}40` }}
+                        >
+                          {item.linkLabel} <ChevronRight size={12} />
+                        </a>
+                      )}
                     </div>
                   </div>
                   {item.link && (
