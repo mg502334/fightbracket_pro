@@ -25,13 +25,13 @@ export interface Post {
 type FeedFilter = "all" | "results" | "brackets" | "discussions";
 
 const trendingTags = [
-  { tag: "EVO2026", posts: "32.4k" },
-  { tag: "Tekken8", posts: "18.1k" },
-  { tag: "StreetFighter6", posts: "14.2k" },
-  { tag: "FGC", posts: "9.1k" },
-  { tag: "GuiltyGearStrive", posts: "4.6k" },
-  { tag: "StartGG", posts: "2.1k" },
-  { tag: "FightBracketPro", posts: "5.5k" },
+  { tag: "CEO2026", posts: "28.7k" },
+  { tag: "Tekken8", posts: "21.4k" },
+  { tag: "StreetFighter6", posts: "17.9k" },
+  { tag: "FatalFury", posts: "12.3k" },
+  { tag: "2XKO", posts: "8.6k" },
+  { tag: "FGC", posts: "6.2k" },
+  { tag: "FightBracketPro", posts: "3.1k" },
 ];
 
 const defaultUpcomingEvents = [
