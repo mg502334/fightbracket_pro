@@ -8,7 +8,7 @@ import { toast } from 'sonner';
 
 export interface Post {
   id: string;
-  author: { name: string; handle: string; initials: string; color: string; badge?: string };
+  author: { name: string; handle: string; initials: string; color: string; badge?: string; avatar?: string };
   time: string;
   content: string;
   image?: string;
@@ -106,8 +106,14 @@ export function PostCard({ post, onLike, onBookmark }: { post: Post; onLike: (id
       )}
 
       <div className="flex items-start gap-3 px-4 pt-4 pb-0">
-        <div className="w-9 h-9 flex items-center justify-center text-xs font-bold text-white flex-shrink-0" style={{ background: post.author.color, borderRadius: "2px", fontFamily: "'Barlow Condensed', sans-serif" }}>
-          {post.author.initials}
+        <div className="w-9 h-9 flex-shrink-0 overflow-hidden" style={{ borderRadius: "2px" }}>
+          {post.author.avatar ? (
+            <img src={post.author.avatar} alt={post.author.name} referrerPolicy="no-referrer" className="w-full h-full object-cover" />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-xs font-bold text-white" style={{ background: post.author.color, fontFamily: "'Barlow Condensed', sans-serif" }}>
+              {post.author.initials}
+            </div>
+          )}
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
@@ -117,7 +123,6 @@ export function PostCard({ post, onLike, onBookmark }: { post: Post; onLike: (id
                 {post.author.badge}
               </span>
             )}
-            <span className="text-xs" style={{ color: "#06b6d4" }}>{post.author.handle}</span>
           </div>
           <div className="flex items-center gap-2 mt-0.5">
             <span className="text-[10px]" style={{ color: "#8a8a9a" }}>{handleDate(post.time)}</span>

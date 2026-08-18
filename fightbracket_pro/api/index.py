@@ -2373,7 +2373,8 @@ def get_feed(
                 "name": name,
                 "handle": getattr(author, 'unique_id', None) or "FB-UNKNOWN",
                 "initials": initials,
-                "color": getattr(author, 'profile_color', None) or "#06b6d4"
+                "color": getattr(author, 'profile_color', None) or "#06b6d4",
+                "avatar": getattr(author, 'avatar_url', None)
             },
             "time": post.created_at.isoformat() if post.created_at else "",
             "content": post.content,
