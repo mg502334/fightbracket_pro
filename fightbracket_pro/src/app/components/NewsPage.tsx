@@ -181,9 +181,10 @@ const FILTERS = [
 
 interface NewsPageProps {
   onNavigateHome: () => void;
+  onSignUp?: () => void;
 }
 
-export function NewsPage({ onNavigateHome }: NewsPageProps) {
+export function NewsPage({ onNavigateHome, onSignUp }: NewsPageProps) {
   const [filter, setFilter] = useState<string>('all');
   const [isArchive, setIsArchive] = useState(false);
 
@@ -295,15 +296,25 @@ export function NewsPage({ onNavigateHome }: NewsPageProps) {
                         </ul>
                       )}
                       {item.linkLabel && item.link && (
-                        <a
-                          href={item.link}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-flex items-center gap-1.5 mt-4 px-4 py-2 rounded-lg text-xs font-bold tracking-widest transition-all"
-                          style={{ background: `${cfg.color}20`, color: cfg.color, border: `1px solid ${cfg.color}40` }}
-                        >
-                          {item.linkLabel} <ChevronRight size={12} />
-                        </a>
+                        onSignUp && item.id === 'signup_promo' ? (
+                          <button
+                            onClick={onSignUp}
+                            className="inline-flex items-center gap-1.5 mt-4 px-4 py-2 rounded-lg text-xs font-bold tracking-widest transition-all"
+                            style={{ background: `${cfg.color}20`, color: cfg.color, border: `1px solid ${cfg.color}40` }}
+                          >
+                            {item.linkLabel} <ChevronRight size={12} />
+                          </button>
+                        ) : (
+                          <a
+                            href={item.link}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-1.5 mt-4 px-4 py-2 rounded-lg text-xs font-bold tracking-widest transition-all"
+                            style={{ background: `${cfg.color}20`, color: cfg.color, border: `1px solid ${cfg.color}40` }}
+                          >
+                            {item.linkLabel} <ChevronRight size={12} />
+                          </a>
+                        )
                       )}
                     </div>
                   </div>

@@ -1399,7 +1399,7 @@ export default function App() {
       {/* Main content */}
       <main className="flex-1 overflow-auto p-3 md:p-5 relative">
         {activeTab === 'news' ? (
-          <NewsPage onNavigateHome={() => setActiveTab('overview')} />
+          <NewsPage onNavigateHome={() => setActiveTab('overview')} onSignUp={() => setActiveTab('account')} />
         ) : activeTab === 'account' ? (
           <div className="h-full">
             <AccountDashboard
