@@ -1684,8 +1684,19 @@ export default function App() {
         style={{ background: 'var(--sidebar)', borderColor: 'var(--border)', fontFamily: 'JetBrains Mono, monospace' }}
       >
         <div className="flex flex-col items-center gap-2 text-center">
-          <div className="text-[12px] font-bold tracking-widest" style={{ fontFamily: 'Rajdhani, sans-serif', color: '#00E5FF' }}>
-            FIGHTBRACKET PRO
+          <div 
+            className="tracking-widest italic" 
+            style={{ 
+              fontFamily: 'Rajdhani, sans-serif', 
+              fontWeight: 800,
+              fontSize: '1rem',
+              lineHeight: 1.1,
+              textTransform: 'uppercase',
+              color: '#fff',
+            }}
+          >
+            <span style={{ color: '#FF00FF', textShadow: '0 0 8px rgba(255,0,255,0.5)' }}>FIGHTBRACKET</span>
+            <span className="ml-1" style={{ color: '#00FFCC', textShadow: '0 0 8px rgba(0,255,204,0.5)', WebkitTextStroke: '1px #00FFCC' }}>PRO</span>
           </div>
           
           <div className="flex items-center justify-center gap-8 text-[9px] uppercase tracking-widest text-gray-500 mt-1 flex-wrap">
