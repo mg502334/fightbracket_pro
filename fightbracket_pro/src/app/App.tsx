@@ -1290,9 +1290,12 @@ export default function App() {
           </button>
           {activeTournament && (
             <button onClick={handleClearTournament}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded text-[11px] font-bold tracking-widest uppercase hover:bg-red-500/10 transition-colors"
+              className="flex items-center justify-center px-2 py-1 rounded font-bold tracking-widest uppercase transition-all hover:!bg-[#FF1744] hover:!text-white group"
               style={{ background: 'var(--border)', border: '1px solid rgba(255,23,68,0.3)', color: '#FF1744', fontFamily: 'JetBrains Mono, monospace' }}>
-              CLEAR TOURNAMENT
+              <span className="flex flex-col items-center leading-[1.1] text-[9px]">
+                <span>CLEAR</span>
+                <span>TOURNAMENT</span>
+              </span>
             </button>
           )}
           {startggUser && (
