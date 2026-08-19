@@ -1266,18 +1266,19 @@ export default function App() {
                 navigator.clipboard.writeText(window.location.origin + '/t/' + activeTournament?.slug);
                 toast.success('Share link copied to clipboard!');
               }}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs tracking-wider hover:opacity-80 transition-opacity bg-white/10 text-white font-mono"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded text-[11px] font-bold tracking-widest uppercase hover:opacity-80 transition-opacity bg-white/10 text-white"
+              style={{ fontFamily: 'JetBrains Mono, monospace' }}
             >
               SHARE LINK
             </button>
           )}
           <a href="https://start.gg" target="_blank" rel="noreferrer"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs tracking-wider hover:opacity-80 transition-opacity"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded text-[11px] font-bold tracking-widest uppercase hover:opacity-80 transition-opacity"
             style={{ background: 'var(--border)', border: '1px solid rgba(0,229,255,0.2)', color: '#00E5FF', fontFamily: 'JetBrains Mono, monospace' }}>
-            <Globe size={11} />start.gg<ExternalLink size={9} />
+            <Globe size={11} />START.GG<ExternalLink size={9} />
           </a>
           <button onClick={() => setShowImportModal(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs tracking-wider transition-opacity hover:opacity-100"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded text-[11px] font-bold tracking-widest uppercase hover:opacity-80 transition-opacity"
             style={{
               background: 'var(--border)',
               border: '1px solid rgba(0,229,255,0.2)',
@@ -1289,8 +1290,8 @@ export default function App() {
           </button>
           {activeTournament && (
             <button onClick={handleClearTournament}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs tracking-wider hover:bg-red-500/10 transition-colors"
-              style={{ border: '1px solid rgba(255,23,68,0.3)', color: '#FF1744', fontFamily: 'JetBrains Mono, monospace' }}>
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded text-[11px] font-bold tracking-widest uppercase hover:bg-red-500/10 transition-colors"
+              style={{ background: 'var(--border)', border: '1px solid rgba(255,23,68,0.3)', color: '#FF1744', fontFamily: 'JetBrains Mono, monospace' }}>
               CLEAR TOURNAMENT
             </button>
           )}
@@ -1302,14 +1303,14 @@ export default function App() {
           )}
           {supabaseUser ? (
             <button onClick={() => setActiveTab('account')}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs tracking-wider hover:opacity-80 transition-opacity ml-2"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded text-[11px] font-bold tracking-widest uppercase hover:opacity-80 transition-opacity ml-2"
               style={{ background: '#FF006E15', border: '1px solid rgba(255,0,110,0.3)', color: '#FF006E', fontFamily: 'JetBrains Mono, monospace' }}>
               <UserCheck size={11} />
               {supabaseUser.user_metadata?.displayName || 'ACCOUNT'}
             </button>
           ) : (
             <button onClick={() => setActiveTab('account')}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs tracking-wider hover:opacity-80 transition-opacity ml-2"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded text-[11px] font-bold tracking-widest uppercase hover:opacity-80 transition-opacity ml-2"
               style={{ background: '#FF006E15', border: '1px solid rgba(255,0,110,0.3)', color: '#FF006E', fontFamily: 'JetBrains Mono, monospace' }}>
               <UserCheck size={11} />
               LOGIN
@@ -1317,7 +1318,7 @@ export default function App() {
           )}
           <button
             onClick={() => setShowDirectoryModal(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs tracking-wider hover:opacity-80 transition-opacity"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded text-[11px] font-bold tracking-widest uppercase hover:opacity-80 transition-opacity"
             style={{
               background: 'var(--border)',
               border: '1px solid rgba(0,229,255,0.3)',
@@ -1329,7 +1330,7 @@ export default function App() {
           </button>
           <button
             onClick={() => setActiveTab('news')}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs tracking-wider hover:opacity-80 transition-opacity"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded text-[11px] font-bold tracking-widest uppercase hover:opacity-80 transition-opacity"
             style={{
               background: activeTab === 'news' ? '#a78bfa18' : 'var(--border)',
               border: activeTab === 'news' ? '1px solid rgba(167,139,250,0.5)' : '1px solid rgba(167,139,250,0.2)',
