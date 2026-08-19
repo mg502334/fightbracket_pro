@@ -2516,24 +2516,75 @@ def repost_post(post_id: str, user_id: str = Depends(get_current_user_id), db: S
 
 @app.get("/api/recents")
 def get_recents(user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
-    if not db:
-        return {"active": [], "completed": []}
-
-    # Identify user's friends to prioritize
+    active_list = []
+    completed_list = []
     friends = []
-    try:
-        friend_rows = db.query(DBFriendship).filter(
-            ((DBFriendship.user_id == user_id) | (DBFriendship.friend_id == user_id)),
-            DBFriendship.status == "accepted"
-        ).all()
-        friend_ids = {f.friend_id if f.user_id == user_id else f.user_id for f in friend_rows}
-        friends = [u.gamer_tag for u in db.query(DBUser).filter(DBUser.id.in_(friend_ids)).all() if u.gamer_tag]
-    except Exception:
-        friends = []
+
+    if db:
+        try:
+            # 1. Fetch real friends of the current user
+            friend_rows = db.query(DBFriendship).filter(
+                ((DBFriendship.user_id == user_id) | (DBFriendship.friend_id == user_id)),
+                DBFriendship.status == "accepted"
+            ).all()
+            friend_ids = {f.friend_id if f.user_id == user_id else f.user_id for f in friend_rows}
+            friends = [u.gamer_tag for u in db.query(DBUser).filter(DBUser.id.in_(friend_ids)).all() if u.gamer_tag]
+
+            # 2. Fetch real tournaments from database
+            four_hours_ago = datetime.now(timezone.utc) - timedelta(hours=4)
+            tournaments = db.query(DBTournament).order_by(DBTournament.updated_at.desc()).all()
+            
+            import json
+            for t in tournaments:
+                t_data = {}
+                if t.data:
+                    try:
+                        t_data = json.loads(t.data) if isinstance(t.data, str) else t.data
+                    except:
+                        pass
+
+                name = t.name or t_data.get("name") or "Tournament"
+                game = t_data.get("game") or t_data.get("gameTitle") or "Tekken 8"
+                attendees = t_data.get("numAttendees") or len(t_data.get("players", [])) or 0
+                status = t_data.get("status", "active")
+                stream = t_data.get("streamUrl") or t_data.get("streamingPlatform")
+                
+                # Check real participants for friends
+                participants = []
+                for p in t_data.get("players", []):
+                    if isinstance(p, dict) and p.get("tag"):
+                        participants.append(p["tag"])
+                    elif isinstance(p, str):
+                        participants.append(p)
+                        
+                friend_in_event = [f for f in friends if f in participants]
+                updated_at_ts = int(t.updated_at.replace(tzinfo=timezone.utc).timestamp() * 1000) if t.updated_at else int(time.time() * 1000)
+
+                item = {
+                    "id": t.id,
+                    "name": name,
+                    "game": game,
+                    "participants": max(attendees, len(participants)),
+                    "status": status,
+                    "streamingPlatform": stream,
+                    "isFriendEvent": len(friend_in_event) > 0,
+                    "friendNames": friend_in_event,
+                    "completedAt": updated_at_ts if status == "completed" else None
+                }
+
+                if status == "completed":
+                    # Enforce 4-hour rule on real completed tournaments
+                    if t.updated_at and t.updated_at.replace(tzinfo=timezone.utc) >= four_hours_ago:
+                        completed_list.append(item)
+                else:
+                    active_list.append(item)
+        except Exception as e:
+            print(f"[-] Recents error: {e}")
 
     return {
-        "friends": friends,
-        "message": "Recents loaded"
+        "active": active_list,
+        "completed": completed_list,
+        "friends": friends
     }
 
 class SupportTicketRequest(BaseModel):

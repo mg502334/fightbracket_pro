@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Trophy, Flame, Play, Tv, Users, Clock, ExternalLink, 
-  ChevronRight, Radio, Sparkles, CheckCircle2, ShieldAlert
+   Flame, Play, Tv, Users, Clock, ExternalLink, 
+   Radio, CheckCircle2, Trophy
 } from 'lucide-react';
 
 export interface RecentTournamentItem {
@@ -18,129 +18,16 @@ export interface RecentTournamentItem {
   link?: string;
 }
 
-export interface RecentExhibitionItem {
-  id: string;
-  name: string;
-  game: string;
-  participants: number;
-  status: 'live' | 'active' | 'completed';
-  streamingPlatform?: string;
-  streamUrl?: string;
-  isFriendEvent?: boolean;
-  friendNames?: string[];
-  completedAt?: number; // timestamp in ms
-  link?: string;
-}
-
-const DEFAULT_ACTIVE_ITEMS: RecentTournamentItem[] = [
-  {
-    id: 'act-1',
-    name: 'Red Bull Golden Letters - Top 8',
-    game: 'Tekken 8',
-    participants: 128,
-    status: 'live',
-    isFriendEvent: true,
-    friendNames: ['Speedkicks', 'Shadow20z'],
-    streamingPlatform: 'Twitch',
-    streamUrl: 'https://twitch.tv/redbull',
-    link: 'https://start.gg'
-  },
-  {
-    id: 'act-2',
-    name: 'CEO 2026 Warmup Invitational',
-    game: 'Street Fighter 6',
-    participants: 64,
-    status: 'active',
-    isFriendEvent: true,
-    friendNames: ['SonicFox'],
-    streamingPlatform: 'YouTube',
-    streamUrl: 'https://youtube.com',
-    link: 'https://start.gg'
-  },
-  {
-    id: 'act-3',
-    name: 'City of the Wolves Showmatch',
-    game: 'Fatal Fury: CotW',
-    participants: 16,
-    status: 'live',
-    streamingPlatform: 'Twitch',
-    streamUrl: 'https://twitch.tv/snkofficial',
-    link: 'https://start.gg'
-  },
-  {
-    id: 'act-4',
-    name: 'Texas Showdown Qualifier #3',
-    game: 'Tekken 8',
-    participants: 48,
-    status: 'active',
-    streamingPlatform: 'Twitch',
-    link: 'https://start.gg'
-  },
-  {
-    id: 'act-5',
-    name: 'Friday Night Fight Night #55',
-    game: 'Guilty Gear Strive',
-    participants: 32,
-    status: 'active',
-    link: 'https://start.gg'
-  }
-];
-
 const FOUR_HOURS_MS = 4 * 60 * 60 * 1000;
 
-const DEFAULT_COMPLETED_ITEMS: RecentTournamentItem[] = [
-  {
-    id: 'comp-1',
-    name: 'Defend the North - Grand Finals',
-    game: 'Tekken 8',
-    participants: 96,
-    status: 'completed',
-    streamingPlatform: 'Twitch (VOD / Highlights)',
-    streamUrl: 'https://twitch.tv',
-    completedAt: Date.now() - (45 * 60 * 1000), // 45 minutes ago
-    isFriendEvent: true,
-    friendNames: ['ArslanAsh']
-  },
-  {
-    id: 'comp-2',
-    name: 'East Coast Throwdown Exhibition',
-    game: 'Street Fighter 6',
-    participants: 32,
-    status: 'completed',
-    streamingPlatform: 'YouTube: @CapcomFighters',
-    streamUrl: 'https://youtube.com',
-    completedAt: Date.now() - (110 * 60 * 1000), // ~1.8 hours ago
-  },
-  {
-    id: 'comp-3',
-    name: 'Brussels Challenge Regional Major',
-    game: 'Tekken 8',
-    participants: 140,
-    status: 'completed',
-    streamingPlatform: 'Kick: /fgclive',
-    streamUrl: 'https://kick.com',
-    completedAt: Date.now() - (190 * 60 * 1000), // ~3.1 hours ago
-  },
-  {
-    id: 'comp-4',
-    name: 'FightBracket Midnight Series #12',
-    game: '2XKO',
-    participants: 24,
-    status: 'completed',
-    streamingPlatform: 'TikTok: @fightbracket',
-    streamUrl: 'https://tiktok.com',
-    completedAt: Date.now() - (220 * 60 * 1000), // ~3.6 hours ago
-  },
-  {
-    id: 'comp-expired',
-    name: 'Old Tournament Yesterday',
-    game: 'Mortal Kombat 1',
-    participants: 32,
-    status: 'completed',
-    streamingPlatform: 'YouTube',
-    completedAt: Date.now() - (6 * 60 * 60 * 1000), // 6 hours ago -> Should be filtered out by 4hr rule
+function safeParse<T>(key: string, fallback: T): T {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  } catch {
+    return fallback;
   }
-];
+}
 
 interface RecentsWidgetProps {
   customActiveItems?: RecentTournamentItem[];
@@ -155,16 +42,104 @@ export function RecentsWidget({
   onSelectEvent,
   className = ""
 }: RecentsWidgetProps) {
-  const [activeItems, setActiveItems] = useState<RecentTournamentItem[]>(customActiveItems || DEFAULT_ACTIVE_ITEMS);
-  const [completedItems, setCompletedItems] = useState<RecentTournamentItem[]>(customCompletedItems || DEFAULT_COMPLETED_ITEMS);
+  const [activeItems, setActiveItems] = useState<RecentTournamentItem[]>(customActiveItems || []);
+  const [completedItems, setCompletedItems] = useState<RecentTournamentItem[]>(customCompletedItems || []);
   const [currentTime, setCurrentTime] = useState(Date.now());
+  const [loading, setLoading] = useState(false);
 
-  // Update time every 30 seconds to recalculate relative times and auto-expire 4h items
+  // Load real active and completed tournament data from backend & active user session
+  const loadRealRecents = async () => {
+    try {
+      const res = await fetch('/api/recents');
+      let apiActive: RecentTournamentItem[] = [];
+      let apiCompleted: RecentTournamentItem[] = [];
+
+      if (res.ok) {
+        const data = await res.json();
+        apiActive = data.active || [];
+        apiCompleted = data.completed || [];
+      }
+
+      // Also read real local session tournaments from localStorage
+      const localTournament = safeParse<any>('fb_tournament', null);
+      const localMatches = safeParse<any[]>('fb_matches', []);
+      const localExhibitions = safeParse<any[]>('fb_exhibitions', []);
+      const localPlayers = safeParse<any[]>('fb_players', []);
+
+      const combinedActive: RecentTournamentItem[] = [...apiActive];
+      const combinedCompleted: RecentTournamentItem[] = [...apiCompleted];
+
+      // If active tournament is currently loaded in the user's session
+      if (localTournament && localTournament.name) {
+        const hasFinished = localMatches.length > 0 && localMatches.every(m => m.state === 'completed');
+        const numPlayers = localPlayers.length || localTournament.numAttendees || 0;
+        const gameName = localTournament.game || localTournament.gameTitle || 'Tekken 8';
+
+        const localItem: RecentTournamentItem = {
+          id: localTournament.slug || 'local-active-tourney',
+          name: localTournament.name,
+          game: gameName,
+          participants: numPlayers,
+          status: hasFinished ? 'completed' : 'active',
+          streamingPlatform: localTournament.streamUrl ? 'Live Stream' : undefined,
+          streamUrl: localTournament.streamUrl,
+          completedAt: hasFinished ? Date.now() : undefined
+        };
+
+        if (hasFinished) {
+          if (!combinedCompleted.some(c => c.name === localItem.name)) {
+            combinedCompleted.unshift(localItem);
+          }
+        } else {
+          if (!combinedActive.some(a => a.name === localItem.name)) {
+            combinedActive.unshift(localItem);
+          }
+        }
+      }
+
+      // If exhibitions exist in user's session
+      if (Array.isArray(localExhibitions) && localExhibitions.length > 0) {
+        localExhibitions.forEach(ex => {
+          if (!ex || !ex.id) return;
+          const exName = `${ex.p1Name || 'Player 1'} vs ${ex.p2Name || 'Player 2'} Showmatch`;
+          const isCompleted = ex.status === 'completed';
+          const exItem: RecentTournamentItem = {
+            id: `ex-${ex.id}`,
+            name: exName,
+            game: ex.gameTitle || ex.gameId || 'Exhibition Match',
+            participants: 2,
+            status: isCompleted ? 'completed' : 'live',
+            streamingPlatform: ex.videoUrl ? (ex.videoUrl.includes('youtube') ? 'YouTube' : 'Twitch') : undefined,
+            streamUrl: ex.videoUrl,
+            completedAt: isCompleted ? (ex.completedAt || Date.now()) : undefined
+          };
+
+          if (isCompleted) {
+            if (!combinedCompleted.some(c => c.id === exItem.id)) {
+              combinedCompleted.push(exItem);
+            }
+          } else {
+            if (!combinedActive.some(a => a.id === exItem.id)) {
+              combinedActive.push(exItem);
+            }
+          }
+        });
+      }
+
+      if (!customActiveItems) setActiveItems(combinedActive);
+      if (!customCompletedItems) setCompletedItems(combinedCompleted);
+    } catch {
+      // Graceful fallback without fake items
+    }
+  };
+
   useEffect(() => {
-    const timer = setInterval(() => {
+    loadRealRecents();
+    const interval = setInterval(() => {
       setCurrentTime(Date.now());
+      loadRealRecents();
     }, 30000);
-    return () => clearInterval(timer);
+    return () => clearInterval(interval);
   }, []);
 
   // Sync custom items when passed from parent
@@ -173,7 +148,7 @@ export function RecentsWidget({
     if (customCompletedItems) setCompletedItems(customCompletedItems);
   }, [customActiveItems, customCompletedItems]);
 
-  // Sort and filter active items: prioritize friends tournaments first, then show max 4
+  // Sort and filter active items: prioritize real friends tournaments first, then max 4
   const displayActive = [...activeItems]
     .filter(item => item.status === 'active' || item.status === 'live')
     .sort((a, b) => {
@@ -265,8 +240,10 @@ export function RecentsWidget({
           </div>
 
           {displayActive.length === 0 ? (
-            <div className="text-[11px] text-gray-500 py-3 text-center font-mono">
-              No live events currently active
+            <div className="p-4 text-center border border-white/5 rounded bg-black/20 my-1">
+              <Trophy size={18} className="mx-auto mb-1.5 text-cyan-400/40" />
+              <p className="text-[11px] text-gray-300 font-mono font-medium">No Active Tournaments</p>
+              <p className="text-[10px] text-gray-500 font-mono mt-0.5">Host an event or import a bracket to track live matches</p>
             </div>
           ) : (
             <div className="space-y-2">
@@ -274,18 +251,18 @@ export function RecentsWidget({
                 <div
                   key={item.id}
                   onClick={() => onSelectEvent?.(item)}
-                  className="p-2 rounded transition-all duration-150 group relative cursor-pointer hover:bg-white/[0.04]"
+                  className="p-2.5 rounded transition-all duration-150 group relative cursor-pointer hover:bg-white/[0.04]"
                   style={{
                     background: item.isFriendEvent ? "rgba(6,182,212,0.06)" : "#181820",
                     border: item.isFriendEvent ? "1px solid rgba(6,182,212,0.3)" : "1px solid rgba(255,255,255,0.05)"
                   }}
                 >
                   {/* Friend priority badge */}
-                  {item.isFriendEvent && (
+                  {item.isFriendEvent && item.friendNames && item.friendNames.length > 0 && (
                     <div className="flex items-center gap-1 text-[9px] font-bold text-cyan-400 mb-1">
                       <Users size={10} />
                       <span className="truncate">
-                        FRIEND IN EVENT {item.friendNames && item.friendNames.length > 0 ? `(${item.friendNames.join(', ')})` : ''}
+                        FRIEND IN EVENT ({item.friendNames.join(', ')})
                       </span>
                     </div>
                   )}
@@ -345,8 +322,10 @@ export function RecentsWidget({
           </div>
 
           {displayCompleted.length === 0 ? (
-            <div className="text-[11px] text-gray-500 py-3 text-center font-mono">
-              No completed events in the last 4h
+            <div className="p-4 text-center border border-white/5 rounded bg-black/20 my-1">
+              <Clock size={18} className="mx-auto mb-1.5 text-purple-400/40" />
+              <p className="text-[11px] text-gray-300 font-mono font-medium">No Recent Completed Events</p>
+              <p className="text-[10px] text-gray-500 font-mono mt-0.5">Finished results expire after 4 hours</p>
             </div>
           ) : (
             <div className="space-y-2">
@@ -354,18 +333,18 @@ export function RecentsWidget({
                 <div
                   key={item.id}
                   onClick={() => onSelectEvent?.(item)}
-                  className="p-2 rounded transition-all duration-150 group relative cursor-pointer hover:bg-white/[0.04]"
+                  className="p-2.5 rounded transition-all duration-150 group relative cursor-pointer hover:bg-white/[0.04]"
                   style={{
                     background: item.isFriendEvent ? "rgba(168,85,247,0.06)" : "#181820",
                     border: item.isFriendEvent ? "1px solid rgba(168,85,247,0.3)" : "1px solid rgba(255,255,255,0.05)"
                   }}
                 >
                   {/* Friend completed indicator */}
-                  {item.isFriendEvent && (
+                  {item.isFriendEvent && item.friendNames && item.friendNames.length > 0 && (
                     <div className="flex items-center gap-1 text-[9px] font-bold text-purple-400 mb-1">
                       <Users size={10} />
                       <span className="truncate">
-                        FRIEND PARTICIPATED {item.friendNames && item.friendNames.length > 0 ? `(${item.friendNames.join(', ')})` : ''}
+                        FRIEND PARTICIPATED ({item.friendNames.join(', ')})
                       </span>
                     </div>
                   )}
@@ -399,11 +378,11 @@ export function RecentsWidget({
                   </div>
 
                   {/* Row 3: 'Name of Game' (Number of participants) */}
-                  <div className="flex items-center justify-between text-[10px] text-gray-400 mt-0.5">
-                    <span className="text-gray-400 font-medium truncate">
+                  <div className="flex items-center justify-between text-[10px] text-gray-400 mt-1">
+                    <span className="text-gray-400 truncate font-sans">
                       {item.game}
                     </span>
-                    <span className="text-gray-500 shrink-0 font-mono">
+                    <span className="text-gray-500 shrink-0 font-mono text-[9px]">
                       ({item.participants} {item.participants === 1 ? 'participant' : 'participants'})
                     </span>
                   </div>
