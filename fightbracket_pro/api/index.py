@@ -985,6 +985,58 @@ def remove_friend(friend_id: str, user_id: str = Depends(get_current_user_id), d
 
     return {"status": "removed"}
 
+@app.get("/api/link-preview")
+def get_link_preview(url: str):
+    import requests
+    from bs4 import BeautifulSoup
+
+    if not url.startswith("http"):
+        url = "https://" + url
+
+    try:
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+        }
+        response = requests.get(url, headers=headers, timeout=5)
+        response.raise_for_status()
+        
+        soup = BeautifulSoup(response.content, 'html.parser')
+        
+        # Helper to extract meta content
+        def get_meta(property_name, name=None):
+            meta = soup.find('meta', property=property_name)
+            if meta and meta.get('content'):
+                return meta['content']
+            if name:
+                meta = soup.find('meta', attrs={'name': name})
+                if meta and meta.get('content'):
+                    return meta['content']
+            return None
+
+        title = get_meta('og:title') or (soup.title.string if soup.title else None)
+        description = get_meta('og:description', 'description')
+        image = get_meta('og:image')
+        site_name = get_meta('og:site_name')
+        
+        if not title:
+            title = url
+            
+        return {
+            "title": title.strip() if title else "",
+            "description": description.strip() if description else "",
+            "image": image,
+            "siteName": site_name.strip() if site_name else "",
+            "url": url
+        }
+    except Exception as e:
+        return {
+            "title": url,
+            "description": "",
+            "image": None,
+            "siteName": "",
+            "url": url
+        }
+
 @app.post("/api/users/report")
 def report_user(req: ReportUserInput, user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
     if not db:

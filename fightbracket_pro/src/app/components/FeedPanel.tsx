@@ -6,6 +6,90 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 
+const parseContentWithLinks = (text: string) => {
+  const regex = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)|(https?:\/\/[^\s]+)/g;
+  const parts = [];
+  let lastIndex = 0;
+  let match;
+  let firstUrl: string | null = null;
+
+  while ((match = regex.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push(text.substring(lastIndex, match.index));
+    }
+    
+    if (match[1] && match[2]) {
+      if (!firstUrl) firstUrl = match[2];
+      parts.push(
+        <a key={match.index} href={match[2]} target="_blank" rel="noopener noreferrer" className="text-cyan-400 hover:underline">
+          {match[1]}
+        </a>
+      );
+    } else if (match[3]) {
+      if (!firstUrl) firstUrl = match[3];
+      parts.push(
+        <a key={match.index} href={match[3]} target="_blank" rel="noopener noreferrer" className="text-cyan-400 hover:underline break-all">
+          {match[3]}
+        </a>
+      );
+    }
+    
+    lastIndex = regex.lastIndex;
+  }
+  
+  if (lastIndex < text.length) {
+    parts.push(text.substring(lastIndex));
+  }
+  
+  return { parts, firstUrl };
+};
+
+const LinkPreview = ({ url }: { url: string }) => {
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let isMounted = true;
+    setLoading(true);
+    fetch(`/api/link-preview?url=${encodeURIComponent(url)}`)
+      .then(res => res.json())
+      .then(json => {
+        if (isMounted) {
+          setData(json);
+          setLoading(false);
+        }
+      })
+      .catch(() => {
+        if (isMounted) setLoading(false);
+      });
+    return () => { isMounted = false; };
+  }, [url]);
+
+  if (loading || !data || !data.title) return null;
+
+  return (
+    <a href={url} target="_blank" rel="noopener noreferrer" className="block mt-2 bg-[#1A1A24] rounded-md overflow-hidden hover:bg-[#20202A] transition-colors border border-white/5 no-underline group flex flex-col sm:flex-row relative">
+      <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#00E5FF]" />
+      <div className="p-4 flex-1 flex flex-col justify-center pl-5">
+        {data.siteName && <div className="text-[11px] font-medium text-white/50 mb-1">{data.siteName}</div>}
+        <div className="text-[14px] font-semibold text-white/90 leading-snug group-hover:text-[#00E5FF] transition-colors line-clamp-2">
+          {data.title}
+        </div>
+        {data.description && (
+          <div className="text-[12px] text-white/60 mt-1.5 line-clamp-2">
+            {data.description}
+          </div>
+        )}
+      </div>
+      {data.image && (
+        <div className="w-full sm:w-32 h-32 sm:h-auto flex-shrink-0 bg-[#0F0F14]">
+          <img src={data.image} alt={data.title} className="w-full h-full object-cover" onError={(e) => e.currentTarget.style.display = 'none'} />
+        </div>
+      )}
+    </a>
+  );
+};
+
 export interface Post {
   id: string;
   author: { name: string; handle: string; initials: string; color: string; badge?: string; avatar?: string };
@@ -137,11 +221,23 @@ export function PostCard({ post, onLike, onBookmark }: { post: Post; onLike: (id
         </button>
       </div>
 
-      <div className="px-4 pt-3">
-        <p className="text-sm leading-relaxed whitespace-pre-line" style={{ color: "#e0ddd8" }}>
-          {post.content}
-        </p>
-      </div>
+      {(() => {
+        const { parts, firstUrl } = parseContentWithLinks(post.content);
+        return (
+          <>
+            <div className="px-4 pt-3">
+              <p className="text-sm leading-relaxed whitespace-pre-line break-words" style={{ color: "#e0ddd8" }}>
+                {parts}
+              </p>
+            </div>
+            {firstUrl && (
+              <div className="px-4 mt-1">
+                <LinkPreview url={firstUrl} />
+              </div>
+            )}
+          </>
+        );
+      })()}
 
       {post.image && (
         <div className="mx-4 mt-3 overflow-hidden" style={{ borderRadius: "2px", background: "#1e1e24" }}>
