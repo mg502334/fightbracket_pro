@@ -111,7 +111,7 @@ export default function App() {
   const [showTerms, setShowTerms] = useState(false);
 
   useEffect(() => {
-    const handleOpenTos = () => setShowTerms(true);
+    const handleOpenTos = () => setShowStaticPage('terms');
     const handleOpenPrivacy = () => setShowStaticPage('privacy');
     window.addEventListener('open-tos', handleOpenTos);
     window.addEventListener('open-privacy', handleOpenPrivacy);
@@ -1453,7 +1453,7 @@ export default function App() {
           <div className="h-full">
             <AccountDashboard
               user={supabaseUser}
-              theme={theme}
+              theme={theme || { id: 'default', displayName: 'FightBracket', shortName: 'FB', primaryColor: '#00E5FF', secondaryColor: '#FF006E', bgFrom: '#050A14', glowColor: 'rgba(0,229,255,0.4)', description: '', publisher: '' }}
               currentTournamentData={{
                 players, matches, stations, gameThemes, gameOrder, activeGame, activeTournament, smsLogs, autoSyncSlug, exhibitions
               }}
@@ -2089,10 +2089,11 @@ function OverviewTab({
   );
 }
 
-function SectionHeader({ title, subtitle, theme }: { title: string; subtitle?: string; theme: GameTheme }) {
+function SectionHeader({ title, subtitle, theme }: { title: string; subtitle?: string; theme?: GameTheme | null }) {
+  const primaryColor = theme?.primaryColor || '#00E5FF';
   return (
     <div className="mb-5">
-      <div className="text-xl tracking-wider" style={{ fontFamily: 'Rajdhani, sans-serif', fontWeight: 700, color: theme.primaryColor }}>
+      <div className="text-xl tracking-wider" style={{ fontFamily: 'Rajdhani, sans-serif', fontWeight: 700, color: primaryColor }}>
         {title}
       </div>
       {subtitle && (

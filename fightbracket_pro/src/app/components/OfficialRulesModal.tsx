@@ -92,6 +92,7 @@ const GAME_LINKS: Record<string, string> = {
 };
 
 export function OfficialRulesModal({ isOpen, onClose, theme }: OfficialRulesModalProps) {
+  const primaryColor = theme?.primaryColor || '#00E5FF';
   const [selectedGame, setSelectedGame] = useState<keyof typeof GAME_NAMES>('tekken8');
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
@@ -113,7 +114,7 @@ export function OfficialRulesModal({ isOpen, onClose, theme }: OfficialRulesModa
           {/* Header */}
           <div className="shrink-0 flex items-center justify-between p-6 border-b border-white/10" style={{ background: 'var(--sidebar)' }}>
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: `${theme.primaryColor}20`, color: theme.primaryColor }}>
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: `${primaryColor}20`, color: primaryColor }}>
                 <BookOpen size={20} />
               </div>
               <div>
@@ -141,7 +142,7 @@ export function OfficialRulesModal({ isOpen, onClose, theme }: OfficialRulesModa
                 {GLOBAL_RULES.map((rule, idx) => (
                   <div key={idx} className="bg-white/5 border border-white/5 rounded-xl p-4 hover:border-white/10 transition-colors">
                     <h4 className="text-sm font-bold text-white mb-1.5 flex items-center gap-2">
-                      <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: theme.primaryColor }} />
+                      <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: primaryColor }} />
                       {rule.title}
                     </h4>
                     <p className="text-xs text-gray-400 leading-relaxed font-mono">
@@ -202,7 +203,7 @@ export function OfficialRulesModal({ isOpen, onClose, theme }: OfficialRulesModa
               <div className="space-y-3 relative">
                 {GAME_RULES[selectedGame].map((rule, idx) => (
                   <div key={idx} className="flex flex-col sm:flex-row gap-2 sm:gap-6 p-4 rounded-xl border border-white/5 bg-black/20 hover:bg-white/5 transition-colors">
-                    <div className="w-40 shrink-0 font-bold text-sm" style={{ color: theme.primaryColor }}>
+                    <div className="w-40 shrink-0 font-bold text-sm" style={{ color: primaryColor }}>
                       {rule.title}
                     </div>
                     <div className="flex-1 text-sm text-gray-300 font-mono leading-relaxed">
@@ -214,7 +215,7 @@ export function OfficialRulesModal({ isOpen, onClose, theme }: OfficialRulesModa
 
               {GAME_LINKS[selectedGame] && (
                 <div className="mt-4 text-right pr-2">
-                  <a href={GAME_LINKS[selectedGame]} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-xs font-bold font-rajdhani hover:brightness-125 transition-all" style={{ color: theme.primaryColor }}>
+                  <a href={GAME_LINKS[selectedGame]} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-xs font-bold font-rajdhani hover:brightness-125 transition-all" style={{ color: primaryColor }}>
                     VIEW FULL OFFICIAL RULES <ExternalLink size={12} />
                   </a>
                 </div>

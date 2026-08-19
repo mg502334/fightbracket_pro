@@ -159,8 +159,8 @@ export function UserProfileModal({ isOpen, onClose, targetUserId, supabaseToken,
 
   if (!isOpen) return null;
 
-  const primaryColor = profile?.profile_color || theme.primaryColor;
-  const bgFrom = profile?.profile_color ? `${profile.profile_color}40` : theme.bgFrom;
+  const primaryColor = profile?.profile_color || theme?.primaryColor || '#00E5FF';
+  const bgFrom = profile?.profile_color ? `${profile.profile_color}40` : (theme?.bgFrom || '#050A14');
 
   return (
     <AnimatePresence>

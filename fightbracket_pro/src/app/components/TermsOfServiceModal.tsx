@@ -145,6 +145,7 @@ If you register for our services using third-party single-sign-on (OAuth) system
 export function TermsOfServiceModal({ pageId, onClose, theme }: TermsOfServiceModalProps) {
   if (!pageId || !STATIC_DOCS[pageId]) return null;
 
+  const primaryColor = theme?.primaryColor || '#00E5FF';
   const doc = STATIC_DOCS[pageId];
   const Icon = doc.icon;
 
@@ -157,7 +158,7 @@ export function TermsOfServiceModal({ pageId, onClose, theme }: TermsOfServiceMo
 
       if (trimmed.startsWith('# ')) {
         return (
-          <h1 key={idx} className="text-2xl font-bold font-rajdhani text-white border-b border-white/10 pb-2 mt-2 mb-4" style={{ color: theme.primaryColor }}>
+          <h1 key={idx} className="text-2xl font-bold font-rajdhani text-white border-b border-white/10 pb-2 mt-2 mb-4" style={{ color: primaryColor }}>
             {trimmed.replace('# ', '')}
           </h1>
         );
@@ -205,7 +206,7 @@ export function TermsOfServiceModal({ pageId, onClose, theme }: TermsOfServiceMo
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.95, opacity: 0 }}
           className="relative w-full max-w-2xl h-[620px] overflow-hidden rounded-2xl border bg-[#050A14] shadow-2xl flex flex-col"
-          style={{ borderColor: `${theme.primaryColor}40` }}
+          style={{ borderColor: `${primaryColor}40` }}
           onClick={e => e.stopPropagation()}
         >
           {/* Top Bar Header */}
@@ -214,7 +215,7 @@ export function TermsOfServiceModal({ pageId, onClose, theme }: TermsOfServiceMo
             style={{ borderColor: 'rgba(255,255,255,0.08)' }}
           >
             <div className="flex items-center gap-3">
-              <Icon size={22} style={{ color: theme.primaryColor }} />
+              <Icon size={22} style={{ color: primaryColor }} />
               <div>
                 <h2 className="font-bold tracking-wider text-base font-rajdhani text-white">
                   {doc.title}

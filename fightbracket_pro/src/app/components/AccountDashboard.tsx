@@ -44,6 +44,7 @@ interface AccountDashboardProps {
 }
 
 export function AccountDashboard({ user, theme, currentTournamentData, onLoad, onStartggImport, onOpenFriendsModal, onNavigateHome, onViewOwnProfile }: AccountDashboardProps) {
+  const primaryColor = theme?.primaryColor || '#00E5FF';
   // Sidebar layout state
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("Dashboard");
@@ -898,8 +899,8 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
   if (!user) {
     if (awaitingEmailConfirmation) {
       return (
-        <div className="flex flex-col items-center justify-center p-8 mt-12 w-full max-w-md mx-auto relative z-10" style={{ background: 'var(--card)', border: `1px solid ${theme.primaryColor}40`, borderRadius: 16 }}>
-          <Mail size={48} className="mb-4" style={{ color: theme.primaryColor }} />
+        <div className="flex flex-col items-center justify-center p-8 mt-12 w-full max-w-md mx-auto relative z-10" style={{ background: 'var(--card)', border: `1px solid ${primaryColor}40`, borderRadius: 16 }}>
+          <Mail size={48} className="mb-4" style={{ color: primaryColor }} />
           <h2 className="text-2xl font-bold tracking-widest mb-4 text-center" style={{ fontFamily: 'Rajdhani, sans-serif' }}>CHECK YOUR EMAIL</h2>
           <p className="text-center opacity-70 mb-6" style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 13 }}>
             We've sent a confirmation link to <strong>{email}</strong>. Please click the link to verify your account before logging in.
@@ -907,7 +908,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
           <button
             onClick={() => setAwaitingEmailConfirmation(false)}
             className="px-6 py-2 rounded font-bold tracking-widest transition-opacity hover:opacity-100 opacity-80"
-            style={{ border: `1px solid ${theme.primaryColor}80`, color: theme.primaryColor, fontFamily: 'JetBrains Mono, monospace', fontSize: 13 }}
+            style={{ border: `1px solid ${primaryColor}80`, color: primaryColor, fontFamily: 'JetBrains Mono, monospace', fontSize: 13 }}
           >
             BACK TO LOGIN
           </button>
@@ -1750,7 +1751,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
                         <button
                           onClick={handleAddGameMain}
                           className="px-4 py-2 rounded text-sm tracking-widest font-bold text-black hover:brightness-125 transition-all shrink-0"
-                          style={{ background: theme.primaryColor, fontFamily: 'Rajdhani, sans-serif' }}
+                          style={{ background: primaryColor, fontFamily: 'Rajdhani, sans-serif' }}
                         >
                           ADD
                         </button>
@@ -1837,7 +1838,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
                         <button onClick={fetchCloudTournaments} className="p-2 rounded-lg border border-white/10 text-white hover:border-white/30 hover:bg-white/5 transition-all" title="Refresh">
                           <RefreshCw size={15} />
                         </button>
-                        <button onClick={saveToCloud} disabled={saving} className="flex items-center justify-center gap-2 px-4 py-2 rounded tracking-widest font-bold text-black hover:brightness-125 transition-all text-sm disabled:opacity-50" style={{ background: theme.primaryColor, fontFamily: 'Rajdhani, sans-serif' }}>
+                        <button onClick={saveToCloud} disabled={saving} className="flex items-center justify-center gap-2 px-4 py-2 rounded tracking-widest font-bold text-black hover:brightness-125 transition-all text-sm disabled:opacity-50" style={{ background: primaryColor, fontFamily: 'Rajdhani, sans-serif' }}>
                           <Save size={15} /> {saving ? 'SAVING...' : 'SAVE CURRENT'}
                         </button>
                       </div>
@@ -1942,7 +1943,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
                       onClick={() => fetchStartggHosted(false)}
                       disabled={fetchingStartgg || !startggToken}
                       className="w-full flex items-center justify-center gap-2 px-6 py-3 rounded text-sm tracking-widest font-bold text-black hover:brightness-125 transition-all disabled:opacity-50 mb-6"
-                      style={{ background: theme.primaryColor, fontFamily: 'Rajdhani, sans-serif' }}
+                      style={{ background: primaryColor, fontFamily: 'Rajdhani, sans-serif' }}
                     >
                       <RefreshCw size={16} className={fetchingStartgg ? "animate-spin" : ""} />
                       {fetchingStartgg ? 'FETCHING...' : 'FETCH NEW EVENTS TO IMPORT'}
