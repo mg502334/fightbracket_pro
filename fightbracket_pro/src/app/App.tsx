@@ -1244,7 +1244,7 @@ export default function App() {
                   { label: 'LIVE', value: totalActive },
                   { label: 'BUSY', value: totalStationsActive },
                 ].map(s => (
-                  <div key={s.label} className="text-left">
+                  <div key={s.label} className="flex flex-col items-center justify-center min-w-[50px]">
                     <div className="text-xs leading-none mb-0.5" style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 8, opacity: 0.6 }}>{s.label}</div>
                     <div className="text-sm tabular-nums" style={{ fontFamily: 'Rajdhani, sans-serif', fontWeight: 700 }}>{s.value}</div>
                   </div>
