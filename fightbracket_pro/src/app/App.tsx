@@ -1288,7 +1288,7 @@ export default function App() {
             <GitBranch size={11} />
             IMPORT LIVE
           </button>
-          {activeTournament && (
+          {(activeTournament || players.length > 0 || gameOrder.length > 0) && (
             <button onClick={handleClearTournament}
               className="flex items-center justify-center px-2 py-1 rounded font-bold tracking-widest uppercase transition-all hover:!bg-[#FF1744] hover:!text-white group"
               style={{ background: 'var(--border)', border: '1px solid rgba(255,23,68,0.3)', color: '#FF1744', fontFamily: 'JetBrains Mono, monospace' }}>
