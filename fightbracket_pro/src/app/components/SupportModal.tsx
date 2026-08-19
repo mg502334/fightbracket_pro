@@ -11,6 +11,7 @@ interface SupportModalProps {
 }
 
 const INQUIRY_TYPES = [
+  { value: 'game_request', label: 'Request a Game Addition', icon: '🎮' },
   { value: 'bracket', label: 'Tournament / Bracket Bug', icon: '🏆' },
   { value: 'oauth', label: 'OAuth / Sign-In Issue', icon: '🔐' },
   { value: 'privacy', label: 'Privacy / Account Data Deletion', icon: '🛡️' },
@@ -50,6 +51,7 @@ export function SupportModal({ isOpen, onClose }: SupportModalProps) {
   const [focusedField, setFocusedField] = useState<string | null>(null);
 
   const isPrivacyRequest = inquiryType === 'privacy';
+  const isGameRequest = inquiryType === 'game_request';
 
   const getFocusBorder = (field: string) =>
     focusedField === field
@@ -77,7 +79,7 @@ export function SupportModal({ isOpen, onClose }: SupportModalProps) {
 
       if (res.ok) {
         setStatus('success');
-        toast.success('Support ticket submitted! Check your inbox for confirmation.');
+        toast.success(isGameRequest ? 'Game request submitted! We will review and add it.' : 'Support ticket submitted! Check your inbox for confirmation.');
       } else {
         const err = await res.json().catch(() => ({}));
         throw new Error(err.detail || 'Server error');
@@ -218,13 +220,14 @@ export function SupportModal({ isOpen, onClose }: SupportModalProps) {
                     marginBottom: 8,
                   }}
                 >
-                  Ticket Received
+                  {isGameRequest ? 'Game Request Received!' : 'Ticket Received'}
                 </h3>
                 <p style={{ fontSize: '13px', color: '#8a8a9a', fontFamily: 'JetBrains Mono, monospace', lineHeight: 1.6 }}>
-                  Check your inbox for an automated confirmation.{' '}
-                  {isPrivacyRequest
-                    ? 'Data deletion requests are processed within 7 business days.'
-                    : 'Standard tickets are reviewed within 24–48 hours.'}
+                  {isGameRequest 
+                    ? 'Thanks for your recommendation! Our team reviews game addition requests weekly to add Start.gg brackets, custom themes, and live ranking integrations.'
+                    : isPrivacyRequest
+                    ? 'Check your inbox for an automated confirmation. Data deletion requests are processed within 7 business days.'
+                    : 'Check your inbox for an automated confirmation. Standard tickets are reviewed within 24–48 hours.'}
                 </p>
                 <button
                   onClick={handleClose}
@@ -264,6 +267,26 @@ export function SupportModal({ isOpen, onClose }: SupportModalProps) {
                     <AlertCircle size={14} style={{ color: '#ef4444', flexShrink: 0, marginTop: 2 }} />
                     <p style={{ fontSize: '11px', color: '#fca5a5', fontFamily: 'JetBrains Mono, monospace', margin: 0, lineHeight: 1.5 }}>
                       Data deletion requests are irreversible. Include your registered email and User ID. Processing takes up to 7 business days.
+                    </p>
+                  </div>
+                )}
+
+                {/* Game request helper banner */}
+                {isGameRequest && (
+                  <div
+                    style={{
+                      background: 'rgba(0,229,255,0.08)',
+                      border: '1px solid rgba(0,229,255,0.2)',
+                      borderRadius: '2px',
+                      padding: '10px 12px',
+                      marginBottom: 20,
+                      display: 'flex',
+                      gap: 8,
+                    }}
+                  >
+                    <span style={{ fontSize: '16px' }}>🎮</span>
+                    <p style={{ fontSize: '11px', color: '#22d3ee', fontFamily: 'JetBrains Mono, monospace', margin: 0, lineHeight: 1.5 }}>
+                      Missing your favorite fighting game? Tell us which game and platform you want added, and we will configure brackets, cover art, and store discount tracking!
                     </p>
                   </div>
                 )}
@@ -327,13 +350,19 @@ export function SupportModal({ isOpen, onClose }: SupportModalProps) {
                 {/* Message */}
                 <div style={{ marginBottom: 20 }}>
                   <label style={labelStyle}>
-                    {isPrivacyRequest ? 'Your User ID & Deletion Request *' : 'Message *'}
+                    {isGameRequest 
+                      ? 'Game Title, Platform & Details *' 
+                      : isPrivacyRequest 
+                      ? 'Your User ID & Deletion Request *' 
+                      : 'Message *'}
                   </label>
                   <textarea
                     required
                     rows={4}
                     placeholder={
-                      isPrivacyRequest
+                      isGameRequest
+                        ? '1. Game Title: (e.g. Virtua Fighter 5 R.E.V.O., Rivals of Aether II, Melty Blood)\n2. Platforms: (e.g. Steam, PS5, Xbox, Switch, Arcade)\n3. Start.gg / Hub URL: (optional)\n4. Additional Notes...'
+                        : isPrivacyRequest
                         ? 'Include your registered email and User ID (found in Account Settings → Profile). Describe the data you want deleted.'
                         : 'Describe your issue in detail. Include your browser, any error messages, and steps to reproduce...'
                     }

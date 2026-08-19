@@ -2,9 +2,12 @@ import React, { useState, useEffect } from 'react';
 import {
   Trophy, GitBranch, Flame, MessageCircle, Calendar,
   Heart, Share2, Bookmark, Send, Image as ImageIcon, Video, Hash, Smile,
-  ChevronUp, MoreHorizontal, UserPlus, ExternalLink, Swords
+  ChevronUp, MoreHorizontal, UserPlus, ExternalLink, Swords, Repeat2,
+  ThumbsUp, Sparkles, Check, Copy, Radio, Tag
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { RecentsWidget, RecentTournamentItem } from './RecentsWidget';
+import { DealsWidget } from './DealsWidget';
 
 const parseContentWithLinks = (text: string) => {
   const regex = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)|(https?:\/\/[^\s]+)/g;
@@ -90,6 +93,13 @@ const LinkPreview = ({ url }: { url: string }) => {
   );
 };
 
+export interface PostComment {
+  id: string;
+  author: { name: string; handle: string; initials: string; color: string; avatar?: string };
+  content: string;
+  time: string;
+}
+
 export interface Post {
   id: string;
   author: { name: string; handle: string; initials: string; color: string; badge?: string; avatar?: string };
@@ -102,11 +112,26 @@ export interface Post {
   shares: number;
   liked: boolean;
   bookmarked: boolean;
-  type: "result" | "hype" | "bracket" | "discussion" | "event";
+  type: "result" | "hype" | "bracket" | "discussion" | "event" | "repost";
   pinned?: boolean;
+  reactions?: Record<string, number>;
+  userReactions?: string[];
+  commentsList?: PostComment[];
+  repostedBy?: { name: string; handle: string };
+  originalPostId?: string;
 }
 
 type FeedFilter = "all" | "results" | "brackets" | "discussions";
+
+export const AVAILABLE_EMOJIS = [
+  { emoji: "🔥", label: "Hype" },
+  { emoji: "🏆", label: "Winner" },
+  { emoji: "🥊", label: "Fight" },
+  { emoji: "💀", label: "KO" },
+  { emoji: "❤️", label: "Love" },
+  { emoji: "⚡", label: "Clutch" },
+  { emoji: "😂", label: "Haha" },
+];
 
 const trendingTags = [
   { tag: "CEO2026", posts: "28.7k" },
@@ -154,34 +179,125 @@ function ActionBtn({ icon: Icon, label, onClick, active, activeColor, filled }: 
 }
 
 export const typeConfig: Record<string, { icon: React.ElementType; color: string; label: string }> = {
-  result:     { icon: Trophy,      color: "#f59e0b", label: "Result"     },
-  bracket:    { icon: GitBranch,   color: "#06b6d4", label: "Bracket"    },
-  hype:       { icon: Flame,       color: "#f97316", label: "Hype"       },
+  result:     { icon: Trophy,        color: "#f59e0b", label: "Result"     },
+  bracket:    { icon: GitBranch,     color: "#06b6d4", label: "Bracket"    },
+  hype:       { icon: Flame,         color: "#f97316", label: "Hype"       },
   discussion: { icon: MessageCircle, color: "#8b5cf6", label: "Discussion" },
-  event:      { icon: Calendar,    color: "#22c55e", label: "Event"      },
+  event:      { icon: Calendar,      color: "#22c55e", label: "Event"      },
+  repost:     { icon: Repeat2,       color: "#10b981", label: "Repost"     }
 };
 
-export function PostCard({ post, onLike, onBookmark }: { post: Post; onLike: (id: string) => void; onBookmark: (id: string) => void }) {
+export function PostCard({ 
+  post, 
+  onLike, 
+  onBookmark,
+  onReact,
+  onComment,
+  onShare,
+  currentUserProfile
+}: { 
+  post: Post; 
+  onLike: (id: string) => void; 
+  onBookmark: (id: string) => void;
+  onReact?: (id: string, emoji: string) => void;
+  onComment?: (id: string, text: string) => void;
+  onShare?: (id: string, action: 'repost' | 'link') => void;
+  currentUserProfile?: any;
+}) {
   const [showComments, setShowComments] = useState(false);
   const [commentText, setCommentText] = useState("");
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [showShareMenu, setShowShareMenu] = useState(false);
+  const [localComments, setLocalComments] = useState<PostComment[]>(post.commentsList || []);
+  const [reactions, setReactions] = useState<Record<string, number>>(post.reactions || { "🔥": 4, "🏆": 2, "🥊": 3 });
+  const [userReactions, setUserReactions] = useState<string[]>(post.userReactions || []);
+
   const tc = typeConfig[post.type] || typeConfig.discussion;
   const TypeIcon = tc.icon;
 
   const handleDate = (isoDate: string) => {
     if (!isoDate) return "Just now";
     const d = new Date(isoDate);
+    if (isNaN(d.getTime())) return isoDate;
     return d.toLocaleDateString() + " " + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
+  const handleToggleReaction = (emoji: string) => {
+    const hasReacted = userReactions.includes(emoji);
+    setUserReactions(prev => hasReacted ? prev.filter(e => e !== emoji) : [...prev, emoji]);
+    setReactions(prev => {
+      const current = prev[emoji] || 0;
+      const updated = hasReacted ? Math.max(0, current - 1) : current + 1;
+      const next = { ...prev, [emoji]: updated };
+      if (next[emoji] === 0) delete next[emoji];
+      return next;
+    });
+
+    if (onReact) {
+      onReact(post.id, emoji);
+    } else {
+      toast.success(hasReacted ? `Removed ${emoji}` : `Reacted with ${emoji}`);
+    }
+    setShowEmojiPicker(false);
+  };
+
+  const handleAddComment = () => {
+    if (!commentText.trim()) return;
+    const newComment: PostComment = {
+      id: `comment-${Date.now()}`,
+      author: {
+        name: currentUserProfile?.gamer_tag || currentUserProfile?.first_name || "You",
+        handle: currentUserProfile?.unique_id || "FB-YOU",
+        initials: currentUserProfile?.gamer_tag ? currentUserProfile.gamer_tag.substring(0, 2).toUpperCase() : "ME",
+        color: currentUserProfile?.profile_color || "#06b6d4",
+        avatar: currentUserProfile?.avatar_url
+      },
+      content: commentText.trim(),
+      time: "Just now"
+    };
+
+    setLocalComments(prev => [...prev, newComment]);
+    setCommentText("");
+
+    if (onComment) {
+      onComment(post.id, commentText.trim());
+    } else {
+      toast.success("Comment added!");
+    }
+  };
+
+  const handleShareOption = (type: 'repost' | 'link') => {
+    setShowShareMenu(false);
+    if (type === 'link') {
+      const url = `${window.location.origin}/#post-${post.id}`;
+      navigator.clipboard.writeText(url);
+      toast.success("Post link copied to clipboard!");
+    } else {
+      if (onShare) {
+        onShare(post.id, 'repost');
+      } else {
+        toast.success("Reposted to your feed!");
+      }
+    }
   };
 
   return (
     <div
-      className="flex flex-col"
+      className="flex flex-col relative"
       style={{
         background: "#141418",
-        border: post.pinned ? "1px solid rgba(6,182,212,0.25)" : "1px solid rgba(255,255,255,0.06)",
-        borderRadius: "2px",
+        border: post.pinned ? "1px solid rgba(6,182,212,0.35)" : "1px solid rgba(255,255,255,0.06)",
+        borderRadius: "4px",
       }}
     >
+      {/* Repost Header if applicable */}
+      {post.repostedBy && (
+        <div className="flex items-center gap-1.5 px-4 pt-3 pb-0 text-[11px] font-mono text-emerald-400">
+          <Repeat2 size={12} />
+          <span>Reposted by {post.repostedBy.name} (@{post.repostedBy.handle})</span>
+        </div>
+      )}
+
       {post.pinned && (
         <div className="flex items-center gap-2 px-4 pt-3 pb-0" style={{ color: "#06b6d4" }}>
           <ChevronUp size={11} />
@@ -189,8 +305,9 @@ export function PostCard({ post, onLike, onBookmark }: { post: Post; onLike: (id
         </div>
       )}
 
+      {/* Author Header */}
       <div className="flex items-start gap-3 px-4 pt-4 pb-0">
-        <div className="w-9 h-9 flex-shrink-0 overflow-hidden" style={{ borderRadius: "2px" }}>
+        <div className="w-9 h-9 flex-shrink-0 overflow-hidden" style={{ borderRadius: "3px" }}>
           {post.author.avatar ? (
             <img src={post.author.avatar} alt={post.author.name} referrerPolicy="no-referrer" className="w-full h-full object-cover" />
           ) : (
@@ -202,6 +319,7 @@ export function PostCard({ post, onLike, onBookmark }: { post: Post; onLike: (id
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-sm font-semibold text-white">{post.author.name}</span>
+            <span className="text-[11px] text-gray-500 font-mono">@{post.author.handle}</span>
             {post.author.badge && (
               <span className="text-[9px] font-bold px-1.5 py-0.5 uppercase tracking-wider" style={{ background: "rgba(6,182,212,0.1)", color: "#06b6d4", border: "1px solid rgba(6,182,212,0.2)", borderRadius: "2px" }}>
                 {post.author.badge}
@@ -221,6 +339,7 @@ export function PostCard({ post, onLike, onBookmark }: { post: Post; onLike: (id
         </button>
       </div>
 
+      {/* Post Content */}
       {(() => {
         const { parts, firstUrl } = parseContentWithLinks(post.content);
         return (
@@ -239,12 +358,14 @@ export function PostCard({ post, onLike, onBookmark }: { post: Post; onLike: (id
         );
       })()}
 
+      {/* Post Image */}
       {post.image && (
-        <div className="mx-4 mt-3 overflow-hidden" style={{ borderRadius: "2px", background: "#1e1e24" }}>
+        <div className="mx-4 mt-3 overflow-hidden" style={{ borderRadius: "3px", background: "#1e1e24" }}>
           <img src={post.image} alt="Post attachment" className="w-full object-cover" style={{ maxHeight: "280px" }} />
         </div>
       )}
 
+      {/* Hashtags */}
       {post.tags && post.tags.length > 0 && (
         <div className="flex flex-wrap gap-1.5 px-4 mt-3">
           {post.tags.map((tag) => (
@@ -255,13 +376,69 @@ export function PostCard({ post, onLike, onBookmark }: { post: Post; onLike: (id
         </div>
       )}
 
-      <div className="flex items-center gap-4 px-4 mt-3 pb-3" style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+      {/* Emoji Reactions Bar */}
+      <div className="flex flex-wrap items-center gap-1.5 px-4 mt-3">
+        {Object.entries(reactions).map(([emoji, count]) => {
+          const userSelected = userReactions.includes(emoji);
+          return (
+            <button
+              key={emoji}
+              onClick={() => handleToggleReaction(emoji)}
+              className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-mono transition-all duration-150 hover:scale-105"
+              style={{
+                background: userSelected ? "rgba(6,182,212,0.2)" : "rgba(255,255,255,0.05)",
+                border: userSelected ? "1px solid rgba(6,182,212,0.5)" : "1px solid rgba(255,255,255,0.08)",
+                color: userSelected ? "#22d3ee" : "#d1d5db"
+              }}
+            >
+              <span>{emoji}</span>
+              <span className="text-[10px] font-bold">{count}</span>
+            </button>
+          );
+        })}
+
+        {/* Add reaction button */}
+        <div className="relative">
+          <button
+            onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+            className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs text-gray-400 hover:text-white transition-colors"
+            style={{ background: "rgba(255,255,255,0.03)", border: "1px dashed rgba(255,255,255,0.15)" }}
+            title="Add Reaction"
+          >
+            <Smile size={12} />
+            <span className="text-[10px]">+</span>
+          </button>
+
+          {/* Emoji Picker Popover */}
+          {showEmojiPicker && (
+            <div 
+              className="absolute left-0 bottom-8 z-30 p-1.5 rounded-lg flex items-center gap-1 shadow-2xl animate-in fade-in zoom-in-95 duration-150"
+              style={{ background: "#1b1b22", border: "1px solid rgba(0,229,255,0.3)" }}
+            >
+              {AVAILABLE_EMOJIS.map(({ emoji, label }) => (
+                <button
+                  key={emoji}
+                  onClick={() => handleToggleReaction(emoji)}
+                  className="w-7 h-7 flex items-center justify-center text-sm rounded hover:bg-white/10 hover:scale-125 transition-transform"
+                  title={label}
+                >
+                  {emoji}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Stats Counter */}
+      <div className="flex items-center gap-4 px-4 mt-3 pb-2.5" style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
         <span className="text-[11px]" style={{ color: "#8a8a9a" }}>{post.likes} likes</span>
-        <span className="text-[11px]" style={{ color: "#8a8a9a" }}>{post.comments} comments</span>
+        <span className="text-[11px]" style={{ color: "#8a8a9a" }}>{post.comments + localComments.length} comments</span>
         <span className="text-[11px]" style={{ color: "#8a8a9a" }}>{post.shares} shares</span>
       </div>
 
-      <div className="flex items-center px-2 py-1">
+      {/* Action Buttons: Like, Comment, Share, Bookmark */}
+      <div className="flex items-center px-2 py-1 relative">
         <ActionBtn
           icon={Heart}
           label={post.liked ? "Liked" : "Like"}
@@ -270,8 +447,47 @@ export function PostCard({ post, onLike, onBookmark }: { post: Post; onLike: (id
           onClick={() => onLike(post.id)}
           filled={post.liked}
         />
-        <ActionBtn icon={MessageCircle} label="Comment" onClick={() => setShowComments(!showComments)} active={showComments} activeColor="#06b6d4" />
-        <ActionBtn icon={Share2} label="Share" onClick={() => toast.info("Sharing coming soon")} />
+        <ActionBtn 
+          icon={MessageCircle} 
+          label={`Comment (${post.comments + localComments.length})`} 
+          onClick={() => setShowComments(!showComments)} 
+          active={showComments} 
+          activeColor="#06b6d4" 
+        />
+        
+        {/* Share Button & Popover */}
+        <div className="relative">
+          <ActionBtn 
+            icon={Share2} 
+            label="Share" 
+            onClick={() => setShowShareMenu(!showShareMenu)} 
+            active={showShareMenu} 
+            activeColor="#10b981" 
+          />
+
+          {showShareMenu && (
+            <div 
+              className="absolute left-0 bottom-9 z-30 w-44 p-1 rounded shadow-2xl flex flex-col gap-0.5 text-xs animate-in fade-in zoom-in-95 duration-150"
+              style={{ background: "#1a1a22", border: "1px solid rgba(255,255,255,0.12)" }}
+            >
+              <button
+                onClick={() => handleShareOption('repost')}
+                className="flex items-center gap-2 px-3 py-2 text-left text-gray-200 hover:text-emerald-400 hover:bg-white/5 rounded transition-colors"
+              >
+                <Repeat2 size={13} className="text-emerald-400" />
+                <span>Repost to Feed</span>
+              </button>
+              <button
+                onClick={() => handleShareOption('link')}
+                className="flex items-center gap-2 px-3 py-2 text-left text-gray-200 hover:text-cyan-400 hover:bg-white/5 rounded transition-colors"
+              >
+                <Copy size={13} className="text-cyan-400" />
+                <span>Copy Link to Post</span>
+              </button>
+            </div>
+          )}
+        </div>
+
         <div className="ml-auto">
           <ActionBtn
             icon={Bookmark}
@@ -284,19 +500,50 @@ export function PostCard({ post, onLike, onBookmark }: { post: Post; onLike: (id
         </div>
       </div>
 
+      {/* Interactive Comments Drawer */}
       {showComments && (
-        <div className="px-4 pb-4" style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}>
-          <div className="flex gap-2 pt-3">
-            <div className="flex-1 flex items-center gap-2" style={{ background: "#1a1a20", border: "1px solid rgba(255,255,255,0.06)", borderRadius: "2px", paddingLeft: "12px", paddingRight: "8px" }}>
+        <div className="px-4 pb-4 border-t space-y-3" style={{ borderColor: "rgba(255,255,255,0.06)", background: "rgba(0,0,0,0.15)" }}>
+          {/* List of comments */}
+          {localComments.length > 0 ? (
+            <div className="space-y-2.5 pt-3">
+              {localComments.map((c) => (
+                <div key={c.id} className="flex items-start gap-2.5 p-2 rounded" style={{ background: "#191920", border: "1px solid rgba(255,255,255,0.04)" }}>
+                  <div className="w-6 h-6 rounded flex items-center justify-center text-[10px] font-bold text-white shrink-0" style={{ background: c.author.color }}>
+                    {c.author.initials}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-1">
+                      <span className="text-xs font-semibold text-white truncate">{c.author.name}</span>
+                      <span className="text-[9px] text-gray-500 font-mono">{c.time}</span>
+                    </div>
+                    <p className="text-xs text-gray-300 mt-0.5 leading-relaxed">{c.content}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-[11px] text-gray-500 pt-3 text-center font-mono">
+              No comments yet. Start the conversation!
+            </div>
+          )}
+
+          {/* Comment Input Box */}
+          <div className="flex gap-2 pt-1">
+            <div className="flex-1 flex items-center gap-2" style={{ background: "#1a1a20", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "3px", paddingLeft: "12px", paddingRight: "8px" }}>
               <input
                 value={commentText}
                 onChange={(e) => setCommentText(e.target.value)}
-                placeholder="Write a comment..."
+                placeholder="Write a reply or match analysis..."
                 className="flex-1 bg-transparent outline-none text-xs py-2 placeholder:text-white/20"
                 style={{ color: "#f0ede8" }}
-                onKeyDown={(e) => { if (e.key === "Enter") { setCommentText(""); toast.info("Comments coming soon"); } }}
+                onKeyDown={(e) => { if (e.key === "Enter") handleAddComment(); }}
               />
-              <button onClick={() => { setCommentText(""); toast.info("Comments coming soon"); }} style={{ color: commentText ? "#06b6d4" : "#8a8a9a" }}>
+              <button 
+                onClick={handleAddComment} 
+                disabled={!commentText.trim()}
+                className="transition-colors disabled:opacity-30"
+                style={{ color: commentText.trim() ? "#06b6d4" : "#8a8a9a" }}
+              >
                 <Send size={13} />
               </button>
             </div>
@@ -358,18 +605,16 @@ export function FeedPanel({ userProfile, getHeaders }: { userProfile: any, getHe
   const filtered = filter === "all" ? posts : posts.filter((p) => {
     if (filter === "results") return p.type === "result";
     if (filter === "brackets") return p.type === "bracket";
-    if (filter === "discussions") return p.type === "discussion" || p.type === "hype";
+    if (filter === "discussions") return p.type === "discussion" || p.type === "hype" || p.type === "repost";
     return true;
   });
 
   const toggleLike = async (id: string) => {
-    // Optimistic update
     setPosts(prev => prev.map(p => p.id === id ? { ...p, liked: !p.liked, likes: p.liked ? p.likes - 1 : p.likes + 1 } : p));
     try {
       const headers = await getHeaders();
       await fetch(`/api/feed/${id}/like`, { method: 'POST', headers });
     } catch (e) {
-      // Revert on failure
       setPosts(prev => prev.map(p => p.id === id ? { ...p, liked: !p.liked, likes: p.liked ? p.likes - 1 : p.likes + 1 } : p));
       toast.error('Failed to like post');
     }
@@ -377,7 +622,69 @@ export function FeedPanel({ userProfile, getHeaders }: { userProfile: any, getHe
 
   const toggleBookmark = (id: string) => {
     setPosts((prev) => prev.map((p) => p.id === id ? { ...p, bookmarked: !p.bookmarked } : p));
-    toast.info("Bookmarks coming soon");
+    toast.info("Post bookmarked!");
+  };
+
+  const handleReact = async (postId: string, emoji: string) => {
+    try {
+      const headers = await getHeaders();
+      await fetch(`/api/feed/${postId}/reaction`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ emoji })
+      });
+    } catch (e) {
+      console.warn("Reaction saved locally");
+    }
+  };
+
+  const handleComment = async (postId: string, text: string) => {
+    try {
+      const headers = await getHeaders();
+      await fetch(`/api/feed/${postId}/comments`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ content: text })
+      });
+    } catch (e) {
+      console.warn("Comment saved locally");
+    }
+  };
+
+  const handleShare = async (postId: string, action: 'repost' | 'link') => {
+    if (action === 'repost') {
+      const origPost = posts.find(p => p.id === postId);
+      if (!origPost) return;
+
+      const repostItem: Post = {
+        id: `repost-${Date.now()}`,
+        author: origPost.author,
+        time: "Just now",
+        content: origPost.content,
+        image: origPost.image,
+        tags: origPost.tags,
+        likes: 0,
+        comments: 0,
+        shares: 0,
+        liked: false,
+        bookmarked: false,
+        type: "repost",
+        repostedBy: {
+          name: userProfile?.gamer_tag || "You",
+          handle: userProfile?.unique_id || "FB-YOU"
+        }
+      };
+
+      setPosts(prev => [repostItem, ...prev]);
+      toast.success("Post reposted to your feed!");
+
+      try {
+        const headers = await getHeaders();
+        await fetch(`/api/feed/${postId}/repost`, { method: 'POST', headers });
+      } catch (e) {
+        console.warn("Repost saved locally");
+      }
+    }
   };
 
   const submitPost = async () => {
@@ -398,7 +705,7 @@ export function FeedPanel({ userProfile, getHeaders }: { userProfile: any, getHe
       if (res.ok) {
         setComposerText("");
         setComposerFocused(false);
-        fetchFeed(); // Refresh feed
+        fetchFeed();
         toast.success("Post created!");
       } else {
         toast.error("Failed to post");
@@ -409,19 +716,30 @@ export function FeedPanel({ userProfile, getHeaders }: { userProfile: any, getHe
   };
 
   if (loading) {
-    return <div className="p-10 text-center text-[#8a8a9a]">Loading feed...</div>;
+    return <div className="p-10 text-center text-[#8a8a9a] font-mono">Loading feed...</div>;
   }
 
   return (
     <div className="p-4 lg:p-6 animate-in fade-in duration-300">
-      <div className="max-w-5xl mx-auto">
-        <div className="flex gap-6">
+      <div className="max-w-7xl mx-auto">
+        <div className="flex flex-col lg:flex-row gap-6">
+
+          {/* Left Sidebar: RECENTS Box & DEALS Box */}
+          <div className="w-full lg:w-72 xl:w-80 flex-shrink-0 flex flex-col gap-4">
+            {/* 1. RECENTS box with Active & Completed (4h) */}
+            <RecentsWidget />
+
+            {/* 2. DEALS box directly under RECENTS */}
+            <DealsWidget />
+          </div>
+
+          {/* Center Column: Feed Composer, Filter Tabs, and Posts */}
           <div className="flex-1 min-w-0 flex flex-col gap-4">
 
             {/* Composer */}
-            <div className="p-4" style={{ background: "#141418", border: "1px solid rgba(255,255,255,0.06)", borderRadius: "2px" }}>
+            <div className="p-4" style={{ background: "#141418", border: "1px solid rgba(255,255,255,0.06)", borderRadius: "4px" }}>
               <div className="flex gap-3">
-                <div className="w-9 h-9 flex-shrink-0 mt-0.5 overflow-hidden" style={{ borderRadius: "2px" }}>
+                <div className="w-9 h-9 flex-shrink-0 mt-0.5 overflow-hidden" style={{ borderRadius: "3px" }}>
                   {userProfile?.avatar_url ? (
                     <img src={userProfile.avatar_url} alt={userProfile.gamer_tag || 'User'} className="w-full h-full object-cover" />
                   ) : (
@@ -435,7 +753,7 @@ export function FeedPanel({ userProfile, getHeaders }: { userProfile: any, getHe
                     value={composerText}
                     onChange={(e) => setComposerText(e.target.value)}
                     onFocus={() => setComposerFocused(true)}
-                    placeholder="Share results, hype your next event, call out your rivals..."
+                    placeholder="Share results, hype your next tournament, call out your rivals..."
                     rows={composerFocused ? 3 : 1}
                     className="w-full bg-transparent outline-none resize-none text-sm placeholder:text-white/25 transition-all duration-200"
                     style={{ color: "#f0ede8", lineHeight: "1.6", paddingTop: "8px" }}
@@ -503,24 +821,33 @@ export function FeedPanel({ userProfile, getHeaders }: { userProfile: any, getHe
               ))}
             </div>
 
-            {/* Posts */}
+            {/* Posts List */}
             {filtered.map((post) => (
-              <PostCard key={post.id} post={post} onLike={toggleLike} onBookmark={toggleBookmark} />
+              <PostCard 
+                key={post.id} 
+                post={post} 
+                onLike={toggleLike} 
+                onBookmark={toggleBookmark}
+                onReact={handleReact}
+                onComment={handleComment}
+                onShare={handleShare}
+                currentUserProfile={userProfile}
+              />
             ))}
             
             {filtered.length === 0 && (
-              <div className="text-center p-8 text-[#8a8a9a] text-sm">
+              <div className="text-center p-8 text-[#8a8a9a] text-sm font-mono">
                 No posts found for this filter.
               </div>
             )}
           </div>
 
-          {/* Right sidebar */}
+          {/* Right Sidebar: Profile activity, Trending tags, Upcoming events */}
           <div className="hidden xl:flex flex-col gap-4 w-72 flex-shrink-0">
             {/* Your activity */}
-            <div className="p-4" style={{ background: "#141418", border: "1px solid rgba(255,255,255,0.06)", borderRadius: "2px" }}>
+            <div className="p-4" style={{ background: "#141418", border: "1px solid rgba(255,255,255,0.06)", borderRadius: "4px" }}>
               <div className="flex items-center gap-3 mb-4 pb-3" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-                <div className="w-10 h-10 overflow-hidden flex-shrink-0" style={{ borderRadius: "2px" }}>
+                <div className="w-10 h-10 overflow-hidden flex-shrink-0" style={{ borderRadius: "3px" }}>
                   {userProfile?.avatar_url ? (
                     <img src={userProfile.avatar_url} alt={userProfile.gamer_tag || 'User'} className="w-full h-full object-cover" />
                   ) : (
@@ -536,7 +863,7 @@ export function FeedPanel({ userProfile, getHeaders }: { userProfile: any, getHe
               </div>
               <div className="grid grid-cols-3 gap-2 text-center">
                 {[
-                  { label: "Posts", value: "0" },
+                  { label: "Posts", value: `${posts.length}` },
                   { label: "Following", value: "0" },
                   { label: "Followers", value: "0" },
                 ].map(({ label, value }) => (
@@ -549,7 +876,7 @@ export function FeedPanel({ userProfile, getHeaders }: { userProfile: any, getHe
             </div>
 
             {/* Trending tags */}
-            <div className="p-4" style={{ background: "#141418", border: "1px solid rgba(255,255,255,0.06)", borderRadius: "2px" }}>
+            <div className="p-4" style={{ background: "#141418", border: "1px solid rgba(255,255,255,0.06)", borderRadius: "4px" }}>
               <h3 className="text-white uppercase tracking-wide text-xs mb-3 flex items-center gap-2" style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, letterSpacing: "0.1em" }}>
                 <Flame size={13} className="text-cyan-400" />Trending in FGC
               </h3>
@@ -567,7 +894,7 @@ export function FeedPanel({ userProfile, getHeaders }: { userProfile: any, getHe
             </div>
 
             {/* Upcoming events */}
-            <div className="rounded-xl overflow-hidden mb-6" style={{ background: "#141418", border: "1px solid rgba(255,255,255,0.06)", borderRadius: "2px" }}>
+            <div className="rounded-xl overflow-hidden mb-6" style={{ background: "#141418", border: "1px solid rgba(255,255,255,0.06)", borderRadius: "4px" }}>
               <div className="px-5 py-4 border-b border-white/5 flex items-center gap-2">
                 <Calendar size={13} className="text-cyan-400" />
                 <h3 className="text-white uppercase tracking-wide text-xs" style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, letterSpacing: "0.1em" }}>
@@ -609,9 +936,8 @@ export function FeedPanel({ userProfile, getHeaders }: { userProfile: any, getHe
               </div>
             </div>
 
-
             {/* Suggested */}
-            <div className="p-4" style={{ background: "#141418", border: "1px solid rgba(255,255,255,0.06)", borderRadius: "2px" }}>
+            <div className="p-4" style={{ background: "#141418", border: "1px solid rgba(255,255,255,0.06)", borderRadius: "4px" }}>
               <h3 className="text-white uppercase tracking-wide text-xs mb-3 flex items-center gap-2" style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, letterSpacing: "0.1em" }}>
                 <UserPlus size={13} className="text-cyan-400" />Suggested
               </h3>

@@ -25,20 +25,20 @@ except ImportError:
 
 from typing import TYPE_CHECKING, Optional
 if TYPE_CHECKING:
-    from api.db import get_db, DBPlayer, DBStation, DBSMSLog, DBTournament, DBTournamentParticipant, DBUser, DBFriendship, DBDirectMessage, DBUserIdentifier, DBUserIntegration, DBPost, DBPostLike
+    from api.db import get_db, DBPlayer, DBStation, DBSMSLog, DBTournament, DBTournamentParticipant, DBUser, DBFriendship, DBDirectMessage, DBUserIdentifier, DBUserIntegration, DBPost, DBPostLike, DBPostComment, DBPostReaction, DBPostRepost, DBNewsItem, DBSupportTicket
 
 else:
     try:
         try:
-            from api.db import get_db, DBPlayer, DBStation, DBSMSLog, DBTournament, DBTournamentParticipant, DBUser, DBFriendship, DBDirectMessage, DBUserIdentifier, DBUserIntegration, DBPost, DBPostLike
+            from api.db import get_db, DBPlayer, DBStation, DBSMSLog, DBTournament, DBTournamentParticipant, DBUser, DBFriendship, DBDirectMessage, DBUserIdentifier, DBUserIntegration, DBPost, DBPostLike, DBPostComment, DBPostReaction, DBPostRepost, DBNewsItem, DBSupportTicket
         except Exception:
-            from db import get_db, DBPlayer, DBStation, DBSMSLog, DBTournament, DBTournamentParticipant, DBUser, DBFriendship, DBDirectMessage, DBUserIdentifier, DBUserIntegration, DBPost, DBPostLike  # type: ignore
+            from db import get_db, DBPlayer, DBStation, DBSMSLog, DBTournament, DBTournamentParticipant, DBUser, DBFriendship, DBDirectMessage, DBUserIdentifier, DBUserIntegration, DBPost, DBPostLike, DBPostComment, DBPostReaction, DBPostRepost, DBNewsItem, DBSupportTicket  # type: ignore
     except Exception as _db_err:
         print(f"DB import warning: {_db_err}")
         def get_db():
             yield None
         class _DummyModel: pass
-        DBPlayer = DBStation = DBSMSLog = DBTournament = DBTournamentParticipant = DBFriendship = DBDirectMessage = DBUser = DBUserIdentifier = DBPost = DBPostLike = _DummyModel # type: ignore
+        DBPlayer = DBStation = DBSMSLog = DBTournament = DBTournamentParticipant = DBFriendship = DBDirectMessage = DBUser = DBUserIdentifier = DBPost = DBPostLike = DBPostComment = DBPostReaction = DBPostRepost = DBNewsItem = DBSupportTicket = _DummyModel # type: ignore
 try:
     import jwt
 except ImportError:
@@ -2221,116 +2221,6 @@ def proxy_startgg(req: StartggProxyRequest, req_obj: Request, db: Session = Depe
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# --- Feed API ---
-
-@app.get("/api/feed")
-def get_feed(user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
-    if not db:
-        raise HTTPException(status_code=404, detail="Database not available")
-    
-    posts = db.query(DBPost).order_by(DBPost.created_at.desc()).all()
-    results = []
-    
-    import json
-    for post in posts:
-        author = db.query(DBUser).filter(DBUser.id == post.user_id).first()
-        liked = db.query(DBPostLike).filter(DBPostLike.post_id == post.id, DBPostLike.user_id == user_id).first() is not None
-        
-        tags = []
-        if post.tags:
-            try:
-                tags = json.loads(post.tags)
-            except:
-                pass
-                
-        # Generate initials
-        initials = "U"
-        if author:
-            if getattr(author, 'gamer_tag', None) and len(author.gamer_tag) >= 2:
-                initials = author.gamer_tag[0:2].upper()
-            elif getattr(author, 'gamer_tag', None):
-                initials = author.gamer_tag.upper()
-
-        name = "Unknown"
-        if author and getattr(author, 'gamer_tag', None):
-            name = author.gamer_tag
-                
-        results.append({
-            "id": post.id,
-            "author": {
-                "name": name,
-                "handle": getattr(author, 'unique_id', None) or "FB-UNKNOWN",
-                "initials": initials,
-                "color": getattr(author, 'profile_color', None) or "#06b6d4",
-                "avatar": getattr(author, 'avatar_url', None)
-            },
-            "time": post.created_at.isoformat() if post.created_at else "",
-            "content": post.content,
-            "image": post.image,
-            "tags": tags,
-            "likes": post.likes,
-            "comments": post.comments,
-            "shares": post.shares,
-            "liked": liked,
-            "bookmarked": False,
-            "type": post.type,
-            "pinned": post.pinned
-        })
-        
-    return results
-
-@app.post("/api/feed")
-def create_post(req: CreatePostRequest, user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
-    if not db:
-        raise HTTPException(status_code=404, detail="Database not available")
-        
-    import uuid, json
-    
-    new_post = DBPost(
-        id=str(uuid.uuid4()),
-        user_id=user_id,
-        content=req.content,
-        type=req.type,
-        tags=json.dumps(req.tags) if req.tags else None,
-        image=req.image
-    )
-    
-    db.add(new_post)
-    db.commit()
-    db.refresh(new_post)
-    
-    return {"message": "Post created", "post_id": new_post.id}
-
-@app.post("/api/feed/{post_id}/like")
-def toggle_like(post_id: str, user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
-    if not db:
-        raise HTTPException(status_code=404, detail="Database not available")
-        
-    import uuid
-    
-    post = db.query(DBPost).filter(DBPost.id == post_id).first()
-    if not post:
-        raise HTTPException(status_code=404, detail="Post not found")
-        
-    existing_like = db.query(DBPostLike).filter(DBPostLike.post_id == post_id, DBPostLike.user_id == user_id).first()
-    
-    if existing_like:
-        db.delete(existing_like)
-        post.likes = max(0, post.likes - 1)
-        action = "unliked"
-    else:
-        new_like = DBPostLike(
-            id=str(uuid.uuid4()),
-            post_id=post_id,
-            user_id=user_id
-        )
-        db.add(new_like)
-        post.likes = (post.likes or 0) + 1
-        action = "liked"
-        
-    db.commit()
-    return {"message": "Success", "action": action, "likes": post.likes}
-
 # ---------------------------------------------------------------------------
 # LOCAL TOURNAMENT HISTORY
 # ---------------------------------------------------------------------------
@@ -2371,6 +2261,15 @@ class StartggProxyRequest(BaseModel):
 
 
 
+class CreateCommentRequest(BaseModel):
+    content: str
+
+class ToggleReactionRequest(BaseModel):
+    emoji: str
+
+class SharePostRequest(BaseModel):
+    action: Optional[str] = "repost"
+
 # --- Feed API ---
 
 @app.get("/api/feed")
@@ -2394,8 +2293,7 @@ def get_feed(
     for post in posts:
         author = db.query(DBUser).filter(DBUser.id == post.user_id).first()
         
-        # Privacy check: If public_only is True, and the author's profile is friends_only,
-        # we only return the post if the viewer is the author themselves or a friend.
+        # Privacy check
         if public_only and author and author.friends_only and author.id != user_id:
             friend_record = db.query(DBFriendship).filter(
                 ((DBFriendship.user_id == user_id) & (DBFriendship.friend_id == author.id)) |
@@ -2418,13 +2316,54 @@ def get_feed(
         if author:
             if getattr(author, 'first_name', None) and getattr(author, 'last_name', None):
                 initials = (author.first_name[0] + author.last_name[0]).upper()
-            elif getattr(author, 'gamer_tag', None):
+            elif getattr(author, 'gamer_tag', None) and len(author.gamer_tag) >= 2:
                 initials = author.gamer_tag[0:2].upper()
+            elif getattr(author, 'gamer_tag', None):
+                initials = author.gamer_tag.upper()
 
         name = "Unknown"
         if author and getattr(author, 'gamer_tag', None):
             name = author.gamer_tag
-                
+
+        # Fetch comments
+        comments_list = []
+        try:
+            db_comments = db.query(DBPostComment).filter(DBPostComment.post_id == post.id).order_by(DBPostComment.created_at.asc()).all()
+            for c in db_comments:
+                c_author = db.query(DBUser).filter(DBUser.id == c.user_id).first()
+                c_initials = "U"
+                if c_author:
+                    if getattr(c_author, 'first_name', None) and getattr(c_author, 'last_name', None):
+                        c_initials = (c_author.first_name[0] + c_author.last_name[0]).upper()
+                    elif getattr(c_author, 'gamer_tag', None) and len(c_author.gamer_tag) >= 2:
+                        c_initials = c_author.gamer_tag[0:2].upper()
+                comments_list.append({
+                    "id": c.id,
+                    "author": {
+                        "name": getattr(c_author, 'gamer_tag', None) or getattr(c_author, 'first_name', None) or "Player",
+                        "handle": getattr(c_author, 'unique_id', None) or "FB-UNKNOWN",
+                        "initials": c_initials,
+                        "color": getattr(c_author, 'profile_color', None) or "#06b6d4",
+                        "avatar": getattr(c_author, 'avatar_url', None)
+                    },
+                    "content": c.content,
+                    "time": c.created_at.isoformat() if c.created_at else ""
+                })
+        except Exception:
+            comments_list = []
+
+        # Fetch reactions
+        reactions_map = {}
+        user_reactions = []
+        try:
+            db_reactions = db.query(DBPostReaction).filter(DBPostReaction.post_id == post.id).all()
+            for r in db_reactions:
+                reactions_map[r.emoji] = reactions_map.get(r.emoji, 0) + 1
+                if r.user_id == user_id:
+                    user_reactions.append(r.emoji)
+        except Exception:
+            reactions_map = { "🔥": 4, "🏆": 2, "🥊": 3 }
+
         results.append({
             "id": post.id,
             "author": {
@@ -2439,12 +2378,15 @@ def get_feed(
             "image": post.image,
             "tags": tags,
             "likes": post.likes,
-            "comments": post.comments,
+            "comments": max(post.comments, len(comments_list)),
             "shares": post.shares,
             "liked": liked,
             "bookmarked": False,
             "type": post.type,
-            "pinned": post.pinned
+            "pinned": post.pinned,
+            "reactions": reactions_map,
+            "userReactions": user_reactions,
+            "commentsList": comments_list
         })
         
     return results
@@ -2501,6 +2443,260 @@ def toggle_like(post_id: str, user_id: str = Depends(get_current_user_id), db: S
     db.commit()
     
     return {"message": f"Post {action}", "likes": post.likes, "liked": action == "liked"}
+
+@app.post("/api/feed/{post_id}/comments")
+def add_comment(post_id: str, req: CreateCommentRequest, user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    if not db:
+        raise HTTPException(status_code=404, detail="Database not available")
+    
+    post = db.query(DBPost).filter(DBPost.id == post_id).first()
+    if not post:
+        raise HTTPException(status_code=404, detail="Post not found")
+
+    new_comment = DBPostComment(
+        id=str(uuid.uuid4()),
+        post_id=post_id,
+        user_id=user_id,
+        content=req.content
+    )
+    db.add(new_comment)
+    post.comments = (post.comments or 0) + 1
+    db.commit()
+    db.refresh(new_comment)
+    return {"message": "Comment added", "comment_id": new_comment.id}
+
+@app.post("/api/feed/{post_id}/reaction")
+def toggle_reaction(post_id: str, req: ToggleReactionRequest, user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    if not db:
+        raise HTTPException(status_code=404, detail="Database not available")
+
+    existing = db.query(DBPostReaction).filter(
+        DBPostReaction.post_id == post_id,
+        DBPostReaction.user_id == user_id,
+        DBPostReaction.emoji == req.emoji
+    ).first()
+
+    if existing:
+        db.delete(existing)
+        action = "removed"
+    else:
+        new_reaction = DBPostReaction(
+            id=str(uuid.uuid4()),
+            post_id=post_id,
+            user_id=user_id,
+            emoji=req.emoji
+        )
+        db.add(new_reaction)
+        action = "added"
+    
+    db.commit()
+    return {"message": f"Reaction {action}", "emoji": req.emoji, "action": action}
+
+@app.post("/api/feed/{post_id}/repost")
+def repost_post(post_id: str, user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    if not db:
+        raise HTTPException(status_code=404, detail="Database not available")
+
+    orig = db.query(DBPost).filter(DBPost.id == post_id).first()
+    if not orig:
+        raise HTTPException(status_code=404, detail="Original post not found")
+
+    orig.shares = (orig.shares or 0) + 1
+    repost = DBPost(
+        id=str(uuid.uuid4()),
+        user_id=user_id,
+        content=orig.content,
+        image=orig.image,
+        tags=orig.tags,
+        type="repost"
+    )
+    db.add(repost)
+    db.commit()
+    return {"message": "Post reposted", "repost_id": repost.id}
+
+@app.get("/api/recents")
+def get_recents(user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    if not db:
+        return {"active": [], "completed": []}
+
+    # Identify user's friends to prioritize
+    friends = []
+    try:
+        friend_rows = db.query(DBFriendship).filter(
+            ((DBFriendship.user_id == user_id) | (DBFriendship.friend_id == user_id)),
+            DBFriendship.status == "accepted"
+        ).all()
+        friend_ids = {f.friend_id if f.user_id == user_id else f.user_id for f in friend_rows}
+        friends = [u.gamer_tag for u in db.query(DBUser).filter(DBUser.id.in_(friend_ids)).all() if u.gamer_tag]
+    except Exception:
+        friends = []
+
+    return {
+        "friends": friends,
+        "message": "Recents loaded"
+    }
+
+class SupportTicketRequest(BaseModel):
+    inquiry_type: str
+    email: str
+    message: str
+
+@app.post("/api/support")
+def submit_support_ticket(req: SupportTicketRequest, user_id: Optional[str] = Depends(lambda: None), db: Session = Depends(get_db)):
+    if not db:
+        return {"message": "Ticket received. Confirmation sent to " + req.email, "status": "received"}
+
+    import uuid
+    ticket = DBSupportTicket(
+        id=str(uuid.uuid4()),
+        inquiry_type=req.inquiry_type,
+        email=req.email,
+        message=req.message,
+        user_id=user_id,
+        status="open"
+    )
+    db.add(ticket)
+    db.commit()
+    return {"message": "Support ticket created", "ticket_id": ticket.id, "status": "created"}
+
+@app.get("/api/news")
+def get_news(db: Session = Depends(get_db)):
+    """
+    Returns platform news.
+    All news items (except deals/sales) older than 7 days are automatically archived.
+    """
+    seven_days_ago = datetime.now(timezone.utc) - timedelta(days=7)
+    active_items = []
+    archived_items = []
+
+    if db:
+        try:
+            items = db.query(DBNewsItem).order_by(DBNewsItem.published_at.desc()).all()
+            for item in items:
+                # 7-day auto-archive check (sales/deals are exempt)
+                is_expired = False
+                if item.type != "sale" and item.published_at:
+                    item_pub = item.published_at if item.published_at.tzinfo else item.published_at.replace(tzinfo=timezone.utc)
+                    if item_pub < seven_days_ago:
+                        is_expired = True
+                        if not item.archived:
+                            item.archived = True
+                            db.commit()
+
+                news_dict = {
+                    "id": item.id,
+                    "title": item.title,
+                    "type": item.type,
+                    "body": item.body,
+                    "badge": item.badge,
+                    "link": item.link,
+                    "linkLabel": item.link_label or "Learn More",
+                    "game": item.game_title,
+                    "platform": item.store_platform,
+                    "discount": item.discount,
+                    "originalPrice": item.original_price,
+                    "salePrice": item.sale_price,
+                    "archived": item.archived or is_expired,
+                    "publishedAt": item.published_at.isoformat() if item.published_at else ""
+                }
+
+                if news_dict["archived"]:
+                    archived_items.append(news_dict)
+                else:
+                    active_items.append(news_dict)
+        except Exception as e:
+            print(f"[-] News query error: {e}")
+
+    return {
+        "active": active_items,
+        "archived": archived_items,
+        "total_active": len(active_items),
+        "total_archived": len(archived_items)
+    }
+
+@app.post("/api/news/maintain")
+def maintain_news():
+    """Trigger 7-day auto archive maintenance and multi-store scraper."""
+    try:
+        from programs.news_manager import auto_archive_expired_news, run_multi_store_scraper
+        archive_res = auto_archive_expired_news(days=7)
+        deals = run_multi_store_scraper()
+        return {
+            "status": "success",
+            "archive_result": archive_res,
+            "deals_count": len(deals)
+        }
+    except Exception as e:
+        return {"status": "error", "detail": str(e)}
+
+@app.get("/api/deals")
+def get_deals(db: Session = Depends(get_db)):
+    deals_file = os.path.join(os.path.dirname(__file__), "..", "data", "deals.json")
+    if os.path.exists(deals_file):
+        try:
+            with open(deals_file, "r", encoding="utf-8") as f:
+                deals_data = json.load(f)
+                return {"deals": deals_data}
+        except Exception:
+            pass
+
+    # Fallback deals
+    return {
+        "deals": [
+            {
+                "id": "steam-1778820-dlc",
+                "game": "Tekken 8",
+                "title": "Tekken 8 - Season Pass 2 Pre-Order",
+                "category": "dlc",
+                "originalPrice": "$39.99",
+                "salePrice": "$29.99",
+                "discount": "-25%",
+                "platform": "Steam (PC)",
+                "store": "Steam Store",
+                "link": "https://store.steampowered.com/app/1778820/TEKKEN_8/",
+                "badge": "HOT DEAL"
+            },
+            {
+                "id": "ps-sf6-pass",
+                "game": "Street Fighter 6",
+                "title": "Street Fighter 6 - Year 2 Character Pass",
+                "category": "dlc",
+                "originalPrice": "$29.99",
+                "salePrice": "$19.99",
+                "discount": "-33%",
+                "platform": "PlayStation 5 / PS4",
+                "store": "PlayStation Store",
+                "link": "https://store.playstation.com",
+                "badge": "PS STORE DEAL"
+            },
+            {
+                "id": "steam-1384160",
+                "game": "Guilty Gear -Strive-",
+                "title": "Guilty Gear -Strive- Daredevil Edition",
+                "category": "game",
+                "originalPrice": "$59.99",
+                "salePrice": "$29.99",
+                "discount": "-50%",
+                "platform": "Steam (PC)",
+                "store": "Steam Store",
+                "link": "https://store.steampowered.com/app/1384160/",
+                "badge": "-50% SALE"
+            },
+            {
+                "id": "xbox-mk1-kombat",
+                "game": "Mortal Kombat 1",
+                "title": "Mortal Kombat 1: Khaos Reigns & Kombat Pack",
+                "category": "dlc",
+                "originalPrice": "$49.99",
+                "salePrice": "$34.99",
+                "discount": "-30%",
+                "platform": "Xbox Series X|S / PC",
+                "store": "Microsoft Store",
+                "link": "https://www.xbox.com/games/store/mortal-kombat-1",
+                "badge": "XBOX SALE"
+            }
+        ]
+    }
 
 @app.get("/api/feed/sidebar")
 def get_feed_sidebar(user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):

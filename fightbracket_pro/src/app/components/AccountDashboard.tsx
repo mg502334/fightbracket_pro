@@ -8,6 +8,8 @@ import { GAME_COVERS } from '../data/gameCovers';
 import { SteamStatsPanel } from './SteamStatsPanel';
 import { AccountSettingsPanel } from './AccountSettingsPanel';
 import { FeedPanel, PostCard, Post } from './FeedPanel';
+import { RecentsWidget } from './RecentsWidget';
+import { DealsWidget } from './DealsWidget';
 import { EventsPanel } from './EventsPanel';
 
 const API_URL = import.meta.env.VITE_API_URL || '';
@@ -1577,37 +1579,88 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
             </div>
           )}
           {activeTab === "MyFeed" && (
-            <div className="max-w-3xl mx-auto space-y-4">
-              <div className="mb-6 flex justify-between items-center">
-                <h1 className="text-white uppercase tracking-wide mb-0.5" style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, fontSize: "1.5rem", letterSpacing: "0.05em" }}>
-                  My Feed
-                </h1>
+            <div className="max-w-7xl mx-auto space-y-4">
+              <div className="mb-4 flex justify-between items-center">
+                <div>
+                  <h1 className="text-white uppercase tracking-wide mb-0.5 text-2xl font-bold" style={{ fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: "0.05em" }}>
+                    My Feed
+                  </h1>
+                  <p className="text-xs text-gray-500 font-mono">Your published results, tournament posts, and activity history.</p>
+                </div>
                 <button
                   onClick={() => userProfile?.id && fetchMyFeed(userProfile.id)}
                   disabled={fetchingMyFeed}
-                  className="p-2 rounded-lg border border-white/10 text-white hover:border-white/30 hover:bg-white/5 transition-all"
+                  className="p-2 rounded-lg border border-white/10 text-white hover:border-white/30 hover:bg-white/5 transition-all flex items-center gap-2 text-xs font-mono"
                   title="Refresh Feed"
                 >
-                  <RefreshCw size={15} className={fetchingMyFeed ? "animate-spin" : ""} />
+                  <RefreshCw size={14} className={fetchingMyFeed ? "animate-spin" : ""} />
+                  <span>REFRESH</span>
                 </button>
               </div>
-              
-              {fetchingMyFeed ? (
-                <div className="text-center py-8 opacity-50 font-mono text-sm">Loading feed...</div>
-              ) : myFeedPosts.length === 0 ? (
-                <div className="text-center py-8 opacity-50 font-mono text-sm">No posts yet. Post something in the Feed to see it here!</div>
-              ) : (
-                <div className="space-y-4 pb-8">
-                  {myFeedPosts.map((post) => (
-                    <PostCard
-                      key={post.id}
-                      post={post}
-                      onLike={() => {}}
-                      onBookmark={() => {}}
-                    />
-                  ))}
+
+              <div className="flex flex-col lg:flex-row gap-6">
+                {/* Left Sidebar: RECENTS & DEALS */}
+                <div className="w-full lg:w-72 xl:w-80 flex-shrink-0 flex flex-col gap-4">
+                  <RecentsWidget />
+                  <DealsWidget />
                 </div>
-              )}
+
+                {/* Main: My Posts */}
+                <div className="flex-1 min-w-0">
+                  {fetchingMyFeed ? (
+                    <div className="text-center py-12 opacity-50 font-mono text-sm">Loading your posts...</div>
+                  ) : myFeedPosts.length === 0 ? (
+                    <div className="text-center py-16 bg-[#141418] border border-white/5 rounded-xl p-8">
+                      <div className="text-gray-400 font-medium mb-1">No posts yet on your profile</div>
+                      <p className="text-xs text-gray-500 font-mono mb-4">Post results, tournament updates, or match hype in the Feed to see them here!</p>
+                      <button
+                        onClick={() => setActiveTab("Feed")}
+                        className="px-4 py-2 bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 rounded text-xs font-bold font-mono uppercase tracking-wider hover:bg-cyan-500/20 transition-all"
+                      >
+                        Go to Community Feed →
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-4 pb-8">
+                      {myFeedPosts.map((post) => (
+                        <PostCard
+                          key={post.id}
+                          post={post}
+                          currentUserProfile={userProfile}
+                          onLike={async (id) => {
+                            setMyFeedPosts(prev => prev.map(p => p.id === id ? { ...p, liked: !p.liked, likes: p.liked ? p.likes - 1 : p.likes + 1 } : p));
+                            try {
+                              const headers = await getHeaders();
+                              await fetch(`/api/feed/${id}/like`, { method: 'POST', headers });
+                            } catch { }
+                          }}
+                          onBookmark={(id) => {
+                            setMyFeedPosts(prev => prev.map(p => p.id === id ? { ...p, bookmarked: !p.bookmarked } : p));
+                            toast.info("Post bookmarked!");
+                          }}
+                          onReact={async (id, emoji) => {
+                            try {
+                              const headers = await getHeaders();
+                              await fetch(`/api/feed/${id}/reaction`, { method: 'POST', headers, body: JSON.stringify({ emoji }) });
+                            } catch { }
+                          }}
+                          onComment={async (id, content) => {
+                            try {
+                              const headers = await getHeaders();
+                              await fetch(`/api/feed/${id}/comments`, { method: 'POST', headers, body: JSON.stringify({ content }) });
+                            } catch { }
+                          }}
+                          onShare={async (id, action) => {
+                            if (action === 'repost') {
+                              toast.success("Post reposted to feed!");
+                            }
+                          }}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           )}
           {activeTab === "Events" && (

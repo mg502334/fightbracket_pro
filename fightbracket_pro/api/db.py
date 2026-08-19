@@ -140,6 +140,58 @@ class DBPostLike(Base):
     user_id = Column(String, index=True, nullable=False)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
+class DBPostComment(Base):
+    __tablename__ = "post_comments"
+    id = Column(String, primary_key=True, index=True)
+    post_id = Column(String, index=True, nullable=False)
+    user_id = Column(String, index=True, nullable=False)
+    content = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+class DBPostReaction(Base):
+    __tablename__ = "post_reactions"
+    id = Column(String, primary_key=True, index=True)
+    post_id = Column(String, index=True, nullable=False)
+    user_id = Column(String, index=True, nullable=False)
+    emoji = Column(String, nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+class DBPostRepost(Base):
+    __tablename__ = "post_reposts"
+    id = Column(String, primary_key=True, index=True)
+    post_id = Column(String, index=True, nullable=False)
+    user_id = Column(String, index=True, nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+class DBNewsItem(Base):
+    __tablename__ = "news_items"
+    id = Column(String, primary_key=True, index=True)
+    title = Column(String, nullable=False)
+    type = Column(String, nullable=False) # 'update' | 'fix' | 'feature' | 'event' | 'sale'
+    body = Column(Text, nullable=False)
+    bullets = Column(Text, nullable=True) # JSON list
+    badge = Column(String, nullable=True)
+    link = Column(String, nullable=True)
+    link_label = Column(String, nullable=True)
+    game_title = Column(String, nullable=True)
+    store_platform = Column(String, nullable=True)
+    discount = Column(String, nullable=True)
+    original_price = Column(String, nullable=True)
+    sale_price = Column(String, nullable=True)
+    archived = Column(Boolean, default=False)
+    published_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    expires_at = Column(DateTime, nullable=True)
+
+class DBSupportTicket(Base):
+    __tablename__ = "support_tickets"
+    id = Column(String, primary_key=True, index=True)
+    inquiry_type = Column(String, nullable=False) # 'game_request' | 'bracket' | 'oauth' | etc.
+    email = Column(String, nullable=False)
+    message = Column(Text, nullable=False)
+    user_id = Column(String, nullable=True)
+    status = Column(String, default="open") # 'open' | 'in_progress' | 'resolved'
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
 # Lazy engine — only created when first needed, prevents cold-start crash on Vercel
 _engine = None
 _SessionLocal = None

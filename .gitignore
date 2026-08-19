@@ -24,3 +24,5 @@ fightbracketpro.com.txt
 # Security and Scripts
 supabase_rls_policies.sql
 scripts/*.py
+*.db
+fightbracket_pro/*.db
