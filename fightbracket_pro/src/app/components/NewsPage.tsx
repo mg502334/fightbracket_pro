@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Megaphone, Wrench, Sparkles, Calendar, ExternalLink, ChevronRight, Trophy, Gamepad2, Tag, Radio, Clock, ShieldCheck } from 'lucide-react';
 import { RecentsWidget } from './RecentsWidget';
+import { DealsWidget } from './DealsWidget';
 
 export interface NewsItem {
   id: string;
@@ -289,10 +290,11 @@ export function NewsPage({ onNavigateHome, onSignUp }: NewsPageProps) {
 
         <div className="flex flex-col lg:flex-row gap-6">
 
-          {/* Left Sidebar: RECENTS Box */}
+          {/* Left Sidebar: RECENTS & DEALS Box */}
           <div className="w-full lg:w-72 xl:w-80 flex-shrink-0">
-            <div className="sticky top-4">
+            <div className="sticky top-4 flex flex-col gap-4">
               <RecentsWidget />
+              <DealsWidget />
             </div>
           </div>
 
