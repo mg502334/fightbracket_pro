@@ -139,7 +139,13 @@ export function UserDirectoryModal({
               </div>
               <button
                 type="submit"
-                className="px-5 py-2.5 bg-[#00E5FF] text-black font-bold font-rajdhani tracking-wider rounded-xl text-sm hover:brightness-110 transition-all"
+                className="px-5 py-2.5 rounded-xl text-[13px] font-bold tracking-widest uppercase hover:opacity-80 transition-opacity"
+                style={{
+                  background: 'var(--border)',
+                  border: '1px solid rgba(0,229,255,0.3)',
+                  color: '#00E5FF',
+                  fontFamily: 'JetBrains Mono, monospace'
+                }}
               >
                 SEARCH
               </button>
