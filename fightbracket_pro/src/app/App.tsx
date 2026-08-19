@@ -1198,8 +1198,28 @@ export default function App() {
               <Zap size={14} color="#050A14" />
             </div>
             <div>
-              <div className="text-sm tracking-wider" style={{ fontFamily: 'Rajdhani, sans-serif', fontWeight: 700 }}>FightBracket Pro</div>
-              <div className="text-xs opacity-40" style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9 }}>powered by start.gg</div>
+              <div 
+                className="tracking-widest italic" 
+                style={{ 
+                  fontFamily: 'Rajdhani, sans-serif', 
+                  fontWeight: 800,
+                  fontSize: '1.2rem',
+                  lineHeight: 1.1,
+                  textTransform: 'uppercase',
+                  color: '#fff',
+                }}
+              >
+                <span style={{ 
+                  color: '#FF00FF', 
+                  textShadow: '0 0 5px #FF00FF, 0 0 10px #FF00FF, 0 0 20px #FF00FF' 
+                }}>FIGHTBRACKET</span>
+                <span className="ml-1" style={{ 
+                  color: '#00FFCC', 
+                  textShadow: '0 0 5px #00FFCC, 0 0 10px #00FFCC, 0 0 20px #00FFCC',
+                  WebkitTextStroke: '1px #00FFCC'
+                }}>PRO</span>
+              </div>
+              <div className="text-xs opacity-60" style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9, color: '#00FFCC' }}>powered by start.gg</div>
             </div>
           </div>
           <div className="w-px h-8 opacity-20" style={{ background: '#00E5FF' }} />
