@@ -1502,20 +1502,15 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
             {onNavigateHome && (
               <button
                 onClick={onNavigateHome}
-                className="hidden sm:flex items-center gap-2 h-9 px-4 text-xs font-semibold text-[#050A14] transition-all duration-150"
+                className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded text-[11px] font-bold tracking-widest uppercase hover:opacity-80 transition-opacity"
                 style={{
-                  background: "#00E5FF",
-                  borderRadius: "2px",
-                  letterSpacing: "0.08em",
-                  textTransform: "uppercase",
-                  fontFamily: "'Barlow Condensed', sans-serif",
-                  fontWeight: 700,
-                  fontSize: "0.75rem",
+                  background: 'var(--border)',
+                  border: '1px solid rgba(0,229,255,0.2)',
+                  color: '#00E5FF',
+                  fontFamily: 'JetBrains Mono, monospace'
                 }}
-                onMouseEnter={(e) => (e.currentTarget.style.background = "#00B3CC")}
-                onMouseLeave={(e) => (e.currentTarget.style.background = "#00E5FF")}
               >
-                <ArrowLeft size={13} />
+                <ArrowLeft size={11} />
                 RETURN HOME
               </button>
             )}
@@ -1541,20 +1536,15 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
 
             <button
               onClick={() => supabase.auth.signOut()}
-              className="flex items-center gap-2 h-9 px-4 mr-2 text-xs font-semibold text-[#050A14] transition-all duration-150"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded text-[11px] font-bold tracking-widest uppercase hover:opacity-80 transition-opacity mr-2"
               style={{
-                background: "#00E5FF",
-                borderRadius: "2px",
-                letterSpacing: "0.08em",
-                textTransform: "uppercase",
-                fontFamily: "'Barlow Condensed', sans-serif",
-                fontWeight: 700,
-                fontSize: "0.75rem",
+                background: 'var(--border)',
+                border: '1px solid rgba(0,229,255,0.2)',
+                color: '#00E5FF',
+                fontFamily: 'JetBrains Mono, monospace'
               }}
-              onMouseEnter={(e) => (e.currentTarget.style.background = "#00B3CC")}
-              onMouseLeave={(e) => (e.currentTarget.style.background = "#00E5FF")}
             >
-              <LogOut size={13} />
+              <LogOut size={11} />
               LOG OUT
             </button>
           </div>
