@@ -1211,11 +1211,11 @@ export default function App() {
               >
                 <span style={{ 
                   color: '#FF00FF', 
-                  textShadow: '0 0 5px #FF00FF, 0 0 10px #FF00FF, 0 0 20px #FF00FF' 
+                  textShadow: '0 0 8px rgba(255,0,255,0.5)' 
                 }}>FIGHTBRACKET</span>
                 <span className="ml-1" style={{ 
                   color: '#00FFCC', 
-                  textShadow: '0 0 5px #00FFCC, 0 0 10px #00FFCC, 0 0 20px #00FFCC',
+                  textShadow: '0 0 8px rgba(0,255,204,0.5)',
                   WebkitTextStroke: '1px #00FFCC'
                 }}>PRO</span>
               </div>
