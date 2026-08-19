@@ -1749,7 +1749,8 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
                         />
                         <button
                           onClick={handleAddGameMain}
-                          className="px-4 py-2 bg-[#00E5FF] text-[#050A14] font-bold font-rajdhani tracking-wider rounded-lg text-xs hover:bg-[#00B3CC] transition-all shrink-0"
+                          className="px-4 py-2 rounded text-sm tracking-widest font-bold text-black hover:brightness-125 transition-all shrink-0"
+                          style={{ background: theme.primaryColor, fontFamily: 'Rajdhani, sans-serif' }}
                         >
                           ADD
                         </button>
@@ -1836,7 +1837,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
                         <button onClick={fetchCloudTournaments} className="p-2 rounded-lg border border-white/10 text-white hover:border-white/30 hover:bg-white/5 transition-all" title="Refresh">
                           <RefreshCw size={15} />
                         </button>
-                        <button onClick={saveToCloud} disabled={saving} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#00E5FF] hover:bg-[#00B3CC] text-[#050A14] font-bold transition-all font-rajdhani tracking-wider text-sm disabled:opacity-50">
+                        <button onClick={saveToCloud} disabled={saving} className="flex items-center justify-center gap-2 px-4 py-2 rounded tracking-widest font-bold text-black hover:brightness-125 transition-all text-sm disabled:opacity-50" style={{ background: theme.primaryColor, fontFamily: 'Rajdhani, sans-serif' }}>
                           <Save size={15} /> {saving ? 'SAVING...' : 'SAVE CURRENT'}
                         </button>
                       </div>
@@ -1940,7 +1941,8 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
                     <button
                       onClick={() => fetchStartggHosted(false)}
                       disabled={fetchingStartgg || !startggToken}
-                      className="w-full flex items-center justify-center gap-2 py-3 bg-[#00E5FF] hover:bg-[#00B3CC] disabled:opacity-50 text-[#050A14] font-bold rounded-lg transition-colors font-rajdhani tracking-widest mb-6"
+                      className="w-full flex items-center justify-center gap-2 px-6 py-3 rounded text-sm tracking-widest font-bold text-black hover:brightness-125 transition-all disabled:opacity-50 mb-6"
+                      style={{ background: theme.primaryColor, fontFamily: 'Rajdhani, sans-serif' }}
                     >
                       <RefreshCw size={16} className={fetchingStartgg ? "animate-spin" : ""} />
                       {fetchingStartgg ? 'FETCHING...' : 'FETCH NEW EVENTS TO IMPORT'}
