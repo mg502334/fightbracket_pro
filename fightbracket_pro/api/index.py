@@ -2153,25 +2153,23 @@ def get_feed(user_id: str = Depends(get_current_user_id), db: Session = Depends(
         # Generate initials
         initials = "U"
         if author:
-            if getattr(author, 'first_name', None) and getattr(author, 'last_name', None):
-                initials = (author.first_name[0] + author.last_name[0]).upper()
-            elif getattr(author, 'gamer_tag', None):
+            if getattr(author, 'gamer_tag', None) and len(author.gamer_tag) >= 2:
                 initials = author.gamer_tag[0:2].upper()
+            elif getattr(author, 'gamer_tag', None):
+                initials = author.gamer_tag.upper()
 
         name = "Unknown"
-        if author:
-            if getattr(author, 'first_name', None):
-                name = (author.first_name + " " + (getattr(author, 'last_name', "") or "")).strip()
-            elif getattr(author, 'gamer_tag', None):
-                name = author.gamer_tag
+        if author and getattr(author, 'gamer_tag', None):
+            name = author.gamer_tag
                 
         results.append({
             "id": post.id,
             "author": {
                 "name": name,
-                "handle": getattr(author, 'gamer_tag', None) or "unknown",
+                "handle": getattr(author, 'unique_id', None) or "FB-UNKNOWN",
                 "initials": initials,
-                "color": getattr(author, 'profile_color', None) or "#06b6d4"
+                "color": getattr(author, 'profile_color', None) or "#06b6d4",
+                "avatar": getattr(author, 'avatar_url', None)
             },
             "time": post.created_at.isoformat() if post.created_at else "",
             "content": post.content,
