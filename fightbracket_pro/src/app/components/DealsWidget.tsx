@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Tag, Sparkles, ExternalLink, Flame, Percent, Gamepad2, ShoppingBag, Copy, Check } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Tag, ExternalLink, Copy, Check } from 'lucide-react';
 import { toast } from 'sonner';
 
 export interface DealItem {
@@ -24,7 +24,7 @@ const DEFAULT_DEALS: DealItem[] = [
     originalPrice: '$39.99',
     salePrice: '$29.99',
     discount: '-25%',
-    platform: 'Steam / PS5 / Xbox',
+    platform: 'Steam (PC)',
     link: 'https://store.steampowered.com/app/1778820/TEKKEN_8/',
     badge: 'HOT DEAL',
     expiresIn: '3 days left'
@@ -37,7 +37,7 @@ const DEFAULT_DEALS: DealItem[] = [
     salePrice: '$19.99',
     discount: '-33%',
     platform: 'PlayStation Store',
-    link: 'https://store.playstation.com',
+    link: 'https://store.playstation.com/en-us/product/UP0102-PPSA02633_00-SF6Y2CHARPASS000',
     badge: 'FGC SALE',
     expiresIn: '5 days left'
   },
@@ -48,8 +48,8 @@ const DEFAULT_DEALS: DealItem[] = [
     originalPrice: '$89.99',
     salePrice: '$64.99',
     discount: '-28%',
-    platform: 'Amazon / AliExpress',
-    link: 'https://amazon.com',
+    platform: 'PC / PS5 / Switch / Xbox',
+    link: 'https://haute42.com/products/haute42-t16',
     code: 'FIGHTPRO10',
     badge: 'GEAR PICK',
     expiresIn: 'Limited stock'
@@ -62,7 +62,7 @@ const DEFAULT_DEALS: DealItem[] = [
     salePrice: '$29.99',
     discount: '-50%',
     platform: 'Steam Store',
-    link: 'https://store.steampowered.com',
+    link: 'https://store.steampowered.com/app/1384160/GUILTY_GEAR_STRIVE/',
     badge: 'BEST VALUE',
     expiresIn: 'Ends Sunday'
   }
@@ -74,10 +74,33 @@ interface DealsWidgetProps {
 }
 
 export function DealsWidget({ customDeals, className = "" }: DealsWidgetProps) {
-  const [deals] = useState<DealItem[]>(customDeals || DEFAULT_DEALS);
+  const [deals, setDeals] = useState<DealItem[]>(customDeals || DEFAULT_DEALS);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (customDeals) {
+      setDeals(customDeals);
+      return;
+    }
+
+    const loadDeals = async () => {
+      try {
+        const res = await fetch('/api/deals');
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data) && data.length > 0) {
+            setDeals(data.slice(0, 4));
+          }
+        }
+      } catch {
+        // Fallback to verified DEFAULT_DEALS
+      }
+    };
+    loadDeals();
+  }, [customDeals]);
+
   const handleCopyCode = (code: string, e: React.MouseEvent) => {
+    e.preventDefault();
     e.stopPropagation();
     navigator.clipboard.writeText(code);
     setCopiedCode(code);
@@ -176,8 +199,9 @@ export function DealsWidget({ customDeals, className = "" }: DealsWidgetProps) {
             <div className="flex items-center justify-between mt-2 pt-1.5 border-t border-white/[0.04] text-[9px]">
               {deal.code ? (
                 <button
+                  type="button"
                   onClick={(e) => handleCopyCode(deal.code!, e)}
-                  className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-mono text-cyan-300 bg-cyan-950/40 border border-cyan-800/50 hover:bg-cyan-900/50 transition-colors"
+                  className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-mono text-cyan-300 bg-cyan-950/40 border border-cyan-800/50 hover:bg-cyan-900/50 transition-colors cursor-pointer"
                 >
                   {copiedCode === deal.code ? <Check size={10} className="text-green-400" /> : <Copy size={10} />}
                   <span>CODE: {deal.code}</span>

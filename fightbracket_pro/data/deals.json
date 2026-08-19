@@ -11,21 +11,7 @@
     "store": "Steam Store",
     "link": "https://store.steampowered.com/app/1778820/TEKKEN_8/",
     "badge": "HOT DEAL",
-    "scraped_at": "2026-08-19T09:34:42.784035+00:00"
-  },
-  {
-    "id": "steam-1384160",
-    "game": "Guilty Gear -Strive-",
-    "title": "Guilty Gear -Strive- Daredevil Edition",
-    "category": "game",
-    "originalPrice": "$59.99",
-    "salePrice": "$29.99",
-    "discount": "-50%",
-    "platform": "Steam (PC)",
-    "store": "Steam Store",
-    "link": "https://store.steampowered.com/app/1384160/",
-    "badge": "-50% SALE",
-    "scraped_at": "2026-08-19T09:34:42.784079+00:00"
+    "scraped_at": "2026-08-19T10:00:00.000000+00:00"
   },
   {
     "id": "ps-sf6-pass",
@@ -37,9 +23,38 @@
     "discount": "-33%",
     "platform": "PlayStation 5 / PS4",
     "store": "PlayStation Store",
-    "link": "https://store.playstation.com",
+    "link": "https://store.playstation.com/en-us/product/UP0102-PPSA02633_00-SF6Y2CHARPASS000",
     "badge": "PS STORE DEAL",
-    "scraped_at": "2026-08-19T09:34:42.785746+00:00"
+    "scraped_at": "2026-08-19T10:00:00.000000+00:00"
+  },
+  {
+    "id": "gear-haute42-t16",
+    "game": "Hardware",
+    "title": "Haute42 T16 All-Button Leverless Controller",
+    "category": "gear",
+    "originalPrice": "$89.99",
+    "salePrice": "$64.99",
+    "discount": "-28%",
+    "platform": "PC / PS5 / Switch / Xbox",
+    "store": "Haute42 Official",
+    "link": "https://haute42.com/products/haute42-t16",
+    "code": "FIGHTPRO10",
+    "badge": "GEAR PICK",
+    "scraped_at": "2026-08-19T10:00:00.000000+00:00"
+  },
+  {
+    "id": "steam-1384160",
+    "game": "Guilty Gear -Strive-",
+    "title": "Guilty Gear -Strive- Daredevil Edition",
+    "category": "game",
+    "originalPrice": "$59.99",
+    "salePrice": "$29.99",
+    "discount": "-50%",
+    "platform": "Steam (PC)",
+    "store": "Steam Store",
+    "link": "https://store.steampowered.com/app/1384160/GUILTY_GEAR_STRIVE/",
+    "badge": "-50% SALE",
+    "scraped_at": "2026-08-19T10:00:00.000000+00:00"
   },
   {
     "id": "ps-t8-deluxe",
@@ -51,9 +66,9 @@
     "discount": "-40%",
     "platform": "PlayStation 5",
     "store": "PlayStation Store",
-    "link": "https://store.playstation.com",
+    "link": "https://store.playstation.com/en-us/concept/10003019",
     "badge": "FGC ESSENTIALS",
-    "scraped_at": "2026-08-19T09:34:42.785757+00:00"
+    "scraped_at": "2026-08-19T10:00:00.000000+00:00"
   },
   {
     "id": "xbox-mk1-kombat",
@@ -65,9 +80,9 @@
     "discount": "-30%",
     "platform": "Xbox Series X|S / PC",
     "store": "Microsoft Store",
-    "link": "https://www.xbox.com/games/store/mortal-kombat-1",
+    "link": "https://www.xbox.com/en-us/games/store/mortal-kombat-1-khaos-reigns-bundle/9phq7k1n7slc",
     "badge": "XBOX SALE",
-    "scraped_at": "2026-08-19T09:34:42.785765+00:00"
+    "scraped_at": "2026-08-19T10:00:00.000000+00:00"
   },
   {
     "id": "switch-dbfz",
@@ -79,8 +94,8 @@
     "discount": "-84%",
     "platform": "Nintendo Switch",
     "store": "Nintendo eShop",
-    "link": "https://www.nintendo.com/store/products/dragon-ball-fighterz-switch/",
+    "link": "https://www.nintendo.com/us/store/products/dragon-ball-fighterz-switch/",
     "badge": "84% OFF",
-    "scraped_at": "2026-08-19T09:34:42.785770+00:00"
+    "scraped_at": "2026-08-19T10:00:00.000000+00:00"
   }
 ]

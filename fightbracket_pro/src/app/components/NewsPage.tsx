@@ -119,7 +119,7 @@ const DEFAULT_NEWS_ITEMS: NewsItem[] = [
     title: 'Street Fighter 6 — Year 2 Character Pass Sale',
     body: 'Unlock Terry Bogard, Mai Shiranui, Elena, and M. Bison at discounted rates on the PlayStation and Microsoft stores.',
     badge: '-33% DEAL',
-    link: 'https://store.playstation.com',
+    link: 'https://store.playstation.com/en-us/product/UP0102-PPSA02633_00-SF6Y2CHARPASS000',
     linkLabel: 'View PSN Deal',
     game: 'Street Fighter 6',
     platform: 'PlayStation Store',

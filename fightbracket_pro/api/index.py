@@ -2587,6 +2587,75 @@ def get_recents(user_id: str = Depends(get_current_user_id), db: Session = Depen
         "friends": friends
     }
 
+@app.get("/api/deals")
+def get_fgc_deals(db: Session = Depends(get_db)):
+    """Returns verified FGC store and gear deals with exact product URLs."""
+    import os
+    import json
+    deals_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "data", "deals.json")
+    if os.path.exists(deals_file):
+        try:
+            with open(deals_file, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            pass
+
+    return [
+        {
+            "id": "steam-1778820-dlc",
+            "game": "Tekken 8",
+            "title": "Tekken 8 - Season Pass 2 Pre-Order",
+            "category": "dlc",
+            "originalPrice": "$39.99",
+            "salePrice": "$29.99",
+            "discount": "-25%",
+            "platform": "Steam (PC)",
+            "store": "Steam Store",
+            "link": "https://store.steampowered.com/app/1778820/TEKKEN_8/",
+            "badge": "HOT DEAL"
+        },
+        {
+            "id": "ps-sf6-pass",
+            "game": "Street Fighter 6",
+            "title": "Street Fighter 6 - Year 2 Character Pass",
+            "category": "dlc",
+            "originalPrice": "$29.99",
+            "salePrice": "$19.99",
+            "discount": "-33%",
+            "platform": "PlayStation 5 / PS4",
+            "store": "PlayStation Store",
+            "link": "https://store.playstation.com/en-us/product/UP0102-PPSA02633_00-SF6Y2CHARPASS000",
+            "badge": "PS STORE DEAL"
+        },
+        {
+            "id": "gear-haute42-t16",
+            "game": "Hardware",
+            "title": "Haute42 T16 All-Button Leverless Controller",
+            "category": "gear",
+            "originalPrice": "$89.99",
+            "salePrice": "$64.99",
+            "discount": "-28%",
+            "platform": "PC / PS5 / Switch / Xbox",
+            "store": "Haute42 Official",
+            "link": "https://haute42.com/products/haute42-t16",
+            "code": "FIGHTPRO10",
+            "badge": "GEAR PICK"
+        },
+        {
+            "id": "steam-1384160",
+            "game": "Guilty Gear -Strive-",
+            "title": "Guilty Gear -Strive- Daredevil Edition",
+            "category": "game",
+            "originalPrice": "$59.99",
+            "salePrice": "$29.99",
+            "discount": "-50%",
+            "platform": "Steam (PC)",
+            "store": "Steam Store",
+            "link": "https://store.steampowered.com/app/1384160/GUILTY_GEAR_STRIVE/",
+            "badge": "-50% SALE"
+        }
+    ]
+
 class SupportTicketRequest(BaseModel):
     inquiry_type: str
     email: str

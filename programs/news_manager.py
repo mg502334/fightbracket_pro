@@ -292,7 +292,7 @@ def scrape_playstation_deals(games: List[Dict[str, Any]]) -> List[Dict[str, Any]
             "discount": "-33%",
             "platform": "PlayStation 5 / PS4",
             "store": "PlayStation Store",
-            "link": "https://store.playstation.com",
+            "link": "https://store.playstation.com/en-us/product/UP0102-PPSA02633_00-SF6Y2CHARPASS000",
             "badge": "PS STORE DEAL",
             "scraped_at": datetime.now(timezone.utc).isoformat()
         },
@@ -306,7 +306,7 @@ def scrape_playstation_deals(games: List[Dict[str, Any]]) -> List[Dict[str, Any]
             "discount": "-40%",
             "platform": "PlayStation 5",
             "store": "PlayStation Store",
-            "link": "https://store.playstation.com",
+            "link": "https://store.playstation.com/en-us/concept/10003019",
             "badge": "FGC ESSENTIALS",
             "scraped_at": datetime.now(timezone.utc).isoformat()
         }
@@ -328,7 +328,7 @@ def scrape_xbox_microsoft_deals(games: List[Dict[str, Any]]) -> List[Dict[str, A
             "discount": "-30%",
             "platform": "Xbox Series X|S / PC",
             "store": "Microsoft Store",
-            "link": "https://www.xbox.com/games/store/mortal-kombat-1",
+            "link": "https://www.xbox.com/en-us/games/store/mortal-kombat-1-khaos-reigns-bundle/9phq7k1n7slc",
             "badge": "XBOX SALE",
             "scraped_at": datetime.now(timezone.utc).isoformat()
         }
@@ -350,7 +350,7 @@ def scrape_nintendo_deals(games: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
             "discount": "-84%",
             "platform": "Nintendo Switch",
             "store": "Nintendo eShop",
-            "link": "https://www.nintendo.com/store/products/dragon-ball-fighterz-switch/",
+            "link": "https://www.nintendo.com/us/store/products/dragon-ball-fighterz-switch/",
             "badge": "84% OFF",
             "scraped_at": datetime.now(timezone.utc).isoformat()
         }
