@@ -10,6 +10,7 @@ interface PoolsPanelProps {
   onUpdateMatches?: (matches: BracketMatch[]) => void;
   onSelectPool?: (pool: string) => void;
   isImported?: boolean;
+  onPlayerClick?: (playerId: string) => void;
 }
 
 const POOL_LABELS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
@@ -22,6 +23,7 @@ export function PoolsPanel({
   onUpdateMatches,
   onSelectPool,
   isImported = false,
+  onPlayerClick,
 }: PoolsPanelProps) {
   const [poolCount, setPoolCount] = useState(4);
   const [selectedPoolView, setSelectedPoolView] = useState<string>('SEE_ALL');
@@ -162,7 +164,7 @@ export function PoolsPanel({
                   POOL COUNT
                 </label>
                 <div className="flex gap-2">
-                  {[2, 4, 8].map(n => (
+                  {[1, 2, 4, 8].map(n => (
                     <button
                       key={n}
                       onClick={() => setPoolCount(n)}
@@ -335,18 +337,20 @@ export function PoolsPanel({
               </div>
             </div>
           </div>
-
           {/* Individual Pool Single Bracket Render with Strict Chronological Round Order */}
           <div className="p-5 rounded-xl border bg-[#050A14] space-y-6" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
             <h4 className="text-sm font-bold font-mono tracking-widest text-cyan-400 flex items-center gap-2">
               <Layers size={14} /> POOL {selectedPoolView} CHRONOLOGICAL BRACKET
             </h4>
-            <SinglePoolBracketView
-              matches={currentPoolMatches}
-              players={currentPoolPlayers}
-              theme={theme}
-              poolName={selectedPoolView}
-            />
+            <div className="flex-1 overflow-x-auto custom-scrollbar">
+              <SinglePoolBracketView
+                matches={currentPoolMatches}
+                players={currentPoolPlayers}
+                theme={theme}
+                onPlayerClick={onPlayerClick}
+                poolName={selectedPoolView}
+              />
+            </div>
           </div>
         </div>
       ) : (
@@ -437,14 +441,30 @@ export function PoolsPanel({
                   <div className={`transition-all ${isExpanded ? 'max-h-[600px] overflow-y-auto' : 'overflow-hidden max-h-[190px]'} custom-scrollbar`}>
                     <div className="p-3 space-y-1.5">
                       {poolPlayers.slice(0, isExpanded ? undefined : 4).map(p => (
-                        <div
+                        <button
                           key={p.id}
-                          className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 border border-white/5"
+                          className={`flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 border border-white/5 w-full text-left transition-opacity ${p.fbUserId ? 'hover:opacity-80 cursor-pointer' : ''}`}
+                          onClick={(e) => {
+                            if (p.fbUserId && onPlayerClick) {
+                              e.stopPropagation();
+                              onPlayerClick(p.fbUserId);
+                            }
+                          }}
                         >
                           <span className="text-xs opacity-30 w-5 text-right font-mono">{p.seed}</span>
-                          <span className="flex-1 text-sm font-semibold truncate font-rajdhani">{p.tag}</span>
+                          
+                          {p.avatarUrl && (
+                            <img src={p.avatarUrl} alt={p.tag} className="w-4 h-4 rounded-full object-cover shrink-0 ring-1" style={{ borderColor: theme.primaryColor }} />
+                          )}
+                          
+                          <span 
+                            className="flex-1 text-sm font-semibold truncate font-rajdhani"
+                            style={p.fbUserId ? { textDecoration: 'underline', textDecorationColor: theme.primaryColor, textUnderlineOffset: '2px' } : undefined}
+                          >
+                            {p.tag}
+                          </span>
                           <span className="text-xs opacity-40">{p.countryFlag}</span>
-                        </div>
+                        </button>
                       ))}
 
                       {!isExpanded && poolPlayers.length > 4 && (
@@ -529,11 +549,13 @@ function SinglePoolBracketView({
   players,
   theme,
   poolName,
+  onPlayerClick,
 }: {
   matches: BracketMatch[];
   players: Player[];
   theme: GameTheme;
   poolName: string;
+  onPlayerClick?: (id: string) => void;
 }) {
   if (matches.length === 0) {
     return (
@@ -567,33 +589,58 @@ function SinglePoolBracketView({
               {roundMatches.map(m => {
                 const p1 = m.player1Id ? playerMap[m.player1Id] : null;
                 const p2 = m.player2Id ? playerMap[m.player2Id] : null;
-                const isCompleted = m.state === 'completed';
 
                 return (
                   <div
                     key={m.id}
-                    className="rounded-lg overflow-hidden border bg-black/40 p-2.5 space-y-1.5 border-white/10"
+                    className="rounded-lg overflow-hidden border bg-black/40 p-1 space-y-0.5 border-white/10"
                   >
-                    <div className="flex justify-between text-[10px] font-mono opacity-50 border-b border-white/5 pb-1">
+                    <div className="flex justify-between text-[10px] font-mono opacity-50 px-2 pt-1 pb-1">
                       <span>MATCH {m.identifier || m.id.substring(0, 4)}</span>
                       <span>BO{m.bestOf}</span>
                     </div>
 
-                    <div className="flex justify-between items-center text-xs font-rajdhani">
-                      <span className={`truncate ${m.winnerId === m.player1Id ? 'font-bold text-cyan-400' : 'opacity-80'}`}>
-                        {p1 ? `${p1.countryFlag} ${p1.tag}` : 'TBD'}
-                      </span>
-                      <span className="font-mono font-bold ml-2">{m.player1Score}</span>
-                    </div>
+                    <button 
+                      className={`flex-1 flex justify-between px-2 py-1.5 transition-opacity ${p1?.fbUserId ? 'hover:opacity-80 cursor-pointer' : ''}`}
+                      onClick={(e) => { if (p1?.fbUserId && onPlayerClick) { e.stopPropagation(); onPlayerClick(p1.fbUserId); } }}
+                    >
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        {p1?.avatarUrl && <img src={p1.avatarUrl} className="w-3.5 h-3.5 rounded-full object-cover shrink-0" />}
+                        <span 
+                          className="font-bold text-sm font-rajdhani truncate"
+                          style={{
+                            color: m.winnerId === m.player1Id ? theme.primaryColor : 'var(--foreground)',
+                            textDecoration: p1?.fbUserId ? 'underline' : 'none',
+                            textDecorationColor: theme.primaryColor
+                          }}
+                        >
+                          {p1?.tag || 'TBD'}
+                        </span>
+                      </div>
+                      <span className="text-sm font-mono opacity-80 pl-2 shrink-0">{m.player1Score}</span>
+                    </button>
 
                     <div className="h-px bg-white/5" />
 
-                    <div className="flex justify-between items-center text-xs font-rajdhani">
-                      <span className={`truncate ${m.winnerId === m.player2Id ? 'font-bold text-cyan-400' : 'opacity-80'}`}>
-                        {p2 ? `${p2.countryFlag} ${p2.tag}` : 'TBD'}
-                      </span>
-                      <span className="font-mono font-bold ml-2">{m.player2Score}</span>
-                    </div>
+                    <button 
+                      className={`flex-1 flex justify-between px-2 py-1.5 transition-opacity ${p2?.fbUserId ? 'hover:opacity-80 cursor-pointer' : ''}`}
+                      onClick={(e) => { if (p2?.fbUserId && onPlayerClick) { e.stopPropagation(); onPlayerClick(p2.fbUserId); } }}
+                    >
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        {p2?.avatarUrl && <img src={p2.avatarUrl} className="w-3.5 h-3.5 rounded-full object-cover shrink-0" />}
+                        <span 
+                          className="font-bold text-sm font-rajdhani truncate"
+                          style={{
+                            color: m.winnerId === m.player2Id ? theme.primaryColor : 'var(--foreground)',
+                            textDecoration: p2?.fbUserId ? 'underline' : 'none',
+                            textDecorationColor: theme.primaryColor
+                          }}
+                        >
+                          {p2?.tag || 'TBD'}
+                        </span>
+                      </div>
+                      <span className="text-sm font-mono opacity-80 pl-2 shrink-0">{m.player2Score}</span>
+                    </button>
                   </div>
                 );
               })}

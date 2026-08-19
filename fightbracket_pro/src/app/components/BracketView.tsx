@@ -11,6 +11,7 @@ interface BracketViewProps {
   selectedPool?: string;
   onSelectPool?: (pool: string) => void;
   isImported?: boolean;
+  onPlayerClick?: (playerId: string) => void;
 }
 
 const STATE_CONFIG = {
@@ -29,6 +30,7 @@ export function BracketView({
   selectedPool: externalSelectedPool,
   onSelectPool: externalOnSelectPool,
   isImported = false,
+  onPlayerClick,
 }: BracketViewProps) {
   const [hoveredMatchId, setHoveredMatchId] = useState<string | null>(null);
   const [selectedFormat, setSelectedFormat] = useState<BracketType>(BracketType.SINGLE_ELIMINATION);
@@ -86,12 +88,12 @@ export function BracketView({
   const availablePools = Array.from(new Set(matches.filter(m => activePhase === 'ALL' || m.phase === activePhase).map(m => m.pool).filter(Boolean))) as string[];
   availablePools.sort();
 
-  // Determine active pool: default to first pool if multiple pools exist and user hasn't explicitly chosen ALL
+  // Determine active pool: default to ALL pools to show the entire bracket structure by default
   let activePool = externalSelectedPool !== undefined ? externalSelectedPool : internalPool;
   if (activePool === 'DEFAULT') {
-    activePool = availablePools.length > 0 ? availablePools[0] : 'ALL';
+    activePool = 'ALL';
   } else if (activePool !== 'ALL' && !availablePools.includes(activePool)) {
-    activePool = availablePools.length > 0 ? availablePools[0] : 'ALL';
+    activePool = 'ALL';
   }
 
   const setSelectedPool = (p: string) => {
@@ -295,6 +297,7 @@ export function BracketView({
                   onCallMatch={onCallMatch} 
                   searchMatchingPlayerIds={searchMatchingPlayerIds}
                   selectedPool={poolName}
+                  onPlayerClick={onPlayerClick}
                 />
                 <BracketSection 
                   title={`POOL ${poolName} — LOSERS BRACKET`} 
@@ -307,6 +310,7 @@ export function BracketView({
                   onCallMatch={onCallMatch} 
                   searchMatchingPlayerIds={searchMatchingPlayerIds}
                   selectedPool={poolName}
+                  onPlayerClick={onPlayerClick}
                 />
                 <BracketSection 
                   title={`POOL ${poolName} — FINALS`} 
@@ -319,6 +323,7 @@ export function BracketView({
                   onCallMatch={onCallMatch} 
                   searchMatchingPlayerIds={searchMatchingPlayerIds}
                   selectedPool={poolName}
+                  onPlayerClick={onPlayerClick}
                 />
               </div>
             );
@@ -337,6 +342,7 @@ export function BracketView({
             onCallMatch={onCallMatch} 
             searchMatchingPlayerIds={searchMatchingPlayerIds}
             selectedPool={activePool}
+            onPlayerClick={onPlayerClick}
           />
           <BracketSection 
             title="LOSERS BRACKET" 
@@ -349,6 +355,7 @@ export function BracketView({
             onCallMatch={onCallMatch} 
             searchMatchingPlayerIds={searchMatchingPlayerIds}
             selectedPool={activePool}
+            onPlayerClick={onPlayerClick}
           />
           <BracketSection 
             title="GRAND FINALS" 
@@ -361,6 +368,7 @@ export function BracketView({
             onCallMatch={onCallMatch} 
             searchMatchingPlayerIds={searchMatchingPlayerIds}
             selectedPool={activePool}
+            onPlayerClick={onPlayerClick}
           />
         </>
       )}
@@ -371,7 +379,7 @@ export function BracketView({
 import { computeBracketSlots } from '../data/bracketEngine';
 
 function BracketSection({ 
-  title, matches, allMatches, playerMap, theme, hoveredMatchId, setHoveredMatchId, onCallMatch, searchMatchingPlayerIds, selectedPool
+  title, matches, allMatches, playerMap, theme, hoveredMatchId, setHoveredMatchId, onCallMatch, searchMatchingPlayerIds, selectedPool, onPlayerClick
 }: { 
   title: string; 
   matches: BracketMatch[]; 
@@ -383,6 +391,7 @@ function BracketSection({
   onCallMatch: (match: BracketMatch) => void;
   searchMatchingPlayerIds: Set<string>;
   selectedPool?: string;
+  onPlayerClick?: (playerId: string) => void;
 }) {
   if (matches.length === 0) return null;
 
@@ -709,6 +718,8 @@ function BracketSection({
                           isCompleted={match.state === 'completed'}
                           theme={theme}
                           isSearched={Boolean(p1 && searchMatchingPlayerIds.has(p1.id))}
+                          onClick={() => { if (canCall && onCallMatch) { onCallMatch(match); } }}
+                          onPlayerClick={onPlayerClick}
                         />
                         <div className="h-px" style={{ background: 'var(--border)' }} />
                         <PlayerSlot
@@ -718,6 +729,8 @@ function BracketSection({
                           isCompleted={match.state === 'completed'}
                           theme={theme}
                           isSearched={Boolean(p2 && searchMatchingPlayerIds.has(p2.id))}
+                          onClick={() => { if (canCall && onCallMatch) { onCallMatch(match); } }}
+                          onPlayerClick={onPlayerClick}
                         />
 
                         {canCall && isHovered && (
@@ -788,6 +801,8 @@ function PlayerSlot({
   isCompleted,
   theme,
   isSearched,
+  onClick,
+  onPlayerClick,
 }: {
   player: Player | null;
   score: number;
@@ -795,6 +810,8 @@ function PlayerSlot({
   isCompleted: boolean;
   theme: GameTheme;
   isSearched?: boolean;
+  onClick?: () => void;
+  onPlayerClick?: (id: string) => void;
 }) {
   if (!player) {
     return (
@@ -815,17 +832,41 @@ function PlayerSlot({
         <span className="text-xs opacity-40 tabular-nums w-4 shrink-0" style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10 }}>
           {player.seed}
         </span>
-        <span
-          className="text-sm truncate flex items-center gap-1"
-          style={{
-            fontFamily: 'Rajdhani, sans-serif',
-            fontWeight: isWinner || isSearched ? 700 : 500,
-            color: isSearched ? '#00FF88' : isWinner ? theme.primaryColor : 'var(--foreground)',
+        <button
+          onClick={(e) => {
+            if (player.fbUserId && onPlayerClick) {
+              e.stopPropagation();
+              onPlayerClick(player.fbUserId);
+            } else if (onClick) {
+              onClick();
+            }
           }}
+          className={`flex items-center gap-1.5 text-left transition-opacity min-w-0 ${player.fbUserId ? 'hover:opacity-80 cursor-pointer' : ''}`}
         >
-          {player.countryFlag} {player.tag}
-          {isSearched && <Sparkles size={10} className="text-cyan-400 animate-pulse" />}
-        </span>
+          {player.avatarUrl && (
+            <img 
+              src={player.avatarUrl} 
+              alt={player.tag} 
+              className="w-4 h-4 rounded-full object-cover shrink-0 ring-1"
+              style={{ borderColor: theme.primaryColor }}
+            />
+          )}
+          <span
+            className="text-sm truncate flex items-center gap-1"
+            style={{
+              fontFamily: 'Rajdhani, sans-serif',
+              fontWeight: isWinner || isSearched ? 700 : 500,
+              color: isSearched ? '#00FF88' : isWinner ? theme.primaryColor : 'var(--foreground)',
+              textDecoration: player.fbUserId ? 'underline' : 'none',
+              textDecorationColor: theme.primaryColor,
+              textDecorationThickness: '1px',
+              textUnderlineOffset: '2px',
+            }}
+          >
+            {!player.avatarUrl && player.countryFlag} {player.tag}
+            {isSearched && <Sparkles size={10} className="text-cyan-400 animate-pulse" />}
+          </span>
+        </button>
       </div>
       <span
         className="text-sm tabular-nums ml-2 shrink-0"

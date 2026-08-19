@@ -1237,6 +1237,29 @@ def mark_messages_read(partner_id: str, user_id: str = Depends(get_current_user_
 
 # --- SEARCH & PUBLIC / PRIVACY PROFILE ENDPOINTS ---
 
+class MapStartggRequest(BaseModel):
+    slugs: list[str]
+
+@app.post("/api/users/map-startgg")
+def map_startgg_users(req: MapStartggRequest, db: Session = Depends(get_db)):
+    if not db or not req.slugs:
+        return {"mapping": {}}
+    
+    users = db.query(DBUser, DBUserIdentifier).outerjoin(
+        DBUserIdentifier, DBUser.id == DBUserIdentifier.id
+    ).filter(DBUser.startgg_slug.in_(req.slugs)).all()
+    
+    mapping = {}
+    for u, ui in users:
+        if getattr(u, 'startgg_slug', None):
+            mapping[u.startgg_slug] = {
+                "fbUserId": u.id,
+                "avatarUrl": getattr(u, 'avatar_url', None) or "",
+                "uniqueId": getattr(ui, 'unique_id', None) or getattr(u, 'unique_id', None) or ""
+            }
+            
+    return {"mapping": mapping}
+
 @app.get("/api/users/search")
 def search_users(q: str = "", user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
     if not db:
@@ -1563,6 +1586,9 @@ def sync_startgg_bracket(slug: str = "clash-of-kings-vii", token: str = None):  
             name
             participants {
               gamerTag
+              user {
+                slug
+              }
             }
             seeds {
               seedNum
@@ -2146,22 +2172,37 @@ class StartggProxyRequest(BaseModel):
     variables: dict = {}
 
 @app.post("/api/startgg/proxy")
-def proxy_startgg(req: StartggProxyRequest, user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
-    integration = db.query(DBUserIntegration).filter(
-        DBUserIntegration.user_id == user_id, 
-        DBUserIntegration.integration_type == "startgg"
-    ).first()
-    
+def proxy_startgg(req: StartggProxyRequest, req_obj: Request, db: Session = Depends(get_db)):
+    auth_header = req_obj.headers.get("Authorization")
+    user_id = None
+    if auth_header and auth_header.startswith("Bearer "):
+        token_str = auth_header.split(" ")[1]
+        try:
+            from jose import jwt
+            from auth import SECRET_KEY, ALGORITHM
+            payload = jwt.decode(token_str, SECRET_KEY, algorithms=[ALGORITHM])
+            user_id = payload.get("sub")
+        except:
+            pass
+
     token = None
-    if integration:
-        token = decrypt_text(integration.encrypted_api_key)  # type: ignore
-    else:
-        user = db.query(DBUser).filter(DBUser.id == user_id).first()
-        if user and getattr(user, 'startgg_token', None):
-            token = getattr(user, 'startgg_token')
+    if user_id:
+        integration = db.query(DBUserIntegration).filter(
+            DBUserIntegration.user_id == user_id, 
+            DBUserIntegration.integration_type == "startgg"
+        ).first()
+        if integration:
+            token = decrypt_text(integration.encrypted_api_key)  # type: ignore
+        else:
+            user = db.query(DBUser).filter(DBUser.id == user_id).first()
+            if user and getattr(user, 'startgg_token', None):
+                token = getattr(user, 'startgg_token')
+                
+    if not token:
+        token = os.environ.get("STARTGG_API_TOKEN")
             
     if not token:
-        raise HTTPException(status_code=404, detail="Start.gg integration not found. Please set your token in settings.")
+        raise HTTPException(status_code=404, detail="Start.gg integration not found. Please set your token in settings or provide a system token.")
 
     import requests
     headers = {
@@ -2328,40 +2369,7 @@ class StartggProxyRequest(BaseModel):
     query: str
     variables: dict = {}
 
-@app.post("/api/startgg/proxy")
-def proxy_startgg(req: StartggProxyRequest, user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
-    integration = db.query(DBUserIntegration).filter(
-        DBUserIntegration.user_id == user_id, 
-        DBUserIntegration.integration_type == "startgg"
-    ).first()
-    
-    token = None
-    if integration:
-        token = decrypt_text(integration.encrypted_api_key)  # type: ignore
-    else:
-        user = db.query(DBUser).filter(DBUser.id == user_id).first()
-        if user and getattr(user, 'startgg_token', None):
-            token = getattr(user, 'startgg_token')
-            
-    if not token:
-        raise HTTPException(status_code=404, detail="Start.gg integration not found. Please set your token in settings.")
 
-    import requests
-    headers = {
-        "Authorization": f"Bearer {token}",
-        "Content-Type": "application/json"
-    }
-    
-    try:
-        response = requests.post(
-            "https://api.start.gg/gql/alpha", 
-            json={"query": req.query, "variables": req.variables},
-            headers=headers,
-            timeout=10
-        )
-        return response.json()
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
 
 # --- Feed API ---
 

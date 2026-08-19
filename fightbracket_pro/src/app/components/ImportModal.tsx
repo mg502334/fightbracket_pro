@@ -75,6 +75,11 @@ export function ImportModal({ isOpen, onClose, onImport, theme }: ImportModalPro
               placeholder="e.g. start.gg/tournament/evo-2026 or evo-2026"
               value={inputUrl}
               onChange={e => setInputUrl(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter') {
+                  handleImport();
+                }
+              }}
               className="w-full px-3 py-2 text-sm rounded bg-black/20 outline-none focus:ring-1 transition-shadow"
               style={{ border: '1px solid var(--border)', color: 'var(--foreground)', '--tw-ring-color': theme.primaryColor } as React.CSSProperties}
             />

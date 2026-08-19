@@ -1434,15 +1434,24 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
           style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}
         >
           <div className="flex items-center gap-3">
-            <div
-              className="w-8 h-8 flex items-center justify-center text-xs font-bold text-[#050A14] flex-shrink-0"
-              style={{ background: "#00E5FF", borderRadius: "2px" }}
-            >
-              {(userProfile?.gamer_tag || user.user_metadata?.displayName || 'U').substring(0, 2).toUpperCase()}
-            </div>
+            {(userProfile as any)?.avatar_url ? (
+              <img 
+                src={(userProfile as any).avatar_url} 
+                alt="Avatar" 
+                className="w-8 h-8 object-cover flex-shrink-0"
+                style={{ borderRadius: "2px", border: "1px solid #00E5FF" }}
+              />
+            ) : (
+              <div
+                className="w-8 h-8 flex items-center justify-center text-xs font-bold text-[#050A14] flex-shrink-0"
+                style={{ background: "#00E5FF", borderRadius: "2px" }}
+              >
+                {(userProfile?.gamer_tag || user.user_metadata?.displayName || 'U').substring(0, 2).toUpperCase()}
+              </div>
+            )}
             <div className="min-w-0 flex-1">
               <div className="text-xs font-medium text-white truncate">
-                {userProfile?.first_name ? `${userProfile.first_name} ${userProfile.last_name || ''}` : (userProfile?.gamer_tag || user.user_metadata?.displayName || 'User')}
+                {userProfile?.gamer_tag || user.user_metadata?.displayName || 'User'}
               </div>
               <div className="text-[10px]" style={{ color: "#00E5FF" }}>
                 {userProfile?.unique_id || 'PRO USER'}

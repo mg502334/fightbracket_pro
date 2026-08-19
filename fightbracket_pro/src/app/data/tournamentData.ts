@@ -38,6 +38,7 @@ export interface Player {
   gameId: string;
   placement?: number;
   fbUserId?: string;
+  avatarUrl?: string;
 }
 
 export interface BracketMatch {

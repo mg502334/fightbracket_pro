@@ -594,14 +594,13 @@ export default function App() {
 
   async function fetchStartggDirect(slug: string, token?: string | null) {
     const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      throw new Error('You must be logged in to sync from Start.gg');
-    }
 
     const headers: Record<string, string> = {
-      'Authorization': `Bearer ${session.access_token}`,
       'Content-Type': 'application/json'
     };
+    if (session) {
+      headers['Authorization'] = `Bearer ${session.access_token}`;
+    }
 
     const queryTourney = `
       query TournamentQuery($slug: String!) {
@@ -646,7 +645,7 @@ export default function App() {
         event(id: $eventId) {
           entrants(query: {page: $page, perPage: 100}) {
             pageInfo { totalPages total }
-            nodes { id name participants { gamerTag } seeds { seedNum } standing { placement } }
+            nodes { id name participants { gamerTag user { slug } } seeds { seedNum } standing { placement } }
           }
         }
       }
@@ -790,6 +789,7 @@ export default function App() {
 
       const entrants = ev.entrants?.nodes || [];
       entrants.forEach((ent: any) => {
+        const userSlug = ent.participants?.[0]?.user?.slug;
         newPlayers.push({
           id: String(ent.id),
           tag: ent.participants?.[0]?.gamerTag || ent.name,
@@ -802,8 +802,9 @@ export default function App() {
           smsNotified: false,
           character: 'Unknown',
           placement: ent.standing?.placement,
-          gameId
-        });
+          gameId,
+          ...(userSlug ? { _tempSlug: userSlug } : {})
+        } as any);
       });
 
       const sets = ev.sets?.nodes || [];
@@ -1017,6 +1018,30 @@ export default function App() {
             }
           }
         }
+      }
+    }
+
+    const allSlugs = Array.from(new Set(newPlayers.map((p: any) => p._tempSlug).filter(Boolean)));
+    if (allSlugs.length > 0) {
+      try {
+        const mapRes = await fetch(`${API_URL}/api/users/map-startgg`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ slugs: allSlugs })
+        });
+        if (mapRes.ok) {
+          const { mapping } = await mapRes.json();
+          newPlayers.forEach((p: any) => {
+             const sSlug = p._tempSlug;
+             if (sSlug && mapping[sSlug]) {
+               p.fbUserId = mapping[sSlug].fbUserId;
+               p.avatarUrl = mapping[sSlug].avatarUrl;
+             }
+             delete p._tempSlug;
+          });
+        }
+      } catch (e) {
+        console.error("Failed to map startgg users", e);
       }
     }
 
@@ -1490,6 +1515,8 @@ export default function App() {
                     onGenerateBracket={handleGenerateBracket}
                     selectedPool={selectedPool}
                     onSelectPool={setSelectedPool}
+                    isImported={!!activeTournament}
+                    onPlayerClick={(id) => setTargetProfileUserId(id)}
                   />
                 </div>
               )}
@@ -1519,6 +1546,7 @@ export default function App() {
                     setActiveTab('bracket');
                   }}
                   isImported={Boolean(autoSyncSlug || activeTournament)}
+                  onPlayerClick={(id) => setTargetProfileUserId(id)}
                 />
               )}
               {activeTab === 'stations' && (
