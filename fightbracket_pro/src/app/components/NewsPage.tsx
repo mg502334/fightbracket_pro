@@ -26,20 +26,60 @@ const NOW = Date.now();
 
 const DEFAULT_NEWS_ITEMS: NewsItem[] = [
   {
+    id: 'social_feed_v2',
+    type: 'feature',
+    date: 'Aug 19, 2026',
+    publishedAt: NOW - (2 * 60 * 60 * 1000), // 2 hours ago -> Active
+    title: 'Social Community Feed: Comments, Reposts & Reaction Picker',
+    body: 'The Community Feed has received a massive social upgrade! Interact with fellow players, celebrate hype tournament upsets, and share bracket results with full social interactivity.',
+    badge: 'NEW',
+    bullets: [
+      '💬  Interactive Comment Threads: Open any post to join discussions and reply to community posts.',
+      '🔁  1-Click Feed Reposting: Share noteworthy matches, tournament clips, and announcements to your followers.',
+      '🔥  Multi-Emoji Reaction Picker: React with 7 expressive emojis (🔥 🏆 🥊 💀 ❤️ ⚡ 😂) with real-time counters.',
+    ],
+  },
+  {
+    id: 'recents_deals_widgets',
+    type: 'feature',
+    date: 'Aug 19, 2026',
+    publishedAt: NOW - (4 * 60 * 60 * 1000), // 4 hours ago -> Active
+    title: "New 'RECENTS' & 'DEALS' Sidebar Widgets Live",
+    body: 'Stay on top of live competition and gear deals with dedicated sidebar widgets in News, Feed, and My Feed.',
+    badge: 'NEW',
+    bullets: [
+      '🥊  Active Tournaments & Exhibitions: Live event tracker with automatic Friend Prioritization (highlighting friend events first).',
+      '⏱️  4-Hour Freshness Window: Completed tournaments and exhibition showcase streams are cleanly archived after 4 hours.',
+      '🏷️  FGC Deals Box: Curated discounts on fightsticks, leverless controllers, character season passes, and sales.',
+    ],
+  },
+  {
+    id: 'game_requests_support',
+    type: 'feature',
+    date: 'Aug 19, 2026',
+    publishedAt: NOW - (6 * 60 * 60 * 1000), // 6 hours ago -> Active
+    title: 'Support Center: Request Missing Fighting Games & Platforms',
+    body: 'Want a new fighting game, platform (Steam, PS5, Xbox, Switch, Arcade), or Start.gg community bracket added to FightBracket Pro? You can now submit direct Game Addition Requests through our Help & Support Center modal with instant routing.',
+    badge: 'UPDATED',
+    link: 'https://fightbracketpro.com',
+    linkLabel: 'Open Support Center',
+  },
+  {
     id: 'ts_2027',
     type: 'event',
     date: 'Aug 18, 2026',
-    publishedAt: NOW - (1 * 24 * 60 * 60 * 1000), // 1 day ago -> Active (6 days left)
-    title: 'Texas Showdown 2027',
-    body: 'Get ready for Texas Showdown 2027! We are bringing the heat to Houston once again. Pre-registration is officially live. Don\'t miss out on one of the longest-running tournaments in the world!',
+    publishedAt: NOW - (1 * 24 * 60 * 60 * 1000), // 1 day ago -> Active
+    title: 'Texas Showdown 2027 Pre-Registration Live',
+    body: 'Get ready for Texas Showdown 2027! Houston is bringing the heat once again with major brackets across all premier fighting games. Pre-registration is officially live on Start.gg.',
     badge: 'EVENT',
     link: 'https://www.start.gg/tournament/texas-showdown-2027/details',
+    linkLabel: 'View Start.gg Event',
   },
   {
     id: 'signup_promo',
     type: 'feature',
     date: 'Aug 17, 2026',
-    publishedAt: NOW - (2 * 24 * 60 * 60 * 1000), // 2 days ago -> Active (5 days left)
+    publishedAt: NOW - (2 * 24 * 60 * 60 * 1000), // 2 days ago -> Active
     title: 'Why Create a FightBracket Pro Account?',
     body: 'FightBracket Pro is free to join. Create your account in seconds and unlock the full competitive experience — built for the FGC, by the FGC.',
     badge: 'FREE',
@@ -91,18 +131,19 @@ const DEFAULT_NEWS_ITEMS: NewsItem[] = [
     id: 'n0a',
     type: 'update',
     date: 'Aug 16, 2026',
-    publishedAt: NOW - (3 * 24 * 60 * 60 * 1000), // 3 days ago -> Active (4 days left)
+    publishedAt: NOW - (3 * 24 * 60 * 60 * 1000), // 3 days ago -> Active
     title: 'Multi-Platform Stream Support (TikTok, YouTube, Facebook)',
     body: 'The Streams tab now detects and displays Twitch, TikTok, YouTube, and Facebook streams. TikTok handles (@username or bare handle) are correctly resolved to live URLs. Each stream shows a LIVE or PAST badge so you always know whether a broadcast is currently active or already finished.',
-    badge: 'NEW',
+    badge: 'UPDATED',
   },
   {
     id: 'n0b',
     type: 'fix',
     date: 'Aug 14, 2026',
-    publishedAt: NOW - (5 * 24 * 60 * 60 * 1000), // 5 days ago -> Active (2 days left)
-    title: 'Tournament Winner Badge (WINNER vs ACTIVE)',
-    body: 'In a completed tournament, the Grand Final winner is now correctly labelled WINNER (gold) instead of ACTIVE (green). The fix prioritises the Grand Final / Winners Final match when detecting the champion, rather than relying on raw round numbers which differ between Start.gg events.',
+    publishedAt: NOW - (5 * 24 * 60 * 60 * 1000), // 5 days ago -> Active
+    title: 'Tournament Winner Badge & Bracket Improvements',
+    body: 'In a completed tournament, the Grand Final winner is now correctly labelled WINNER (gold) instead of ACTIVE (green). In addition, Start.gg multi-pool phase separation and chronological round ordering have been improved.',
+    badge: 'PATCH',
   },
   // Auto-Archived Items (> 7 days old)
   {
@@ -373,16 +414,24 @@ export function NewsPage({ onNavigateHome, onSignUp }: NewsPageProps) {
                             </ul>
                           )}
 
-                          {item.linkLabel && item.link && (
-                            onSignUp && item.id === 'signup_promo' ? (
+                          {item.linkLabel && (
+                            item.id === 'game_requests_support' ? (
                               <button
-                                onClick={onSignUp}
-                                className="inline-flex items-center gap-1.5 mt-4 px-4 py-2 rounded-lg text-xs font-bold tracking-widest transition-all font-mono"
+                                onClick={() => window.dispatchEvent(new CustomEvent('open-support'))}
+                                className="inline-flex items-center gap-1.5 mt-4 px-4 py-2 rounded-lg text-xs font-bold tracking-widest transition-all font-mono cursor-pointer"
                                 style={{ background: `${cfg.color}20`, color: cfg.color, border: `1px solid ${cfg.color}40` }}
                               >
                                 {item.linkLabel} <ChevronRight size={12} />
                               </button>
-                            ) : (
+                            ) : onSignUp && item.id === 'signup_promo' ? (
+                              <button
+                                onClick={onSignUp}
+                                className="inline-flex items-center gap-1.5 mt-4 px-4 py-2 rounded-lg text-xs font-bold tracking-widest transition-all font-mono cursor-pointer"
+                                style={{ background: `${cfg.color}20`, color: cfg.color, border: `1px solid ${cfg.color}40` }}
+                              >
+                                {item.linkLabel} <ChevronRight size={12} />
+                              </button>
+                            ) : item.link ? (
                               <a
                                 href={item.link}
                                 target="_blank"
@@ -392,7 +441,7 @@ export function NewsPage({ onNavigateHome, onSignUp }: NewsPageProps) {
                               >
                                 {item.linkLabel} <ChevronRight size={12} />
                               </a>
-                            )
+                            ) : null
                           )}
                         </div>
                       </div>

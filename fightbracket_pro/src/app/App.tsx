@@ -113,11 +113,14 @@ export default function App() {
   useEffect(() => {
     const handleOpenTos = () => setShowStaticPage('terms');
     const handleOpenPrivacy = () => setShowStaticPage('privacy');
+    const handleOpenSupport = () => setShowSupportModal(true);
     window.addEventListener('open-tos', handleOpenTos);
     window.addEventListener('open-privacy', handleOpenPrivacy);
+    window.addEventListener('open-support', handleOpenSupport);
     return () => {
       window.removeEventListener('open-tos', handleOpenTos);
       window.removeEventListener('open-privacy', handleOpenPrivacy);
+      window.removeEventListener('open-support', handleOpenSupport);
     };
   }, []);
 
