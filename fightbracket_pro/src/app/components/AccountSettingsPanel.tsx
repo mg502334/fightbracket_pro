@@ -32,6 +32,9 @@ export function AccountSettingsPanel({ user, userProfile, fetchUserProfile, getH
   const [userSteamId, setUserSteamId] = useState(userProfile?.steam_id || '');
   const [userTwitchId, setUserTwitchId] = useState(userProfile?.twitch_id || '');
   const [userTwitchUrl, setUserTwitchUrl] = useState(userProfile?.twitch_url || '');
+  const [discordWebhookUrl, setDiscordWebhookUrl] = useState(userProfile?.discord_webhook_url || '');
+  const [discordServerId, setDiscordServerId] = useState(userProfile?.discord_server_id || '');
+  const [testingWebhook, setTestingWebhook] = useState(false);
   
   // Toggles State
   const [toggles, setToggles] = useState({
@@ -63,6 +66,8 @@ export function AccountSettingsPanel({ user, userProfile, fetchUserProfile, getH
       setUserSteamId(userProfile.steam_id || '');
       setUserTwitchId(userProfile.twitch_id || '');
       setUserTwitchUrl(userProfile.twitch_url || '');
+      setDiscordWebhookUrl(userProfile.discord_webhook_url || '');
+      setDiscordServerId(userProfile.discord_server_id || '');
       
       setToggles({
         notify_announcements: userProfile.notify_announcements ?? true,
@@ -163,10 +168,36 @@ export function AccountSettingsPanel({ user, userProfile, fetchUserProfile, getH
         body: JSON.stringify(payload)
       });
       fetchUserProfile();
+      toast.success('Integration saved!');
     } catch {
       toast.error('Failed to save integration');
     }
     setSavingIntegration(false);
+  };
+
+  const handleTestWebhook = async () => {
+    if (!discordWebhookUrl) {
+      toast.error('Enter a webhook URL first.');
+      return;
+    }
+    setTestingWebhook(true);
+    try {
+      const headers = await getHeaders();
+      const res = await fetch('/api/discord/test-webhook', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ webhook_url: discordWebhookUrl })
+      });
+      if (res.ok) {
+        toast.success('✅ Test embed sent to Discord!');
+      } else {
+        const err = await res.json().catch(() => ({}));
+        toast.error(err.detail || 'Failed to send test webhook.');
+      }
+    } catch {
+      toast.error('Network error sending test webhook.');
+    }
+    setTestingWebhook(false);
   };
 
   const copyId = () => {
@@ -359,6 +390,63 @@ export function AccountSettingsPanel({ user, userProfile, fetchUserProfile, getH
                 <SettingsInput label="Twitch Username" value={userTwitchId} onChange={e => setUserTwitchId(e.target.value)} placeholder="e.g. fightbracket" />
                 <SettingsInput label="Twitch URL" value={userTwitchUrl} onChange={e => setUserTwitchUrl(e.target.value)} placeholder="e.g. https://twitch.tv/..." />
                 <div className="flex justify-end mt-2"><SaveButton onClick={() => saveIntegrationData({ twitch_id: userTwitchId, twitch_url: userTwitchUrl })} loading={savingIntegration} /></div>
+              </div>
+            </SettingsCard>
+
+            <SettingsCard title="Discord Integration" description="Connect your Discord server for automated match callouts, results, and announcements.">
+              {/* Webhook Section */}
+              <div className="mb-5">
+                <label className="block text-xs font-rajdhani font-bold text-gray-400 uppercase tracking-wider mb-1">Webhook URL</label>
+                <p className="text-[11px] font-mono text-gray-600 mb-2">
+                  Discord Server → Channel Settings → Integrations → Webhooks → New Webhook → Copy URL
+                </p>
+                <div className="flex gap-2 items-end">
+                  <div className="flex-1">
+                    <SettingsInput
+                      label=""
+                      value={discordWebhookUrl}
+                      onChange={e => setDiscordWebhookUrl(e.target.value)}
+                      placeholder="https://discord.com/api/webhooks/..."
+                      type="password"
+                    />
+                  </div>
+                </div>
+                <div className="flex items-center justify-end gap-2 mt-2">
+                  <button
+                    onClick={handleTestWebhook}
+                    disabled={testingWebhook || !discordWebhookUrl}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-mono font-bold border transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                    style={{ borderColor: 'rgba(88,101,242,0.5)', color: '#5865F2', background: 'rgba(88,101,242,0.1)' }}
+                  >
+                    {testingWebhook ? 'SENDING...' : 'TEST WEBHOOK'}
+                  </button>
+                  <SaveButton
+                    label="SAVE WEBHOOK"
+                    onClick={() => saveIntegrationData({ discord_webhook_url: discordWebhookUrl })}
+                    loading={savingIntegration}
+                  />
+                </div>
+              </div>
+
+              {/* Server Widget Section */}
+              <div className="pt-4 border-t border-white/5">
+                <label className="block text-xs font-rajdhani font-bold text-gray-400 uppercase tracking-wider mb-1">Server ID (Widget)</label>
+                <p className="text-[11px] font-mono text-gray-600 mb-2">
+                  Enable Widget in Discord Server Settings → Widget → Enable Server Widget. The numeric Server ID appears there.
+                </p>
+                <SettingsInput
+                  label=""
+                  value={discordServerId}
+                  onChange={e => setDiscordServerId(e.target.value)}
+                  placeholder="e.g. 1234567890123456789"
+                />
+                <div className="flex justify-end mt-2">
+                  <SaveButton
+                    label="SAVE SERVER ID"
+                    onClick={() => saveIntegrationData({ discord_server_id: discordServerId })}
+                    loading={savingIntegration}
+                  />
+                </div>
               </div>
             </SettingsCard>
           </div>

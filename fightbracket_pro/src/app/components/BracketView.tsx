@@ -38,6 +38,7 @@ export function BracketView({
   const [selectedPhase, setSelectedPhase] = useState<string>('ALL');
   const [playerSearch, setPlayerSearch] = useState<string>('');
   const [filterMatchesOnly, setFilterMatchesOnly] = useState<boolean>(false);
+  const [shareTooltip, setShareTooltip] = useState(false);
 
   if (matches.length === 0) {
     return (
@@ -99,6 +100,55 @@ export function BracketView({
   const setSelectedPool = (p: string) => {
     setInternalPool(p);
     externalOnSelectPool?.(p);
+  };
+
+  const handleShareToDiscord = () => {
+    // Build a nicely formatted Discord message
+    const totalMatches = matches.length;
+    const completedMatches = matches.filter(m => m.state === 'completed').length;
+    const calledMatches = matches.filter(m => m.state === 'called' || m.state === 'in_progress').length;
+    const progressPct = totalMatches > 0 ? Math.round((completedMatches / totalMatches) * 100) : 0;
+
+    const lines: string[] = [
+      `⚔️ **LIVE BRACKET UPDATE**`,
+      ``,
+      `📊 Progress: **${completedMatches}/${totalMatches}** matches complete (${progressPct}%)`,
+    ];
+    if (calledMatches > 0) {
+      lines.push(`🎮 Active: **${calledMatches}** match${calledMatches === 1 ? '' : 'es'} in progress`);
+    }
+
+    // Top 3 completed matches with results
+    const recent = matches
+      .filter(m => m.state === 'completed' && m.winnerId)
+      .slice(-3)
+      .reverse();
+
+    if (recent.length > 0) {
+      lines.push(``);
+      lines.push(`📋 **Recent Results:**`);
+      recent.forEach(m => {
+        const winnerPlayer = players.find(p => p.id === m.winnerId);
+        const p1 = players.find(p => p.id === m.player1Id);
+        const p2 = players.find(p => p.id === m.player2Id);
+        if (winnerPlayer && p1 && p2) {
+          const loser = winnerPlayer.id === p1.id ? p2 : p1;
+          lines.push(`> ✅ **${winnerPlayer.tag}** def. ${loser.tag} — ${m.roundName}`);
+        }
+      });
+    }
+
+    lines.push(``);
+    lines.push(`🔗 <${window.location.href}>`);
+
+    const text = lines.join('\n');
+    navigator.clipboard.writeText(text).then(() => {
+      setShareTooltip(true);
+      setTimeout(() => setShareTooltip(false), 2500);
+    }).catch(() => {
+      // fallback: show the text in a prompt
+      window.prompt('Copy this to Discord:', text);
+    });
   };
 
   // Filter matches by Phase & Search
@@ -263,6 +313,34 @@ export function BracketView({
               {matchingMatchesCount} {matchingMatchesCount === 1 ? 'match' : 'matches'}
             </div>
           )}
+
+          {/* Share on Discord button */}
+          <div className="relative">
+            <button
+              id="bracket-share-discord"
+              onClick={handleShareToDiscord}
+              title="Copy bracket summary to clipboard for Discord"
+              className="flex items-center gap-1.5 h-10 px-3 rounded-lg text-xs font-mono font-bold border transition-all hover:brightness-125"
+              style={{
+                borderColor: 'rgba(88,101,242,0.45)',
+                color: '#5865F2',
+                background: 'rgba(88,101,242,0.12)',
+              }}
+            >
+              <svg width="14" height="14" viewBox="0 0 127.14 96.36" fill="#5865F2" aria-hidden="true">
+                <path d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36,77.7,77.7,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.66,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1A105.25,105.25,0,0,0,126.6,80.22h0C129.24,52.84,122.09,29.11,107.7,8.07ZM42.45,65.69C36.18,65.69,31,60,31,53s5-12.74,11.43-12.74S54,46,53.89,53,48.84,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.25,60,73.25,53s5-12.74,11.44-12.74S96.23,46,96.12,53,91.08,65.69,84.69,65.69Z"/>
+              </svg>
+              SHARE
+            </button>
+            {shareTooltip && (
+              <div
+                className="absolute bottom-full mb-2 right-0 px-3 py-1.5 rounded-lg text-xs font-mono font-bold whitespace-nowrap pointer-events-none animate-in fade-in duration-150"
+                style={{ background: '#5865F2', color: 'white' }}
+              >
+                Copied to clipboard!
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

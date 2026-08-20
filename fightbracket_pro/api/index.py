@@ -125,6 +125,8 @@ class ProfileUpdateRequest(BaseModel):
     steam_id: Optional[str] = None
     twitch_id: Optional[str] = None
     twitch_url: Optional[str] = None
+    discord_webhook_url: Optional[str] = None
+    discord_server_id: Optional[str] = None
     games_data: Optional[str] = None
     station_names: Optional[str] = None
     is_public: Optional[bool] = None
@@ -165,6 +167,46 @@ class SupportTicketRequest(BaseModel):
     inquiry_type: str  # bracket | oauth | privacy | api | general
     email: str
     message: str
+
+# ─── Discord Webhook Helper ──────────────────────────────────────────────────
+
+def send_discord_webhook(webhook_url: str, payload: dict) -> bool:
+    """Send a payload to a Discord webhook URL. Returns True on success."""
+    if not webhook_url or not webhook_url.startswith("https://discord.com/api/webhooks/"):
+        return False
+    try:
+        resp = requests.post(webhook_url, json=payload, timeout=8)
+        return resp.status_code in (200, 204)
+    except Exception as e:
+        print(f"[Discord] Webhook send failed: {e}")
+        return False
+
+
+def _discord_tournament_embed(tournament_name: str, description: str, color: int = 5765120, fields: list = None) -> dict:
+    """Build a Discord embed dict for tournament events."""
+    embed: dict = {
+        "title": f"⚔️ {tournament_name}",
+        "description": description,
+        "color": color,
+        "footer": {"text": "FightBracket Pro"},
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+    if fields:
+        embed["fields"] = fields
+    return {"embeds": [embed]}
+
+
+class DiscordWebhookTestRequest(BaseModel):
+    webhook_url: str
+    tournament_name: Optional[str] = "Test Tournament"
+
+
+class DiscordAnnounceRequest(BaseModel):
+    tournament_id: str
+    message_type: str  # 'start' | 'match_called' | 'result' | 'custom'
+    custom_message: Optional[str] = None
+    match_info: Optional[dict] = None  # {player1, player2, round, station}
+
 
 def _send_support_autoresponse(user_email: str, inquiry_type: str, ticket_id: str):
     """Send an auto-reply confirmation to the user via Resend."""
@@ -430,6 +472,90 @@ def verify_auth_turnstile(req: VerifyRequest, request: Request):
         
     return {"status": "success"}
 
+# ─── Discord Integration Endpoints ───────────────────────────────────────────
+
+@app.post("/api/discord/test-webhook")
+def test_discord_webhook(req: DiscordWebhookTestRequest, user_id: str = Depends(get_current_user_id)):
+    """Test a Discord webhook URL by sending a sample embed."""
+    payload = _discord_tournament_embed(
+        tournament_name=req.tournament_name or "Your Tournament",
+        description="✅ Your Discord webhook is connected to **FightBracket Pro**!\nMatch callouts, results, and announcements will appear here automatically.",
+        color=5765120,
+        fields=[
+            {"name": "Status", "value": "Connected", "inline": True},
+            {"name": "Setup", "value": "Complete", "inline": True},
+        ]
+    )
+    success = send_discord_webhook(req.webhook_url, payload)
+    if not success:
+        raise HTTPException(status_code=400, detail="Failed to send to webhook. Make sure the URL is a valid Discord webhook (starts with https://discord.com/api/webhooks/).")
+    return {"status": "success", "message": "Test embed sent to Discord!"}
+
+
+@app.post("/api/discord/announce")
+def discord_announce(req: DiscordAnnounceRequest, user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    """Send a Discord announcement for a tournament event."""
+    if not db:
+        raise HTTPException(status_code=503, detail="Database unavailable")
+    
+    user = db.query(DBUser).filter(DBUser.id == user_id).first()
+    if not user or not getattr(user, 'discord_webhook_url', None):
+        raise HTTPException(status_code=400, detail="No Discord webhook configured. Add one in Settings → Integrations → Discord.")
+    
+    tournament = db.query(DBTournament).filter(DBTournament.id == req.tournament_id, DBTournament.user_id == user_id).first()
+    if not tournament:
+        raise HTTPException(status_code=404, detail="Tournament not found")
+    
+    webhook_url = user.discord_webhook_url
+    
+    if req.message_type == "start":
+        payload = _discord_tournament_embed(
+            tournament_name=tournament.name,
+            description=f"🏆 **{tournament.name}** is now underway!\nCheck in, confirm your bracket placement, and get ready to compete.",
+            color=5765120,
+        )
+    elif req.message_type == "match_called" and req.match_info:
+        mi = req.match_info
+        player1 = mi.get("player1", "Player 1")
+        player2 = mi.get("player2", "Player 2")
+        round_name = mi.get("round", "")
+        station = mi.get("station", "")
+        station_text = f" — **Station {station}**" if station else ""
+        payload = _discord_tournament_embed(
+            tournament_name=tournament.name,
+            description=f"🎮 **{player1}** vs **{player2}**{station_text}\n`{round_name}` — Please report to your station now.",
+            color=16766720,  # amber
+        )
+    elif req.message_type == "result" and req.match_info:
+        mi = req.match_info
+        winner = mi.get("winner", "TBD")
+        loser = mi.get("loser", "TBD")
+        score = mi.get("score", "")
+        round_name = mi.get("round", "")
+        score_text = f" ({score})" if score else ""
+        is_grand_finals = "grand" in round_name.lower() if round_name else False
+        emoji = "🏆" if is_grand_finals else "✅"
+        color = 16750848 if is_grand_finals else 3329330  # gold vs green
+        payload = _discord_tournament_embed(
+            tournament_name=tournament.name,
+            description=f"{emoji} **{winner}** defeats **{loser}**{score_text}\n`{round_name}` result confirmed.",
+            color=color,
+        )
+    elif req.message_type == "custom" and req.custom_message:
+        payload = _discord_tournament_embed(
+            tournament_name=tournament.name,
+            description=req.custom_message,
+            color=5765120,
+        )
+    else:
+        raise HTTPException(status_code=400, detail="Invalid message_type or missing match_info/custom_message")
+    
+    success = send_discord_webhook(webhook_url, payload)
+    if not success:
+        raise HTTPException(status_code=502, detail="Failed to deliver webhook to Discord.")
+    return {"status": "success"}
+
+
 @app.get("/api/health")
 def health_check():
     return {"status": "ok"}
@@ -586,6 +712,8 @@ def get_user_profile(payload: dict = Depends(get_current_user_payload), db: Sess
                 "steam_id": getattr(user, 'steam_id', '') or "",
                 "twitch_id": getattr(user, 'twitch_id', '') or "",
                 "twitch_url": getattr(user, 'twitch_url', '') or "",
+                "discord_webhook_url": getattr(user, 'discord_webhook_url', '') or "",
+                "discord_server_id": getattr(user, 'discord_server_id', '') or "",
                 "games_data": getattr(user, 'games_data', '') or "",
                 "is_public": user.is_public if user.is_public is not None else True,
                 "friends_only": user.friends_only if user.friends_only is not None else False,
@@ -655,6 +783,10 @@ def update_user_profile(req: ProfileUpdateRequest, user_id: str = Depends(get_cu
         user.twitch_id = req.twitch_id.strip() # type: ignore
     if req.twitch_url is not None:
         user.twitch_url = req.twitch_url.strip() # type: ignore
+    if req.discord_webhook_url is not None:
+        user.discord_webhook_url = req.discord_webhook_url.strip() # type: ignore
+    if req.discord_server_id is not None:
+        user.discord_server_id = req.discord_server_id.strip() # type: ignore
     if req.games_data is not None:
         user.games_data = req.games_data # type: ignore
     if req.station_names is not None:
@@ -689,6 +821,8 @@ def update_user_profile(req: ProfileUpdateRequest, user_id: str = Depends(get_cu
             "steam_id": getattr(user, 'steam_id', '') or "",
             "twitch_id": getattr(user, 'twitch_id', '') or "",
             "twitch_url": getattr(user, 'twitch_url', '') or "",
+            "discord_webhook_url": getattr(user, 'discord_webhook_url', '') or "",
+            "discord_server_id": getattr(user, 'discord_server_id', '') or "",
             "games_data": getattr(user, 'games_data', '') or "",
             "is_public": user.is_public,
             "friends_only": user.friends_only,

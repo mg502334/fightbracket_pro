@@ -1180,35 +1180,6 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
                   </span>
                 </div>
 
-            {/* My Feed Preview (Stacked Below) */}
-            <div className="mt-8 rounded-xl border border-white/5 bg-[#0A0A0F] p-5 shadow-sm">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-lg font-bold text-white uppercase tracking-wider" style={{ fontFamily: "'Barlow Condensed', sans-serif" }}>Recent Activity</h2>
-                <button
-                  onClick={() => setActiveTab("MyFeed")}
-                  className="text-xs text-[#00E5FF] hover:text-white transition-colors flex items-center gap-1 font-mono uppercase tracking-widest"
-                >
-                  View All <ChevronRight size={14} />
-                </button>
-              </div>
-              
-              {fetchingMyFeed ? (
-                <div className="text-center py-4 opacity-50 font-mono text-xs">Loading activity...</div>
-              ) : myFeedPosts.length === 0 ? (
-                <div className="text-center py-4 opacity-50 font-mono text-xs">No recent activity.</div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {myFeedPosts.slice(0, 3).map((post) => (
-                    <PostCard
-                      key={post.id}
-                      post={post}
-                      onLike={() => {}}
-                      onBookmark={() => {}}
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
 
                 {/* Social Logins */}
                 <div className="space-y-2.5">

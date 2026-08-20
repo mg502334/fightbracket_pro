@@ -103,6 +103,7 @@ export default function App() {
   const [startggUser, setStartggUser] = useState<{ id: string; name: string } | null>(null);
   const [supabaseUser, setSupabaseUser] = useState<any>(null);
   const [supabaseToken, setSupabaseToken] = useState<string | null>(null);
+  const [discordWebhookUrl, setDiscordWebhookUrl] = useState<string | null>(null);
   const [showFriendsModal, setShowFriendsModal] = useState(false);
   const [showDirectoryModal, setShowDirectoryModal] = useState(false);
   const [showRulesModal, setShowRulesModal] = useState(false);
@@ -212,6 +213,10 @@ export default function App() {
               });
             }
           } catch {}
+        }
+        // Load Discord webhook URL
+        if (profile?.discord_webhook_url) {
+          setDiscordWebhookUrl(profile.discord_webhook_url);
         }
       })
       .catch(console.error);
@@ -506,7 +511,28 @@ export default function App() {
         onClick: () => handleUndoCall(match.id),
       },
     });
-  }, [theme?.primaryColor, players, gameThemes, stations]);
+
+    // Fire Discord webhook if configured
+    if (discordWebhookUrl && supabaseToken && activeTournament?.name) {
+      const tId = activeTournament.slug || activeTournament.name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+      const p1 = players.find(p => p.id === match.player1Id);
+      const p2 = players.find(p => p.id === match.player2Id);
+      fetch('/api/discord/announce', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${supabaseToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tournament_id: tId,
+          message_type: 'match_called',
+          match_info: {
+            player1: p1?.tag || 'Player 1',
+            player2: p2?.tag || 'Player 2',
+            round: match.roundName,
+            station: sid,
+          }
+        })
+      }).catch(() => {}); // Fire and forget — don't block the UI
+    }
+  }, [theme?.primaryColor, players, gameThemes, stations, discordWebhookUrl, supabaseToken, activeTournament]);
 
   const handleUndoCall = useCallback((matchId: string) => {
     setMatches(prev => prev.map(m => m.id === matchId ? { ...m, state: 'pending', stationId: null } : m));
@@ -1197,6 +1223,31 @@ export default function App() {
 
     // Auto-free station
     setStations(prev => prev.map(s => s.matchId === matchId ? { ...s, matchId: null } : s));
+
+    // Fire Discord result webhook if configured
+    if (discordWebhookUrl && supabaseToken && activeTournament?.name && winnerId) {
+      const tId = activeTournament.slug || activeTournament.name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+      const match = matches.find(m => m.id === matchId);
+      if (match) {
+        const winner = players.find(p => p.id === winnerId);
+        const loserId = match.player1Id === winnerId ? match.player2Id : match.player1Id;
+        const loser = loserId ? players.find(p => p.id === loserId) : null;
+        fetch('/api/discord/announce', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${supabaseToken}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            tournament_id: tId,
+            message_type: 'result',
+            match_info: {
+              winner: winner?.tag || 'Winner',
+              loser: loser?.tag || 'Loser',
+              score: `${p1Score}-${p2Score}`,
+              round: match.roundName,
+            }
+          })
+        }).catch(() => {});
+      }
+    }
   };
 
   const handleRemovePlayer = (playerId: string) => {
