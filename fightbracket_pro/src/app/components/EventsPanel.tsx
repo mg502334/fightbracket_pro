@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Calendar, MapPin, Users, ExternalLink, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, Calendar, MapPin, Users, ExternalLink, ChevronLeft, ChevronRight, Gamepad2, Map } from 'lucide-react';
 import { toast } from 'sonner';
+import startggGames from '../data/startggGames.json';
 
 interface Event {
   id: string;
@@ -22,6 +23,9 @@ export function EventsPanel({ getHeaders, onNavigateHome }: EventsPanelProps) {
   const [searchInput, setSearchInput] = useState("");
   const [upcoming, setUpcoming] = useState(true);
   const [page, setPage] = useState(1);
+  const [stateFilter, setStateFilter] = useState("");
+  const [activeStateFilter, setActiveStateFilter] = useState("");
+  const [gameFilter, setGameFilter] = useState<string>("");
   const [events, setEvents] = useState<Event[]>([]);
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -29,7 +33,7 @@ export function EventsPanel({ getHeaders, onNavigateHome }: EventsPanelProps) {
 
   useEffect(() => {
     fetchEvents();
-  }, [query, upcoming, page]);
+  }, [query, upcoming, page, activeStateFilter, gameFilter]);
 
   const fetchEvents = async () => {
     setLoading(true);
@@ -43,7 +47,9 @@ export function EventsPanel({ getHeaders, onNavigateHome }: EventsPanelProps) {
           query: query,
           upcoming: upcoming,
           page: page,
-          perPage: 12
+          perPage: 12,
+          state: activeStateFilter || undefined,
+          videogameId: gameFilter ? parseInt(gameFilter) : undefined
         })
       });
 
@@ -72,6 +78,7 @@ export function EventsPanel({ getHeaders, onNavigateHome }: EventsPanelProps) {
     e.preventDefault();
     setPage(1);
     setQuery(searchInput);
+    setActiveStateFilter(stateFilter);
   };
 
   if (error === "unauthorized") {
@@ -103,34 +110,70 @@ export function EventsPanel({ getHeaders, onNavigateHome }: EventsPanelProps) {
         </div>
 
         {/* Search & Filters */}
-        <div className="bg-[#111116] border border-white/10 rounded-xl p-4 mb-8 flex flex-col md:flex-row gap-4 shadow-lg">
-          <form onSubmit={handleSearch} className="flex-1 flex relative">
-            <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input
-              type="text"
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              placeholder="Search tournaments by name..."
-              className="w-full bg-black/40 border border-white/10 rounded-lg pl-10 pr-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-[#06b6d4]/50 transition-colors"
-            />
-            <button type="submit" className="absolute right-2 top-1/2 -translate-y-1/2 bg-[#06b6d4]/20 text-[#06b6d4] px-3 py-1 rounded text-xs font-bold tracking-wider hover:bg-[#06b6d4]/30 transition-colors">
-              SEARCH
-            </button>
+        <div className="bg-[#111116] border border-white/10 rounded-xl p-4 mb-8 shadow-lg space-y-4">
+          <form onSubmit={handleSearch} className="flex flex-col lg:flex-row gap-4">
+            <div className="flex-1 flex relative">
+              <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                placeholder="Search tournaments by name..."
+                className="w-full bg-black/40 border border-white/10 rounded-lg pl-10 pr-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-[#06b6d4]/50 transition-colors"
+              />
+            </div>
+            
+            <div className="flex flex-col sm:flex-row gap-4">
+              {/* State Filter */}
+              <div className="relative">
+                <Map size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input
+                  type="text"
+                  value={stateFilter}
+                  onChange={(e) => setStateFilter(e.target.value.toUpperCase())}
+                  placeholder="State (e.g. TX)"
+                  maxLength={2}
+                  className="w-full sm:w-32 bg-black/40 border border-white/10 rounded-lg pl-9 pr-3 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-[#06b6d4]/50 transition-colors uppercase"
+                />
+              </div>
+
+              {/* Game Filter */}
+              <div className="relative">
+                <Gamepad2 size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <select
+                  value={gameFilter}
+                  onChange={(e) => {
+                    setGameFilter(e.target.value);
+                    setPage(1);
+                  }}
+                  className="w-full sm:w-48 bg-black/40 border border-white/10 rounded-lg pl-9 pr-3 py-2.5 text-sm text-white focus:outline-none focus:border-[#06b6d4]/50 transition-colors appearance-none"
+                >
+                  <option value="">All Games</option>
+                  {startggGames.map(game => (
+                    <option key={game.id} value={game.id}>{game.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <button type="submit" className="bg-[#06b6d4]/20 text-[#06b6d4] px-6 py-2.5 rounded-lg text-xs font-bold tracking-wider hover:bg-[#06b6d4]/30 transition-colors whitespace-nowrap">
+                SEARCH
+              </button>
+            </div>
           </form>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 border-t border-white/5 pt-4">
             <button
               onClick={() => { setUpcoming(true); setPage(1); }}
-              className={`px-4 py-2.5 rounded-lg text-xs font-bold tracking-widest transition-all flex-1 md:flex-none text-center border ${
-                upcoming ? 'bg-[#06b6d4]/20 border-[#06b6d4]/50 text-[#06b6d4]' : 'bg-black/40 border-white/10 text-gray-400 hover:text-white hover:border-white/20'
+              className={`px-4 py-2 rounded text-xs font-bold tracking-widest transition-all text-center border ${
+                upcoming ? 'bg-[#06b6d4]/20 border-[#06b6d4]/50 text-[#06b6d4]' : 'bg-transparent border-transparent text-gray-400 hover:text-white'
               }`}
             >
               UPCOMING
             </button>
             <button
               onClick={() => { setUpcoming(false); setPage(1); }}
-              className={`px-4 py-2.5 rounded-lg text-xs font-bold tracking-widest transition-all flex-1 md:flex-none text-center border ${
-                !upcoming ? 'bg-[#06b6d4]/20 border-[#06b6d4]/50 text-[#06b6d4]' : 'bg-black/40 border-white/10 text-gray-400 hover:text-white hover:border-white/20'
+              className={`px-4 py-2 rounded text-xs font-bold tracking-widest transition-all text-center border ${
+                !upcoming ? 'bg-[#06b6d4]/20 border-[#06b6d4]/50 text-[#06b6d4]' : 'bg-transparent border-transparent text-gray-400 hover:text-white'
               }`}
             >
               PAST

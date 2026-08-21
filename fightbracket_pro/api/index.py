@@ -3124,6 +3124,7 @@ class EventSearchRequest(BaseModel):
     query: str = ""
     upcoming: bool = True
     videogameId: Optional[int] = None
+    state: Optional[str] = None
     page: int = 1
     perPage: int = 20
 
@@ -3150,13 +3151,14 @@ def search_events(req: EventSearchRequest, user_id: str = Depends(get_current_us
     import requests
     
     query = """
-    query SearchTournaments($name: String, $perPage: Int, $page: Int, $videogameId: [ID]) {
+    query SearchTournaments($name: String, $perPage: Int, $page: Int, $videogameId: [ID], $state: String) {
       tournaments(query: {
         perPage: $perPage,
         page: $page,
         filter: {
           name: $name,
           videogameIds: $videogameId,
+          addrState: $state,
           upcoming: true
         }
       }) {
@@ -3187,6 +3189,8 @@ def search_events(req: EventSearchRequest, user_id: str = Depends(get_current_us
         variables["name"] = req.query
     if req.videogameId:
         variables["videogameId"] = [str(req.videogameId)]
+    if req.state:
+        variables["state"] = req.state
         
     if not req.upcoming:
         query = query.replace("upcoming: true", "past: true")
