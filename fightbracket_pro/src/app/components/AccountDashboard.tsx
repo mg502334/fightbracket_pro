@@ -49,7 +49,13 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
   const primaryColor = theme?.primaryColor || '#00E5FF';
   // Sidebar layout state
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState("Dashboard");
+  const [activeTab, setActiveTabRaw] = useState(() => {
+    try { return localStorage.getItem('fb_dashboard_tab') || 'Dashboard'; } catch { return 'Dashboard'; }
+  });
+  const setActiveTab = (tab: string) => {
+    setActiveTabRaw(tab);
+    try { localStorage.setItem('fb_dashboard_tab', tab); } catch {}
+  };
 
   // Auth state
   const [firstName, setFirstName] = useState('');
