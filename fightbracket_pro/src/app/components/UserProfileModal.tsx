@@ -203,7 +203,10 @@ export function UserProfileModal({ isOpen, onClose, targetUserId, supabaseToken,
             </div>
 
             <div className="flex items-center gap-4">
-              {profile?.avatar_url ? (
+              {loading ? (
+                /* Avatar skeleton */
+                <div className="w-16 h-16 rounded-2xl bg-white/10 animate-pulse shrink-0" />
+              ) : profile?.avatar_url ? (
                 <img src={profile.avatar_url} alt="Avatar" className="w-16 h-16 rounded-2xl object-cover border-2 shadow-lg" style={{ borderColor: primaryColor }} />
               ) : (
                 <div
@@ -219,32 +222,42 @@ export function UserProfileModal({ isOpen, onClose, targetUserId, supabaseToken,
                 </div>
               )}
 
-              <div>
-                <div className="flex items-center gap-2">
-                  <h2 className="text-2xl font-bold tracking-wider font-rajdhani text-white">
-                    {profile?.gamer_tag || (profile?.is_self ? 'Add Gamer Tag in Settings' : 'Anonymous Fighter')}
-                  </h2>
-                  {profile?.is_friend && (
-                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                      FRIEND
-                    </span>
-                  )}
-                </div>
-                <div className="text-xs font-mono text-cyan-400 mt-1 flex items-center gap-1.5 h-4">
-                  {showFbId ? (
-                    <>
-                      <span>{profile?.unique_id || 'FB-USER'}</span>
-                      <button onClick={() => setShowFbId(false)} className="opacity-60 hover:opacity-100 transition-opacity" title="Hide FB-ID">
-                        <EyeOff size={12} />
-                      </button>
-                    </>
-                  ) : (
-                    <button onClick={() => setShowFbId(true)} className="flex items-center gap-1.5 opacity-60 hover:opacity-100 transition-opacity" title="Show FB-ID">
-                      <Eye size={12} />
-                      <span className="text-[10px] uppercase tracking-wider text-cyan-400/80">Show FB-ID</span>
-                    </button>
-                  )}
-                </div>
+              <div className="flex-1 min-w-0">
+                {loading ? (
+                  /* Name + ID skeleton */
+                  <div className="space-y-2">
+                    <div className="h-7 w-40 bg-white/10 rounded animate-pulse" />
+                    <div className="h-3 w-24 bg-white/5 rounded animate-pulse" />
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex items-center gap-2">
+                      <h2 className="text-2xl font-bold tracking-wider font-rajdhani text-white">
+                        {profile?.gamer_tag || (profile?.is_self ? 'Add Gamer Tag in Settings' : 'Anonymous Fighter')}
+                      </h2>
+                      {profile?.is_friend && (
+                        <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                          FRIEND
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-xs font-mono text-cyan-400 mt-1 flex items-center gap-1.5 h-4">
+                      {showFbId ? (
+                        <>
+                          <span>{profile?.unique_id || 'FB-USER'}</span>
+                          <button onClick={() => setShowFbId(false)} className="opacity-60 hover:opacity-100 transition-opacity" title="Hide FB-ID">
+                            <EyeOff size={12} />
+                          </button>
+                        </>
+                      ) : (
+                        <button onClick={() => setShowFbId(true)} className="flex items-center gap-1.5 opacity-60 hover:opacity-100 transition-opacity" title="Show FB-ID">
+                          <Eye size={12} />
+                          <span className="text-[10px] uppercase tracking-wider text-cyan-400/80">Show FB-ID</span>
+                        </button>
+                      )}
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -252,7 +265,16 @@ export function UserProfileModal({ isOpen, onClose, targetUserId, supabaseToken,
           {/* Body Content */}
           <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto custom-scrollbar">
             {loading ? (
-              <div className="text-center py-10 opacity-40 font-mono text-xs">Loading profile...</div>
+              /* Full body skeleton */
+              <div className="space-y-5 animate-pulse">
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="aspect-[2/3] rounded-xl bg-white/10" />
+                  <div className="aspect-[2/3] rounded-xl bg-white/10" />
+                  <div className="aspect-[2/3] rounded-xl bg-white/10" />
+                </div>
+                <div className="h-32 rounded-xl bg-white/5" />
+                <div className="h-20 rounded-xl bg-white/5" />
+              </div>
             ) : profile?.privacy_restricted ? (
               /* Privacy Guard Banner */
               <div className="rounded-xl p-6 border text-center space-y-3 bg-amber-500/10 border-amber-500/30">
