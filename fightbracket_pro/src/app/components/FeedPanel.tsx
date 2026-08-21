@@ -396,38 +396,6 @@ export function PostCard({
             </button>
           );
         })}
-
-        {/* Add reaction button */}
-        <div className="relative">
-          <button
-            onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-            className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs text-gray-400 hover:text-white transition-colors"
-            style={{ background: "rgba(255,255,255,0.03)", border: "1px dashed rgba(255,255,255,0.15)" }}
-            title="Add Reaction"
-          >
-            <Smile size={12} />
-            <span className="text-[10px]">+</span>
-          </button>
-
-          {/* Emoji Picker Popover */}
-          {showEmojiPicker && (
-            <div 
-              className="absolute left-0 bottom-8 z-30 p-1.5 rounded-lg flex items-center gap-1 shadow-2xl animate-in fade-in zoom-in-95 duration-150"
-              style={{ background: "#1b1b22", border: "1px solid rgba(0,229,255,0.3)" }}
-            >
-              {AVAILABLE_EMOJIS.map(({ emoji, label }) => (
-                <button
-                  key={emoji}
-                  onClick={() => handleToggleReaction(emoji)}
-                  className="w-7 h-7 flex items-center justify-center text-sm rounded hover:bg-white/10 hover:scale-125 transition-transform"
-                  title={label}
-                >
-                  {emoji}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
       </div>
 
       {/* Stats Counter */}
@@ -439,14 +407,38 @@ export function PostCard({
 
       {/* Action Buttons: Like, Comment, Share, Bookmark */}
       <div className="flex items-center px-2 py-1 relative">
-        <ActionBtn
-          icon={Heart}
-          label={post.liked ? "Liked" : "Like"}
-          active={post.liked}
-          activeColor="#f43f5e"
-          onClick={() => onLike(post.id)}
-          filled={post.liked}
-        />
+        <div 
+          className="relative"
+          onMouseEnter={() => setShowEmojiPicker(true)}
+          onMouseLeave={() => setShowEmojiPicker(false)}
+        >
+          <ActionBtn
+            icon={Heart}
+            label={post.liked ? "Liked" : "Like"}
+            active={post.liked}
+            activeColor="#f43f5e"
+            onClick={() => onLike(post.id)}
+            filled={post.liked}
+          />
+          {/* Emoji Picker Popover */}
+          {showEmojiPicker && (
+            <div 
+              className="absolute left-0 bottom-full mb-1 z-30 p-1.5 rounded-lg flex items-center gap-1 shadow-2xl animate-in fade-in zoom-in-95 duration-150"
+              style={{ background: "#1b1b22", border: "1px solid rgba(0,229,255,0.3)" }}
+            >
+              {AVAILABLE_EMOJIS.map(({ emoji, label }) => (
+                <button
+                  key={emoji}
+                  onClick={() => handleToggleReaction(emoji)}
+                  className="w-8 h-8 flex items-center justify-center text-lg rounded hover:bg-white/10 hover:scale-125 transition-transform"
+                  title={label}
+                >
+                  {emoji}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
         <ActionBtn 
           icon={MessageCircle} 
           label={`Comment (${post.comments + localComments.length})`} 
