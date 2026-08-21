@@ -23,8 +23,8 @@ export function EventsPanel({ getHeaders, onNavigateHome }: EventsPanelProps) {
   const [searchInput, setSearchInput] = useState("");
   const [upcoming, setUpcoming] = useState(true);
   const [page, setPage] = useState(1);
-  const [stateFilter, setStateFilter] = useState("");
-  const [activeStateFilter, setActiveStateFilter] = useState("");
+  const [locationFilter, setLocationFilter] = useState("");
+  const [activeLocationFilter, setActiveLocationFilter] = useState("");
   const [gameFilter, setGameFilter] = useState<string>("");
   const [events, setEvents] = useState<Event[]>([]);
   const [totalPages, setTotalPages] = useState(1);
@@ -33,7 +33,7 @@ export function EventsPanel({ getHeaders, onNavigateHome }: EventsPanelProps) {
 
   useEffect(() => {
     fetchEvents();
-  }, [query, upcoming, page, activeStateFilter, gameFilter]);
+  }, [query, upcoming, page, activeLocationFilter, gameFilter]);
 
   const fetchEvents = async () => {
     setLoading(true);
@@ -48,7 +48,7 @@ export function EventsPanel({ getHeaders, onNavigateHome }: EventsPanelProps) {
           upcoming: upcoming,
           page: page,
           perPage: 12,
-          state: activeStateFilter || undefined,
+          location: activeLocationFilter || undefined,
           videogameId: gameFilter ? parseInt(gameFilter) : undefined
         })
       });
@@ -78,7 +78,7 @@ export function EventsPanel({ getHeaders, onNavigateHome }: EventsPanelProps) {
     e.preventDefault();
     setPage(1);
     setQuery(searchInput);
-    setActiveStateFilter(stateFilter);
+    setActiveLocationFilter(locationFilter);
   };
 
   if (error === "unauthorized") {
@@ -124,16 +124,15 @@ export function EventsPanel({ getHeaders, onNavigateHome }: EventsPanelProps) {
             </div>
             
             <div className="flex flex-col sm:flex-row gap-4">
-              {/* State Filter */}
+              {/* Location Filter */}
               <div className="relative">
                 <Map size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                 <input
                   type="text"
-                  value={stateFilter}
-                  onChange={(e) => setStateFilter(e.target.value.toUpperCase())}
-                  placeholder="State (e.g. TX)"
-                  maxLength={2}
-                  className="w-full sm:w-32 bg-black/40 border border-white/10 rounded-lg pl-9 pr-3 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-[#06b6d4]/50 transition-colors uppercase"
+                  value={locationFilter}
+                  onChange={(e) => setLocationFilter(e.target.value)}
+                  placeholder="Location (e.g. Houston, TX)"
+                  className="w-full sm:w-48 bg-black/40 border border-white/10 rounded-lg pl-9 pr-3 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-[#06b6d4]/50 transition-colors"
                 />
               </div>
 

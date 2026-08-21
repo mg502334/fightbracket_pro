@@ -3124,7 +3124,7 @@ class EventSearchRequest(BaseModel):
     query: str = ""
     upcoming: bool = True
     videogameId: Optional[int] = None
-    state: Optional[str] = None
+    location: Optional[str] = None
     page: int = 1
     perPage: int = 20
 
@@ -3148,22 +3148,32 @@ def search_events(req: EventSearchRequest, user_id: str = Depends(get_current_us
     if not token:
         raise HTTPException(status_code=401, detail="Start.gg integration required. Please link your Start.gg account in Settings.")
         
-    import requests
-    
-    query = """
-    query SearchTournaments($name: String, $perPage: Int, $page: Int, $videogameId: [ID], $state: String) {
-      tournaments(query: {
+    location_filter = ""
+    if req.location:
+        try:
+            geo_url = f"https://nominatim.openstreetmap.org/search?q={req.location}&format=json&limit=1"
+            geo_res = requests.get(geo_url, headers={'User-Agent': 'FightBracketPro/1.0'})
+            if geo_res.ok and len(geo_res.json()) > 0:
+                geo_data = geo_res.json()[0]
+                latlon = f"{geo_data['lat']},{geo_data['lon']}"
+                location_filter = f'location: {{ distanceFrom: "{latlon}", distance: "50mi" }},'
+        except Exception:
+            pass
+
+    query = f"""
+    query SearchTournaments($name: String, $perPage: Int, $page: Int, $videogameId: [ID]) {{
+      tournaments(query: {{
         perPage: $perPage,
         page: $page,
-        filter: {
+        filter: {{
           name: $name,
           videogameIds: $videogameId,
-          addrState: $state,
+          {location_filter}
           upcoming: true
-        }
-      }) {
-        pageInfo { totalPages }
-        nodes {
+        }}
+      }}) {{
+        pageInfo {{ totalPages }}
+        nodes {{
           id
           name
           slug
@@ -3171,13 +3181,13 @@ def search_events(req: EventSearchRequest, user_id: str = Depends(get_current_us
           city
           addrState
           numAttendees
-          images {
+          images {{
             url
             type
-          }
-        }
-      }
-    }
+          }}
+        }}
+      }}
+    }}
     """
     
     variables = {
@@ -3189,8 +3199,6 @@ def search_events(req: EventSearchRequest, user_id: str = Depends(get_current_us
         variables["name"] = req.query
     if req.videogameId:
         variables["videogameId"] = [str(req.videogameId)]
-    if req.state:
-        variables["state"] = req.state
         
     if not req.upcoming:
         query = query.replace("upcoming: true", "past: true")
