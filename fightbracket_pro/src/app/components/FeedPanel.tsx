@@ -570,7 +570,8 @@ export function FeedPanel({ userProfile, getHeaders }: { userProfile: any, getHe
           setEvents(data.upcoming_events);
         }
         if (data.suggested_users && data.suggested_users.length > 0) {
-          setUsers(data.suggested_users);
+          // Only show users who have actually set a gamer tag
+          setUsers(data.suggested_users.filter((u: any) => u.gamer_tag && u.gamer_tag.trim()));
         }
       }
     } catch (e) {
@@ -946,7 +947,7 @@ export function FeedPanel({ userProfile, getHeaders }: { userProfile: any, getHe
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="text-xs font-medium text-white truncate">{u.gamer_tag || u.handle || u.unique_id}</div>
+                      <div className="text-xs font-medium text-white truncate">{u.gamer_tag || 'Fighter'}</div>
                     </div>
                     <button className="flex items-center gap-1 text-[10px] font-bold px-2 h-6 transition-all flex-shrink-0"
                       style={{ background: "rgba(6,182,212,0.1)", color: "#06b6d4", border: "1px solid rgba(6,182,212,0.25)", borderRadius: "2px", fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: "0.05em" }}>
