@@ -943,11 +943,18 @@ export function FeedPanel({ userProfile, getHeaders }: { userProfile: any, getHe
               </h3>
               <div className="flex flex-col gap-3">
                 {users.map((u) => (
-                  <div key={u.handle} className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0" style={{ background: u.color, borderRadius: "2px", fontFamily: "'Barlow Condensed', sans-serif" }}>{u.initials}</div>
+                  <div key={u.handle || u.unique_id || u.id} className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 flex-shrink-0 overflow-hidden" style={{ borderRadius: "2px" }}>
+                      {u.avatar_url || u.avatar ? (
+                        <img src={u.avatar_url || u.avatar} alt={u.gamer_tag || u.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-[10px] font-bold text-white" style={{ background: u.color || u.profile_color || '#06b6d4', fontFamily: "'Barlow Condensed', sans-serif" }}>
+                          {u.initials || (u.gamer_tag ? u.gamer_tag.substring(0, 2).toUpperCase() : (u.name ? u.name.substring(0,2).toUpperCase() : "U"))}
+                        </div>
+                      )}
+                    </div>
                     <div className="flex-1 min-w-0">
-                      <div className="text-xs font-medium text-white truncate">{u.name}</div>
-                      <div className="text-[10px]" style={{ color: "#8a8a9a" }}>{u.sport}</div>
+                      <div className="text-xs font-medium text-white truncate">{u.gamer_tag || u.handle || u.unique_id}</div>
                     </div>
                     <button className="flex items-center gap-1 text-[10px] font-bold px-2 h-6 transition-all flex-shrink-0"
                       style={{ background: "rgba(6,182,212,0.1)", color: "#06b6d4", border: "1px solid rgba(6,182,212,0.25)", borderRadius: "2px", fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: "0.05em" }}>
