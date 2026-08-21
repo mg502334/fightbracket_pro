@@ -175,7 +175,7 @@ export function UserProfileModal({ isOpen, onClose, targetUserId, supabaseToken,
           initial={{ scale: 0.95, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.95, opacity: 0 }}
-          className="relative w-full max-w-lg overflow-hidden rounded-2xl border bg-[#050A14] shadow-2xl flex flex-col"
+          className="relative w-full max-w-3xl overflow-hidden rounded-2xl border bg-[#050A14] shadow-2xl flex flex-col"
           style={{ borderColor: `${primaryColor}40` }}
           onClick={e => e.stopPropagation()}
         >
