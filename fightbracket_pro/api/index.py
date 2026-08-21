@@ -3168,7 +3168,7 @@ def search_events(req: EventSearchRequest, user_id: str = Depends(get_current_us
           startAt
           city
           addrState
-          numEntrants
+          numAttendees
           images {
             url
             type
@@ -3230,7 +3230,7 @@ def search_events(req: EventSearchRequest, user_id: str = Depends(get_current_us
                 "slug": node.get("slug"),
                 "date": date_str,
                 "location": location or "Online",
-                "fighters": node.get("numEntrants") or 0,
+                "fighters": node.get("numAttendees") or 0,
                 "image": image_url
             })
             
