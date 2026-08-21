@@ -677,7 +677,7 @@ export function TekkenStatsPanel({ tekkenId, compact = false, steamId, psnId, xb
           <motion.div
             initial={{ opacity: 0, y: 4 }}
             animate={{ opacity: 1, y: 0 }}
-            className="relative rounded-xl overflow-hidden p-4 border grid grid-cols-1 md:grid-cols-3 gap-6 items-center"
+            className={`relative rounded-xl overflow-hidden p-4 border grid grid-cols-1 ${compact ? 'sm:grid-cols-3 gap-3' : 'md:grid-cols-3 gap-6'} items-center`}
             style={{
               borderColor: `${rankColor}30`,
               background: `linear-gradient(135deg, ${rankColor}08 0%, rgba(5,10,20,0.95) 100%)`,
@@ -746,8 +746,8 @@ export function TekkenStatsPanel({ tekkenId, compact = false, steamId, psnId, xb
               <div className="flex flex-col items-center gap-1.5 mt-1">
                 {tekkenId && (
                   <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-mono text-gray-500 w-16 text-right">TEKKEN ID</span>
-                    <span className="text-xs font-mono text-white/80 bg-white/5 px-2 py-0.5 rounded">{tekkenId}</span>
+                    <span className="text-[10px] font-mono text-gray-500 w-16 text-right shrink-0">TEKKEN ID</span>
+                    <span className="text-xs font-mono text-white/80 bg-white/5 px-2 py-0.5 rounded whitespace-nowrap overflow-hidden text-ellipsis">{tekkenId}</span>
                   </div>
                 )}
                 {steamId && (
@@ -770,8 +770,8 @@ export function TekkenStatsPanel({ tekkenId, compact = false, steamId, psnId, xb
                 )}
                 {data?.profile?.glicko_mu && (
                   <div className="flex items-center gap-2 mt-2 pt-2 border-t border-white/10 w-full justify-center">
-                    <span className="text-[10px] font-mono text-[#00E5FF] w-16 text-right">GLICKO-2</span>
-                    <span className="text-xs font-bold font-mono text-white bg-[#00E5FF]/10 px-2 py-0.5 rounded border border-[#00E5FF]/20 shadow-[0_0_10px_rgba(0,229,255,0.1)]">
+                    <span className="text-[10px] font-mono text-[#00E5FF] w-16 text-right shrink-0">GLICKO-2</span>
+                    <span className="text-xs font-bold font-mono text-white bg-[#00E5FF]/10 px-2 py-0.5 rounded border border-[#00E5FF]/20 shadow-[0_0_10px_rgba(0,229,255,0.1)] whitespace-nowrap">
                       {data.profile.glicko_mu} <span className="text-gray-500 font-normal">±{data.profile.glicko_sigma}</span>
                     </span>
                   </div>
@@ -810,11 +810,11 @@ export function TekkenStatsPanel({ tekkenId, compact = false, steamId, psnId, xb
                 </div>
               </div>
               
-              <div className="text-center mt-2">
+              <div className="text-center mt-2 w-full px-1">
                 <div className="text-[10px] font-mono text-gray-400 uppercase tracking-widest mb-1">
                   {selectedCharObj ? `${selectedCharObj.name} Rank` : 'Account Main Rank'}
                 </div>
-                <div className="text-lg sm:text-xl font-bold font-rajdhani tracking-widest" style={{ color: rankColor }}>
+                <div className={`font-bold font-rajdhani ${compact ? 'text-base sm:text-lg tracking-wider leading-tight' : 'text-lg sm:text-xl tracking-widest'}`} style={{ color: rankColor, wordBreak: 'break-word' }}>
                   {cleanRankText(rankName)}
                 </div>
               </div>
