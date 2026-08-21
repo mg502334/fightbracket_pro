@@ -13,6 +13,7 @@ class DBUser(Base):
     last_name = Column(String, nullable=True)
     gamer_tag = Column(String, nullable=True)
     bio = Column(String, nullable=True)
+    location = Column(String, nullable=True)  # User's preferred region / city / zip for event suggestions
     avatar_url = Column(String, nullable=True)
     profile_color = Column(String, nullable=True) # Custom color for profile modal
     startgg_slug = Column(String, nullable=True)

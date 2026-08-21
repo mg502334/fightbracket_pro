@@ -117,6 +117,7 @@ class ProfileUpdateRequest(BaseModel):
     last_name: Optional[str] = None
     gamer_tag: Optional[str] = None
     bio: Optional[str] = None
+    location: Optional[str] = None
     avatar_url: Optional[str] = None
     profile_color: Optional[str] = None
     startgg_slug: Optional[str] = None
@@ -703,6 +704,7 @@ def get_user_profile(payload: dict = Depends(get_current_user_payload), db: Sess
                 "last_name": getattr(user, 'last_name', '') or "",
                 "gamer_tag": getattr(user, 'gamer_tag', '') or "",
                 "bio": user.bio or "",
+                "location": user.location or "",
                 "avatar_url": user.avatar_url or "",
                 "profile_color": getattr(user, 'profile_color', '') or "",
                 "startgg_slug": user.startgg_slug or "",
@@ -753,6 +755,8 @@ def update_user_profile(req: ProfileUpdateRequest, user_id: str = Depends(get_cu
             user.gamer_tag = "" # type: ignore
     if req.bio is not None:
         user.bio = req.bio.strip() # type: ignore
+    if req.location is not None:
+        user.location = req.location.strip() # type: ignore
     if req.avatar_url is not None:
         user.avatar_url = req.avatar_url.strip() # type: ignore
     if req.profile_color is not None:
@@ -813,6 +817,7 @@ def update_user_profile(req: ProfileUpdateRequest, user_id: str = Depends(get_cu
             "unique_id": user.unique_id or "FB-UNKNOWN",
             "gamer_tag": user.gamer_tag or "",
             "bio": user.bio or "",
+            "location": user.location or "",
             "avatar_url": user.avatar_url or "",
             "startgg_slug": user.startgg_slug or "",
                         "startgg_token": "SECURE_HIDDEN" if (getattr(user, 'startgg_token', '') or db.query(DBUserIntegration).filter(DBUserIntegration.user_id == user.id, DBUserIntegration.integration_type == 'startgg').first()) else "", 
@@ -3000,6 +3005,10 @@ def get_feed_sidebar(user_id: str = Depends(get_current_user_id), db: Session = 
         user = db.query(DBUser).filter(DBUser.id == user_id).first()
         if user and getattr(user, 'startgg_token', None):
             token = getattr(user, 'startgg_token')
+    
+    # Get user location preference for nearby event filtering
+    current_user = db.query(DBUser).filter(DBUser.id == user_id).first()
+    user_location = getattr(current_user, 'location', None) or "" if current_user else ""
             
     # Resolve the token: prefer user's personal token, fall back to app-level token
     effective_token = token or os.environ.get("STARTGG_API_TOKEN") or os.environ.get("STARTGG_API_KEY")
@@ -3105,7 +3114,8 @@ def get_feed_sidebar(user_id: str = Depends(get_current_user_id), db: Session = 
 
     return {
         "suggested_users": suggested_results,
-        "upcoming_events": events_results
+        "upcoming_events": events_results,
+        "user_location": user_location
     }
 
 

@@ -3,7 +3,7 @@ import {
   Trophy, GitBranch, Flame, MessageCircle, Calendar,
   Heart, Share2, Bookmark, Send, Image as ImageIcon, Video, Hash, Smile,
   ChevronUp, MoreHorizontal, UserPlus, ExternalLink, Swords, Repeat2,
-  ThumbsUp, Sparkles, Check, Copy, Radio, Tag
+  ThumbsUp, Sparkles, Check, Copy, Radio, Tag, MapPin
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { RecentsWidget, RecentTournamentItem } from './RecentsWidget';
@@ -554,6 +554,7 @@ export function FeedPanel({ userProfile, getHeaders }: { userProfile: any, getHe
   const [composerText, setComposerText] = useState("");
   const [composerFocused, setComposerFocused] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [userLocation, setUserLocation] = useState('');
 
   useEffect(() => {
     fetchFeed();
@@ -572,6 +573,9 @@ export function FeedPanel({ userProfile, getHeaders }: { userProfile: any, getHe
         if (data.suggested_users && data.suggested_users.length > 0) {
           // Only show users who have actually set a gamer tag
           setUsers(data.suggested_users.filter((u: any) => u.gamer_tag && u.gamer_tag.trim()));
+        }
+        if (data.user_location) {
+          setUserLocation(data.user_location);
         }
       }
     } catch (e) {
@@ -890,9 +894,15 @@ export function FeedPanel({ userProfile, getHeaders }: { userProfile: any, getHe
             <div className="rounded-xl overflow-hidden mb-6" style={{ background: "#141418", border: "1px solid rgba(255,255,255,0.06)", borderRadius: "4px" }}>
               <div className="px-5 py-4 border-b border-white/5 flex items-center gap-2">
                 <Calendar size={13} className="text-cyan-400" />
-                <h3 className="text-white uppercase tracking-wide text-xs" style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, letterSpacing: "0.1em" }}>
+                <h3 className="text-white uppercase tracking-wide text-xs flex-1" style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, letterSpacing: "0.1em" }}>
                   UPCOMING EVENTS
                 </h3>
+                {userLocation && (
+                  <span className="flex items-center gap-1 text-[10px] font-mono text-cyan-400/70 bg-cyan-400/10 px-2 py-0.5 rounded-full border border-cyan-400/20">
+                    <MapPin size={8} />
+                    {userLocation}
+                  </span>
+                )}
               </div>
               <div className="p-3">
                 {events.length === 0 ? (

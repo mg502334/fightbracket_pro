@@ -22,6 +22,7 @@ export function AccountSettingsPanel({ user, userProfile, fetchUserProfile, getH
   const [lastName, setLastName] = useState(userProfile?.last_name || '');
   const [displayName, setDisplayName] = useState(userProfile?.gamer_tag || user?.user_metadata?.displayName || '');
   const [bio, setBio] = useState(userProfile?.bio || '');
+  const [location, setLocation] = useState(userProfile?.location || '');
   const [profileColor, setProfileColor] = useState(userProfile?.profile_color || '');
   const [newAvatarUrl, setNewAvatarUrl] = useState('');
   const [newEmail, setNewEmail] = useState('');
@@ -59,6 +60,7 @@ export function AccountSettingsPanel({ user, userProfile, fetchUserProfile, getH
       setLastName(userProfile.last_name || '');
       setDisplayName(userProfile.gamer_tag || user?.user_metadata?.displayName || '');
       setBio(userProfile.bio || '');
+      setLocation(userProfile.location || '');
       setProfileColor(userProfile.profile_color || '');
       setUserStartggInput(userProfile.startgg_slug || '');
       setStartggToken(userProfile.startgg_token === 'SECURE_HIDDEN' ? '' : (userProfile.startgg_token || ''));
@@ -87,7 +89,7 @@ export function AccountSettingsPanel({ user, userProfile, fetchUserProfile, getH
       await fetch('/api/user/profile', {
         method: 'PUT',
         headers,
-        body: JSON.stringify({ first_name: firstName, last_name: lastName, gamer_tag: displayName, bio, profile_color: profileColor })
+        body: JSON.stringify({ first_name: firstName, last_name: lastName, gamer_tag: displayName, bio, location, profile_color: profileColor })
       });
       fetchUserProfile();
       toast.success('Profile updated successfully');
@@ -250,6 +252,13 @@ export function AccountSettingsPanel({ user, userProfile, fetchUserProfile, getH
               </div>
               <div className="mb-5">
                 <SettingsInput label="Bio" value={bio} onChange={e => setBio(e.target.value)} placeholder="Main character, stream schedule, etc..." />
+                <SettingsInput
+                  label="Region / City / Zip Code"
+                  value={location}
+                  onChange={e => setLocation(e.target.value)}
+                  placeholder="e.g. Atlanta, GA or 30301"
+                  helper="Used to show nearby tournaments and events in your feed."
+                />
               </div>
               <div className="mb-5">
                 <label className="block text-xs font-rajdhani font-bold text-gray-400 uppercase tracking-wider mb-2">Profile Modal Color</label>
