@@ -2958,7 +2958,11 @@ def get_feed_sidebar(user_id: str = Depends(get_current_user_id), db: Session = 
         raise HTTPException(status_code=404, detail="Database not available")
         
     import random
-    all_users = db.query(DBUser).filter(DBUser.id != user_id).all()
+    all_users = db.query(DBUser).filter(
+        DBUser.id != user_id,
+        DBUser.gamer_tag != None,
+        DBUser.gamer_tag != ""
+    ).all()
     suggested = random.sample(all_users, min(3, len(all_users)))
     
     suggested_results = []
@@ -2975,9 +2979,12 @@ def get_feed_sidebar(user_id: str = Depends(get_current_user_id), db: Session = 
             
         suggested_results.append({
             "name": name,
+            "gamer_tag": getattr(u, 'gamer_tag', None) or "",
             "handle": getattr(u, 'unique_id', None) or "FB-UNKNOWN",
             "initials": initials,
             "color": getattr(u, 'profile_color', None) or "#06b6d4",
+            "avatar_url": getattr(u, 'avatar_url', None) or None,
+            "id": str(u.id),
             "sport": "Player"
         })
         
