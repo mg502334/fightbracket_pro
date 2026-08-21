@@ -517,7 +517,7 @@ export function UserProfileModal({ isOpen, onClose, targetUserId, supabaseToken,
 
                 {activeTab === 'Feed' && (
                   <div className="space-y-4">
-                    {fetchingPosts ? (
+                    {fetchingPosts && userPosts.length === 0 ? (
                       <div className="text-center py-8 opacity-50 font-mono text-sm">Loading activity...</div>
                     ) : userPosts.length === 0 ? (
                       <div className="text-center py-8 opacity-50 font-mono text-sm">

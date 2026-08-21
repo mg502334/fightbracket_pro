@@ -1578,7 +1578,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
 
                 {/* Main: My Posts */}
                 <div className="flex-1 min-w-0">
-                  {fetchingMyFeed ? (
+                  {fetchingMyFeed && myFeedPosts.length === 0 ? (
                     <div className="text-center py-12 opacity-50 font-mono text-sm">Loading your posts...</div>
                   ) : myFeedPosts.length === 0 ? (
                     <div className="text-center py-16 bg-[#141418] border border-white/5 rounded-xl p-8">
@@ -1868,7 +1868,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
                       </div>
                     </div>
 
-                    {loading ? (
+                    {loading && tournaments.length === 0 ? (
                       <div className="text-center py-10 opacity-50 font-mono text-sm">Loading from cloud...</div>
                     ) : tournaments.length === 0 ? (
                       <div className="text-center py-10 opacity-50 font-mono text-sm">No tournaments saved in the cloud.</div>
@@ -2039,7 +2039,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
                         </button>
                       </div>
 
-                      {fetchingLocalHistory ? (
+                      {fetchingLocalHistory && localHistory.length === 0 ? (
                         <div className="text-center py-8 opacity-50 font-mono text-sm">Loading history...</div>
                       ) : localHistory.length === 0 ? (
                         <div className="text-center py-8 opacity-50 font-mono text-sm">No local tournament history found.</div>
