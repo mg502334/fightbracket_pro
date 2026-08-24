@@ -1744,7 +1744,7 @@ def sync_startgg_bracket(slug: str = "clash-of-kings-vii", token: str = None):  
     query_sets = """
     query EventSets($eventId: ID!, $page: Int!) {
       event(id: $eventId) {
-        sets(page: $page, perPage: 50, sortType: STANDARD) {
+        sets(page: $page, perPage: 75, sortType: STANDARD) {
           pageInfo {
             totalPages
             total
@@ -1768,6 +1768,8 @@ def sync_startgg_bracket(slug: str = "clash-of-kings-vii", token: str = None):  
               streamSource
             }
             slots {
+              prereqId
+              prereqType
               entrant {
                 id
                 name
