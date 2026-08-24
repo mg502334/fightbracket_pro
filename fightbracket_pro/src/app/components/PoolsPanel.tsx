@@ -92,18 +92,22 @@ export function PoolsPanel({
     onUpdateMatches(matches.map(m => ({ ...m, pool: undefined })));
   };
 
-  const getPoolStats = (poolName: string) => {
-    const poolMatches = matches.filter(m => m.pool === poolName);
+  const getPoolStats = (poolName: string, phaseName?: string) => {
+    const poolMatches = matches.filter(m => {
+      const matchPhase = m.phase || 'Pools';
+      return m.pool === poolName && (!phaseName || matchPhase === phaseName);
+    });
     const completed = poolMatches.filter(m => m.state === 'completed').length;
     const total = poolMatches.length;
     return { completed, total, percent: total > 0 ? Math.round((completed / total) * 100) : 0 };
   };
 
-  const getPoolPlayers = (poolName: string): Player[] => {
+  const getPoolPlayers = (poolName: string, phaseName?: string): Player[] => {
     if (isImported) {
       const poolMatchPlayers = new Set<string>();
       matches.forEach(m => {
-        if (m.pool === poolName) {
+        const matchPhase = m.phase || 'Pools';
+        if (m.pool === poolName && (!phaseName || matchPhase === phaseName)) {
           if (m.player1Id) poolMatchPlayers.add(m.player1Id);
           if (m.player2Id) poolMatchPlayers.add(m.player2Id);
         }
@@ -383,8 +387,8 @@ export function PoolsPanel({
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
                   {phasePools.map(pool => {
-              const stats = getPoolStats(pool);
-              const poolPlayers = getPoolPlayers(pool);
+              const stats = getPoolStats(pool, phase);
+              const poolPlayers = getPoolPlayers(pool, phase);
               const isExpanded = expandedPoolCard === pool;
 
               return (
