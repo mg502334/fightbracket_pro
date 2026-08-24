@@ -344,112 +344,266 @@ export function BracketView({
         </div>
       </div>
 
-      {/* Bracket Rendering: Grouped by Pool if ALL is selected, otherwise single pool */}
-      {activePool === 'ALL' && availablePools.length > 1 ? (
-        <div className="space-y-12">
-          {availablePools.map(poolName => {
-            const pMatches = processedMatches.filter(m => m.pool === poolName);
-            const pLosers = pMatches.filter(m => m.round < 0 || m.roundName.toLowerCase().includes('loser'));
-            const pGrandFinals = pMatches.filter(m => m.roundName.toLowerCase().includes('grand final'));
-            const pWinners = pMatches.filter(m => !pLosers.includes(m) && !pGrandFinals.includes(m));
+      {/* Bracket Rendering: Grouped by Phase & Pool Blocks */}
+      <div className="space-y-12">
+        {(availablePhases.length > 0
+          ? (activePhase === 'ALL' ? availablePhases : [activePhase])
+          : ['DEFAULT']
+        ).map(phaseName => {
+          const isDefaultPhase = phaseName === 'DEFAULT';
+          const pPhaseMatches = processedMatches.filter(m =>
+            isDefaultPhase ? true : (m.phase || availablePhases[0]) === phaseName
+          );
+
+          if (pPhaseMatches.length === 0) return null;
+
+          const phasePools = Array.from(
+            new Set(pPhaseMatches.map(m => m.pool).filter(Boolean))
+          ) as string[];
+          phasePools.sort();
+
+          if (activePool === 'ALL' && phasePools.length > 1) {
+            const unpooledMatches = pPhaseMatches.filter(m => !m.pool);
 
             return (
-              <div key={poolName} className="p-6 rounded-xl border border-white/10 bg-black/20 space-y-6">
-                <div className="flex items-center gap-3 border-b border-white/10 pb-3">
-                  <span className="px-3 py-1 rounded bg-cyan-500/20 text-cyan-400 font-mono font-bold text-sm tracking-wider">
-                    POOL {poolName}
-                  </span>
-                  <span className="text-xs font-mono opacity-50">
+              <div
+                key={phaseName}
+                className="space-y-8 p-6 rounded-2xl border bg-black/30 backdrop-blur-sm"
+                style={{ borderColor: `${theme.primaryColor}30` }}
+              >
+                {availablePhases.length > 1 && (
+                  <div className="flex items-center justify-between border-b border-white/10 pb-4">
+                    <div className="flex items-center gap-3">
+                      <Layers size={22} style={{ color: theme.primaryColor }} />
+                      <h3
+                        className="text-2xl font-bold tracking-widest uppercase"
+                        style={{ fontFamily: 'Rajdhani, sans-serif', color: theme.primaryColor }}
+                      >
+                        PHASE: {phaseName}
+                      </h3>
+                      <span className="text-xs font-mono px-2.5 py-1 rounded bg-white/10 opacity-70">
+                        {pPhaseMatches.length} matches · {phasePools.length} pools
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Pool Blocks inside Phase */}
+                <div className="space-y-8">
+                  {phasePools.map(poolName => {
+                    const pMatches = pPhaseMatches.filter(m => m.pool === poolName);
+                    const pLosers = pMatches.filter(
+                      m => m.round < 0 || m.roundName?.toLowerCase().includes('loser')
+                    );
+                    const pGrandFinals = pMatches.filter(m =>
+                      m.roundName?.toLowerCase().includes('grand final')
+                    );
+                    const pWinners = pMatches.filter(
+                      m => !pLosers.includes(m) && !pGrandFinals.includes(m)
+                    );
+
+                    return (
+                      <div
+                        key={poolName}
+                        className="p-6 rounded-xl border border-white/10 bg-black/20 space-y-6"
+                      >
+                        <div className="flex items-center gap-3 border-b border-white/10 pb-3">
+                          <span className="px-3 py-1 rounded bg-cyan-500/20 text-cyan-400 font-mono font-bold text-sm tracking-wider">
+                            POOL {poolName}
+                          </span>
+                          <span className="text-xs font-mono opacity-50">
+                            {pMatches.length} matches
+                          </span>
+                        </div>
+
+                        <BracketSection
+                          title={`POOL ${poolName} — WINNERS BRACKET`}
+                          matches={pWinners}
+                          allMatches={matches}
+                          playerMap={playerMap}
+                          theme={theme}
+                          hoveredMatchId={hoveredMatchId}
+                          setHoveredMatchId={setHoveredMatchId}
+                          onCallMatch={onCallMatch}
+                          searchMatchingPlayerIds={searchMatchingPlayerIds}
+                          selectedPool={poolName}
+                          onPlayerClick={onPlayerClick}
+                        />
+                        <BracketSection
+                          title={`POOL ${poolName} — LOSERS BRACKET`}
+                          matches={pLosers}
+                          allMatches={matches}
+                          playerMap={playerMap}
+                          theme={theme}
+                          hoveredMatchId={hoveredMatchId}
+                          setHoveredMatchId={setHoveredMatchId}
+                          onCallMatch={onCallMatch}
+                          searchMatchingPlayerIds={searchMatchingPlayerIds}
+                          selectedPool={poolName}
+                          onPlayerClick={onPlayerClick}
+                        />
+                        <BracketSection
+                          title={`POOL ${poolName} — FINALS`}
+                          matches={pGrandFinals}
+                          allMatches={matches}
+                          playerMap={playerMap}
+                          theme={theme}
+                          hoveredMatchId={hoveredMatchId}
+                          setHoveredMatchId={setHoveredMatchId}
+                          onCallMatch={onCallMatch}
+                          searchMatchingPlayerIds={searchMatchingPlayerIds}
+                          selectedPool={poolName}
+                          onPlayerClick={onPlayerClick}
+                        />
+                      </div>
+                    );
+                  })}
+
+                  {/* Main Phase Bracket Block for matches in this phase without a pool label */}
+                  {unpooledMatches.length > 0 && (
+                    <div className="p-6 rounded-xl border border-white/10 bg-black/20 space-y-6">
+                      <div className="flex items-center gap-3 border-b border-white/10 pb-3">
+                        <span className="px-3 py-1 rounded bg-purple-500/20 text-purple-400 font-mono font-bold text-sm tracking-wider">
+                          {phaseName.toUpperCase()} — MAIN BRACKET
+                        </span>
+                        <span className="text-xs font-mono opacity-50">
+                          {unpooledMatches.length} matches
+                        </span>
+                      </div>
+
+                      <BracketSection
+                        title={`${phaseName} — WINNERS BRACKET`}
+                        matches={unpooledMatches.filter(
+                          m =>
+                            !m.roundName?.toLowerCase().includes('loser') &&
+                            m.round >= 0 &&
+                            !m.roundName?.toLowerCase().includes('grand final')
+                        )}
+                        allMatches={matches}
+                        playerMap={playerMap}
+                        theme={theme}
+                        hoveredMatchId={hoveredMatchId}
+                        setHoveredMatchId={setHoveredMatchId}
+                        onCallMatch={onCallMatch}
+                        searchMatchingPlayerIds={searchMatchingPlayerIds}
+                        onPlayerClick={onPlayerClick}
+                      />
+                      <BracketSection
+                        title={`${phaseName} — LOSERS BRACKET`}
+                        matches={unpooledMatches.filter(
+                          m => m.round < 0 || m.roundName?.toLowerCase().includes('loser')
+                        )}
+                        allMatches={matches}
+                        playerMap={playerMap}
+                        theme={theme}
+                        hoveredMatchId={hoveredMatchId}
+                        setHoveredMatchId={setHoveredMatchId}
+                        onCallMatch={onCallMatch}
+                        searchMatchingPlayerIds={searchMatchingPlayerIds}
+                        onPlayerClick={onPlayerClick}
+                      />
+                      <BracketSection
+                        title={`${phaseName} — GRAND FINALS`}
+                        matches={unpooledMatches.filter(m =>
+                          m.roundName?.toLowerCase().includes('grand final')
+                        )}
+                        allMatches={matches}
+                        playerMap={playerMap}
+                        theme={theme}
+                        hoveredMatchId={hoveredMatchId}
+                        setHoveredMatchId={setHoveredMatchId}
+                        onCallMatch={onCallMatch}
+                        searchMatchingPlayerIds={searchMatchingPlayerIds}
+                        onPlayerClick={onPlayerClick}
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          }
+
+          const pMatches =
+            activePool !== 'ALL'
+              ? pPhaseMatches.filter(m => m.pool === activePool)
+              : pPhaseMatches;
+
+          if (pMatches.length === 0) return null;
+
+          const pLosers = pMatches.filter(
+            m => m.round < 0 || m.roundName?.toLowerCase().includes('loser')
+          );
+          const pGrandFinals = pMatches.filter(m =>
+            m.roundName?.toLowerCase().includes('grand final')
+          );
+          const pWinners = pMatches.filter(
+            m => !pLosers.includes(m) && !pGrandFinals.includes(m)
+          );
+
+          return (
+            <div
+              key={phaseName}
+              className="space-y-8 p-6 rounded-2xl border bg-black/30 backdrop-blur-sm"
+              style={{ borderColor: `${theme.primaryColor}30` }}
+            >
+              {availablePhases.length > 1 && (
+                <div className="flex items-center gap-3 border-b border-white/10 pb-4">
+                  <Layers size={22} style={{ color: theme.primaryColor }} />
+                  <h3
+                    className="text-2xl font-bold tracking-widest uppercase"
+                    style={{ fontFamily: 'Rajdhani, sans-serif', color: theme.primaryColor }}
+                  >
+                    PHASE: {phaseName}
+                  </h3>
+                  <span className="text-xs font-mono px-2.5 py-1 rounded bg-white/10 opacity-70">
                     {pMatches.length} matches
                   </span>
                 </div>
+              )}
 
-                <BracketSection 
-                  title={`POOL ${poolName} — WINNERS BRACKET`} 
-                  matches={pWinners} 
-                  allMatches={matches}
-                  playerMap={playerMap} 
-                  theme={theme} 
-                  hoveredMatchId={hoveredMatchId} 
-                  setHoveredMatchId={setHoveredMatchId} 
-                  onCallMatch={onCallMatch} 
-                  searchMatchingPlayerIds={searchMatchingPlayerIds}
-                  selectedPool={poolName}
-                  onPlayerClick={onPlayerClick}
-                />
-                <BracketSection 
-                  title={`POOL ${poolName} — LOSERS BRACKET`} 
-                  matches={pLosers} 
-                  allMatches={matches}
-                  playerMap={playerMap} 
-                  theme={theme} 
-                  hoveredMatchId={hoveredMatchId} 
-                  setHoveredMatchId={setHoveredMatchId} 
-                  onCallMatch={onCallMatch} 
-                  searchMatchingPlayerIds={searchMatchingPlayerIds}
-                  selectedPool={poolName}
-                  onPlayerClick={onPlayerClick}
-                />
-                <BracketSection 
-                  title={`POOL ${poolName} — FINALS`} 
-                  matches={pGrandFinals} 
-                  allMatches={matches}
-                  playerMap={playerMap} 
-                  theme={theme} 
-                  hoveredMatchId={hoveredMatchId} 
-                  setHoveredMatchId={setHoveredMatchId} 
-                  onCallMatch={onCallMatch} 
-                  searchMatchingPlayerIds={searchMatchingPlayerIds}
-                  selectedPool={poolName}
-                  onPlayerClick={onPlayerClick}
-                />
-              </div>
-            );
-          })}
-        </div>
-      ) : (
-        <>
-          <BracketSection 
-            title="WINNERS BRACKET" 
-            matches={winnersMatches} 
-            allMatches={matches}
-            playerMap={playerMap} 
-            theme={theme} 
-            hoveredMatchId={hoveredMatchId} 
-            setHoveredMatchId={setHoveredMatchId} 
-            onCallMatch={onCallMatch} 
-            searchMatchingPlayerIds={searchMatchingPlayerIds}
-            selectedPool={activePool}
-            onPlayerClick={onPlayerClick}
-          />
-          <BracketSection 
-            title="LOSERS BRACKET" 
-            matches={losersMatches} 
-            allMatches={matches}
-            playerMap={playerMap} 
-            theme={theme} 
-            hoveredMatchId={hoveredMatchId} 
-            setHoveredMatchId={setHoveredMatchId} 
-            onCallMatch={onCallMatch} 
-            searchMatchingPlayerIds={searchMatchingPlayerIds}
-            selectedPool={activePool}
-            onPlayerClick={onPlayerClick}
-          />
-          <BracketSection 
-            title="GRAND FINALS" 
-            matches={grandFinalsMatches} 
-            allMatches={matches}
-            playerMap={playerMap} 
-            theme={theme} 
-            hoveredMatchId={hoveredMatchId} 
-            setHoveredMatchId={setHoveredMatchId} 
-            onCallMatch={onCallMatch} 
-            searchMatchingPlayerIds={searchMatchingPlayerIds}
-            selectedPool={activePool}
-            onPlayerClick={onPlayerClick}
-          />
-        </>
-      )}
+              <BracketSection
+                title={availablePhases.length > 1 ? `${phaseName} — WINNERS BRACKET` : 'WINNERS BRACKET'}
+                matches={pWinners}
+                allMatches={matches}
+                playerMap={playerMap}
+                theme={theme}
+                hoveredMatchId={hoveredMatchId}
+                setHoveredMatchId={setHoveredMatchId}
+                onCallMatch={onCallMatch}
+                searchMatchingPlayerIds={searchMatchingPlayerIds}
+                selectedPool={activePool !== 'ALL' ? activePool : undefined}
+                onPlayerClick={onPlayerClick}
+              />
+              <BracketSection
+                title={availablePhases.length > 1 ? `${phaseName} — LOSERS BRACKET` : 'LOSERS BRACKET'}
+                matches={pLosers}
+                allMatches={matches}
+                playerMap={playerMap}
+                theme={theme}
+                hoveredMatchId={hoveredMatchId}
+                setHoveredMatchId={setHoveredMatchId}
+                onCallMatch={onCallMatch}
+                searchMatchingPlayerIds={searchMatchingPlayerIds}
+                selectedPool={activePool !== 'ALL' ? activePool : undefined}
+                onPlayerClick={onPlayerClick}
+              />
+              <BracketSection
+                title={availablePhases.length > 1 ? `${phaseName} — GRAND FINALS` : 'GRAND FINALS'}
+                matches={pGrandFinals}
+                allMatches={matches}
+                playerMap={playerMap}
+                theme={theme}
+                hoveredMatchId={hoveredMatchId}
+                setHoveredMatchId={setHoveredMatchId}
+                onCallMatch={onCallMatch}
+                searchMatchingPlayerIds={searchMatchingPlayerIds}
+                selectedPool={activePool !== 'ALL' ? activePool : undefined}
+                onPlayerClick={onPlayerClick}
+              />
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
