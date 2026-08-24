@@ -723,12 +723,17 @@ export default function App() {
           method: 'POST', headers, body: JSON.stringify({ query: queryEntrants, variables: { eventId: ev.id, page } })
         });
         const entJson = await entRes.json().catch(() => ({}));
+        if (entJson.errors) {
+          const msg = entJson.errors[0]?.message || 'Start.gg API error while fetching entrants';
+          throw new Error(`Failed to fetch entrants: ${msg}`);
+        }
         const entrantsObj = entJson.data?.event?.entrants;
         const nodes = entrantsObj?.nodes || [];
         if (nodes.length > 0) allEntrants.push(...nodes);
         const totalPages = entrantsObj?.pageInfo?.totalPages || 1;
         if (page >= totalPages || nodes.length === 0) break;
         page++;
+        await new Promise(r => setTimeout(r, 400)); // Respect rate limits
       }
       ev.entrants = { nodes: allEntrants };
 
@@ -740,12 +745,17 @@ export default function App() {
           method: 'POST', headers, body: JSON.stringify({ query: querySets, variables: { eventId: ev.id, page } })
         });
         const setJson = await setRes.json().catch(() => ({}));
+        if (setJson.errors) {
+          const msg = setJson.errors[0]?.message || 'Start.gg API error while fetching matches';
+          throw new Error(`Failed to fetch matches: ${msg}`);
+        }
         const setsObj = setJson.data?.event?.sets;
         const nodes = setsObj?.nodes || [];
         if (nodes.length > 0) allSets.push(...nodes);
         const totalPages = setsObj?.pageInfo?.totalPages || 1;
         if (page >= totalPages || nodes.length === 0) break;
         page++;
+        await new Promise(r => setTimeout(r, 400)); // Respect rate limits
       }
       ev.sets = { nodes: allSets };
     }

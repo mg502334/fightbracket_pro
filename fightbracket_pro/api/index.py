@@ -1864,7 +1864,10 @@ def sync_startgg_bracket(slug: str = "clash-of-kings-vii", token: str = None, ev
                     if ev_resp.status_code != 200:
                         break
                     ev_data = ev_resp.json()
-                    if "errors" in ev_data or not ev_data.get("data", {}).get("event"):
+                    if "errors" in ev_data:
+                        print("StartGG Error in sets:", ev_data["errors"])
+                        break
+                    if not ev_data.get("data", {}).get("event"):
                         break
                     sets_obj = ev_data.get("data", {}).get("event", {}).get("sets") or {}
                     nodes = sets_obj.get("nodes", [])
