@@ -479,7 +479,7 @@ function BracketSection({
   // This gives each match its true vertical position based on parent-child relationships
   const slotMap = computeBracketSlots(matches);
 
-  const SLOT_SIZE = 144; // 144px per slot (card height + vertical gap) to prevent overlap
+  const SLOT_SIZE = 160; // 160px per slot — card height (~112px) + stream bar (~32px) + gap
 
   // Sort rounds chronologically: winners 1→N, losers by absolute value ascending (earliest first)
   const rounds = Array.from(new Set(matches.map(m => m.round))).sort((a, b) =>

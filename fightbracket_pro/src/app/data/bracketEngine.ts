@@ -150,6 +150,23 @@ export function computeBracketSlots(matches: MinimalMatch[]): SlotMap {
     }
   }
 
+  // 6. Collision resolution: within each round, ensure no two matches share
+  //    the same (or nearly identical) slot. Sort by current slot and push
+  //    any match that would collide downward by at least 1 slot unit.
+  const MIN_SLOT_GAP = 1.0; // must be >= 1 to avoid overlap at SLOT_SIZE px
+  for (const round of sortedRounds) {
+    const roundMatches = roundGroups.get(round) || [];
+    // Sort by current assigned slot so we can do a single forward pass
+    roundMatches.sort((a, b) => (slots.get(a.id) ?? 0) - (slots.get(b.id) ?? 0));
+    for (let i = 1; i < roundMatches.length; i++) {
+      const prevSlot = slots.get(roundMatches[i - 1].id) ?? 0;
+      const currSlot = slots.get(roundMatches[i].id) ?? 0;
+      if (currSlot < prevSlot + MIN_SLOT_GAP) {
+        slots.set(roundMatches[i].id, prevSlot + MIN_SLOT_GAP);
+      }
+    }
+  }
+
   const maxSlot = Math.max(0, ...slots.values());
   return { slots, maxSlot, prereqMap };
 }
