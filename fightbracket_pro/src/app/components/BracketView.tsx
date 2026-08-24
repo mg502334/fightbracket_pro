@@ -569,10 +569,13 @@ function BracketSection({
                         (() => {
                           let nextMatch = matches.find(m => m.prereqSetIds?.includes(match.id));
                           if (!nextMatch && rIdx < rounds.length - 1) {
-                            const nextRound = rounds[rIdx + 1];
-                            const nextRoundMatches = matches.filter(m => m.round === nextRound);
-                            const targetIdx = Math.floor((match.matchNumber || mIdx) / 2);
-                            nextMatch = nextRoundMatches[targetIdx] || nextRoundMatches[0];
+                            const hasExplicitLinks = allMatches.some(m => m.prereqSetIds && m.prereqSetIds.length > 0);
+                            if (!hasExplicitLinks) {
+                              const nextRound = rounds[rIdx + 1];
+                              const nextRoundMatches = matches.filter(m => m.round === nextRound);
+                              const targetIdx = Math.floor((match.matchNumber || mIdx) / 2);
+                              nextMatch = nextRoundMatches[targetIdx] || nextRoundMatches[0];
+                            }
                           }
 
                           if (nextMatch) {
