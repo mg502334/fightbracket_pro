@@ -683,7 +683,7 @@ export default function App() {
     const querySets = `
       query EventSets($eventId: ID!, $page: Int!) {
         event(id: $eventId) {
-          sets(page: $page, perPage: 75, sortType: STANDARD) {
+          sets(page: $page, perPage: 50, sortType: STANDARD) {
             pageInfo { totalPages total }
             nodes {
               id identifier state fullRoundText round winnerId displayScore

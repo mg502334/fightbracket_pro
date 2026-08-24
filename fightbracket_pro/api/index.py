@@ -1745,7 +1745,7 @@ def sync_startgg_bracket(slug: str = "clash-of-kings-vii", token: str = None, ev
     query_sets = """
     query EventSets($eventId: ID!, $page: Int!) {
       event(id: $eventId) {
-        sets(page: $page, perPage: 75, sortType: STANDARD) {
+        sets(page: $page, perPage: 50, sortType: STANDARD) {
           pageInfo {
             totalPages
             total
