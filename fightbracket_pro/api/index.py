@@ -1645,7 +1645,7 @@ def clear_user_data(user_id: str, db: Session = Depends(get_db)):
     return {"status": "success"}
 
 @app.get("/api/bracket/sync")
-def sync_startgg_bracket(slug: str = "clash-of-kings-vii", token: str = None):  # type: ignore
+def sync_startgg_bracket(slug: str = "clash-of-kings-vii", token: str = None, event_slug: str = None):  # type: ignore
     if slug:
         slug = slug.strip()
         if "start.gg/tournament/" in slug:
@@ -1706,6 +1706,7 @@ def sync_startgg_bracket(slug: str = "clash-of-kings-vii", token: str = None):  
         events {
           id
           name
+          slug
           videogame { id name }
         }
       }
@@ -1811,7 +1812,20 @@ def sync_startgg_bracket(slug: str = "clash-of-kings-vii", token: str = None):  
             
         tournament_data = data.get("data", {}).get("tournament")
         if tournament_data:
-            events = tournament_data.get("events", [])
+            events = tournament_data.get("events", []) or []
+
+            # If a specific event slug was requested, filter to only that event.
+            # This is critical for large tournaments (e.g. CEO) with 10+ events —
+            # processing all of them sequentially hits the Vercel serverless timeout.
+            if event_slug:
+                filtered = [
+                    e for e in events
+                    if (e.get("slug") or "").split("/event/")[-1] == event_slug
+                ]
+                if filtered:
+                    events = filtered
+                # If no slug match, fall through and process all events (graceful)
+
             for event in events:
                 event_id = event["id"]
 

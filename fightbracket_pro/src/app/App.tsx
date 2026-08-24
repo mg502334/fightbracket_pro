@@ -744,13 +744,19 @@ export default function App() {
   }
 
   async function handleLiveImport(rawSlug: string, isAutoSync = false) {
-    let slug = rawSlug.trim();
-    if (slug.includes('start.gg/tournament/')) {
-      slug = slug.split('start.gg/tournament/')[1];
-    } else if (slug.includes('tournament/')) {
-      slug = slug.split('tournament/')[1];
+    let fullPath = rawSlug.trim();
+    // Strip domain prefix if included
+    if (fullPath.includes('start.gg/tournament/')) {
+      fullPath = fullPath.split('start.gg/tournament/')[1];
+    } else if (fullPath.includes('tournament/')) {
+      fullPath = fullPath.split('tournament/')[1];
     }
-    slug = slug.split('/')[0].split('?')[0].trim();
+    fullPath = fullPath.split('?')[0].split('#')[0].trim();
+
+    // Extract event slug (e.g. "tekken-8" from "ceo-2026/event/tekken-8")
+    let slug = fullPath.split('/')[0].trim();
+    const eventMatch = fullPath.match(/\/event\/([^\/\?#]+)/i);
+    const eventSlug: string | null = eventMatch ? eventMatch[1] : null;
 
     let token = localStorage.getItem('startgg_access_token') || localStorage.getItem('fb_startggToken');
     if (token === 'SECURE_HIDDEN') {
@@ -759,7 +765,7 @@ export default function App() {
 
     let tournamentData: any = null;
     try {
-      const url = `/api/bracket/sync?slug=${encodeURIComponent(slug)}${token ? `&token=${token}` : ''}`;
+      const url = `/api/bracket/sync?slug=${encodeURIComponent(slug)}${eventSlug ? `&event_slug=${encodeURIComponent(eventSlug)}` : ''}${token ? `&token=${token}` : ''}`;
       const res = await fetch(url);
       if (res.ok) {
         const json = await res.json();
@@ -888,9 +894,10 @@ export default function App() {
           if (p2Player && p2 !== loserId) p2Player.checkedIn = true;
         }
 
-        // Extract prereqSet IDs so BracketEngine can build the true bracket tree
+        // Only include prereq IDs where prereqType === 'set' — 'entrant'/'seed' types
+        // are player seed IDs, not match IDs, and corrupt the bracket tree if included.
         const prereqSetIds = slots
-          .filter((s: any) => !!s.prereqId)
+          .filter((s: any) => s.prereqType === 'set' && !!s.prereqId)
           .map((s: any) => String(s.prereqId));
 
         const poolIdentifier = set.phaseGroup?.displayIdentifier;

@@ -21,14 +21,17 @@ export function ImportModal({ isOpen, onClose, onImport, theme }: ImportModalPro
     setLoading(true);
     setError(null);
     
-    // Extract slug from full url if pasted, e.g. https://www.start.gg/tournament/tns-tekken-8-126/events -> tns-tekken-8-126
+    // Strip the domain prefix but preserve the full path (including /event/xxx)
+    // so handleLiveImport can extract the specific event slug.
+    // e.g. https://www.start.gg/tournament/ceo-2026/event/tekken-8
+    //   → ceo-2026/event/tekken-8
     let slug = inputUrl.trim();
     if (slug.includes('start.gg/tournament/')) {
       slug = slug.split('start.gg/tournament/')[1];
     } else if (slug.includes('tournament/')) {
       slug = slug.split('tournament/')[1];
     }
-    slug = slug.split('/')[0].split('?')[0].trim();
+    slug = slug.split('?')[0].split('#')[0].trim(); // strip query/hash, keep /event/xxx
     
     try {
       await onImport(slug);
