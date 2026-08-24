@@ -621,7 +621,7 @@ export default function App() {
     }
   }, [theme?.primaryColor, players, userId]);
 
-  async function fetchStartggDirect(slug: string, token?: string | null) {
+  async function fetchStartggDirect(slug: string, token?: string | null, eventSlug?: string | null) {
     const { data: { session } } = await supabase.auth.getSession();
 
     const headers: Record<string, string> = {
@@ -646,7 +646,7 @@ export default function App() {
             stream { id streamName streamSource isOnline }
             sets { id fullRoundText }
           }
-          events { id name videogame { id name } }
+          events { id name slug videogame { id name } }
         }
       }
     `;
@@ -662,7 +662,7 @@ export default function App() {
       throw new Error('Start.gg API token is missing or invalid. Please connect your Start.gg account or enter a Personal Access Token in Account settings.');
     }
     if (!tourneyRes.ok || tourneyJson.errors) {
-      const msg = tourneyJson.errors?.[0]?.message || tourneyJson.message || 'Failed to fetch tournament from Start.gg';
+      const msg = tourneyJson.detail || tourneyJson.errors?.[0]?.message || tourneyJson.message || 'Failed to fetch tournament from Start.gg';
       throw new Error(msg);
     }
 
@@ -704,7 +704,17 @@ export default function App() {
       }
     `;
 
-    for (const ev of tournament.events || []) {
+    // If a specific event slug was requested, only fetch data for that event.
+    // This is critical for large tournaments (e.g. CEO 2026) that have 10+ events.
+    let eventsToFetch = tournament.events || [];
+    if (eventSlug && eventsToFetch.length > 0) {
+      const filtered = eventsToFetch.filter((ev: any) =>
+        (ev.slug || '').split('/event/').pop() === eventSlug
+      );
+      if (filtered.length > 0) eventsToFetch = filtered;
+    }
+
+    for (const ev of eventsToFetch) {
       // Fetch all entrants (paginated)
       let allEntrants: any[] = [];
       let page = 1;
@@ -763,24 +773,28 @@ export default function App() {
       token = null;
     }
 
+    // Show a loading toast for large events that take time to fetch
+    const loadingToastId = !isAutoSync ? toast.loading(
+      eventSlug ? `Importing ${eventSlug.replace(/-/g, ' ')}...` : 'Importing tournament...',
+      { style: { background: 'var(--card)', border: '1px solid var(--border)', color: 'var(--foreground)' } }
+    ) : undefined;
+
     let tournamentData: any = null;
     try {
+      // Quick server-side fetch (works for small/medium events, times out for large ones)
       const url = `/api/bracket/sync?slug=${encodeURIComponent(slug)}${eventSlug ? `&event_slug=${encodeURIComponent(eventSlug)}` : ''}${token ? `&token=${token}` : ''}`;
       const res = await fetch(url);
       if (res.ok) {
         const json = await res.json();
         tournamentData = json.data?.tournament;
-      } else {
-        const err = await res.json().catch(() => ({ detail: null }));
-        if (err.detail) throw new Error(err.detail);
       }
-    } catch (e: any) {
-      // Don't throw the token error yet, let it try the authenticated fallback first!
-    }
+      // Silently fall through to client-side fallback if server times out or errors
+    } catch (_) { /* ignore, try fallback */ }
 
     if (!tournamentData) {
-      // Direct client fallback to Start.gg GraphQL API
-      tournamentData = await fetchStartggDirect(slug, token);
+      // Client-side fallback: each request goes through the proxy individually so
+      // there is no overall timeout — this handles large events like CEO 2026.
+      tournamentData = await fetchStartggDirect(slug, token, eventSlug);
     }
 
     if (!tournamentData) throw new Error('Tournament not found or invalid format');
@@ -1128,6 +1142,7 @@ export default function App() {
     if (!isAutoSync) {
       setAutoSyncSlug(slug);
       setShowImportModal(false);
+      if (loadingToastId) toast.dismiss(loadingToastId);
       toast.success(`Imported ${tName} successfully!`, {
         style: { background: 'var(--card)', border: `1px solid var(--border)`, color: '#00FF88' },
       });
