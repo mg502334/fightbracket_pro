@@ -583,21 +583,21 @@ function BracketSection({
                             const dy = (nextSlot - slot) * SLOT_SIZE;
 
                             // Determine inlet position on next match card
-                            let targetSlotY = 48; // default card center
+                            let targetSlotY = 61; // default card center (divider)
                             if (nextMatch.prereqSetIds && nextMatch.prereqSetIds[0] === match.id) {
-                              targetSlotY = 38; // P1 top slot
+                              targetSlotY = 43; // P1 top slot
                             } else if (nextMatch.prereqSetIds && nextMatch.prereqSetIds[1] === match.id) {
-                              targetSlotY = 74; // P2 bottom slot
+                              targetSlotY = 80; // P2 bottom slot
                             } else if (slot < nextSlot) {
-                              targetSlotY = 38;
+                              targetSlotY = 43;
                             } else if (slot > nextSlot) {
-                              targetSlotY = 74;
+                              targetSlotY = 80;
                             }
 
                             const yTarget = dy + targetSlotY;
-                            const pathD = (dy === 0 && targetSlotY === 48)
-                              ? `M 0 48 L ${dx} 48`
-                              : `M 0 48 C ${dx * 0.5} 48, ${dx * 0.5} ${yTarget}, ${dx} ${yTarget}`;
+                            const pathD = (dy === 0 && targetSlotY === 61)
+                              ? `M 0 61 L ${dx} 61`
+                              : `M 0 61 C ${dx * 0.5} 61, ${dx * 0.5} ${yTarget}, ${dx} ${yTarget}`;
 
                             const isMatchHovered = hoveredMatchId === match.id || hoveredMatchId === nextMatch.id;
                             const isWinnerAdvanced = match.winnerId && (nextMatch.player1Id === match.winnerId || nextMatch.player2Id === match.winnerId);
@@ -641,10 +641,8 @@ function BracketSection({
                                   fill="none"
                                   stroke={strokeColor}
                                   strokeWidth={strokeW}
-                                  strokeDasharray={isLive ? '6 4' : 'none'}
-                                  className={isLive ? 'animate-pulse' : ''}
                                 />
-                                <circle cx={0} cy={48} r={isPathActive ? 2.5 : 1.5} fill={strokeColor} />
+                                <circle cx={0} cy={61} r={isPathActive ? 2.5 : 1.5} fill={strokeColor} />
                                 <circle cx={dx} cy={yTarget} r={isPathActive ? 2.5 : 1.5} fill={strokeColor} />
                               </svg>
                             );
@@ -652,7 +650,7 @@ function BracketSection({
                           
                           return (
                             <div 
-                              className="absolute top-[48px] left-full h-px w-6" 
+                              className="absolute top-[61px] left-full h-px w-6" 
                               style={{ background: 'rgba(122,158,192,0.2)' }} 
                             />
                           );
