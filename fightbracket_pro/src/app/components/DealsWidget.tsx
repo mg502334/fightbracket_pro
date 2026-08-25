@@ -157,23 +157,6 @@ export function DealsWidget({ customDeals, className = "" }: DealsWidgetProps) {
             FGC DEALS & DISCOUNTS
           </h3>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <button
-            onClick={loadDeals}
-            disabled={isRefreshing}
-            className="p-1 text-[10px] font-mono text-gray-400 hover:text-white transition-colors flex items-center gap-1 opacity-70 hover:opacity-100"
-            title={`Last updated: ${lastUpdated} - Click to refresh`}
-          >
-            <span className={`text-[9px] ${isRefreshing ? 'animate-spin' : ''}`}>🔄</span>
-            <span className="hidden sm:inline text-[9px]">{isRefreshing ? 'SYNCING...' : 'LIVE'}</span>
-          </button>
-          <span 
-            className="text-[9px] px-1.5 py-0.5 rounded font-mono font-bold tracking-wider"
-            style={{ background: "rgba(236,72,153,0.15)", color: "#f472b6", border: "1px solid rgba(236,72,153,0.3)" }}
-          >
-            VERIFIED
-          </span>
-        </div>
       </div>
 
       {/* Category Filter Pills */}
