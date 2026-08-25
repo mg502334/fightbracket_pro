@@ -1676,23 +1676,22 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
                 </p>
               </div>
 
-              {/* Likes & Follow Counts Bar */}
-              <div className="flex flex-wrap items-center gap-3 font-mono text-xs">
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-gradient-to-r from-rose-500/15 to-transparent border border-rose-500/30 text-rose-300">
-                  <Heart size={14} className="fill-rose-400 text-rose-400" />
-                  <span className="font-bold text-sm">{userProfile?.likes_count || 0}</span>
-                  <span className="text-[10px] opacity-70">Likes Received</span>
+              {/* Instagram-style Profile Stats Bar */}
+              <div className="flex items-center gap-6 font-mono text-sm">
+                <div className="flex items-center gap-1.5 text-gray-300">
+                  <Heart size={15} className="fill-rose-500 text-rose-500" />
+                  <span className="font-bold text-white text-base">{userProfile?.likes_count || 0}</span>
+                  <span className="text-xs text-gray-400 font-sans">likes</span>
                 </div>
 
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-gradient-to-r from-cyan-500/15 to-transparent border border-cyan-500/30 text-cyan-300">
-                  <UserCheck size={14} className="text-cyan-400" />
-                  <span className="font-bold text-sm">{userProfile?.followers_count || 0}</span>
-                  <span className="text-[10px] opacity-70">Followers</span>
+                <div className="flex items-center gap-1.5 text-gray-300">
+                  <span className="font-bold text-white text-base">{userProfile?.followers_count || 0}</span>
+                  <span className="text-xs text-gray-400 font-sans">followers</span>
                 </div>
 
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 text-white/80">
-                  <span className="font-bold text-sm">{userProfile?.following_count || 0}</span>
-                  <span className="text-[10px] opacity-70">Following</span>
+                <div className="flex items-center gap-1.5 text-gray-300">
+                  <span className="font-bold text-white text-base">{userProfile?.following_count || 0}</span>
+                  <span className="text-xs text-gray-400 font-sans">following</span>
                 </div>
               </div>
             </div>

@@ -327,32 +327,29 @@ export function UserProfileModal({ isOpen, onClose, targetUserId, supabaseToken,
                       )}
                     </div>
 
-                    {/* Profile Likes & Follow Stats Badges */}
-                    <div className="flex flex-wrap items-center gap-2 mt-3 font-mono text-xs">
+                    {/* Instagram-style Profile Stats Bar */}
+                    <div className="flex items-center gap-6 mt-3 font-mono text-sm">
                       <button
                         onClick={handleLikeProfile}
                         disabled={profile?.is_self}
-                        className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border transition-all ${
-                          profile?.is_liked
-                            ? 'bg-rose-500/20 text-rose-400 border-rose-500/40 shadow-sm'
-                            : 'bg-white/5 border-white/10 text-white/80 hover:border-rose-500/40 hover:text-rose-400'
+                        className={`flex items-center gap-1.5 transition-colors ${
+                          profile?.is_liked ? 'text-rose-400' : 'text-gray-300 hover:text-rose-400'
                         } ${profile?.is_self ? 'cursor-default' : 'cursor-pointer'}`}
                         title={profile?.is_self ? 'Profile Likes Received' : profile?.is_liked ? 'Click to Unlike' : 'Click to Like Profile'}
                       >
-                        <Heart size={13} className={profile?.is_liked ? 'fill-rose-400 text-rose-400' : ''} />
-                        <span className="font-bold">{profile?.likes_count || 0}</span>
-                        <span className="text-[10px] opacity-70">Likes</span>
+                        <Heart size={15} className={profile?.is_liked ? 'fill-rose-400 text-rose-400' : ''} />
+                        <span className="font-bold text-white text-base">{profile?.likes_count || 0}</span>
+                        <span className="text-xs text-gray-400 font-sans">likes</span>
                       </button>
 
-                      <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 text-white/80">
-                        <UserCheck size={13} className="text-cyan-400" />
-                        <span className="font-bold">{profile?.followers_count || 0}</span>
-                        <span className="text-[10px] opacity-70">Followers</span>
+                      <div className="flex items-center gap-1.5 text-gray-300">
+                        <span className="font-bold text-white text-base">{profile?.followers_count || 0}</span>
+                        <span className="text-xs text-gray-400 font-sans">followers</span>
                       </div>
 
-                      <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 text-white/80">
-                        <span className="font-bold">{profile?.following_count || 0}</span>
-                        <span className="text-[10px] opacity-70">Following</span>
+                      <div className="flex items-center gap-1.5 text-gray-300">
+                        <span className="font-bold text-white text-base">{profile?.following_count || 0}</span>
+                        <span className="text-xs text-gray-400 font-sans">following</span>
                       </div>
                     </div>
                   </>
