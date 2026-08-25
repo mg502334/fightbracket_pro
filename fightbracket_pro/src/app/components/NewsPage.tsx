@@ -579,10 +579,6 @@ export function NewsPage({ onNavigateHome, onSignUp }: NewsPageProps) {
                       ARCHIVE ({newsItems.filter(n => isItemArchived(n)).length})
                     </button>
                   </div>
-
-                  <div className="text-xs text-gray-500 font-mono hidden sm:block">
-                    {isArchive ? "Displaying archived items & expired deals" : "Daily verified deal scraping active"}
-                  </div>
                 </div>
 
                 {/* Category Filters */}
