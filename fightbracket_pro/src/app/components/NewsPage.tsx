@@ -81,17 +81,30 @@ const NOW = Date.now();
 
 const DEFAULT_GAME_PATCHES: GamePatch[] = [
   {
-    id: 'patch-t8-v105',
+    id: 'official-t8-v301',
     gameId: 'tekken8',
     gameName: 'Tekken 8',
     gameColor: '#00E5FF',
     appid: 1778820,
-    title: 'Tekken 8 Ver 1.05.00 Patch Notes Notice',
-    author: 'Bandai Namco Entertainment',
-    url: 'https://store.steampowered.com/news/app/1778820',
-    contents: 'Adjustments to Heat System properties, Heat Dash combo scaling, character balance fixes for Mishima stance transitions, and online matchmaking stability updates.',
-    date: 'Aug 20, 2026',
-    timestamp: NOW - (5 * 24 * 60 * 60 * 1000)
+    title: 'TEKKEN 8 Patch Notes Ver. 3.01.01 (Official Bandai Namco)',
+    author: 'Bandai Namco Entertainment America Inc.',
+    url: 'https://www.bandainamcoent.com/news/tekken-8-patch-notes-v3-01-01',
+    contents: 'Official Bandai Namco Patch Release Ver 3.01.01: Special Move Heat System properties adjusted across character moves, stance transitions tuned, competitive stage adjustments, and online lobby stability improvements.',
+    date: 'Aug 24, 2026',
+    timestamp: NOW - (1 * 24 * 60 * 60 * 1000)
+  },
+  {
+    id: 'official-t8-v205',
+    gameId: 'tekken8',
+    gameName: 'Tekken 8',
+    gameColor: '#00E5FF',
+    appid: 1778820,
+    title: 'TEKKEN 8 Patch Notes Ver. 2.05.00 (Official Bandai Namco)',
+    author: 'Bandai Namco Entertainment America Inc.',
+    url: 'https://www.bandainamcoent.com/news/tekken-8-patch-notes-v2-05',
+    contents: 'Official Bandai Namco Patch Release Ver 2.05: Battle balance adjustments for stance attacks across the roster, Heat Dash combo scaling rebalanced, and wall combo scaling updates.',
+    date: 'Jul 18, 2026',
+    timestamp: NOW - (38 * 24 * 60 * 60 * 1000)
   },
   {
     id: 'patch-sf6-v2',
@@ -99,10 +112,10 @@ const DEFAULT_GAME_PATCHES: GamePatch[] = [
     gameName: 'Street Fighter 6',
     gameColor: '#FF006E',
     appid: 1364780,
-    title: 'Street Fighter 6 Year 2 Balance & Character Update',
-    author: 'Capcom',
-    url: 'https://store.steampowered.com/news/app/1364780',
-    contents: 'Drive Gauge recovery rates tuned, Perfect Parry scaling adjustments, and specific hurtbox refinements across all Year 2 roster characters.',
+    title: 'Street Fighter 6 Year 2 Official Character & Battle Balance Patch',
+    author: 'Capcom Official (Buckler\'s Boot Camp)',
+    url: 'https://www.streetfighter.com/6/',
+    contents: 'Capcom Official Battle Balance Update: Drive Gauge recovery rates tuned, Perfect Parry scaling adjustments, and specific hurtbox refinements across all Year 2 roster characters.',
     date: 'Aug 18, 2026',
     timestamp: NOW - (7 * 24 * 60 * 60 * 1000)
   },
@@ -112,10 +125,10 @@ const DEFAULT_GAME_PATCHES: GamePatch[] = [
     gameName: 'Guilty Gear -Strive-',
     gameColor: '#F59E0B',
     appid: 1384160,
-    title: 'Guilty Gear -Strive- Season 4 Balance Patch Notice',
-    author: 'Arc System Works',
-    url: 'https://store.steampowered.com/news/app/1384160',
-    contents: 'Wild Assault tension cost adjustments, Deflect Shield active frames update, and individual move properties adjusted for competitive play.',
+    title: 'Guilty Gear -Strive- Season 4 Official Balance Adjustments',
+    author: 'Arc System Works Official',
+    url: 'https://www.arcsystemworks.jp/',
+    contents: 'Arc System Works Official Patch: Wild Assault tension cost adjustments, Deflect Shield active frames update, and individual move properties adjusted for competitive play.',
     date: 'Aug 15, 2026',
     timestamp: NOW - (10 * 24 * 60 * 60 * 1000)
   },
@@ -125,10 +138,10 @@ const DEFAULT_GAME_PATCHES: GamePatch[] = [
     gameName: 'Mortal Kombat 1',
     gameColor: '#EF4444',
     appid: 1792670,
-    title: 'Mortal Kombat 1 Patch Notes & Kameo Adjustments',
-    author: 'NetherRealm Studios',
-    url: 'https://store.steampowered.com/news/app/1792670',
-    contents: 'Kameo assist cooldown rebalancing, fatal blow armor adjustments, and general fix for offline & online tournament modes.',
+    title: 'Mortal Kombat 1 Official Patch Notes & Kameo Rebalance',
+    author: 'NetherRealm Studios Official',
+    url: 'https://www.mortalkombat.com',
+    contents: 'NetherRealm Official Game Update: Kameo assist cooldown rebalancing, fatal blow armor adjustments, and general fix for offline & online tournament modes.',
     date: 'Aug 12, 2026',
     timestamp: NOW - (13 * 24 * 60 * 60 * 1000)
   }

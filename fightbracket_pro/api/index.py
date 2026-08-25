@@ -3355,17 +3355,30 @@ def is_official_patch_note(title: str, contents: str) -> bool:
 
 OFFICIAL_CURATED_PATCHES = [
     {
-        "id": "official-t8-v105",
+        "id": "official-t8-v301",
         "gameId": "tekken8",
         "gameName": "Tekken 8",
         "gameColor": "#00E5FF",
         "appid": 1778820,
-        "title": "TEKKEN 8 Ver. 1.05.00 Official Patch Notes & Balance Update",
-        "author": "Bandai Namco Entertainment",
-        "url": "https://store.steampowered.com/news/app/1778820",
-        "contents": "Official Version 1.05 Update: Heat System properties adjusted, Heat Dash combo scaling rebalanced, character balance changes for stance transitions across the roster, and online server stability fixes.",
-        "date": "Aug 20, 2026",
-        "timestamp": 1787184000000
+        "title": "TEKKEN 8 Patch Notes Ver. 3.01.01 (Official Bandai Namco)",
+        "author": "Bandai Namco Entertainment America Inc.",
+        "url": "https://www.bandainamcoent.com/news/tekken-8-patch-notes-v3-01-01",
+        "contents": "Official Bandai Namco Patch Release Ver 3.01.01: Special Move Heat System properties adjusted across character moves, stance transitions tuned, competitive stage adjustments, and online lobby stability improvements.",
+        "date": "Aug 24, 2026",
+        "timestamp": 1787529600000
+    },
+    {
+        "id": "official-t8-v205",
+        "gameId": "tekken8",
+        "gameName": "Tekken 8",
+        "gameColor": "#00E5FF",
+        "appid": 1778820,
+        "title": "TEKKEN 8 Patch Notes Ver. 2.05.00 (Official Bandai Namco)",
+        "author": "Bandai Namco Entertainment America Inc.",
+        "url": "https://www.bandainamcoent.com/news/tekken-8-patch-notes-v2-05",
+        "contents": "Official Bandai Namco Patch Release Ver 2.05: Battle balance adjustments for stance attacks across the roster, Heat Dash combo scaling rebalanced, and wall combo scaling updates.",
+        "date": "Jul 18, 2026",
+        "timestamp": 1784332800000
     },
     {
         "id": "official-sf6-y2",
@@ -3374,9 +3387,9 @@ OFFICIAL_CURATED_PATCHES = [
         "gameColor": "#FF006E",
         "appid": 1364780,
         "title": "Street Fighter 6 Year 2 Official Character & Battle Balance Patch",
-        "author": "Capcom",
-        "url": "https://store.steampowered.com/news/app/1364780",
-        "contents": "Capcom Battle Balance Update: Drive Gauge recovery rates tuned, Perfect Parry combo damage scaling increased, and hurtbox adjustments across Luke, Jamie, Juri, Dee Jay, and JP.",
+        "author": "Capcom Official (Buckler's Boot Camp)",
+        "url": "https://www.streetfighter.com/6/",
+        "contents": "Capcom Official Battle Balance Update: Drive Gauge recovery rates tuned, Perfect Parry combo damage scaling increased, and hurtbox adjustments across Luke, Jamie, Juri, Dee Jay, and JP.",
         "date": "Aug 18, 2026",
         "timestamp": 1787011200000
     },
@@ -3387,8 +3400,8 @@ OFFICIAL_CURATED_PATCHES = [
         "gameColor": "#F59E0B",
         "appid": 1384160,
         "title": "Guilty Gear -Strive- Season 4 Official Balance Adjustments",
-        "author": "Arc System Works",
-        "url": "https://store.steampowered.com/news/app/1384160",
+        "author": "Arc System Works Official",
+        "url": "https://www.arcsystemworks.jp/",
         "contents": "Arc System Works Official Patch: Wild Assault tension cost adjusted, Deflect Shield active invulnerability frames modified, and individual special move properties tuned for tournament play.",
         "date": "Aug 15, 2026",
         "timestamp": 1786752000000
@@ -3400,8 +3413,8 @@ OFFICIAL_CURATED_PATCHES = [
         "gameColor": "#EF4444",
         "appid": 1792670,
         "title": "Mortal Kombat 1 Official Patch Notes & Kameo Rebalance",
-        "author": "NetherRealm Studios",
-        "url": "https://store.steampowered.com/news/app/1792670",
+        "author": "NetherRealm Studios Official",
+        "url": "https://www.mortalkombat.com",
         "contents": "NetherRealm Official Game Update: Kameo assist cooldown times rebalanced, Fatal Blow armor frames adjusted, and competitive online & offline tournament lobby fixes.",
         "date": "Aug 12, 2026",
         "timestamp": 1786492800000
