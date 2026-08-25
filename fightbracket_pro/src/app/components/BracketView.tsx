@@ -136,6 +136,18 @@ export function BracketView({
   const [filterMatchesOnly, setFilterMatchesOnly] = useState<boolean>(false);
   const [shareTooltip, setShareTooltip] = useState(false);
   const [showDisplayMenu, setShowDisplayMenu] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [suggestionIndex, setSuggestionIndex] = useState(-1);
+
+  const playerSuggestions = playerSearch.trim()
+    ? players.filter(p => p.tag.toLowerCase().includes(playerSearch.toLowerCase().trim())).slice(0, 6)
+    : [];
+
+  const handleSelectPlayer = (pTag: string) => {
+    setPlayerSearch(pTag);
+    setShowSuggestions(false);
+    setSuggestionIndex(-1);
+  };
 
   if (matches.length === 0) {
     return (
@@ -386,22 +398,95 @@ export function BracketView({
         {/* Right: Player Search & Match Highlight Tool */}
         <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
           <div className="relative flex-1 sm:w-64 h-10">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 opacity-40" />
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 opacity-40 z-10 pointer-events-none" />
             <input
               type="text"
               placeholder="Search player in bracket..."
               value={playerSearch}
-              onChange={e => setPlayerSearch(e.target.value)}
+              onFocus={() => setShowSuggestions(true)}
+              onChange={e => {
+                setPlayerSearch(e.target.value);
+                setShowSuggestions(true);
+                setSuggestionIndex(-1);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'ArrowDown') {
+                  e.preventDefault();
+                  setSuggestionIndex(prev => Math.min(prev + 1, playerSuggestions.length - 1));
+                } else if (e.key === 'ArrowUp') {
+                  e.preventDefault();
+                  setSuggestionIndex(prev => Math.max(prev - 1, 0));
+                } else if (e.key === 'Enter') {
+                  e.preventDefault();
+                  if (suggestionIndex >= 0 && playerSuggestions[suggestionIndex]) {
+                    handleSelectPlayer(playerSuggestions[suggestionIndex].tag);
+                  } else if (playerSuggestions.length > 0) {
+                    handleSelectPlayer(playerSuggestions[0].tag);
+                  } else {
+                    setShowSuggestions(false);
+                  }
+                } else if (e.key === 'Escape') {
+                  setShowSuggestions(false);
+                }
+              }}
               className="w-full h-10 pl-9 pr-8 text-xs font-mono font-bold tracking-wider rounded-lg bg-black/50 border border-white/15 outline-none focus:border-cyan-400 transition-colors uppercase"
               style={{ color: 'var(--foreground)' }}
             />
             {playerSearch && (
               <button
-                onClick={() => setPlayerSearch('')}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 opacity-50 hover:opacity-100"
+                onClick={() => {
+                  setPlayerSearch('');
+                  setShowSuggestions(false);
+                  setSuggestionIndex(-1);
+                }}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 opacity-50 hover:opacity-100 z-10"
               >
                 <X size={12} />
               </button>
+            )}
+
+            {/* Autocomplete Player Suggestions Dropdown */}
+            {showSuggestions && playerSuggestions.length > 0 && (
+              <div className="absolute left-0 right-0 top-12 z-50 p-1.5 rounded-xl bg-[#050A14] border border-cyan-500/40 shadow-2xl backdrop-blur-md space-y-1 font-mono text-xs animate-in fade-in duration-100">
+                <div className="text-[9px] text-cyan-400/80 px-2 py-1 font-bold tracking-widest uppercase border-b border-white/10 flex items-center justify-between">
+                  <span>PLAYERS ({playerSuggestions.length})</span>
+                  <span className="text-[8px] text-gray-500">ENTER ↵ TO SELECT</span>
+                </div>
+                {playerSuggestions.map((p, idx) => {
+                  const mCount = matches.filter(m => m.player1Id === p.id || m.player2Id === p.id).length;
+                  const isSelected = idx === suggestionIndex;
+                  return (
+                    <button
+                      key={p.id}
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        handleSelectPlayer(p.tag);
+                      }}
+                      onMouseEnter={() => setSuggestionIndex(idx)}
+                      className={`w-full flex items-center justify-between p-2 rounded-lg text-left transition-all ${
+                        isSelected
+                          ? 'bg-cyan-500/25 text-cyan-300 border border-cyan-500/50'
+                          : 'bg-white/5 text-white/80 hover:bg-white/10 border border-transparent'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 truncate">
+                        {p.avatarUrl ? (
+                          <img src={p.avatarUrl} alt={p.tag} className="w-5 h-5 rounded-full object-cover shrink-0 ring-1 ring-cyan-400/50" />
+                        ) : (
+                          <span className="text-sm shrink-0">{p.countryFlag || '🎮'}</span>
+                        )}
+                        <span className="font-bold truncate text-xs">{p.tag}</span>
+                        {p.seed && (
+                          <span className="text-[9px] px-1 rounded bg-white/10 text-gray-400">#SEED {p.seed}</span>
+                        )}
+                      </div>
+                      <span className="text-[10px] text-cyan-400 font-bold shrink-0 ml-2">
+                        {mCount} {mCount === 1 ? 'match' : 'matches'}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
             )}
           </div>
 
