@@ -211,32 +211,29 @@ export function DisplayWindow() {
                 return (
                   <div
                     key={`${m.id}-${i}`}
-                    className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-white/5 border border-white/10 text-xs font-mono shrink-0 hover:bg-white/10 transition-colors"
+                    className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-black/60 border border-white/10 text-xs font-mono shrink-0 hover:bg-black/80 transition-colors"
                   >
-                    <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">
+                    <span className="text-[10px] text-cyan-400 font-bold uppercase tracking-wider">
                       {m.roundName || 'MATCH'}
                     </span>
-                    <span className="text-gray-600">|</span>
-                    <span className="font-bold flex items-center gap-1" style={{ color: theme.primaryColor }}>
-                      {winner?.avatarUrl ? (
-                        <img src={winner.avatarUrl} alt={winner.tag} className="w-4 h-4 rounded-full object-cover shrink-0" />
-                      ) : (
-                        <span>{winner?.countryFlag || '🎮'}</span>
-                      )}
+                    <span className="text-gray-700 font-bold">|</span>
+                    
+                    {/* Winner in Bright Green */}
+                    <span className="font-bold flex items-center gap-1.5 text-[#00FF88]">
                       <span>{winner?.tag || 'P1'}</span>
-                      <span className="text-white bg-emerald-500/30 border border-emerald-500/40 px-1.5 py-0.5 rounded text-[11px] font-bold">
+                      <span className="bg-emerald-500/25 text-[#00FF88] border border-emerald-500/40 px-1.5 py-0.5 rounded text-[11px] font-bold">
                         {wScore}
                       </span>
                     </span>
-                    <span className="text-gray-500 font-bold text-[10px]">vs</span>
-                    <span className="text-white/70 flex items-center gap-1">
-                      <span className="text-white/50 bg-white/10 px-1.5 py-0.5 rounded text-[11px] font-bold">
+
+                    <span className="text-gray-600 font-bold text-[10px]">DEF.</span>
+
+                    {/* Loser in Muted White */}
+                    <span className="text-white/60 font-semibold flex items-center gap-1.5">
+                      <span>{loser?.tag || 'P2'}</span>
+                      <span className="text-white/40 bg-white/5 border border-white/10 px-1.5 py-0.5 rounded text-[11px] font-bold">
                         {lScore}
                       </span>
-                      <span>{loser?.tag || 'P2'}</span>
-                    </span>
-                    <span className="ml-1 text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-bold border border-emerald-500/40">
-                      FINAL
                     </span>
                   </div>
                 );
