@@ -3607,19 +3607,137 @@ POPULAR_FGC_EVENTS = [
 def search_events(q: Optional[str] = None):
     """
     Returns search results for Start.gg events and tournaments for live bracket import.
+    Queries Start.gg GraphQL API and generates dynamic importable tournament cards.
     """
-    query_str = (q or "").strip().lower()
+    import os
+    import re
+    import urllib.request
+    import json
+
+    query_raw = (q or "").strip()
+    query_str = query_raw.lower()
+    
     if not query_str:
         return {"events": POPULAR_FGC_EVENTS}
     
     results = []
+    
+    # 1. Match against curated popular events
     for item in POPULAR_FGC_EVENTS:
         if (query_str in item["name"].lower() or 
             query_str in item["tournamentName"].lower() or 
             query_str in item["slug"].lower() or 
             query_str in item["game"].lower()):
             results.append(item)
+
+    # 2. Query Start.gg GraphQL API for live matching tournaments
+    try:
+        gql_query = """
+        query TournamentsByName($name: String!) {
+          tournaments(query: {
+            page: 1,
+            perPage: 10,
+            filter: { name: $name }
+          }) {
+            nodes {
+              id
+              name
+              slug
+              city
+              startAt
+              numAttendees
+              events {
+                id
+                name
+                slug
+                numEntrants
+                videogame { name }
+              }
+            }
+          }
+        }
+        """
+        payload = json.dumps({
+            "query": gql_query,
+            "variables": {"name": query_raw}
+        }).encode('utf-8')
+        
+        headers = {
+            'Content-Type': 'application/json',
+            'User-Agent': 'FightBracketPro/1.0'
+        }
+        
+        startgg_key = os.environ.get('STARTGG_KEY') or os.environ.get('VITE_STARTGG_TOKEN')
+        if startgg_key:
+            headers['Authorization'] = f"Bearer {startgg_key}"
             
+        req = urllib.request.Request("https://api.start.gg/gql/alpha", data=payload, headers=headers)
+        with urllib.request.urlopen(req, timeout=3.5) as resp:
+            data = json.loads(resp.read().decode('utf-8'))
+            nodes = data.get("data", {}).get("tournaments", {}).get("nodes", [])
+            for node in nodes:
+                t_name = node.get("name", "")
+                t_slug = node.get("slug", "")
+                if t_slug.startswith("tournament/"):
+                    t_slug = t_slug[11:]
+                
+                events = node.get("events", [])
+                if events:
+                    for ev in events:
+                        ev_name = ev.get("name", "")
+                        ev_slug = ev.get("slug", t_slug)
+                        if ev_slug.startswith("tournament/"):
+                            ev_slug = ev_slug[11:]
+                        game_name = ev.get("videogame", {}).get("name", "Tekken 8 / FGC")
+                        
+                        if not any(r["slug"] == ev_slug for r in results):
+                            results.append({
+                                "id": f"startgg-{ev.get('id', ev_slug)}",
+                                "name": f"{t_name} — {ev_name}",
+                                "tournamentName": t_name,
+                                "eventName": ev_name,
+                                "slug": ev_slug,
+                                "game": game_name,
+                                "gameColor": "#00E5FF",
+                                "entrants": ev.get("numEntrants", node.get("numAttendees", 0)),
+                                "date": "Live Start.gg Event",
+                                "location": node.get("city", "Start.gg")
+                            })
+                else:
+                    if not any(r["slug"] == t_slug for r in results):
+                        results.append({
+                            "id": f"startgg-{node.get('id', t_slug)}",
+                            "name": t_name,
+                            "tournamentName": t_name,
+                            "eventName": "Main Bracket",
+                            "slug": t_slug,
+                            "game": "Tekken 8 / FGC",
+                            "gameColor": "#00E5FF",
+                            "entrants": node.get("numAttendees", 0),
+                            "date": "Live Start.gg Event",
+                            "location": node.get("city", "Start.gg")
+                        })
+    except Exception as e:
+        print(f"[-] Start.gg live event search error: {e}")
+
+    # 3. Dynamic slug fallback generator for specific user queries (e.g. "wavu cup", "wavu cup #6")
+    clean_slug = re.sub(r'[^a-z0-9]+', '-', query_str).strip('-')
+    if clean_slug and not any(clean_slug in r["slug"] for r in results):
+        formatted_title = query_raw.title()
+        # Handle cases like "wavu cup #6" -> "Wavu Cup #6" -> slug "wavu-cup-6"
+        results.insert(0, {
+            "id": f"custom-slug-{clean_slug}",
+            "name": f"{formatted_title} (Start.gg Live Bracket)",
+            "tournamentName": formatted_title,
+            "eventName": "Tournament Bracket",
+            "slug": clean_slug,
+            "game": "Tekken 8 / FGC",
+            "gameColor": "#00E5FF",
+            "entrants": 128,
+            "date": "Live Event",
+            "location": "Start.gg Import"
+        })
+
     return {"events": results}
 
 
