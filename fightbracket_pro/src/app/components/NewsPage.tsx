@@ -35,9 +35,9 @@ const DEFAULT_NEWS_ITEMS: NewsItem[] = [
     body: 'The Community Feed has received a massive social upgrade! Interact with fellow players, celebrate hype tournament upsets, and share bracket results with full social interactivity.',
     badge: 'NEW',
     bullets: [
-      '💬  Interactive Comment Threads: Open any post to join discussions and reply to community posts.',
-      '🔁  1-Click Feed Reposting: Share noteworthy matches, tournament clips, and announcements to your followers.',
-      '🔥  Multi-Emoji Reaction Picker: React with 7 expressive emojis (🔥 🏆 🥊 💀 ❤️ ⚡ 😂) with real-time counters.',
+      'Interactive Comment Threads: Open any post to join discussions and reply to community posts.',
+      '1-Click Feed Reposting: Share noteworthy matches, tournament clips, and announcements to your followers.',
+      'Multi-Emoji Reaction Picker: React with 7 expressive emojis with real-time counters.',
     ],
   },
   {
@@ -49,9 +49,9 @@ const DEFAULT_NEWS_ITEMS: NewsItem[] = [
     body: 'Stay on top of live competition and gear deals with dedicated sidebar widgets in News, Feed, and My Feed.',
     badge: 'NEW',
     bullets: [
-      '🥊  Active Tournaments & Exhibitions: Live event tracker with automatic Friend Prioritization (highlighting friend events first).',
-      '⏱️  4-Hour Freshness Window: Completed tournaments and exhibition showcase streams are cleanly archived after 4 hours.',
-      '🏷️  FGC Deals Box: Curated discounts on fightsticks, leverless controllers, character season passes, and sales.',
+      'Active Tournaments & Exhibitions: Live event tracker with automatic Friend Prioritization (highlighting friend events first).',
+      '4-Hour Freshness Window: Completed tournaments and exhibition showcase streams are cleanly archived after 4 hours.',
+      'FGC Deals Box: Curated discounts on fightsticks, leverless controllers, character season passes, and sales.',
     ],
   },
   {
@@ -87,13 +87,13 @@ const DEFAULT_NEWS_ITEMS: NewsItem[] = [
     link: 'https://fightbracketpro.com',
     linkLabel: 'Sign Up Free',
     bullets: [
-      '🏆  Build your public player profile with your game roster & main characters',
-      '📊  Track your tournament history and results imported directly from Start.gg',
-      '🎮  Connect your Tekken 8 Polaris ID for live rank & stats',
-      '📡  Get a unique FB-ID to share your profile across the community',
-      '🗓️  Stay up to date with the latest FGC events and news',
-      '💬  Post on the community feed — share results, hype events, call out rivals',
-      '👥  Find and follow other players in the FGC user directory',
+      'Build your public player profile with your game roster & main characters',
+      'Track your tournament history and results imported directly from Start.gg',
+      'Connect your Tekken 8 Polaris ID for live rank & stats',
+      'Get a unique FB-ID to share your profile across the community',
+      'Stay up to date with the latest FGC events and news',
+      'Post on the community feed — share results, hype events, call out rivals',
+      'Find and follow other players in the FGC user directory',
     ],
   },
   {
