@@ -687,21 +687,12 @@ export function BracketView({
               onClick={onManualSync}
               disabled={isSyncing}
               title={autoSyncSlug ? "Live Start.gg auto-sync active (polling every 10s during live matches). Click to sync immediately." : "Click to refresh bracket from Start.gg"}
-              className={`flex items-center gap-2 h-10 px-3.5 rounded-lg text-xs font-mono font-bold tracking-wider uppercase border transition-all ${
-                isSyncing
-                  ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/50'
-                  : autoSyncSlug
-                    ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/40 hover:bg-emerald-500/20'
-                    : 'bg-white/5 text-white/80 border-white/10 hover:bg-white/10'
-              }`}
+              className="h-10 w-10 flex items-center justify-center rounded-lg bg-white/5 border border-white/10 text-white/80 hover:bg-white/10 hover:text-white transition-all shrink-0 relative"
             >
-              <RefreshCw size={14} className={isSyncing ? 'animate-spin text-emerald-400' : ''} />
-              <div className="flex items-center gap-1.5">
-                {autoSyncSlug && !isSyncing && (
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse inline-block" />
-                )}
-                <span>{isSyncing ? 'SYNCING...' : autoSyncSlug ? 'LIVE SYNC' : 'REFRESH'}</span>
-              </div>
+              <RefreshCw size={15} className={isSyncing ? 'animate-spin text-cyan-400' : ''} />
+              {autoSyncSlug && !isSyncing && (
+                <span className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              )}
             </button>
           )}
         </div>
