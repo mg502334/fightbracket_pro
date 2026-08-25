@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
-import { Trash2, Save, Download, RefreshCw, Key, LogOut, ArrowLeft, Globe, ExternalLink, Settings, X, AlertTriangle, User, Shield, Swords, Sparkles, Cloud, Users, Eye, EyeOff, ChevronRight, ChevronDown, ChevronUp, LayoutDashboard, Menu, Search, Bell, Trophy, Mail, Rss, Calendar } from 'lucide-react';
+import { Trash2, Save, Download, RefreshCw, Key, LogOut, ArrowLeft, Globe, ExternalLink, Settings, X, AlertTriangle, User, Shield, Swords, Sparkles, Cloud, Users, Eye, EyeOff, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, ArrowUp, ArrowDown, LayoutDashboard, Menu, Search, Bell, Trophy, Mail, Rss, Calendar } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
 import { TekkenStatsPanel } from './TekkenStatsPanel';
@@ -904,6 +904,17 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
     saveGamesList(updated);
   };
 
+  const handleMoveGameMain = (index: number, direction: 'left' | 'right' | 'up' | 'down') => {
+    const targetIdx = (direction === 'left' || direction === 'up') ? index - 1 : index + 1;
+    if (targetIdx < 0 || targetIdx >= gamesList.length) return;
+
+    const updated = [...gamesList];
+    const [movedItem] = updated.splice(index, 1);
+    updated.splice(targetIdx, 0, movedItem);
+
+    saveGamesList(updated);
+  };
+
   if (!user) {
     if (awaitingEmailConfirmation) {
       return (
@@ -1797,7 +1808,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
                       <div className="space-y-4">
                         {/* Top 3 Games Preview */}
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                          {gamesList.slice(0, 3).map(item => {
+                          {gamesList.slice(0, 3).map((item, idx) => {
                             const coverUrl = GAME_COVERS[item.game];
                             return (
                               <div
@@ -1815,20 +1826,45 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
                                   </div>
                                 )}
 
-                                {/* Remove Button */}
-                                <button
-                                  onClick={() => handleRemoveGameMain(item.game)}
-                                  className="absolute top-2 right-2 z-20 text-white/50 bg-black/50 p-1.5 rounded-full hover:text-red-400 hover:bg-black/80 opacity-0 group-hover:opacity-100 transition-all backdrop-blur-sm shadow-md"
-                                  title="Remove"
-                                >
-                                  <Trash2 size={12} />
-                                </button>
+                                {/* Showcase Position Badge */}
+                                <div className="absolute top-2 left-2 z-20 px-2 py-0.5 rounded bg-black/80 backdrop-blur-md border border-cyan-500/40 text-[9px] font-mono font-bold text-cyan-400">
+                                  #{idx + 1} SHOWCASE
+                                </div>
+
+                                {/* Reorder & Action Controls Overlay */}
+                                <div className="absolute inset-0 z-20 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-xs flex items-center justify-center gap-1.5 p-2">
+                                  {idx > 0 && (
+                                    <button
+                                      onClick={() => handleMoveGameMain(idx, 'left')}
+                                      className="p-2 rounded-lg bg-white/10 hover:bg-cyan-500 text-white hover:text-black transition-all shadow-md"
+                                      title="Move Left (Promote Rank)"
+                                    >
+                                      <ChevronLeft size={16} />
+                                    </button>
+                                  )}
+                                  {idx < gamesList.length - 1 && (
+                                    <button
+                                      onClick={() => handleMoveGameMain(idx, 'right')}
+                                      className="p-2 rounded-lg bg-white/10 hover:bg-cyan-500 text-white hover:text-black transition-all shadow-md"
+                                      title="Move Right (Demote Rank)"
+                                    >
+                                      <ChevronRight size={16} />
+                                    </button>
+                                  )}
+                                  <button
+                                    onClick={() => handleRemoveGameMain(item.game)}
+                                    className="p-2 rounded-lg bg-red-500/20 hover:bg-red-500 text-red-400 hover:text-white transition-all shadow-md"
+                                    title="Remove Game"
+                                  >
+                                    <Trash2 size={16} />
+                                  </button>
+                                </div>
                               </div>
                             );
                           })}
                         </div>
 
-                        {/* Text List of All Games with Expansion */}
+                        {/* Text List of All Games with Expansion & Direct Reordering */}
                         <div className="bg-black/40 border border-white/5 rounded-lg p-3">
                           <div className="text-[10px] font-mono text-gray-400 mb-2 flex justify-between items-center font-bold tracking-wider">
                             <span>ALL GAMES ({gamesList.length})</span>
@@ -1845,11 +1881,41 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
                               </button>
                             )}
                           </div>
-                          <div className="space-y-1.5">
+                          <div className="space-y-2">
                             {(gamesListExpanded ? gamesList : gamesList.slice(0, 3)).map((item, idx) => (
-                              <div key={idx} className="flex justify-between items-center text-xs font-mono border-b border-white/5 pb-1.5 last:border-0 last:pb-0">
-                                <span className="text-white font-bold">{item.game}</span>
-                                {item.main && <span className="text-white text-[10px] bg-white/10 px-2 py-0.5 rounded">{item.main}</span>}
+                              <div key={idx} className="flex justify-between items-center text-xs font-mono border-b border-white/5 pb-1.5 last:border-0 last:pb-0 gap-2">
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <span className="text-[10px] font-bold text-cyan-400/80 bg-cyan-950/40 px-1.5 py-0.5 rounded border border-cyan-800/40 shrink-0">
+                                    #{idx + 1}
+                                  </span>
+                                  <span className="text-white font-bold truncate">{item.game}</span>
+                                  {item.main && <span className="text-white text-[10px] bg-white/10 px-2 py-0.5 rounded shrink-0">{item.main}</span>}
+                                </div>
+                                <div className="flex items-center gap-1 shrink-0">
+                                  <button
+                                    onClick={() => handleMoveGameMain(idx, 'up')}
+                                    disabled={idx === 0}
+                                    className="p-1 rounded text-white/50 hover:text-cyan-400 hover:bg-white/10 disabled:opacity-20 disabled:hover:bg-transparent transition-colors"
+                                    title="Move Up"
+                                  >
+                                    <ArrowUp size={12} />
+                                  </button>
+                                  <button
+                                    onClick={() => handleMoveGameMain(idx, 'down')}
+                                    disabled={idx === gamesList.length - 1}
+                                    className="p-1 rounded text-white/50 hover:text-cyan-400 hover:bg-white/10 disabled:opacity-20 disabled:hover:bg-transparent transition-colors"
+                                    title="Move Down"
+                                  >
+                                    <ArrowDown size={12} />
+                                  </button>
+                                  <button
+                                    onClick={() => handleRemoveGameMain(item.game)}
+                                    className="p-1 rounded text-white/40 hover:text-red-400 hover:bg-white/10 transition-colors ml-1"
+                                    title="Remove"
+                                  >
+                                    <Trash2 size={12} />
+                                  </button>
+                                </div>
                               </div>
                             ))}
                           </div>
