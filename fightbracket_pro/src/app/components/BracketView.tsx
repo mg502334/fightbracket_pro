@@ -619,7 +619,7 @@ export function BracketView({
                 {autoSyncSlug && !isSyncing && (
                   <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse inline-block" />
                 )}
-                <span>{isSyncing ? 'SYNCING...' : autoSyncSlug ? 'LIVE SYNC (10s)' : 'REFRESH BRACKET'}</span>
+                <span>{isSyncing ? 'SYNCING...' : autoSyncSlug ? 'LIVE SYNC' : 'REFRESH'}</span>
               </div>
             </button>
           )}
