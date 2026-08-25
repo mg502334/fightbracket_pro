@@ -245,8 +245,14 @@ export function NewsPage({ onNavigateHome, onSignUp }: NewsPageProps) {
     if (item.type === 'sale') return false;
 
     if (item.publishedAt) {
-      const ageMs = Date.now() - item.publishedAt;
-      return ageMs > SEVEN_DAYS_MS;
+      const pubTime = typeof item.publishedAt === 'number'
+        ? item.publishedAt
+        : new Date(item.publishedAt).getTime();
+
+      if (!isNaN(pubTime)) {
+        const ageMs = Date.now() - pubTime;
+        return ageMs > SEVEN_DAYS_MS;
+      }
     }
     return false;
   };
@@ -255,7 +261,14 @@ export function NewsPage({ onNavigateHome, onSignUp }: NewsPageProps) {
     // Deals are exempt
     if (item.type === 'sale') return "Active Deal (Store Sale)";
     if (!item.publishedAt) return null;
-    const remainingMs = SEVEN_DAYS_MS - (Date.now() - item.publishedAt);
+
+    const pubTime = typeof item.publishedAt === 'number'
+      ? item.publishedAt
+      : new Date(item.publishedAt).getTime();
+
+    if (isNaN(pubTime)) return null;
+
+    const remainingMs = SEVEN_DAYS_MS - (Date.now() - pubTime);
     if (remainingMs <= 0) return "Archived";
     const days = Math.ceil(remainingMs / (24 * 60 * 60 * 1000));
     return `${days} ${days === 1 ? 'day' : 'days'} left`;
