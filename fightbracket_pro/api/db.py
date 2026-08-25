@@ -58,6 +58,20 @@ class DBUserIdentifier(Base):
     unique_id = Column(String, unique=True, index=True, nullable=False) # FB-XXXX-YYYY
     created_at = Column(DateTime, nullable=True)
 
+class DBProfileLike(Base):
+    __tablename__ = "profile_likes"
+    id = Column(String, primary_key=True, index=True)
+    user_id = Column(String, index=True, nullable=False) # Liker ID
+    target_user_id = Column(String, index=True, nullable=False) # Target user ID
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+class DBUserFollow(Base):
+    __tablename__ = "user_follows"
+    id = Column(String, primary_key=True, index=True)
+    follower_id = Column(String, index=True, nullable=False) # User following
+    following_id = Column(String, index=True, nullable=False) # User being followed
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
 
 class DBDirectMessage(Base):
     __tablename__ = "direct_messages"

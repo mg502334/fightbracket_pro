@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Shield, Lock, Globe, UserPlus, MessageSquare, Check, X, Trophy, ExternalLink, Sparkles, AlertTriangle, Swords, ChevronDown, ChevronUp, Eye, EyeOff, RefreshCw } from 'lucide-react';
+import { Shield, Lock, Globe, UserPlus, MessageSquare, Check, X, Trophy, ExternalLink, Sparkles, AlertTriangle, Swords, ChevronDown, ChevronUp, Eye, EyeOff, RefreshCw, Heart, UserCheck } from 'lucide-react';
 import { TekkenStatsPanel } from './TekkenStatsPanel';
 import { SteamStatsPanel } from './SteamStatsPanel';
 import { StartggCareerPanel } from './StartggCareerPanel';
@@ -37,6 +37,11 @@ interface UserProfileData {
   friend_status: string;
   privacy_restricted: boolean;
   is_self: boolean;
+  likes_count?: number;
+  followers_count?: number;
+  following_count?: number;
+  is_liked?: boolean;
+  is_following?: boolean;
 }
 
 interface UserProfileModalProps {
@@ -126,6 +131,67 @@ export function UserProfileModal({ isOpen, onClose, targetUserId, supabaseToken,
       setProfile(prev => prev ? { ...prev, friend_status: 'pending' } : null);
     } catch (e) {
       console.error('Error sending friend request:', e);
+    }
+  };
+
+  const handleLikeProfile = async () => {
+    if (!profile || !supabaseToken || profile.is_self) return;
+    const isCurrentlyLiked = profile.is_liked;
+    const currentLikes = profile.likes_count || 0;
+    
+    // Optimistic UI update
+    setProfile(prev => prev ? {
+      ...prev,
+      is_liked: !isCurrentlyLiked,
+      likes_count: isCurrentlyLiked ? Math.max(0, currentLikes - 1) : currentLikes + 1
+    } : null);
+
+    try {
+      const res = await fetch(`/api/users/like/${profile.id}`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${supabaseToken}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setProfile(prev => prev ? {
+          ...prev,
+          is_liked: data.is_liked,
+          likes_count: data.likes_count
+        } : null);
+      }
+    } catch (e) {
+      console.error('Error liking profile:', e);
+    }
+  };
+
+  const handleFollowUser = async () => {
+    if (!profile || !supabaseToken || profile.is_self) return;
+    const isCurrentlyFollowing = profile.is_following;
+    const currentFollowers = profile.followers_count || 0;
+
+    // Optimistic UI update
+    setProfile(prev => prev ? {
+      ...prev,
+      is_following: !isCurrentlyFollowing,
+      followers_count: isCurrentlyFollowing ? Math.max(0, currentFollowers - 1) : currentFollowers + 1
+    } : null);
+
+    try {
+      const res = await fetch(`/api/users/follow/${profile.id}`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${supabaseToken}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setProfile(prev => prev ? {
+          ...prev,
+          is_following: data.is_following,
+          followers_count: data.followers_count,
+          following_count: data.following_count
+        } : null);
+      }
+    } catch (e) {
+      console.error('Error following user:', e);
     }
   };
 
@@ -256,6 +322,35 @@ export function UserProfileModal({ isOpen, onClose, targetUserId, supabaseToken,
                           <span className="text-[10px] uppercase tracking-wider text-cyan-400/80">Show FB-ID</span>
                         </button>
                       )}
+                    </div>
+
+                    {/* Profile Likes & Follow Stats Badges */}
+                    <div className="flex flex-wrap items-center gap-2 mt-3 font-mono text-xs">
+                      <button
+                        onClick={handleLikeProfile}
+                        disabled={profile?.is_self}
+                        className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border transition-all ${
+                          profile?.is_liked
+                            ? 'bg-rose-500/20 text-rose-400 border-rose-500/40 shadow-sm'
+                            : 'bg-white/5 border-white/10 text-white/80 hover:border-rose-500/40 hover:text-rose-400'
+                        } ${profile?.is_self ? 'cursor-default' : 'cursor-pointer'}`}
+                        title={profile?.is_self ? 'Profile Likes Received' : profile?.is_liked ? 'Click to Unlike' : 'Click to Like Profile'}
+                      >
+                        <Heart size={13} className={profile?.is_liked ? 'fill-rose-400 text-rose-400' : ''} />
+                        <span className="font-bold">{profile?.likes_count || 0}</span>
+                        <span className="text-[10px] opacity-70">Likes</span>
+                      </button>
+
+                      <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 text-white/80">
+                        <UserCheck size={13} className="text-cyan-400" />
+                        <span className="font-bold">{profile?.followers_count || 0}</span>
+                        <span className="text-[10px] opacity-70">Followers</span>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 text-white/80">
+                        <span className="font-bold">{profile?.following_count || 0}</span>
+                        <span className="text-[10px] opacity-70">Following</span>
+                      </div>
                     </div>
                   </>
                 )}
@@ -488,30 +583,43 @@ export function UserProfileModal({ isOpen, onClose, targetUserId, supabaseToken,
                   </div>
                 )}
 
-                {/* Friend / DM Actions */}
-                <div className="pt-2 flex gap-3 mt-4">
+                {/* Like / Follow / Friend / DM Actions */}
+                <div className="pt-2 grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
+                  {!profile?.is_self && (
+                    <button
+                      onClick={handleFollowUser}
+                      className={`py-2.5 rounded-xl font-bold text-xs font-mono tracking-wider transition-all flex items-center justify-center gap-2 border ${
+                        profile?.is_following
+                          ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40 hover:bg-red-500/20 hover:text-red-300 hover:border-red-500/40'
+                          : 'bg-cyan-500 text-black border-cyan-400 hover:brightness-125'
+                      }`}
+                    >
+                      <UserCheck size={14} /> {profile?.is_following ? 'FOLLOWING' : 'FOLLOW PLAYER'}
+                    </button>
+                  )}
+
                   {profile?.is_friend ? (
                     <button
                       onClick={() => {
                         onClose();
                         onOpenDM?.(profile);
                       }}
-                      className="w-full py-2.5 rounded-xl bg-cyan-500 text-black font-bold text-xs font-mono tracking-wider hover:brightness-125 transition-all flex items-center justify-center gap-2"
+                      className="py-2.5 rounded-xl bg-purple-500 text-white font-bold text-xs font-mono tracking-wider hover:brightness-125 transition-all flex items-center justify-center gap-2 border border-purple-400"
                     >
                       <MessageSquare size={14} /> SEND DIRECT MESSAGE
                     </button>
-                  ) : profile?.friend_status === 'none' ? (
+                  ) : profile?.friend_status === 'none' && !profile?.is_self ? (
                     <button
                       onClick={handleAddFriend}
-                      className="w-full py-2.5 rounded-xl bg-cyan-500 text-black font-bold text-xs font-mono tracking-wider hover:brightness-125 transition-all flex items-center justify-center gap-2"
+                      className="py-2.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold text-xs font-mono tracking-wider transition-all flex items-center justify-center gap-2"
                     >
-                      <UserPlus size={14} /> SEND FRIEND REQUEST
+                      <UserPlus size={14} /> ADD FRIEND
                     </button>
-                  ) : (
-                    <div className="w-full py-2.5 text-center text-xs font-mono opacity-50 bg-white/5 rounded-xl">
+                  ) : profile?.friend_status === 'pending' && !profile?.is_self ? (
+                    <div className="py-2.5 text-center text-xs font-mono opacity-50 bg-white/5 rounded-xl">
                       Friend Request Pending
                     </div>
-                  )}
+                  ) : null}
                 </div>
 
                 {friendActionMsg && (

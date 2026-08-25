@@ -25,14 +25,14 @@ except ImportError:
 
 from typing import TYPE_CHECKING, Optional
 if TYPE_CHECKING:
-    from api.db import get_db, DBPlayer, DBStation, DBSMSLog, DBTournament, DBTournamentParticipant, DBUser, DBFriendship, DBDirectMessage, DBUserIdentifier, DBUserIntegration, DBPost, DBPostLike, DBPostComment, DBPostReaction, DBPostRepost, DBNewsItem, DBSupportTicket
+    from api.db import get_db, DBPlayer, DBStation, DBSMSLog, DBTournament, DBTournamentParticipant, DBUser, DBFriendship, DBDirectMessage, DBUserIdentifier, DBUserIntegration, DBPost, DBPostLike, DBPostComment, DBPostReaction, DBPostRepost, DBNewsItem, DBSupportTicket, DBProfileLike, DBUserFollow
 
 else:
     try:
         try:
-            from api.db import get_db, DBPlayer, DBStation, DBSMSLog, DBTournament, DBTournamentParticipant, DBUser, DBFriendship, DBDirectMessage, DBUserIdentifier, DBUserIntegration, DBPost, DBPostLike, DBPostComment, DBPostReaction, DBPostRepost, DBNewsItem, DBSupportTicket
+            from api.db import get_db, DBPlayer, DBStation, DBSMSLog, DBTournament, DBTournamentParticipant, DBUser, DBFriendship, DBDirectMessage, DBUserIdentifier, DBUserIntegration, DBPost, DBPostLike, DBPostComment, DBPostReaction, DBPostRepost, DBNewsItem, DBSupportTicket, DBProfileLike, DBUserFollow
         except Exception:
-            from db import get_db, DBPlayer, DBStation, DBSMSLog, DBTournament, DBTournamentParticipant, DBUser, DBFriendship, DBDirectMessage, DBUserIdentifier, DBUserIntegration, DBPost, DBPostLike, DBPostComment, DBPostReaction, DBPostRepost, DBNewsItem, DBSupportTicket  # type: ignore
+            from db import get_db, DBPlayer, DBStation, DBSMSLog, DBTournament, DBTournamentParticipant, DBUser, DBFriendship, DBDirectMessage, DBUserIdentifier, DBUserIntegration, DBPost, DBPostLike, DBPostComment, DBPostReaction, DBPostRepost, DBNewsItem, DBSupportTicket, DBProfileLike, DBUserFollow  # type: ignore
     except Exception as _db_err:
         print(f"DB import warning: {_db_err}")
         def get_db():
@@ -695,6 +695,9 @@ def get_user_profile(payload: dict = Depends(get_current_user_payload), db: Sess
 
         unread_count = db.query(DBDirectMessage).filter(DBDirectMessage.recipient_id == user_id, DBDirectMessage.read == False).count()
         pending_friend_requests_count = db.query(DBFriendship).filter(DBFriendship.friend_id == user_id, DBFriendship.status == "pending").count()
+        likes_count = db.query(DBProfileLike).filter(DBProfileLike.target_user_id == user_id).count()
+        followers_count = db.query(DBUserFollow).filter(DBUserFollow.following_id == user_id).count()
+        following_count = db.query(DBUserFollow).filter(DBUserFollow.follower_id == user_id).count()
 
         return {
             "user": {
@@ -725,7 +728,10 @@ def get_user_profile(payload: dict = Depends(get_current_user_payload), db: Sess
                 "sound_messages": user.sound_messages if hasattr(user, 'sound_messages') and user.sound_messages is not None else True,
                 "created_at": created_at_str,
                 "unread_messages_count": unread_count,
-                "pending_friend_requests_count": pending_friend_requests_count
+                "pending_friend_requests_count": pending_friend_requests_count,
+                "likes_count": likes_count,
+                "followers_count": followers_count,
+                "following_count": following_count
             }
         }
     except Exception as e:
@@ -1785,6 +1791,12 @@ def get_target_user_profile(target_user_id: str, user_id: str = Depends(get_curr
         except Exception:
             startgg_data_parsed = None
 
+    likes_count = db.query(DBProfileLike).filter(DBProfileLike.target_user_id == target_user_id).count()
+    followers_count = db.query(DBUserFollow).filter(DBUserFollow.following_id == target_user_id).count()
+    following_count = db.query(DBUserFollow).filter(DBUserFollow.follower_id == target_user_id).count()
+    is_liked = db.query(DBProfileLike).filter(DBProfileLike.user_id == user_id, DBProfileLike.target_user_id == target_user_id).first() is not None
+    is_following = db.query(DBUserFollow).filter(DBUserFollow.follower_id == user_id, DBUserFollow.following_id == target_user_id).first() is not None
+
     uid_str = getattr(target_user, 'unique_id', None) or (target_ui.unique_id if target_ui else "FB-USER")
     return {
         "profile": {
@@ -1806,8 +1818,93 @@ def get_target_user_profile(target_user_id: str, user_id: str = Depends(get_curr
             "is_friend": is_friend,
             "friend_status": friend_status,
             "privacy_restricted": public_restricted,
-            "is_self": is_self
+            "is_self": is_self,
+            "likes_count": likes_count,
+            "followers_count": followers_count,
+            "following_count": following_count,
+            "is_liked": is_liked,
+            "is_following": is_following
         }
+    }
+
+@app.post("/api/users/like/{target_user_id}")
+def toggle_profile_like(target_user_id: str, user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    if not db:
+        raise HTTPException(status_code=404, detail="Database unavailable")
+    
+    target_user = db.query(DBUser).filter(DBUser.id == target_user_id).first()
+    if not target_user:
+        raise HTTPException(status_code=404, detail="User not found")
+        
+    existing = db.query(DBProfileLike).filter(
+        DBProfileLike.user_id == user_id,
+        DBProfileLike.target_user_id == target_user_id
+    ).first()
+    
+    if existing:
+        db.delete(existing)
+        db.commit()
+        status = "unliked"
+        is_liked = False
+    else:
+        new_like = DBProfileLike(
+            id=str(uuid.uuid4()),
+            user_id=user_id,
+            target_user_id=target_user_id
+        )
+        db.add(new_like)
+        db.commit()
+        status = "liked"
+        is_liked = True
+        
+    likes_count = db.query(DBProfileLike).filter(DBProfileLike.target_user_id == target_user_id).count()
+    return {
+        "status": status,
+        "is_liked": is_liked,
+        "likes_count": likes_count
+    }
+
+@app.post("/api/users/follow/{target_user_id}")
+def toggle_user_follow(target_user_id: str, user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    if not db:
+        raise HTTPException(status_code=404, detail="Database unavailable")
+        
+    if target_user_id == user_id:
+        raise HTTPException(status_code=400, detail="Cannot follow yourself")
+        
+    target_user = db.query(DBUser).filter(DBUser.id == target_user_id).first()
+    if not target_user:
+        raise HTTPException(status_code=404, detail="User not found")
+        
+    existing = db.query(DBUserFollow).filter(
+        DBUserFollow.follower_id == user_id,
+        DBUserFollow.following_id == target_user_id
+    ).first()
+    
+    if existing:
+        db.delete(existing)
+        db.commit()
+        status = "unfollowed"
+        is_following = False
+    else:
+        new_follow = DBUserFollow(
+            id=str(uuid.uuid4()),
+            follower_id=user_id,
+            following_id=target_user_id
+        )
+        db.add(new_follow)
+        db.commit()
+        status = "followed"
+        is_following = True
+        
+    followers_count = db.query(DBUserFollow).filter(DBUserFollow.following_id == target_user_id).count()
+    following_count = db.query(DBUserFollow).filter(DBUserFollow.follower_id == target_user_id).count()
+    
+    return {
+        "status": status,
+        "is_following": is_following,
+        "followers_count": followers_count,
+        "following_count": following_count
     }
 
 @app.get("/api/tournaments")

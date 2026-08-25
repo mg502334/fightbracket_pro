@@ -861,8 +861,8 @@ export function FeedPanel({ userProfile, getHeaders }: { userProfile: any, getHe
               <div className="grid grid-cols-3 gap-2 text-center">
                 {[
                   { label: "Posts", value: `${posts.length}` },
-                  { label: "Following", value: "0" },
-                  { label: "Followers", value: "0" },
+                  { label: "Following", value: `${userProfile?.following_count || 0}` },
+                  { label: "Followers", value: `${userProfile?.followers_count || 0}` },
                 ].map(({ label, value }) => (
                   <div key={label}>
                     <div className="text-white font-bold text-base" style={{ fontFamily: "'Barlow Condensed', sans-serif" }}>{value}</div>

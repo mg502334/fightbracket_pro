@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
-import { Trash2, Save, Download, RefreshCw, Key, LogOut, ArrowLeft, Globe, ExternalLink, Settings, X, AlertTriangle, User, Shield, Swords, Sparkles, Cloud, Users, Eye, EyeOff, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, ArrowUp, ArrowDown, LayoutDashboard, Menu, Search, Bell, Trophy, Mail, Rss, Calendar } from 'lucide-react';
+import { Trash2, Save, Download, RefreshCw, Key, LogOut, ArrowLeft, Globe, ExternalLink, Settings, X, AlertTriangle, User, Shield, Swords, Sparkles, Cloud, Users, Eye, EyeOff, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, ArrowUp, ArrowDown, LayoutDashboard, Menu, Search, Bell, Trophy, Mail, Rss, Calendar, Heart, UserCheck } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
 import { TekkenStatsPanel } from './TekkenStatsPanel';
@@ -1657,22 +1657,44 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
             </div>
           )}
           <div style={{ display: activeTab === "Dashboard" ? 'block' : 'none' }}>
-            {/* Page heading */}
-            <div className="mb-6">
-              <h1
-                className="text-white uppercase tracking-wide mb-0.5"
-                style={{
-                  fontFamily: "'Barlow Condensed', sans-serif",
-                  fontWeight: 700,
-                  fontSize: "1.5rem",
-                  letterSpacing: "0.05em",
-                }}
-              >
-                Dashboard
-              </h1>
-              <p className="text-sm" style={{ color: "#8a8a9a" }}>
-                Welcome back, {userProfile?.first_name ? `${userProfile.first_name} ${userProfile.last_name || ''}` : (userProfile?.gamer_tag || user.user_metadata?.displayName || 'User')}{userProfile?.first_name && userProfile?.gamer_tag ? ` (${userProfile.gamer_tag})` : ''}.
-              </p>
+            {/* Page heading & Profile Reputation Stats */}
+            <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <h1
+                  className="text-white uppercase tracking-wide mb-0.5"
+                  style={{
+                    fontFamily: "'Barlow Condensed', sans-serif",
+                    fontWeight: 700,
+                    fontSize: "1.5rem",
+                    letterSpacing: "0.05em",
+                  }}
+                >
+                  Dashboard
+                </h1>
+                <p className="text-sm" style={{ color: "#8a8a9a" }}>
+                  Welcome back, {userProfile?.first_name ? `${userProfile.first_name} ${userProfile.last_name || ''}` : (userProfile?.gamer_tag || user.user_metadata?.displayName || 'User')}{userProfile?.first_name && userProfile?.gamer_tag ? ` (${userProfile.gamer_tag})` : ''}.
+                </p>
+              </div>
+
+              {/* Likes & Follow Counts Bar */}
+              <div className="flex flex-wrap items-center gap-3 font-mono text-xs">
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-gradient-to-r from-rose-500/15 to-transparent border border-rose-500/30 text-rose-300">
+                  <Heart size={14} className="fill-rose-400 text-rose-400" />
+                  <span className="font-bold text-sm">{userProfile?.likes_count || 0}</span>
+                  <span className="text-[10px] opacity-70">Likes Received</span>
+                </div>
+
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-gradient-to-r from-cyan-500/15 to-transparent border border-cyan-500/30 text-cyan-300">
+                  <UserCheck size={14} className="text-cyan-400" />
+                  <span className="font-bold text-sm">{userProfile?.followers_count || 0}</span>
+                  <span className="text-[10px] opacity-70">Followers</span>
+                </div>
+
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 text-white/80">
+                  <span className="font-bold text-sm">{userProfile?.following_count || 0}</span>
+                  <span className="text-[10px] opacity-70">Following</span>
+                </div>
+              </div>
             </div>
 
             <div className="max-w-6xl space-y-8 animate-in fade-in duration-300">
