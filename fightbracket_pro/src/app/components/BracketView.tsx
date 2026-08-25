@@ -834,7 +834,7 @@ function BracketSection({
                       className="absolute w-full"
                       style={{ top: slot * SLOT_SIZE }}
                     >
-                      {/* Connection Line — Always Solid and Lit */}
+                      {/* Connection Line — Perfectly Aligned Outlet & Inlet Slots */}
                       {!isLast && (
                         (() => {
                           let nextMatch = matches.find(
@@ -863,27 +863,46 @@ function BracketSection({
                             const dx = (colsDiff - 1) * (250 + 48) + 48;
                             const dy = (nextSlot - slot) * SLOT_SIZE;
 
-                            // Determine inlet position on next match card
-                            let targetSlotY = 61; // default card center (divider)
+                            // 1. Calculate source card outlet Y position (43 = P1 slot, 80 = P2 slot, 61 = center divider)
+                            let yStart = 61;
+                            if (match.winnerId) {
+                              if (match.winnerId === match.player1Id) yStart = 43;
+                              else if (match.winnerId === match.player2Id) yStart = 80;
+                            } else if (nextMatch.player1Id && (nextMatch.player1Id === match.player1Id || nextMatch.player1Id === match.player2Id)) {
+                              yStart = nextMatch.player1Id === match.player1Id ? 43 : 80;
+                            } else if (nextMatch.player2Id && (nextMatch.player2Id === match.player1Id || nextMatch.player2Id === match.player2Id)) {
+                              yStart = nextMatch.player2Id === match.player1Id ? 43 : 80;
+                            }
+
+                            // 2. Calculate target card inlet Y position (43 = P1 slot, 80 = P2 slot, 61 = center divider)
+                            let targetSlotY = 61;
                             const isP1Prereq = nextMatch.prereqSetIds && nextMatch.prereqSetIds[0] === match.id;
                             const isP2Prereq = nextMatch.prereqSetIds && nextMatch.prereqSetIds[1] === match.id;
 
-                            if (isP1Prereq) {
-                              targetSlotY = 43; // P1 top slot
+                            if (match.winnerId && nextMatch.player1Id === match.winnerId) {
+                              targetSlotY = 43;
+                            } else if (match.winnerId && nextMatch.player2Id === match.winnerId) {
+                              targetSlotY = 80;
+                            } else if (nextMatch.player1Id && (nextMatch.player1Id === match.player1Id || nextMatch.player1Id === match.player2Id)) {
+                              targetSlotY = 43;
+                            } else if (nextMatch.player2Id && (nextMatch.player2Id === match.player1Id || nextMatch.player2Id === match.player2Id)) {
+                              targetSlotY = 80;
+                            } else if (isP1Prereq) {
+                              targetSlotY = 43;
                             } else if (isP2Prereq) {
-                              targetSlotY = 80; // P2 bottom slot
+                              targetSlotY = 80;
                             } else if (slot < nextSlot) {
                               targetSlotY = 43;
                             } else if (slot > nextSlot) {
                               targetSlotY = 80;
                             } else {
-                              targetSlotY = 61;
+                              targetSlotY = yStart; // Match outlet position for straight horizontal line if same slot level
                             }
 
                             const yTarget = dy + targetSlotY;
-                            const pathD = (dy === 0 && targetSlotY === 61)
-                              ? `M 0 61 L ${dx} 61`
-                              : `M 0 61 C ${dx * 0.5} 61, ${dx * 0.5} ${yTarget}, ${dx} ${yTarget}`;
+                            const pathD = (dy === 0 && yStart === yTarget)
+                              ? `M 0 ${yStart} L ${dx} ${yTarget}`
+                              : `M 0 ${yStart} C ${dx * 0.45} ${yStart}, ${dx * 0.55} ${yTarget}, ${dx} ${yTarget}`;
 
                             const isMatchHovered = hoveredMatchId === match.id || hoveredMatchId === nextMatch.id;
                             const isWinnerAdvanced = match.winnerId && (nextMatch.player1Id === match.winnerId || nextMatch.player2Id === match.winnerId);
@@ -932,7 +951,7 @@ function BracketSection({
                                   strokeWidth={strokeW}
                                   strokeOpacity={strokeOpacity}
                                 />
-                                <circle cx={0} cy={61} r={isHighlighted ? 3 : 2.5} fill={strokeColor} />
+                                <circle cx={0} cy={yStart} r={isHighlighted ? 3 : 2.5} fill={strokeColor} />
                                 <circle cx={dx} cy={yTarget} r={isHighlighted ? 3 : 2.5} fill={strokeColor} />
                               </svg>
                             );
