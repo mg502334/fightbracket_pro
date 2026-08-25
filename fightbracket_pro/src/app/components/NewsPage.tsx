@@ -14,7 +14,10 @@ export interface NewsItem {
   link?: string;
   linkLabel?: string;
   archived?: boolean;
-  publishedAt?: number; // timestamp in ms
+  expired?: boolean;
+  publishedAt?: number | string; // timestamp in ms or ISO string
+  expiresAt?: number | string;   // timestamp in ms or ISO string
+  expiryLabel?: string;
   game?: string;
   platform?: string;
   discount?: string;
@@ -70,9 +73,11 @@ const DEFAULT_NEWS_ITEMS: NewsItem[] = [
     type: 'event',
     date: 'Aug 18, 2026',
     publishedAt: NOW - (1 * 24 * 60 * 60 * 1000), // 1 day ago -> Active
+    expiresAt: '2026-08-30T23:59:59Z',
+    expiryLabel: 'Early Reg Ends Aug 30',
     title: 'Texas Showdown 2027 Pre-Registration Live',
-    body: 'Get ready for Texas Showdown 2027! Houston is bringing the heat once again with major brackets across all premier fighting games. Pre-registration is officially live on Start.gg.',
-    badge: 'EVENT',
+    body: 'Get ready for Texas Showdown 2027! Houston is bringing the heat once again with major brackets across all premier fighting games. Pre-registration is officially live on Start.gg. Early registration rates end August 30th.',
+    badge: 'EARLY REG',
     link: 'https://www.start.gg/tournament/texas-showdown-2027/details',
     linkLabel: 'View Start.gg Event',
   },
@@ -238,9 +243,20 @@ export function NewsPage({ onNavigateHome, onSignUp }: NewsPageProps) {
       .catch(() => {});
   }, []);
 
-  // Determine active vs auto-archived items based on 7-Day Rule (sales/deals archive when expired or no longer available)
+  // Determine active vs auto-archived items based on expiration date or 7-Day Rule
   const isItemArchived = (item: NewsItem): boolean => {
     if (item.archived || item.expired) return true;
+
+    // Custom expiration date check (e.g. Early Registration deadline)
+    if (item.expiresAt) {
+      const expTime = typeof item.expiresAt === 'number'
+        ? item.expiresAt
+        : new Date(item.expiresAt).getTime();
+      if (!isNaN(expTime) && Date.now() > expTime) {
+        return true;
+      }
+    }
+
     if (item.type === 'sale') return Boolean(item.expired || item.archived);
 
     if (item.publishedAt) {
@@ -257,9 +273,22 @@ export function NewsPage({ onNavigateHome, onSignUp }: NewsPageProps) {
   };
 
   const getRemainingDays = (item: NewsItem): string | null => {
+    if (item.expiresAt) {
+      const expTime = typeof item.expiresAt === 'number'
+        ? item.expiresAt
+        : new Date(item.expiresAt).getTime();
+      if (!isNaN(expTime)) {
+        const remainingMs = expTime - Date.now();
+        if (remainingMs <= 0) return "REGISTRATION CLOSED";
+        const days = Math.ceil(remainingMs / (24 * 60 * 60 * 1000));
+        return `${item.expiryLabel ? `${item.expiryLabel} · ` : ''}${days} ${days === 1 ? 'day' : 'days'} left`;
+      }
+    }
+
     if (item.type === 'sale') {
       return (item.expired || item.archived) ? "EXPIRED DEAL" : "VERIFIED ACTIVE DEAL";
     }
+
     if (!item.publishedAt) return null;
 
     const pubTime = typeof item.publishedAt === 'number'
