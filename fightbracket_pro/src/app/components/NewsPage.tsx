@@ -373,7 +373,8 @@ export function NewsPage({ onNavigateHome, onSignUp }: NewsPageProps) {
   const [isArchive, setIsArchive] = useState(false);
   const [newsItems, setNewsItems] = useState<NewsItem[]>(DEFAULT_NEWS_ITEMS);
 
-  // Game Patches State (Steam ISteamNews API)
+  // Game Patches State
+  const [patchSource, setPatchSource] = useState<'official' | 'steam'>('official');
   const [patchSearchQuery, setPatchSearchQuery] = useState('');
   const [patchGameFilter, setPatchGameFilter] = useState('all');
   const [gamePatches, setGamePatches] = useState<GamePatch[]>(DEFAULT_GAME_PATCHES);
@@ -488,7 +489,9 @@ export function NewsPage({ onNavigateHome, onSignUp }: NewsPageProps) {
     return true;
   });
 
-  const filteredPatches = gamePatches.filter(p => {
+  const targetPatchList = patchSource === 'official' ? DEFAULT_GAME_PATCHES : gamePatches;
+
+  const filteredPatches = targetPatchList.filter(p => {
     if (patchGameFilter !== 'all' && p.gameId !== patchGameFilter) return false;
     if (patchSearchQuery.trim()) {
       const q = patchSearchQuery.toLowerCase();
@@ -776,7 +779,7 @@ export function NewsPage({ onNavigateHome, onSignUp }: NewsPageProps) {
                 )}
               </>
             ) : (
-              /* MAIN TAB 2: GAME PATCH NOTES (STEAM ISteamNews) */
+              /* MAIN TAB 2: GAME PATCH NOTES & UPDATES */
               <>
                 <div className="flex items-center justify-between gap-4 mb-2">
                   <div className="flex items-center gap-3">
@@ -785,16 +788,38 @@ export function NewsPage({ onNavigateHome, onSignUp }: NewsPageProps) {
                       GAME PATCH NOTES
                     </h1>
                   </div>
-
-                  <div className="flex items-center gap-2 text-[10px] font-mono text-[#a78bfa] bg-[#a78bfa]/10 px-2.5 py-1 rounded border border-[#a78bfa]/30">
-                    <Radio size={12} className="animate-pulse" />
-                    <span>STEAM ISteamNews ACTIVE</span>
-                  </div>
                 </div>
 
                 <p className="text-xs text-gray-400 mb-6">
-                  Official developer patch notes, character balance updates, and version releases fetched directly via Steam Web API.
+                  Official developer balance updates, version releases, and game patch notes.
                 </p>
+
+                {/* Sub-Tabs: OFFICIAL DEVELOPER PATCHES vs STEAM ISteamNews LIVE FEED */}
+                <div className="flex flex-wrap items-center gap-2 mb-6 border-b border-white/10 pb-4">
+                  <button
+                    onClick={() => setPatchSource('official')}
+                    className={`px-4 py-2 rounded-lg text-xs font-bold font-mono tracking-wider transition-all flex items-center gap-2 ${
+                      patchSource === 'official'
+                        ? "bg-[#00E5FF] text-black shadow-lg shadow-[#00E5FF]/20"
+                        : "bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white"
+                    }`}
+                  >
+                    <Trophy size={14} />
+                    <span>OFFICIAL DEVELOPER PATCH NOTES ({DEFAULT_GAME_PATCHES.length})</span>
+                  </button>
+
+                  <button
+                    onClick={() => setPatchSource('steam')}
+                    className={`px-4 py-2 rounded-lg text-xs font-bold font-mono tracking-wider transition-all flex items-center gap-2 ${
+                      patchSource === 'steam'
+                        ? "bg-[#a78bfa] text-black shadow-lg shadow-[#a78bfa]/20"
+                        : "bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white"
+                    }`}
+                  >
+                    <Radio size={14} className={patchSource === 'steam' ? "animate-pulse" : ""} />
+                    <span>STEAM ISteamNews LIVE FEED ({gamePatches.length})</span>
+                  </button>
+                </div>
 
                 {/* Search Bar & Game Filter Pills */}
                 <div className="space-y-3 mb-6">
