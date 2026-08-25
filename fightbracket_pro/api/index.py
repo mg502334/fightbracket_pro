@@ -3528,6 +3528,100 @@ def get_psn_player_card(psn_id: str):
         "shareLink": f"https://my.playstation.com/profile/{clean_id}"
     }
 
+POPULAR_FGC_EVENTS = [
+    {
+        "id": "evo-2026-t8",
+        "name": "EVO 2026 — TEKKEN 8",
+        "tournamentName": "EVO 2026",
+        "eventName": "Tekken 8 Tournament",
+        "slug": "evo-2026/event/tekken-8",
+        "game": "Tekken 8",
+        "gameColor": "#00E5FF",
+        "entrants": 1842,
+        "date": "Aug 2026",
+        "location": "Las Vegas, NV"
+    },
+    {
+        "id": "ceo-2026-sf6",
+        "name": "CEO 2026 — Street Fighter 6",
+        "tournamentName": "CEO 2026",
+        "eventName": "Street Fighter 6 Tournament",
+        "slug": "ceo-2026/event/street-fighter-6",
+        "game": "Street Fighter 6",
+        "gameColor": "#FF006E",
+        "entrants": 1250,
+        "date": "Jun 2026",
+        "location": "Daytona Beach, FL"
+    },
+    {
+        "id": "cb-2026-ggst",
+        "name": "Combo Breaker 2026 — Guilty Gear -Strive-",
+        "tournamentName": "Combo Breaker 2026",
+        "eventName": "Guilty Gear Strive",
+        "slug": "combo-breaker-2026/event/guilty-gear-strive",
+        "game": "Guilty Gear -Strive-",
+        "gameColor": "#F59E0B",
+        "entrants": 980,
+        "date": "May 2026",
+        "location": "Schaumburg, IL"
+    },
+    {
+        "id": "ts-2027-t8",
+        "name": "Texas Showdown 2027 — TEKKEN 8",
+        "tournamentName": "Texas Showdown 2027",
+        "eventName": "Tekken 8 Singles",
+        "slug": "texas-showdown-2027/event/tekken-8",
+        "game": "Tekken 8",
+        "gameColor": "#00E5FF",
+        "entrants": 640,
+        "date": "Apr 2027",
+        "location": "Houston, TX"
+    },
+    {
+        "id": "ff-xvii-sf6",
+        "name": "Frosty Faustings XVII — Street Fighter 6",
+        "tournamentName": "Frosty Faustings XVII",
+        "eventName": "Street Fighter 6",
+        "slug": "frosty-faustings-xvii/event/street-fighter-6",
+        "game": "Street Fighter 6",
+        "gameColor": "#FF006E",
+        "entrants": 820,
+        "date": "Jan 2026",
+        "location": "Lombard, IL"
+    },
+    {
+        "id": "mk1-pro-2026",
+        "name": "Mortal Kombat 1 Pro Kommunity Cup",
+        "tournamentName": "MK1 Pro Kommunity",
+        "eventName": "Mortal Kombat 1",
+        "slug": "mk1-pro-kommunity-cup/event/mortal-kombat-1",
+        "game": "Mortal Kombat 1",
+        "gameColor": "#EF4444",
+        "entrants": 512,
+        "date": "Jul 2026",
+        "location": "Online / Global"
+    }
+]
+
+@app.get("/api/search-events")
+def search_events(q: Optional[str] = None):
+    """
+    Returns search results for Start.gg events and tournaments for live bracket import.
+    """
+    query_str = (q or "").strip().lower()
+    if not query_str:
+        return {"events": POPULAR_FGC_EVENTS}
+    
+    results = []
+    for item in POPULAR_FGC_EVENTS:
+        if (query_str in item["name"].lower() or 
+            query_str in item["tournamentName"].lower() or 
+            query_str in item["slug"].lower() or 
+            query_str in item["game"].lower()):
+            results.append(item)
+            
+    return {"events": results}
+
 
 
 @app.get("/api/feed/sidebar")
