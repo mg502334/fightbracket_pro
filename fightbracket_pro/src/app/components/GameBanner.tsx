@@ -96,8 +96,8 @@ export function GameBanner({ theme, entrantCount, checkedInCount, activeMatchCou
         {/* Right: Live stats */}
         <div className="flex items-center gap-6">
           <Stat icon={<Users size={14} />} label="ENTRANTS" value={entrantCount} color="#7A9EC0" />
-          <Stat icon={<Zap size={14} />} label="CHECKED IN" value={checkedInCount} color="#00FF88" />
-          <Stat icon={<Globe size={14} />} label="LIVE MATCHES" value={activeMatchCount} color={theme.primaryColor} pulse={isActive} />
+          <Stat icon={<Zap size={14} />} label="CHECKED IN" value={checkedInCount} color="#00E5FF" />
+          <Stat icon={<Globe size={14} />} label="LIVE MATCHES" value={activeMatchCount} color={activeMatchCount > 0 ? "#00FF88" : "#FF4D4D"} pulse={activeMatchCount > 0} />
 
           {isActive && (
             <div
