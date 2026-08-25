@@ -3177,15 +3177,15 @@ def get_fgc_deals(db: Session = Depends(get_db)):
         {
             "id": "steam-1778820-dlc",
             "game": "Tekken 8",
-            "title": "Tekken 8 - Season Pass 2 Pre-Order",
-            "category": "dlc",
-            "originalPrice": "$39.99",
-            "salePrice": "$29.99",
-            "discount": "-25%",
+            "title": "Tekken 8 - Base Game & Store Sale",
+            "category": "game",
+            "originalPrice": "$69.99",
+            "salePrice": "$34.99",
+            "discount": "-50%",
             "platform": "Steam (PC)",
             "store": "Steam Store",
             "link": "https://store.steampowered.com/app/1778820/TEKKEN_8/",
-            "badge": "HOT DEAL"
+            "badge": "STEAM SALE"
         },
         {
             "id": "ps-sf6-pass",
@@ -3198,21 +3198,33 @@ def get_fgc_deals(db: Session = Depends(get_db)):
             "platform": "PlayStation 5 / PS4",
             "store": "PlayStation Store",
             "link": "https://store.playstation.com/en-us/product/UP0102-PPSA02633_00-SF6Y2CHARPASS000",
-            "badge": "PS STORE DEAL"
+            "badge": "PS STORE SALE"
         },
         {
             "id": "gear-haute42-t16",
             "game": "Hardware",
-            "title": "Haute42 T16 All-Button Leverless Controller",
+            "title": "Haute42 T16 Leverless Arcade Controller",
             "category": "gear",
-            "originalPrice": "$89.99",
-            "salePrice": "$64.99",
-            "discount": "-28%",
+            "originalPrice": "$79.99",
+            "salePrice": "$69.99",
+            "discount": "-12%",
             "platform": "PC / PS5 / Switch / Xbox",
-            "store": "Haute42 Official",
-            "link": "https://haute42.com/products/haute42-t16",
-            "code": "FIGHTPRO10",
-            "badge": "GEAR PICK"
+            "store": "Amazon Verified Store",
+            "link": "https://www.amazon.com/dp/B0CNX2L75Q",
+            "badge": "VERIFIED GEAR"
+        },
+        {
+            "id": "gear-brook-wingman",
+            "game": "Hardware",
+            "title": "Brook Wingman FGC Converter for PS5",
+            "category": "gear",
+            "originalPrice": "$54.99",
+            "salePrice": "$49.99",
+            "discount": "-9%",
+            "platform": "PS5 / PS4 / PC",
+            "store": "Amazon Verified Store",
+            "link": "https://www.amazon.com/dp/B0C3GWZST9",
+            "badge": "TOURNAMENT ESSENTIAL"
         },
         {
             "id": "steam-1384160",

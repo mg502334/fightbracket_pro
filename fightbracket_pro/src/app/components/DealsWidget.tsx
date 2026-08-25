@@ -19,15 +19,15 @@ export interface DealItem {
 const DEFAULT_DEALS: DealItem[] = [
   {
     id: 'deal-1',
-    title: 'Tekken 8 - Season Pass 2 Pre-Order',
-    category: 'dlc',
-    originalPrice: '$39.99',
-    salePrice: '$29.99',
-    discount: '-25%',
+    title: 'Tekken 8 - Base Game & Store Sale',
+    category: 'game',
+    originalPrice: '$69.99',
+    salePrice: '$34.99',
+    discount: '-50%',
     platform: 'Steam (PC)',
     link: 'https://store.steampowered.com/app/1778820/TEKKEN_8/',
-    badge: 'HOT DEAL',
-    expiresIn: '3 days left'
+    badge: 'STEAM SALE',
+    expiresIn: 'Verified Store Sale'
   },
   {
     id: 'deal-2',
@@ -38,24 +38,35 @@ const DEFAULT_DEALS: DealItem[] = [
     discount: '-33%',
     platform: 'PlayStation Store',
     link: 'https://store.playstation.com/en-us/product/UP0102-PPSA02633_00-SF6Y2CHARPASS000',
-    badge: 'FGC SALE',
-    expiresIn: '5 days left'
+    badge: 'PS STORE SALE',
+    expiresIn: 'Verified Store Deal'
   },
   {
     id: 'deal-3',
-    title: 'Haute42 T16 All-Button Leverless Controller',
+    title: 'Haute42 T16 Leverless Arcade Controller',
     category: 'gear',
-    originalPrice: '$89.99',
-    salePrice: '$64.99',
-    discount: '-28%',
+    originalPrice: '$79.99',
+    salePrice: '$69.99',
+    discount: '-12%',
     platform: 'PC / PS5 / Switch / Xbox',
-    link: 'https://haute42.com/products/haute42-t16',
-    code: 'FIGHTPRO10',
-    badge: 'GEAR PICK',
-    expiresIn: 'Limited stock'
+    link: 'https://www.amazon.com/dp/B0CNX2L75Q',
+    badge: 'VERIFIED GEAR',
+    expiresIn: 'In Stock'
   },
   {
     id: 'deal-4',
+    title: 'Brook Wingman FGC Converter for PS5',
+    category: 'gear',
+    originalPrice: '$54.99',
+    salePrice: '$49.99',
+    discount: '-9%',
+    platform: 'PS5 / PS4 / PC',
+    link: 'https://www.amazon.com/dp/B0C3GWZST9',
+    badge: 'TOURNAMENT ESSENTIAL',
+    expiresIn: 'Official Brook Hardware'
+  },
+  {
+    id: 'deal-5',
     title: 'Guilty Gear -Strive- Daredevil Edition',
     category: 'game',
     originalPrice: '$59.99',
@@ -64,7 +75,7 @@ const DEFAULT_DEALS: DealItem[] = [
     platform: 'Steam Store',
     link: 'https://store.steampowered.com/app/1384160/GUILTY_GEAR_STRIVE/',
     badge: 'BEST VALUE',
-    expiresIn: 'Ends Sunday'
+    expiresIn: 'Verified Store Deal'
   }
 ];
 
