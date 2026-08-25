@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Swords, Clock, CheckCircle2, AlertCircle, ChevronRight, Search, X, Layers, Filter, Sparkles } from "lucide-react";
+import { Swords, Clock, CheckCircle2, AlertCircle, ChevronRight, Search, X, Layers, Filter, Sparkles, Tv } from "lucide-react";
 import { BracketType, type BracketMatch, type Player, type GameTheme, getChronologicalRoundName } from "../data/tournamentData";
 
 interface BracketViewProps {
@@ -445,6 +445,18 @@ export function BracketView({
               </div>
             )}
           </div>
+
+          {/* Open Dedicated Venue Display Window */}
+          <button
+            onClick={() => {
+              window.open('/display', 'BracketDisplayWindow', 'width=1920,height=1080');
+            }}
+            title="Open bracket in a new dedicated venue display window (ideal for external TV/monitor/projector displays)"
+            className="flex items-center gap-1.5 h-10 px-3.5 rounded-lg text-xs font-mono font-bold border transition-all hover:brightness-125 bg-cyan-500/10 text-cyan-400 border-cyan-500/40"
+          >
+            <Tv size={14} />
+            <span>DISPLAY MODE</span>
+          </button>
         </div>
       </div>
 
