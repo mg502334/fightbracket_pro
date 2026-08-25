@@ -203,37 +203,49 @@ export function DisplayWindow() {
             <div className="flex items-center gap-4 animate-marquee whitespace-nowrap">
               {/* Duplicate recent items for continuous infinite marquee loop */}
               {[...recentCompletedMatches, ...recentCompletedMatches].map((m, i) => {
-                const winner = players.find(p => p.id === m.winnerId);
-                const loser = players.find(p => p.id === (m.player1Id === m.winnerId ? m.player2Id : m.player1Id));
-                const wScore = m.player1Id === m.winnerId ? m.score1 : m.score2;
-                const lScore = m.player1Id === m.winnerId ? m.score2 : m.score1;
+                const p1 = players.find(p => p.id === m.player1Id);
+                const p2 = players.find(p => p.id === m.player2Id);
+                const p1IsWinner = m.winnerId === m.player1Id;
+                const p2IsWinner = m.winnerId === m.player2Id;
+                const shortGame = theme?.shortName || 'TEK';
+                const poolTag = m.pool ? `[P. ${m.pool}]` : '';
+                const shortRound = (m.roundName || 'MATCH')
+                  .replace(/WINNERS/gi, 'W.')
+                  .replace(/LOSERS/gi, 'L.')
+                  .replace(/GRAND FINALS?/gi, 'G. FINALS')
+                  .replace(/SEMI-FINALS?/gi, 'SEMIS')
+                  .replace(/FINALS?/gi, 'FINALS')
+                  .toUpperCase();
 
                 return (
                   <div
                     key={`${m.id}-${i}`}
-                    className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-black/60 border border-white/10 text-xs font-mono shrink-0 hover:bg-black/80 transition-colors"
+                    className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-black/60 border border-white/10 text-xs font-mono shrink-0 hover:bg-black/80 transition-colors shadow-sm"
                   >
-                    <span className="text-[10px] text-cyan-400 font-bold uppercase tracking-wider">
-                      {m.roundName || 'MATCH'}
-                    </span>
-                    <span className="text-gray-700 font-bold">|</span>
-                    
-                    {/* Winner in Bright Green */}
-                    <span className="font-bold flex items-center gap-1.5 text-[#00FF88]">
-                      <span>{winner?.tag || 'P1'}</span>
-                      <span className="bg-emerald-500/25 text-[#00FF88] border border-emerald-500/40 px-1.5 py-0.5 rounded text-[11px] font-bold">
-                        {wScore}
-                      </span>
+                    {/* Game Short Name & Pool & Short Round */}
+                    <span className="text-[11px] font-mono font-bold uppercase tracking-wider flex items-center gap-1.5">
+                      <span className="text-white/90 font-extrabold">{shortGame}</span>
+                      {poolTag && <span className="text-cyan-300 font-bold">{poolTag}</span>}
+                      <span className="text-cyan-400 font-bold">{shortRound}</span>
                     </span>
 
-                    <span className="text-gray-600 font-bold text-[10px]">DEF.</span>
+                    <span className="text-gray-600 font-bold">|</span>
 
-                    {/* Loser in Muted White */}
-                    <span className="text-white/60 font-semibold flex items-center gap-1.5">
-                      <span>{loser?.tag || 'P2'}</span>
-                      <span className="text-white/40 bg-white/5 border border-white/10 px-1.5 py-0.5 rounded text-[11px] font-bold">
-                        {lScore}
-                      </span>
+                    {/* Player 1 Tag */}
+                    <span className={`font-bold text-xs ${p1IsWinner ? 'text-[#00FF88] font-extrabold' : 'text-white/80'}`}>
+                      {p1?.tag || 'P1'}
+                    </span>
+
+                    <span className="text-gray-500 text-[10px] font-bold">vs</span>
+
+                    {/* Player 2 Tag */}
+                    <span className={`font-bold text-xs ${p2IsWinner ? 'text-[#00FF88] font-extrabold' : 'text-white/80'}`}>
+                      {p2?.tag || 'P2'}
+                    </span>
+
+                    {/* Score */}
+                    <span className="ml-1 px-1.5 py-0.5 rounded bg-emerald-500/20 text-[#00FF88] border border-emerald-500/40 font-mono font-extrabold text-[11px]">
+                      {m.score1 || 0} - {m.score2 || 0}
                     </span>
                   </div>
                 );
