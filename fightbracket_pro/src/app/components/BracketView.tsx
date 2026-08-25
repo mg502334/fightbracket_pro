@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Swords, Clock, CheckCircle2, AlertCircle, ChevronRight, Search, X, Layers, Filter, Sparkles, Tv } from "lucide-react";
+import { Swords, Clock, CheckCircle2, AlertCircle, ChevronRight, Search, X, Layers, Filter, Sparkles, Tv, RefreshCw } from "lucide-react";
 import { BracketType, type BracketMatch, type Player, type GameTheme, getChronologicalRoundName } from "../data/tournamentData";
 
 interface BracketViewProps {
@@ -12,6 +12,10 @@ interface BracketViewProps {
   onSelectPool?: (pool: string) => void;
   isImported?: boolean;
   onPlayerClick?: (playerId: string) => void;
+  onManualSync?: () => void;
+  lastSyncedAt?: Date | null;
+  isSyncing?: boolean;
+  autoSyncSlug?: string | null;
 }
 
 const STATE_CONFIG = {
@@ -457,6 +461,30 @@ export function BracketView({
             <Tv size={14} />
             <span>DISPLAY MODE</span>
           </button>
+
+          {/* Live Start.gg Sync & Manual Refresh Button */}
+          {onManualSync && (
+            <button
+              onClick={onManualSync}
+              disabled={isSyncing}
+              title={autoSyncSlug ? "Live Start.gg auto-sync active (polling every 10s during live matches). Click to sync immediately." : "Click to refresh bracket from Start.gg"}
+              className={`flex items-center gap-2 h-10 px-3.5 rounded-lg text-xs font-mono font-bold border transition-all ${
+                isSyncing
+                  ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/50'
+                  : autoSyncSlug
+                    ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/40 hover:bg-emerald-500/20'
+                    : 'bg-white/5 text-white/80 border-white/10 hover:bg-white/10'
+              }`}
+            >
+              <RefreshCw size={14} className={isSyncing ? 'animate-spin text-emerald-400' : ''} />
+              <div className="flex items-center gap-1.5">
+                {autoSyncSlug && !isSyncing && (
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse inline-block" />
+                )}
+                <span>{isSyncing ? 'SYNCING...' : autoSyncSlug ? 'LIVE SYNC (10s)' : 'REFRESH BRACKET'}</span>
+              </div>
+            </button>
+          )}
         </div>
       </div>
 

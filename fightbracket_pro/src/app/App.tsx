@@ -139,6 +139,8 @@ export default function App() {
   // Host & editing state
   const [tournamentOwnerId, setTournamentOwnerId] = useState<string | null>(() => safeParse('fb_tournamentOwnerId', null));
   const [pendingReportMatch, setPendingReportMatch] = useState<BracketMatch | null>(null);
+  const [isSyncing, setIsSyncing] = useState<boolean>(false);
+  const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(null);
 
   // Determine if the current user is the host
   const isHost = !tournamentOwnerId || (supabaseUser?.id === tournamentOwnerId) || (startggUser?.id === tournamentOwnerId);
@@ -253,13 +255,21 @@ export default function App() {
     }
   }, []);
 
+  // Dynamic adaptive live polling for Start.gg bracket updates
+  const hasActiveMatches = matches.some(m => m.state === 'in_progress' || m.state === 'called');
+
   useEffect(() => {
     if (!autoSyncSlug) return;
+
+    // Fast 10s polling during active live matches; 20s otherwise for instant score updates
+    const pollIntervalMs = hasActiveMatches ? 10000 : 20000;
+
     const interval = setInterval(() => {
       handleLiveImport(autoSyncSlug, true).catch(() => { });
-    }, 60000); // Poll every 60 seconds
+    }, pollIntervalMs);
+
     return () => clearInterval(interval);
-  }, [autoSyncSlug]);
+  }, [autoSyncSlug, hasActiveMatches]);
 
   // Create anonymous user ID if not logged in
   const userId = useMemo(() => {
@@ -796,398 +806,391 @@ export default function App() {
   }
 
   async function handleLiveImport(rawSlug: string, isAutoSync = false) {
-    let fullPath = rawSlug.trim();
-    // Strip domain prefix if included
-    if (fullPath.includes('start.gg/tournament/')) {
-      fullPath = fullPath.split('start.gg/tournament/')[1];
-    } else if (fullPath.includes('tournament/')) {
-      fullPath = fullPath.split('tournament/')[1];
-    }
-    fullPath = fullPath.split('?')[0].split('#')[0].trim();
-
-    // Extract event slug (e.g. "tekken-8" from "ceo-2026/event/tekken-8")
-    let slug = fullPath.split('/')[0].trim();
-    const eventMatch = fullPath.match(/\/event\/([^\/\?#]+)/i);
-    const eventSlug: string | null = eventMatch ? eventMatch[1] : null;
-
-    let token = localStorage.getItem('startgg_access_token') || localStorage.getItem('fb_startggToken');
-    if (token === 'SECURE_HIDDEN') {
-      token = null;
-    }
-
-    // Show a loading toast for large events that take time to fetch
-    const loadingToastId = !isAutoSync ? toast.loading(
-      eventSlug ? `Importing ${eventSlug.replace(/-/g, ' ')}...` : 'Importing tournament...',
-      { style: { background: 'var(--card)', border: '1px solid var(--border)', color: 'var(--foreground)' } }
-    ) : undefined;
-
-    let tournamentData: any = null;
+    setIsSyncing(true);
     try {
-      // Quick server-side fetch (works for small/medium events, times out for large ones)
-      const url = `/api/bracket/sync?slug=${encodeURIComponent(slug)}${eventSlug ? `&event_slug=${encodeURIComponent(eventSlug)}` : ''}${token ? `&token=${token}` : ''}`;
-      const res = await fetch(url);
-      if (res.ok) {
-        const json = await res.json();
-        tournamentData = json.data?.tournament;
+      let fullPath = rawSlug.trim();
+      // Strip domain prefix if included
+      if (fullPath.includes('start.gg/tournament/')) {
+        fullPath = fullPath.split('start.gg/tournament/')[1];
+      } else if (fullPath.includes('tournament/')) {
+        fullPath = fullPath.split('tournament/')[1];
       }
-      // Silently fall through to client-side fallback if server times out or errors
-    } catch (_) { /* ignore, try fallback */ }
+      fullPath = fullPath.split('?')[0].split('#')[0].trim();
 
-    if (!tournamentData) {
-      // Client-side fallback: each request goes through the proxy individually so
-      // there is no overall timeout — this handles large events like CEO 2026.
-      tournamentData = await fetchStartggDirect(slug, token, eventSlug);
-    }
+      // Extract event slug (e.g. "tekken-8" from "ceo-2026/event/tekken-8")
+      let slug = fullPath.split('/')[0].trim();
+      const eventSlug: string | null = fullPath.match(/\/event\/([^\/\?#]+)/i)?.[1] || null;
 
-    if (!tournamentData) throw new Error('Tournament not found or invalid format');
-
-    const tName = tournamentData.name;
-    const events = tournamentData.events || [];
-
-    let newPlayers: Player[] = [];
-    let newMatches: BracketMatch[] = [];
-    let newGameIds: string[] = [];
-    let newThemes: Record<string, GameTheme> = {};
-
-    events.forEach((ev: any) => {
-      if (!ev.videogame) return; // Skip events without a videogame
-      const gameId = `startgg-ev-${ev.id}`;
-      const evName = ev.name || ev.videogame.name;
-      const fullDisplayName = (ev.videogame?.name && !evName.toLowerCase().includes(ev.videogame.name.toLowerCase()))
-        ? `${ev.videogame.name} - ${evName}`.toUpperCase()
-        : evName.toUpperCase();
-
-      if (!gameOrder.includes(gameId) && !newGameIds.includes(gameId)) {
-        newGameIds.push(gameId);
-        let hue = Math.floor(Math.random() * 360);
-        const gameName = (ev.videogame?.name || evName).toLowerCase();
-        if (gameName.includes('tekken 8')) hue = 0;
-        else if (gameName.includes('street fighter 6')) hue = 280;
-        else if (gameName.includes('wolves') || gameName.includes('fatal fury')) hue = 50;
-
-        newThemes[gameId] = {
-          id: gameId,
-          displayName: fullDisplayName,
-          shortName: evName.substring(0, 3).toUpperCase(),
-          primaryColor: `hsl(${hue}, 100%, 60%)`,
-          secondaryColor: `hsl(${(hue + 45) % 360}, 100%, 60%)`,
-          bgFrom: `hsl(${hue}, 80%, 10%)`,
-          glowColor: `hsla(${hue}, 100%, 60%, 0.4)`,
-          description: `${tName} — ${evName}`,
-          publisher: 'Start.gg',
-        };
+      let token = localStorage.getItem('startgg_access_token') || localStorage.getItem('fb_startggToken');
+      if (token === 'SECURE_HIDDEN') {
+        token = null;
       }
 
-      const entrants = ev.entrants?.nodes || [];
-      entrants.forEach((ent: any) => {
-        const userSlug = ent.participants?.[0]?.user?.slug;
-        newPlayers.push({
-          id: String(ent.id),
-          tag: ent.participants?.[0]?.gamerTag || ent.name,
-          realName: ent.name,
-          country: 'US',
-          countryFlag: '🇺🇸',
-          seed: ent.seeds?.[0]?.seedNum || 1,
-          checkedIn: true,
-          phone: '',
-          smsNotified: false,
-          character: 'Unknown',
-          placement: ent.standing?.placement,
-          gameId,
-          ...(userSlug ? { _tempSlug: userSlug } : {})
-        } as any);
-      });
+      // Show a loading toast for large events that take time to fetch
+      const loadingToastId = !isAutoSync ? toast.loading(
+        eventSlug ? `Importing ${eventSlug.replace(/-/g, ' ')}...` : 'Importing tournament...',
+        { style: { background: 'var(--card)', border: '1px solid var(--border)', color: 'var(--foreground)' } }
+      ) : undefined;
 
-      const sets = ev.sets?.nodes || [];
-      sets.forEach((set: any, idx: number) => {
-        const slots = set.slots || [];
-        const p1 = slots[0]?.entrant?.id;
-        const p2 = slots[1]?.entrant?.id;
-
-        let matchState: BracketMatch['state'] = 'pending';
-        if (set.state === 2) matchState = 'in_progress';
-        else if (set.state === 3) matchState = 'completed';
-        else if (set.state === 6) matchState = 'called';
-
-        let streamUrl: string | undefined = undefined;
-        if (set.stream?.streamName) {
-          streamUrl = parseStreamUrl(set.stream.streamName, set.stream.streamSource);
+      let tournamentData: any = null;
+      try {
+        // Quick server-side fetch (works for small/medium events, times out for large ones)
+        const url = `/api/bracket/sync?slug=${encodeURIComponent(slug)}${eventSlug ? `&event_slug=${encodeURIComponent(eventSlug)}` : ''}${token ? `&token=${token}` : ''}`;
+        const res = await fetch(url);
+        if (res.ok) {
+          const json = await res.json();
+          tournamentData = json.data?.tournament;
         }
-        const winnerId = set.winnerId ? String(set.winnerId) : null;
+        // Silently fall through to client-side fallback if server times out or errors
+      } catch (_) { /* ignore, try fallback */ }
 
-        let p1Score = 0;
-        let p2Score = 0;
-        const s1 = slots[0]?.standing?.stats?.score?.value;
-        const s2 = slots[1]?.standing?.stats?.score?.value;
-        if (s1 != null && s1 >= 0) p1Score = s1;
-        if (s2 != null && s2 >= 0) p2Score = s2;
+      if (!tournamentData) {
+        // Client-side fallback: each request goes through the proxy individually so
+        // there is no overall timeout — this handles large events like CEO 2026.
+        tournamentData = await fetchStartggDirect(slug, token, eventSlug);
+      }
 
-        let parsedRound = set.round || 1;
-        if (set.fullRoundText && set.fullRoundText.toLowerCase().includes('reset')) {
-          parsedRound += 0.1;
+      if (!tournamentData) throw new Error('Tournament not found or invalid format');
+
+      const tName = tournamentData.name;
+      const events = tournamentData.events || [];
+
+      let newPlayers: Player[] = [];
+      let newMatches: BracketMatch[] = [];
+      let newGameIds: string[] = [];
+      let newThemes: Record<string, GameTheme> = {};
+
+      events.forEach((ev: any) => {
+        if (!ev.videogame) return; // Skip events without a videogame
+        const gameId = `startgg-ev-${ev.id}`;
+        const evName = ev.name || ev.videogame.name;
+        const fullDisplayName = (ev.videogame?.name && !evName.toLowerCase().includes(ev.videogame.name.toLowerCase()))
+          ? `${ev.videogame.name} - ${evName}`.toUpperCase()
+          : evName.toUpperCase();
+
+        if (!gameOrder.includes(gameId) && !newGameIds.includes(gameId)) {
+          newGameIds.push(gameId);
+          let hue = Math.floor(Math.random() * 360);
+          const gameName = (ev.videogame?.name || evName).toLowerCase();
+          if (gameName.includes('tekken 8')) hue = 0;
+          else if (gameName.includes('street fighter 6')) hue = 280;
+          else if (gameName.includes('wolves') || gameName.includes('fatal fury')) hue = 50;
+
+          newThemes[gameId] = {
+            id: gameId,
+            displayName: fullDisplayName,
+            shortName: evName.substring(0, 3).toUpperCase(),
+            primaryColor: `hsl(${hue}, 100%, 60%)`,
+            secondaryColor: `hsl(${(hue + 45) % 360}, 100%, 60%)`,
+            bgFrom: `hsl(${hue}, 80%, 10%)`,
+            glowColor: `hsla(${hue}, 100%, 60%, 0.4)`,
+            description: `${tName} — ${evName}`,
+            publisher: 'Start.gg',
+          };
         }
 
-        if (set.displayScore && set.displayScore !== "DQ") {
-          const parts = set.displayScore.split(" - ");
-          if (parts.length === 2) {
-            const leftScoreStr = parts[0].trim().split(" ").pop();
-            const rightScoreStr = parts[1].trim().split(" ").pop();
-            const ls = parseInt(leftScoreStr as string);
-            const rs = parseInt(rightScoreStr as string);
-            if (!isNaN(ls)) p1Score = ls;
-            if (!isNaN(rs)) p2Score = rs;
+        const entrants = ev.entrants?.nodes || [];
+        entrants.forEach((ent: any) => {
+          const userSlug = ent.participants?.[0]?.user?.slug;
+          newPlayers.push({
+            id: String(ent.id),
+            tag: ent.participants?.[0]?.gamerTag || ent.name,
+            realName: ent.name,
+            country: 'US',
+            countryFlag: '🇺🇸',
+            seed: ent.seeds?.[0]?.seedNum || 1,
+            checkedIn: true,
+            phone: '',
+            smsNotified: false,
+            character: 'Unknown',
+            placement: ent.standing?.placement,
+            gameId,
+            ...(userSlug ? { _tempSlug: userSlug } : {})
+          } as any);
+        });
+
+        const sets = ev.sets?.nodes || [];
+        sets.forEach((set: any, idx: number) => {
+          const slots = set.slots || [];
+          const p1 = slots[0]?.entrant?.id;
+          const p2 = slots[1]?.entrant?.id;
+
+          let matchState: BracketMatch['state'] = 'pending';
+          if (set.state === 2) matchState = 'in_progress';
+          else if (set.state === 3) matchState = 'completed';
+          else if (set.state === 6) matchState = 'called';
+
+          let streamUrl: string | undefined = undefined;
+          if (set.stream?.streamName) {
+            streamUrl = parseStreamUrl(set.stream.streamName, set.stream.streamSource);
           }
-        }
+          const winnerId = set.winnerId ? String(set.winnerId) : null;
 
-        const isDQ = set.displayScore === "DQ" && winnerId;
-        const loserId = isDQ ? (p1 === winnerId ? p2 : p1) : null;
+          let p1Score = 0;
+          let p2Score = 0;
+          const s1 = slots[0]?.standing?.stats?.score?.value;
+          const s2 = slots[1]?.standing?.stats?.score?.value;
+          if (s1 != null && s1 >= 0) p1Score = s1;
+          if (s2 != null && s2 >= 0) p2Score = s2;
 
-        if (matchState === 'completed' && p1 && p2) {
-          const p1Player = newPlayers.find(np => np.id === String(p1));
-          if (p1Player && p1 !== loserId) p1Player.checkedIn = true;
-          
-          const p2Player = newPlayers.find(np => np.id === String(p2));
-          if (p2Player && p2 !== loserId) p2Player.checkedIn = true;
-        }
+          let parsedRound = set.round || 1;
+          if (set.fullRoundText && set.fullRoundText.toLowerCase().includes('reset')) {
+            parsedRound += 0.1;
+          }
 
-        // Only include prereq IDs where prereqType === 'set' — 'entrant'/'seed' types
-        // are player seed IDs, not match IDs, and corrupt the bracket tree if included.
-        const prereqSetIds = slots
-          .filter((s: any) => s.prereqType === 'set' && !!s.prereqId)
-          .map((s: any) => String(s.prereqId));
+          if (set.displayScore && set.displayScore !== "DQ") {
+            const parts = set.displayScore.split(" - ");
+            if (parts.length === 2) {
+              const leftScoreStr = parts[0].trim().split(" ").pop();
+              const rightScoreStr = parts[1].trim().split(" ").pop();
+              const ls = parseInt(leftScoreStr as string);
+              const rs = parseInt(rightScoreStr as string);
+              if (!isNaN(ls)) p1Score = ls;
+              if (!isNaN(rs)) p2Score = rs;
+            }
+          }
 
-        const poolIdentifier = set.phaseGroup?.displayIdentifier;
-        const phaseName = set.phaseGroup?.phase?.name;
-        let roundLabel = set.fullRoundText || `Round ${set.round || 1}`;
-        if (poolIdentifier && !roundLabel.toLowerCase().includes('pool')) {
-          roundLabel = `[Pool ${poolIdentifier}] ${roundLabel}`;
-        }
+          const isDQ = set.displayScore === "DQ" && winnerId;
+          const loserId = isDQ ? (p1 === winnerId ? p2 : p1) : null;
 
-        // Use numeric set.id for stable ordering within rounds
-        // start.gg IDs are always increasing in chronological bracket order
-        const numericSetId = parseInt(String(set.id), 10) || idx;
+          if (matchState === 'completed' && p1 && p2) {
+            const p1Player = newPlayers.find(np => np.id === String(p1));
+            if (p1Player && p1 !== loserId) p1Player.checkedIn = true;
+            
+            const p2Player = newPlayers.find(np => np.id === String(p2));
+            if (p2Player && p2 !== loserId) p2Player.checkedIn = true;
+          }
 
-        newMatches.push({
-          id: String(set.id),
-          gameId,
-          round: parsedRound,
-          roundName: roundLabel,
-          matchNumber: numericSetId,
-          player1Id: p1 ? String(p1) : null,
-          player2Id: p2 ? String(p2) : null,
-          state: matchState,
-          stationId: null,
-          player1Score: p1Score,
-          player2Score: p2Score,
-          winnerId,
-          streamUrl,
-          bestOf: 3,
-          pool: poolIdentifier,
-          phase: phaseName,
-          identifier: set.identifier || undefined,
-          prereqSetIds: prereqSetIds.length > 0 ? prereqSetIds : undefined,
+          const prereqSetIds = slots
+            .filter((s: any) => s.prereqType === 'set' && !!s.prereqId)
+            .map((s: any) => String(s.prereqId));
+
+          const poolIdentifier = set.phaseGroup?.displayIdentifier;
+          const phaseName = set.phaseGroup?.phase?.name;
+          let roundLabel = set.fullRoundText || `Round ${set.round || 1}`;
+          if (poolIdentifier && !roundLabel.toLowerCase().includes('pool')) {
+            roundLabel = `[Pool ${poolIdentifier}] ${roundLabel}`;
+          }
+
+          const numericSetId = parseInt(String(set.id), 10) || idx;
+
+          newMatches.push({
+            id: String(set.id),
+            gameId,
+            round: parsedRound,
+            roundName: roundLabel,
+            matchNumber: numericSetId,
+            player1Id: p1 ? String(p1) : null,
+            player2Id: p2 ? String(p2) : null,
+            state: matchState,
+            stationId: null,
+            player1Score: p1Score,
+            player2Score: p2Score,
+            winnerId,
+            streamUrl,
+            bestOf: 3,
+            pool: poolIdentifier,
+            phase: phaseName,
+            identifier: set.identifier || undefined,
+            prereqSetIds: prereqSetIds.length > 0 ? prereqSetIds : undefined,
+          });
         });
       });
-    });
 
-    // AUTO-LINKER: If start.gg API fails to return prereqId (common in some pool phases),
-    // we manually reconstruct the tree using Player-Tracing and identifier sorting.
-    const hasTreeData = newMatches.some(m => m.prereqSetIds && m.prereqSetIds.length > 0);
-    if (!hasTreeData) {
-      // Pass 1: Player-Tracing (100% accurate for played matches)
-      for (const m of newMatches) {
-        m.prereqSetIds = m.prereqSetIds || [];
-        
-        if (m.player1Id) {
-          const p1Prereq = newMatches.find(prev => 
-            prev.pool === m.pool && 
-            Math.abs(prev.round) < Math.abs(m.round) && 
-            prev.winnerId === m.player1Id
-          );
-          if (p1Prereq && !m.prereqSetIds.includes(p1Prereq.id)) m.prereqSetIds.push(p1Prereq.id);
-        }
-        
-        if (m.player2Id) {
-          const p2Prereq = newMatches.find(prev => 
-            prev.pool === m.pool && 
-            Math.abs(prev.round) < Math.abs(m.round) && 
-            prev.winnerId === m.player2Id
-          );
-          if (p2Prereq && !m.prereqSetIds.includes(p2Prereq.id)) m.prereqSetIds.push(p2Prereq.id);
-        }
-      }
-
-      // Pass 2: Identifier-Sorting Fallback for unplayed matches
-      const phasePools = new Map<string, typeof newMatches>();
-      for (const m of newMatches) {
-        const key = `${m.phase}-${m.pool}`;
-        if (!phasePools.has(key)) phasePools.set(key, []);
-        phasePools.get(key)!.push(m);
-      }
-
-      for (const pMatches of phasePools.values()) {
-        const wMatches = pMatches.filter(m => m.round > 0);
-        const rMap = new Map<number, typeof newMatches>();
-        for (const m of wMatches) {
-          if (!rMap.has(m.round)) rMap.set(m.round, []);
-          rMap.get(m.round)!.push(m);
-        }
-
-        const rounds = Array.from(rMap.keys()).sort((a,b)=>a-b);
-        for (let i = 0; i < rounds.length - 1; i++) {
-          const currRound = rMap.get(rounds[i])!;
-          const nextRound = rMap.get(rounds[i+1])!;
+      const hasTreeData = newMatches.some(m => m.prereqSetIds && m.prereqSetIds.length > 0);
+      if (!hasTreeData) {
+        for (const m of newMatches) {
+          m.prereqSetIds = m.prereqSetIds || [];
           
-          const sortByIndentifier = (a: any, b: any) => {
-            const idA = a.identifier;
-            const idB = b.identifier;
-            if (idA && idB) {
-              if (idA.length !== idB.length) return idA.length - idB.length;
-              return idA.localeCompare(idB);
-            }
-            return 0;
-          };
-
-          currRound.sort(sortByIndentifier);
-          nextRound.sort(sortByIndentifier);
-
-          for (let j = 0; j < nextRound.length; j++) {
-            const parent = nextRound[j];
-            if (parent.prereqSetIds && parent.prereqSetIds.length === 2) continue; // Already linked by Player-Tracing
-            
-            const c1 = currRound[j * 2];
-            const c2 = currRound[j * 2 + 1];
-            
-            if (c1 && !parent.prereqSetIds!.includes(c1.id)) parent.prereqSetIds!.push(c1.id);
-            if (c2 && !parent.prereqSetIds!.includes(c2.id)) parent.prereqSetIds!.push(c2.id);
+          if (m.player1Id) {
+            const p1Prereq = newMatches.find(prev => 
+              prev.pool === m.pool && 
+              Math.abs(prev.round) < Math.abs(m.round) && 
+              prev.winnerId === m.player1Id
+            );
+            if (p1Prereq && !m.prereqSetIds.includes(p1Prereq.id)) m.prereqSetIds.push(p1Prereq.id);
           }
-        } // END OF WINNERS LOOP
-
-        const lMatches = pMatches.filter(m => m.round < 0);
-        const lMap = new Map<number, typeof newMatches>();
-        for (const m of lMatches) {
-          if (!lMap.has(m.round)) lMap.set(m.round, []);
-          lMap.get(m.round)!.push(m);
+          
+          if (m.player2Id) {
+            const p2Prereq = newMatches.find(prev => 
+              prev.pool === m.pool && 
+              Math.abs(prev.round) < Math.abs(m.round) && 
+              prev.winnerId === m.player2Id
+            );
+            if (p2Prereq && !m.prereqSetIds.includes(p2Prereq.id)) m.prereqSetIds.push(p2Prereq.id);
+          }
         }
 
-        const lRounds = Array.from(lMap.keys()).sort((a,b)=>Math.abs(a)-Math.abs(b));
-        for (let i = 0; i < lRounds.length - 1; i++) {
-          const currRound = lMap.get(lRounds[i])!;
-          const nextRound = lMap.get(lRounds[i+1])!;
-          
-          const sortByIndentifier = (a: any, b: any) => {
-            const idA = a.identifier;
-            const idB = b.identifier;
-            if (idA && idB) {
-              if (idA.length !== idB.length) return idA.length - idB.length;
-              return idA.localeCompare(idB);
-            }
-            return 0;
-          };
+        const phasePools = new Map<string, typeof newMatches>();
+        for (const m of newMatches) {
+          const key = `${m.phase}-${m.pool}`;
+          if (!phasePools.has(key)) phasePools.set(key, []);
+          phasePools.get(key)!.push(m);
+        }
 
-          currRound.sort(sortByIndentifier);
-          nextRound.sort(sortByIndentifier);
+        for (const pMatches of phasePools.values()) {
+          const wMatches = pMatches.filter(m => m.round > 0);
+          const rMap = new Map<number, typeof newMatches>();
+          for (const m of wMatches) {
+            if (!rMap.has(m.round)) rMap.set(m.round, []);
+            rMap.get(m.round)!.push(m);
+          }
 
-          if (currRound.length === nextRound.length) {
-            // Drop round: 1-to-1 progression
+          const rounds = Array.from(rMap.keys()).sort((a,b)=>a-b);
+          for (let i = 0; i < rounds.length - 1; i++) {
+            const currRound = rMap.get(rounds[i])!;
+            const nextRound = rMap.get(rounds[i+1])!;
+            
+            const sortByIndentifier = (a: any, b: any) => {
+              const idA = a.identifier;
+              const idB = b.identifier;
+              if (idA && idB) {
+                if (idA.length !== idB.length) return idA.length - idB.length;
+                return idA.localeCompare(idB);
+              }
+              return 0;
+            };
+
+            currRound.sort(sortByIndentifier);
+            nextRound.sort(sortByIndentifier);
+
             for (let j = 0; j < nextRound.length; j++) {
               const parent = nextRound[j];
-              if (parent.prereqSetIds && parent.prereqSetIds.length > 0) continue; // Skip if Player-Tracing found it
-              
-              const child = currRound[j];
-              if (child && !parent.prereqSetIds!.includes(child.id)) parent.prereqSetIds!.push(child.id);
-            }
-          } else if (currRound.length === nextRound.length * 2) {
-            // Standard progression round: 2-to-1
-            for (let j = 0; j < nextRound.length; j++) {
-              const parent = nextRound[j];
-              if (parent.prereqSetIds && parent.prereqSetIds.length === 2) continue; // Skip if Player-Tracing found both
+              if (parent.prereqSetIds && parent.prereqSetIds.length === 2) continue; 
               
               const c1 = currRound[j * 2];
               const c2 = currRound[j * 2 + 1];
+              
               if (c1 && !parent.prereqSetIds!.includes(c1.id)) parent.prereqSetIds!.push(c1.id);
               if (c2 && !parent.prereqSetIds!.includes(c2.id)) parent.prereqSetIds!.push(c2.id);
+            }
+          } 
+
+          const lMatches = pMatches.filter(m => m.round < 0);
+          const lMap = new Map<number, typeof newMatches>();
+          for (const m of lMatches) {
+            if (!lMap.has(m.round)) lMap.set(m.round, []);
+            lMap.get(m.round)!.push(m);
+          }
+
+          const lRounds = Array.from(lMap.keys()).sort((a,b)=>Math.abs(a)-Math.abs(b));
+          for (let i = 0; i < lRounds.length - 1; i++) {
+            const currRound = lMap.get(lRounds[i])!;
+            const nextRound = lMap.get(lRounds[i+1])!;
+            
+            const sortByIndentifier = (a: any, b: any) => {
+              const idA = a.identifier;
+              const idB = b.identifier;
+              if (idA && idB) {
+                if (idA.length !== idB.length) return idA.length - idB.length;
+                return idA.localeCompare(idB);
+              }
+              return 0;
+            };
+
+            currRound.sort(sortByIndentifier);
+            nextRound.sort(sortByIndentifier);
+
+            if (currRound.length === nextRound.length) {
+              for (let j = 0; j < nextRound.length; j++) {
+                const parent = nextRound[j];
+                if (parent.prereqSetIds && parent.prereqSetIds.length > 0) continue; 
+                
+                const child = currRound[j];
+                if (child && !parent.prereqSetIds!.includes(child.id)) parent.prereqSetIds!.push(child.id);
+              }
+            } else if (currRound.length === nextRound.length * 2) {
+              for (let j = 0; j < nextRound.length; j++) {
+                const parent = nextRound[j];
+                if (parent.prereqSetIds && parent.prereqSetIds.length === 2) continue; 
+                
+                const c1 = currRound[j * 2];
+                const c2 = currRound[j * 2 + 1];
+                if (c1 && !parent.prereqSetIds!.includes(c1.id)) parent.prereqSetIds!.push(c1.id);
+                if (c2 && !parent.prereqSetIds!.includes(c2.id)) parent.prereqSetIds!.push(c2.id);
+              }
             }
           }
         }
       }
-    }
 
-    const allSlugs = Array.from(new Set(newPlayers.map((p: any) => p._tempSlug).filter(Boolean)));
-    if (allSlugs.length > 0) {
-      try {
-        const mapRes = await fetch(`${API_URL}/api/users/map-startgg`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ slugs: allSlugs })
-        });
-        if (mapRes.ok) {
-          const { mapping } = await mapRes.json();
-          newPlayers.forEach((p: any) => {
-             const sSlug = p._tempSlug;
-             if (sSlug && mapping[sSlug]) {
-               p.fbUserId = mapping[sSlug].fbUserId;
-               p.avatarUrl = mapping[sSlug].avatarUrl;
-             }
-             delete p._tempSlug;
+      const allSlugs = Array.from(new Set(newPlayers.map((p: any) => p._tempSlug).filter(Boolean)));
+      if (allSlugs.length > 0) {
+        try {
+          const mapRes = await fetch(`${API_URL}/api/users/map-startgg`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ slugs: allSlugs })
           });
+          if (mapRes.ok) {
+            const { mapping } = await mapRes.json();
+            newPlayers.forEach((p: any) => {
+               const sSlug = p._tempSlug;
+               if (sSlug && mapping[sSlug]) {
+                 p.fbUserId = mapping[sSlug].fbUserId;
+                 p.avatarUrl = mapping[sSlug].avatarUrl;
+               }
+               delete p._tempSlug;
+            });
+          }
+        } catch (e) {
+          console.error("Failed to map startgg users", e);
         }
-      } catch (e) {
-        console.error("Failed to map startgg users", e);
       }
-    }
 
-    if (newGameIds.length > 0) {
-      setGameThemes(prev => ({ ...prev, ...newThemes }));
-      setGameOrder(prev => [...prev, ...newGameIds]);
-      setActiveGame(newGameIds[0]);
-    }
-
-    let tLocation = 'Online';
-    if (!tournamentData.isOnline) {
-      if (tournamentData.city && tournamentData.addrState) {
-        tLocation = `${tournamentData.city}, ${tournamentData.addrState}`;
-      } else if (tournamentData.venueAddress) {
-        tLocation = tournamentData.venueAddress;
-      } else {
-        tLocation = 'Offline';
+      if (newGameIds.length > 0) {
+        setGameThemes(prev => ({ ...prev, ...newThemes }));
+        setGameOrder(prev => [...prev, ...newGameIds]);
+        setActiveGame(newGameIds[0]);
       }
-    }
-    setActiveTournament({ name: tName, location: tLocation });
 
-    // Merge state for 100% accurate sync
-    setPlayers(prev => {
-      const filteredPrev = prev.filter(p => !p.id.startsWith('tk') && !p.id.startsWith('sf') && !p.id.startsWith('ff'));
-      const merged = [...filteredPrev];
-      newPlayers.forEach(np => {
-        const idx = merged.findIndex(p => p.id === np.id);
-        if (idx >= 0) merged[idx] = { ...merged[idx], ...np };
-        else merged.push(np);
-      });
-      return merged;
-    });
-
-    setMatches(prev => {
-      const merged = [...prev];
-      newMatches.forEach(nm => {
-        const idx = merged.findIndex(m => m.id === nm.id);
-        if (idx >= 0) {
-          // preserve station assignment if already called/in_progress locally
-          merged[idx] = { ...merged[idx], ...nm, stationId: merged[idx].stationId };
+      let tLocation = 'Online';
+      if (!tournamentData.isOnline) {
+        if (tournamentData.city && tournamentData.addrState) {
+          tLocation = `${tournamentData.city}, ${tournamentData.addrState}`;
+        } else if (tournamentData.venueAddress) {
+          tLocation = tournamentData.venueAddress;
         } else {
-          merged.push(nm);
+          tLocation = 'Offline';
         }
-      });
-      return merged;
-    });
+      }
+      setActiveTournament({ name: tName, location: tLocation, slug });
 
-    if (!isAutoSync) {
-      setAutoSyncSlug(slug);
-      setShowImportModal(false);
-      if (loadingToastId) toast.dismiss(loadingToastId);
-      toast.success(`Imported ${tName} successfully!`, {
-        style: { background: 'var(--card)', border: `1px solid var(--border)`, color: '#00FF88' },
+      setPlayers(prev => {
+        const filteredPrev = prev.filter(p => !p.id.startsWith('tk') && !p.id.startsWith('sf') && !p.id.startsWith('ff'));
+        const merged = [...filteredPrev];
+        newPlayers.forEach(np => {
+          const idx = merged.findIndex(p => p.id === np.id);
+          if (idx >= 0) merged[idx] = { ...merged[idx], ...np };
+          else merged.push(np);
+        });
+        return merged;
       });
+
+      setMatches(prev => {
+        const merged = [...prev];
+        newMatches.forEach(nm => {
+          const idx = merged.findIndex(m => m.id === nm.id);
+          if (idx >= 0) {
+            merged[idx] = { ...merged[idx], ...nm, stationId: merged[idx].stationId };
+          } else {
+            merged.push(nm);
+          }
+        });
+        return merged;
+      });
+
+      if (!isAutoSync) {
+        setAutoSyncSlug(slug);
+        setShowImportModal(false);
+        if (loadingToastId) toast.dismiss(loadingToastId);
+        toast.success(`Imported ${tName} successfully!`, {
+          style: { background: 'var(--card)', border: `1px solid var(--border)`, color: '#00FF88' },
+        });
+      }
+    } finally {
+      setIsSyncing(false);
+      setLastSyncedAt(new Date());
     }
   }
 
@@ -1635,6 +1638,10 @@ export default function App() {
                     onSelectPool={setSelectedPool}
                     isImported={!!activeTournament}
                     onPlayerClick={(id) => setTargetProfileUserId(id)}
+                    onManualSync={() => autoSyncSlug ? handleLiveImport(autoSyncSlug) : (activeTournament?.slug ? handleLiveImport(activeTournament.slug) : null)}
+                    lastSyncedAt={lastSyncedAt}
+                    isSyncing={isSyncing}
+                    autoSyncSlug={autoSyncSlug || activeTournament?.slug || null}
                   />
                 </div>
               )}
