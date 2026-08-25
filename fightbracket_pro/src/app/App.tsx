@@ -2067,7 +2067,7 @@ function OverviewTab({
             style={{ fontFamily: 'JetBrains Mono, monospace' }}
           />
         </div>
-        <div className="overflow-y-auto" style={{ maxHeight: 300 }}>
+        <div className="overflow-y-auto" style={{ maxHeight: 360 }}>
           {filteredPlayers.length === 0 ? (
             <div className="py-6 text-center text-xs opacity-40" style={{ fontFamily: 'JetBrains Mono, monospace' }}>No players found</div>
           ) : (
@@ -2075,20 +2075,20 @@ function OverviewTab({
               const gt = gameThemes[p.gameId] || { primaryColor: '#aaa', shortName: 'GAME' };
               const isEliminated = p.status === 'eliminated';
               return (
-                <div key={p.id} className="flex items-center gap-3 px-5 py-2.5" style={{ borderBottom: '1px solid rgba(122,158,192,0.05)', opacity: isEliminated ? 0.5 : 1 }}>
-                  <span className="text-sm">{p.countryFlag}</span>
-                  <div className="flex-1">
-                    <div className="text-xs" style={{ fontFamily: 'Rajdhani, sans-serif', fontWeight: 700, color: isEliminated ? '#FF1744' : 'var(--foreground)', textDecoration: isEliminated ? 'line-through' : 'none' }}>
+                <div key={p.id} className="flex items-center gap-3 px-5 py-3" style={{ borderBottom: '1px solid rgba(122,158,192,0.08)' }}>
+                  <span className="text-base shrink-0">{p.countryFlag}</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-base leading-snug truncate" style={{ fontFamily: 'Rajdhani, sans-serif', fontWeight: 800, color: isEliminated ? '#FF4D4D' : 'var(--foreground)', textDecoration: isEliminated ? 'line-through' : 'none', opacity: isEliminated ? 0.75 : 1 }}>
                       {p.tag}
                     </div>
-                    <div className="text-xs opacity-40" style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9 }}>{gt.shortName} · #{p.seed}</div>
+                    <div className="text-xs opacity-60 mt-0.5" style={{ fontFamily: 'JetBrains Mono, monospace' }}>{gt.shortName} · #{p.seed}</div>
                   </div>
-                  <span className="text-xs tabular-nums font-bold" style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10, color: p.status === 'eliminated' ? '#FF1744' : p.status === 'winner' ? '#FFD600' : '#00FF88' }}>
+                  <span className="text-xs tabular-nums font-bold px-2 py-0.5 rounded border" style={{ fontFamily: 'JetBrains Mono, monospace', color: p.status === 'eliminated' ? '#FF4D4D' : p.status === 'winner' ? '#FFD600' : '#00FF88', borderColor: p.status === 'eliminated' ? '#FF4D4D40' : p.status === 'winner' ? '#FFD60040' : '#00FF8840', background: p.status === 'eliminated' ? '#FF4D4D10' : p.status === 'winner' ? '#FFD60010' : '#00FF8810' }}>
                     {p.status.toUpperCase()}
                   </span>
                   {isHost && (
-                    <button onClick={() => onRemovePlayer(p.id)} className="opacity-50 hover:opacity-100 hover:text-[#FF1744] transition-all ml-2">
-                      <Trash2 size={12} />
+                    <button onClick={() => onRemovePlayer(p.id)} className="opacity-50 hover:opacity-100 hover:text-[#FF1744] transition-all ml-1 p-1">
+                      <Trash2 size={14} />
                     </button>
                   )}
                 </div>
@@ -2117,13 +2117,13 @@ function OverviewTab({
                 const colors: Record<number, string> = { 1: '#FFD700', 2: '#C0C0C0', 3: '#CD7F32' };
                 const color = colors[p.placement!] || 'var(--foreground)';
                 return (
-                  <div key={p.id} className="flex items-center gap-3 px-5 py-2.5" style={{ borderBottom: '1px solid rgba(122,158,192,0.05)' }}>
-                    <div className="w-6 text-center text-xs font-bold" style={{ fontFamily: 'JetBrains Mono, monospace', color }}>
+                  <div key={p.id} className="flex items-center gap-3 px-5 py-3" style={{ borderBottom: '1px solid rgba(122,158,192,0.08)' }}>
+                    <div className="w-6 text-center text-sm font-bold" style={{ fontFamily: 'JetBrains Mono, monospace', color }}>
                       {p.placement}
                     </div>
-                    <span className="text-sm">{p.countryFlag}</span>
-                    <div className="flex-1">
-                      <div className="text-xs" style={{ fontFamily: 'Rajdhani, sans-serif', fontWeight: 700, color: 'var(--foreground)' }}>
+                    <span className="text-base">{p.countryFlag}</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-base leading-snug truncate" style={{ fontFamily: 'Rajdhani, sans-serif', fontWeight: 800, color: 'var(--foreground)' }}>
                         {p.tag}
                       </div>
                     </div>

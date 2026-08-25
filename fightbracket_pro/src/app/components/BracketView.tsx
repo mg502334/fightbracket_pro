@@ -1265,10 +1265,10 @@ function PlayerSlot({
             />
           )}
           <span
-            className="text-sm truncate flex items-center gap-1"
+            className="text-base truncate flex items-center gap-1 leading-snug"
             style={{
               fontFamily: 'Rajdhani, sans-serif',
-              fontWeight: isWinner || isSearched ? 700 : 500,
+              fontWeight: isWinner || isSearched ? 800 : 700,
               color: isSearched ? '#00FF88' : isWinner ? theme.primaryColor : 'var(--foreground)',
               textDecoration: player.fbUserId ? 'underline' : 'none',
               textDecorationColor: theme.primaryColor,
@@ -1277,13 +1277,13 @@ function PlayerSlot({
             }}
           >
             {!player.avatarUrl && player.countryFlag} {player.tag}
-            {isSearched && <Sparkles size={10} className="text-cyan-400 animate-pulse" />}
+            {isSearched && <Sparkles size={12} className="text-cyan-400 animate-pulse" />}
           </span>
         </button>
       </div>
       <span
-        className="text-sm tabular-nums ml-2 shrink-0"
-        style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, color: isWinner ? theme.primaryColor : score > 0 ? 'var(--foreground)' : 'rgba(122,158,192,0.4)' }}
+        className="text-base tabular-nums ml-2 shrink-0"
+        style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 800, color: isWinner ? theme.primaryColor : score > 0 ? 'var(--foreground)' : 'rgba(122,158,192,0.4)' }}
       >
         {score}
       </span>
