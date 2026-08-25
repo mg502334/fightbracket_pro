@@ -398,15 +398,8 @@ export function PostCard({
         })}
       </div>
 
-      {/* Stats Counter */}
-      <div className="flex items-center gap-4 px-4 mt-3 pb-2.5" style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-        <span className="text-[11px]" style={{ color: "#8a8a9a" }}>{post.likes} likes</span>
-        <span className="text-[11px]" style={{ color: "#8a8a9a" }}>{post.comments + localComments.length} comments</span>
-        <span className="text-[11px]" style={{ color: "#8a8a9a" }}>{post.shares} shares</span>
-      </div>
-
       {/* Action Buttons: Like, Comment, Share, Bookmark */}
-      <div className="flex items-center px-2 py-1 relative">
+      <div className="flex items-center px-2 py-1 relative border-t border-white/5">
         <div 
           className="relative"
           onMouseEnter={() => setShowEmojiPicker(true)}
@@ -414,7 +407,7 @@ export function PostCard({
         >
           <ActionBtn
             icon={Heart}
-            label={post.liked ? "Liked" : "Like"}
+            label={post.likes > 0 ? `Like (${post.likes})` : (post.liked ? "Liked" : "Like")}
             active={post.liked}
             activeColor="#f43f5e"
             onClick={() => onLike(post.id)}
