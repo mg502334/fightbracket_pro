@@ -123,6 +123,10 @@ export function BracketView({
   onSelectPool: externalOnSelectPool,
   isImported = false,
   onPlayerClick,
+  onManualSync,
+  lastSyncedAt,
+  isSyncing,
+  autoSyncSlug,
 }: BracketViewProps) {
   const [hoveredMatchId, setHoveredMatchId] = useState<string | null>(null);
   const [selectedFormat, setSelectedFormat] = useState<BracketType>(BracketType.SINGLE_ELIMINATION);
