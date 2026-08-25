@@ -264,7 +264,11 @@ export function BracketView({
     }
 
     lines.push(``);
-    lines.push(`🔗 <${window.location.href}>`);
+    const eventSlugToUse = autoSyncSlug || (window.location.search.includes('event=') ? new URLSearchParams(window.location.search).get('event') : null);
+    const shareUrl = eventSlugToUse 
+      ? `${window.location.origin}/?event=${encodeURIComponent(eventSlugToUse)}` 
+      : window.location.href;
+    lines.push(`🔗 <${shareUrl}>`);
 
     const text = lines.join('\n');
     navigator.clipboard.writeText(text).then(() => {

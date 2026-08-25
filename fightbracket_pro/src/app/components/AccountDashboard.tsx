@@ -2111,6 +2111,116 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
                         )}
                       </>
                     )}
+
+                    {/* Recently Imported Brackets History */}
+                    {(() => {
+                      try {
+                        const historyStr = localStorage.getItem('fightbracket_imported_events_history');
+                        if (!historyStr) return null;
+                        const historyList: Array<{
+                          slug: string;
+                          name: string;
+                          location?: string;
+                          gameName?: string;
+                          playerCount: number;
+                          lastImportedAt: string;
+                        }> = JSON.parse(historyStr);
+
+                        if (historyList.length === 0) return null;
+
+                        return (
+                          <div className="mt-8 border-t border-gray-800 pt-6">
+                            <div className="flex items-center justify-between mb-4">
+                              <div className="flex items-center gap-2">
+                                <Calendar size={16} className="text-cyan-400" />
+                                <h4 className="font-bold text-white font-rajdhani text-base uppercase tracking-wider">
+                                  RECENTLY IMPORTED BRACKETS ({historyList.length})
+                                </h4>
+                              </div>
+                              <button
+                                onClick={() => {
+                                  localStorage.removeItem('fightbracket_imported_events_history');
+                                  setProfile(prev => ({ ...prev }));
+                                }}
+                                className="text-[10px] font-mono text-gray-500 hover:text-red-400 uppercase tracking-wider"
+                              >
+                                CLEAR HISTORY
+                              </button>
+                            </div>
+
+                            <div className="space-y-3 max-h-[350px] overflow-y-auto pr-1 custom-scrollbar">
+                              {historyList.map((item, idx) => {
+                                const shareLink = `${window.location.origin}/?event=${encodeURIComponent(item.slug)}`;
+                                const isCurrentlyImporting = importingSlug === item.slug;
+                                return (
+                                  <div 
+                                    key={`${item.slug}-${idx}`}
+                                    className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 bg-black/40 border border-white/10 hover:border-cyan-500/40 rounded-xl transition-all"
+                                  >
+                                    <div className="min-w-0 flex-1">
+                                      <div className="flex items-center gap-2 mb-1">
+                                        <span className="font-bold text-white font-rajdhani text-base truncate">
+                                          {item.name}
+                                        </span>
+                                        <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 shrink-0 uppercase font-bold">
+                                          {item.gameName || 'FGC'}
+                                        </span>
+                                      </div>
+                                      <div className="flex items-center gap-3 text-xs font-mono text-gray-400">
+                                        <span>👥 {item.playerCount || 0} players</span>
+                                        {item.location && <span>• 📍 {item.location}</span>}
+                                        <span>• {new Date(item.lastImportedAt).toLocaleDateString()}</span>
+                                      </div>
+                                    </div>
+
+                                    <div className="flex items-center gap-2 shrink-0">
+                                      <button
+                                        onClick={() => {
+                                          navigator.clipboard.writeText(shareLink);
+                                          toast.success('Unique event share link copied!');
+                                        }}
+                                        className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/80 text-xs font-mono font-bold border border-white/10 transition-colors flex items-center gap-1.5"
+                                        title="Copy unique permanent share link for this bracket"
+                                      >
+                                        <ExternalLink size={13} />
+                                        <span>COPY LINK</span>
+                                      </button>
+
+                                      <button
+                                        onClick={async () => {
+                                          setImportingSlug(item.slug);
+                                          try {
+                                            await onStartggImport(item.slug);
+                                          } finally {
+                                            setImportingSlug(null);
+                                          }
+                                        }}
+                                        disabled={isCurrentlyImporting}
+                                        className="px-3.5 py-1.5 rounded-lg bg-cyan-500 text-black hover:brightness-125 text-xs font-mono font-extrabold transition-all flex items-center gap-1.5 disabled:opacity-50"
+                                      >
+                                        {isCurrentlyImporting ? (
+                                          <>
+                                            <RefreshCw size={13} className="animate-spin" />
+                                            <span>LOADING...</span>
+                                          </>
+                                        ) : (
+                                          <>
+                                            <Swords size={13} />
+                                            <span>LOAD BRACKET</span>
+                                          </>
+                                        )}
+                                      </button>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      } catch {
+                        return null;
+                      }
+                    })()}
                   </div>
 
                   {/* Local Tournament History */}

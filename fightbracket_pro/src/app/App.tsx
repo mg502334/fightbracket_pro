@@ -253,6 +253,13 @@ export default function App() {
           });
       }
     }
+
+    // Auto-import event bracket if shared permalink ?event=<slug> is present in URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const eventParam = urlParams.get('event');
+    if (eventParam) {
+      handleLiveImport(eventParam).catch(() => {});
+    }
   }, []);
 
   // Dynamic adaptive live polling for Start.gg bracket updates
@@ -1187,6 +1194,23 @@ export default function App() {
         toast.success(`Imported ${tName} successfully!`, {
           style: { background: 'var(--card)', border: `1px solid var(--border)`, color: '#00FF88' },
         });
+
+        // Save event to user's imported events history
+        try {
+          const historyItem = {
+            slug,
+            name: tName,
+            location: tLocation,
+            gameName: newThemes[newGameIds[0]]?.displayName || 'TEKKEN 8',
+            playerCount: newPlayers.length,
+            lastImportedAt: new Date().toISOString(),
+          };
+          const existingHistoryStr = localStorage.getItem('fightbracket_imported_events_history');
+          const historyList = existingHistoryStr ? JSON.parse(existingHistoryStr) : [];
+          const filtered = historyList.filter((h: any) => h.slug !== slug);
+          const updated = [historyItem, ...filtered].slice(0, 20);
+          localStorage.setItem('fightbracket_imported_events_history', JSON.stringify(updated));
+        } catch(e) {}
       }
     } finally {
       setIsSyncing(false);
