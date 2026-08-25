@@ -319,20 +319,19 @@ export function BracketView({
         <div className="flex flex-wrap items-center gap-3">
           {/* Phase Selector */}
           {availablePhases.length > 0 && (
-            <div className="flex items-center gap-1.5 bg-black/40 p-1 rounded-lg border border-white/10 h-10">
-              <Layers size={14} className="ml-2 opacity-50" style={{ color: theme.primaryColor }} />
-              <span className="text-[10px] font-mono font-bold tracking-widest opacity-50 mr-1">PHASE:</span>
+            <div className="flex items-center gap-1.5 bg-black/40 px-3 rounded-lg border border-white/10 h-10 shrink-0">
+              <Layers size={14} className="opacity-50" style={{ color: theme.primaryColor }} />
+              <span className="text-[10px] font-mono font-bold tracking-widest opacity-50 mr-1 uppercase">PHASE:</span>
               
               {availablePhases.length > 1 && (
                 <button
                   onClick={() => setSelectedPhase('ALL')}
-                  className={`px-2.5 py-1 rounded text-xs font-bold transition-all ${
+                  className={`h-7 px-2.5 rounded text-xs font-mono font-bold tracking-wider uppercase transition-all ${
                     activePhase === 'ALL'
                       ? 'text-black'
                       : 'text-white/70 hover:text-white hover:bg-white/10'
                   }`}
                   style={{
-                    fontFamily: 'Rajdhani, sans-serif',
                     background: activePhase === 'ALL' ? theme.primaryColor : 'transparent',
                   }}
                 >
@@ -344,13 +343,12 @@ export function BracketView({
                 <button
                   key={p}
                   onClick={() => setSelectedPhase(p)}
-                  className={`px-2.5 py-1 rounded text-xs font-bold transition-all ${
+                  className={`h-7 px-2.5 rounded text-xs font-mono font-bold tracking-wider uppercase transition-all ${
                     activePhase === p
                       ? 'text-black'
                       : 'text-white/70 hover:text-white hover:bg-white/10'
                   }`}
                   style={{
-                    fontFamily: 'Rajdhani, sans-serif',
                     background: activePhase === p ? theme.primaryColor : 'transparent',
                   }}
                 >
@@ -362,13 +360,13 @@ export function BracketView({
 
           {/* Pool Dropdown Selector */}
           {availablePools.length > 0 && (
-            <div className="flex items-center gap-2 bg-black/40 px-3 rounded-lg border border-white/10 h-10">
-              <span className="text-[10px] font-mono font-bold tracking-widest opacity-50 mr-1">POOL:</span>
+            <div className="flex items-center gap-2 bg-black/40 px-3 rounded-lg border border-white/10 h-10 shrink-0">
+              <span className="text-[10px] font-mono font-bold tracking-widest opacity-50 mr-1 uppercase">POOL:</span>
               <select
                 value={activePool}
                 onChange={(e) => setSelectedPool(e.target.value)}
-                className="bg-black/40 border border-white/10 rounded-md px-2 py-1 text-xs font-bold focus:outline-none transition-colors hover:border-white/20"
-                style={{ color: theme.primaryColor, fontFamily: 'Rajdhani, sans-serif' }}
+                className="bg-black/40 border border-white/10 rounded-md px-2 h-7 text-xs font-mono font-bold uppercase tracking-wider focus:outline-none transition-colors hover:border-white/20"
+                style={{ color: theme.primaryColor }}
               >
                 {availablePools.map(pool => (
                   <option key={pool} value={pool} className="bg-[#050A14] text-white">
@@ -386,16 +384,16 @@ export function BracketView({
         </div>
 
         {/* Right: Player Search & Match Highlight Tool */}
-        <div className="flex items-center gap-3 w-full sm:w-auto">
-          <div className="relative flex-1 sm:w-64">
+        <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+          <div className="relative flex-1 sm:w-64 h-10">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 opacity-40" />
             <input
               type="text"
               placeholder="Search player in bracket..."
               value={playerSearch}
               onChange={e => setPlayerSearch(e.target.value)}
-              className="w-full h-10 pl-9 pr-8 text-xs font-bold rounded-lg bg-black/50 border border-white/15 outline-none focus:border-cyan-400 transition-colors"
-              style={{ fontFamily: 'Rajdhani, sans-serif', color: 'var(--foreground)' }}
+              className="w-full h-10 pl-9 pr-8 text-xs font-mono font-bold tracking-wider rounded-lg bg-black/50 border border-white/15 outline-none focus:border-cyan-400 transition-colors uppercase"
+              style={{ color: 'var(--foreground)' }}
             />
             {playerSearch && (
               <button
@@ -410,7 +408,7 @@ export function BracketView({
           {query && (
             <button
               onClick={() => setFilterMatchesOnly(!filterMatchesOnly)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono font-bold border transition-all ${
+              className={`h-10 px-3.5 flex items-center gap-1.5 rounded-lg text-xs font-mono font-bold tracking-wider uppercase border transition-all ${
                 filterMatchesOnly
                   ? 'bg-cyan-500/20 text-cyan-400 border-cyan-400/50'
                   : 'bg-white/5 text-white/70 border-white/10 hover:bg-white/10'
@@ -422,7 +420,7 @@ export function BracketView({
           )}
 
           {query && (
-            <div className="text-[11px] font-mono px-2.5 py-1 rounded bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 shrink-0">
+            <div className="h-10 px-3.5 flex items-center text-xs font-mono font-bold tracking-wider uppercase rounded-lg bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 shrink-0">
               {matchingMatchesCount} {matchingMatchesCount === 1 ? 'match' : 'matches'}
             </div>
           )}
@@ -433,7 +431,7 @@ export function BracketView({
               id="bracket-share-discord"
               onClick={handleShareToDiscord}
               title="Copy bracket summary to clipboard for Discord"
-              className="flex items-center gap-1.5 h-10 px-3 rounded-lg text-xs font-mono font-bold border transition-all hover:brightness-125"
+              className="flex items-center gap-1.5 h-10 px-3.5 rounded-lg text-xs font-mono font-bold tracking-wider uppercase border transition-all hover:brightness-125"
               style={{
                 borderColor: 'rgba(88,101,242,0.45)',
                 color: '#5865F2',
@@ -460,7 +458,7 @@ export function BracketView({
             <button
               onClick={() => setShowDisplayMenu(!showDisplayMenu)}
               title="Open bracket in a dedicated venue display window or stream overlay"
-              className="flex items-center gap-1.5 h-10 px-3.5 rounded-lg text-xs font-mono font-bold border transition-all hover:brightness-125 bg-cyan-500/10 text-cyan-400 border-cyan-500/40"
+              className="flex items-center gap-1.5 h-10 px-3.5 rounded-lg text-xs font-mono font-bold tracking-wider uppercase border transition-all hover:brightness-125 bg-cyan-500/10 text-cyan-400 border-cyan-500/40"
             >
               <Tv size={14} />
               <span>DISPLAY MODE</span>
@@ -523,7 +521,7 @@ export function BracketView({
               onClick={onManualSync}
               disabled={isSyncing}
               title={autoSyncSlug ? "Live Start.gg auto-sync active (polling every 10s during live matches). Click to sync immediately." : "Click to refresh bracket from Start.gg"}
-              className={`flex items-center gap-2 h-10 px-3.5 rounded-lg text-xs font-mono font-bold border transition-all ${
+              className={`flex items-center gap-2 h-10 px-3.5 rounded-lg text-xs font-mono font-bold tracking-wider uppercase border transition-all ${
                 isSyncing
                   ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/50'
                   : autoSyncSlug
