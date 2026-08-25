@@ -294,11 +294,6 @@ export function NewsPage({ onNavigateHome, onSignUp }: NewsPageProps) {
           >
             ← BACK TO HOME
           </button>
-
-          <div className="flex items-center gap-2 text-[11px] font-mono text-cyan-400/80 bg-cyan-950/20 px-2.5 py-1 rounded border border-cyan-500/20">
-            <Clock size={12} />
-            <span>7-Day Active Auto-Archive (Deals Exempt)</span>
-          </div>
         </div>
 
         <div className="flex flex-col lg:flex-row gap-6">
