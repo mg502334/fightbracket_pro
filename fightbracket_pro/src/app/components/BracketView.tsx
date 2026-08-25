@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Swords, Clock, CheckCircle2, AlertCircle, ChevronRight, Search, X, Layers, Filter, Sparkles, Tv, RefreshCw } from "lucide-react";
+import { Swords, Clock, CheckCircle2, AlertCircle, ChevronRight, Search, X, Layers, Filter, Sparkles, Tv, RefreshCw, Monitor, Smartphone, Radio } from "lucide-react";
 import { BracketType, type BracketMatch, type Player, type GameTheme, getChronologicalRoundName } from "../data/tournamentData";
 
 interface BracketViewProps {
@@ -135,6 +135,7 @@ export function BracketView({
   const [playerSearch, setPlayerSearch] = useState<string>('');
   const [filterMatchesOnly, setFilterMatchesOnly] = useState<boolean>(false);
   const [shareTooltip, setShareTooltip] = useState(false);
+  const [showDisplayMenu, setShowDisplayMenu] = useState(false);
 
   if (matches.length === 0) {
     return (
@@ -454,17 +455,67 @@ export function BracketView({
             )}
           </div>
 
-          {/* Open Dedicated Venue Display Window */}
-          <button
-            onClick={() => {
-              window.open('/display', 'BracketDisplayWindow', 'width=1920,height=1080');
-            }}
-            title="Open bracket in a new dedicated venue display window (ideal for external TV/monitor/projector displays)"
-            className="flex items-center gap-1.5 h-10 px-3.5 rounded-lg text-xs font-mono font-bold border transition-all hover:brightness-125 bg-cyan-500/10 text-cyan-400 border-cyan-500/40"
-          >
-            <Tv size={14} />
-            <span>DISPLAY MODE</span>
-          </button>
+          {/* Dedicated Venue Display & Stream Overlay Selector */}
+          <div className="relative">
+            <button
+              onClick={() => setShowDisplayMenu(!showDisplayMenu)}
+              title="Open bracket in a dedicated venue display window or stream overlay"
+              className="flex items-center gap-1.5 h-10 px-3.5 rounded-lg text-xs font-mono font-bold border transition-all hover:brightness-125 bg-cyan-500/10 text-cyan-400 border-cyan-500/40"
+            >
+              <Tv size={14} />
+              <span>DISPLAY MODE</span>
+            </button>
+
+            {showDisplayMenu && (
+              <div className="absolute right-0 top-12 z-50 w-72 p-2 rounded-xl bg-[#050A14] border border-cyan-500/40 shadow-2xl backdrop-blur-md space-y-1.5 font-mono text-xs">
+                <div className="text-[10px] text-gray-400 px-2 py-1 font-bold tracking-widest border-b border-white/10 uppercase">
+                  SELECT VENUE DISPLAY MODE
+                </div>
+
+                <button
+                  onClick={() => {
+                    window.open('/display', 'BracketDisplayWindow', 'width=1920,height=1080');
+                    setShowDisplayMenu(false);
+                  }}
+                  className="w-full flex items-center gap-2.5 p-2.5 rounded-lg bg-white/5 hover:bg-cyan-500/20 hover:text-cyan-300 text-left transition-all group border border-transparent hover:border-cyan-500/30"
+                >
+                  <Monitor size={16} className="text-cyan-400 shrink-0" />
+                  <div>
+                    <div className="font-bold text-white group-hover:text-cyan-300">Widescreen TV (16:9)</div>
+                    <div className="text-[10px] text-gray-400">Horizontal 1920x1080 venue TV/projector</div>
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => {
+                    window.open('/display?orient=vertical', 'BracketDisplayWindow', 'width=1080,height=1920');
+                    setShowDisplayMenu(false);
+                  }}
+                  className="w-full flex items-center gap-2.5 p-2.5 rounded-lg bg-white/5 hover:bg-purple-500/20 hover:text-purple-300 text-left transition-all group border border-transparent hover:border-purple-500/30"
+                >
+                  <Smartphone size={16} className="text-purple-400 shrink-0" />
+                  <div>
+                    <div className="font-bold text-white group-hover:text-purple-300">Vertical Monitor (9:16)</div>
+                    <div className="text-[10px] text-gray-400">Rotated 1080x1920 portrait display</div>
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => {
+                    window.open('/twitch-extension/video_overlay.html', 'StreamOverlayWindow', 'width=1280,height=720');
+                    setShowDisplayMenu(false);
+                  }}
+                  className="w-full flex items-center gap-2.5 p-2.5 rounded-lg bg-white/5 hover:bg-emerald-500/20 hover:text-emerald-300 text-left transition-all group border border-transparent hover:border-emerald-500/30"
+                >
+                  <Radio size={16} className="text-emerald-400 shrink-0" />
+                  <div>
+                    <div className="font-bold text-white group-hover:text-emerald-300">OBS Stream Overlay</div>
+                    <div className="text-[10px] text-gray-400">Live stream HUD & match callouts</div>
+                  </div>
+                </button>
+              </div>
+            )}
+          </div>
 
           {/* Live Start.gg Sync & Manual Refresh Button */}
           {onManualSync && (
