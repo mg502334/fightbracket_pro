@@ -909,6 +909,51 @@ export function NewsPage({ onNavigateHome, onSignUp }: NewsPageProps) {
                     )}
                   </div>
                 )}
+
+                {/* FGC Community Resources & Stats Footer */}
+                <div className="mt-8 pt-6 border-t border-white/10 flex flex-wrap items-center justify-between gap-4 text-xs font-mono">
+                  <div className="text-gray-400 font-bold tracking-wider">
+                    FGC COMMUNITY RESOURCES & STATS
+                  </div>
+                  <div className="flex flex-wrap items-center gap-4 text-[11px]">
+                    <a
+                      href="https://ewgf.gg/changelog"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-cyan-400 hover:text-cyan-300 flex items-center gap-1 no-underline"
+                    >
+                      <span>EWGF.gg Tekken Stats</span>
+                      <ExternalLink size={10} />
+                    </a>
+                    <a
+                      href="https://tekkendocs.com"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-cyan-400 hover:text-cyan-300 flex items-center gap-1 no-underline"
+                    >
+                      <span>Tekken Docs</span>
+                      <ExternalLink size={10} />
+                    </a>
+                    <a
+                      href="https://wavu.wiki"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-cyan-400 hover:text-cyan-300 flex items-center gap-1 no-underline"
+                    >
+                      <span>Wavu Wiki</span>
+                      <ExternalLink size={10} />
+                    </a>
+                    <a
+                      href="https://www.streetfighter.com/6/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-pink-400 hover:text-pink-300 flex items-center gap-1 no-underline"
+                    >
+                      <span>Buckler's Boot Camp (SF6)</span>
+                      <ExternalLink size={10} />
+                    </a>
+                  </div>
+                </div>
               </>
             )}
 
