@@ -3210,74 +3210,7 @@ def maintain_news():
     except Exception as e:
         return {"status": "error", "detail": str(e)}
 
-@app.get("/api/deals")
-def get_deals(db: Session = Depends(get_db)):
-    deals_file = os.path.join(os.path.dirname(__file__), "..", "data", "deals.json")
-    if os.path.exists(deals_file):
-        try:
-            with open(deals_file, "r", encoding="utf-8") as f:
-                deals_data = json.load(f)
-                return {"deals": deals_data}
-        except Exception:
-            pass
 
-    # Fallback deals
-    return {
-        "deals": [
-            {
-                "id": "steam-1778820-dlc",
-                "game": "Tekken 8",
-                "title": "Tekken 8 - Season Pass 2 Pre-Order",
-                "category": "dlc",
-                "originalPrice": "$39.99",
-                "salePrice": "$29.99",
-                "discount": "-25%",
-                "platform": "Steam (PC)",
-                "store": "Steam Store",
-                "link": "https://store.steampowered.com/app/1778820/TEKKEN_8/",
-                "badge": "HOT DEAL"
-            },
-            {
-                "id": "ps-sf6-pass",
-                "game": "Street Fighter 6",
-                "title": "Street Fighter 6 - Year 2 Character Pass",
-                "category": "dlc",
-                "originalPrice": "$29.99",
-                "salePrice": "$19.99",
-                "discount": "-33%",
-                "platform": "PlayStation 5 / PS4",
-                "store": "PlayStation Store",
-                "link": "https://store.playstation.com",
-                "badge": "PS STORE DEAL"
-            },
-            {
-                "id": "steam-1384160",
-                "game": "Guilty Gear -Strive-",
-                "title": "Guilty Gear -Strive- Daredevil Edition",
-                "category": "game",
-                "originalPrice": "$59.99",
-                "salePrice": "$29.99",
-                "discount": "-50%",
-                "platform": "Steam (PC)",
-                "store": "Steam Store",
-                "link": "https://store.steampowered.com/app/1384160/",
-                "badge": "-50% SALE"
-            },
-            {
-                "id": "xbox-mk1-kombat",
-                "game": "Mortal Kombat 1",
-                "title": "Mortal Kombat 1: Khaos Reigns & Kombat Pack",
-                "category": "dlc",
-                "originalPrice": "$49.99",
-                "salePrice": "$34.99",
-                "discount": "-30%",
-                "platform": "Xbox Series X|S / PC",
-                "store": "Microsoft Store",
-                "link": "https://www.xbox.com/games/store/mortal-kombat-1",
-                "badge": "XBOX SALE"
-            }
-        ]
-    }
 
 @app.get("/api/feed/sidebar")
 def get_feed_sidebar(user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
