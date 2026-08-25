@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Shield, Lock, Globe, UserPlus, MessageSquare, Check, X, Trophy, ExternalLink, Sparkles, AlertTriangle, Swords, ChevronDown, ChevronUp, Eye, EyeOff, RefreshCw } from 'lucide-react';
 import { TekkenStatsPanel } from './TekkenStatsPanel';
 import { SteamStatsPanel } from './SteamStatsPanel';
+import { StartggCareerPanel } from './StartggCareerPanel';
 import { GAME_COVERS } from '../data/gameCovers';
 import { PostCard, Post } from './FeedPanel';
 
@@ -426,86 +427,13 @@ export function UserProfileModal({ isOpen, onClose, targetUserId, supabaseToken,
                       }
                     })()}
 
-                    {/* start.gg Tournament Record */}
-                    {profile?.startgg_data?.events && profile.startgg_data.events.length > 0 && (
-                      <div className="bg-[#111116] border border-white/5 rounded-xl p-4">
-                        <div className="flex items-center gap-2 mb-4">
-                          <Trophy size={16} className="text-amber-500" />
-                          <h3 className="font-rajdhani font-bold text-sm tracking-wider uppercase">start.gg Record</h3>
-                          {profile.startgg_data.slug && (
-                            <a
-                              href={`https://start.gg/user/${profile.startgg_data.slug}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="ml-auto opacity-50 hover:opacity-100 transition-opacity"
-                              title="View start.gg profile"
-                            >
-                              <ExternalLink size={14} />
-                            </a>
-                          )}
-                        </div>
-                        <div className="space-y-2 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
-                          {profile.startgg_data.events.map((ev, i) => {
-                            const isFirst = String(ev.placement) === '1';
-                            const isPodium = !isFirst && ['2', '3'].includes(String(ev.placement));
-                            const medalBg = isFirst ? 'rgba(245,158,11,0.1)' : isPodium ? 'rgba(255,255,255,0.05)' : 'transparent';
-                            
-                            // Derive the importable tournament slug
-                            let tSlug = ev.tournament_slug || '';
-                            if (!tSlug && ev.tournament_name) {
-                              tSlug = ev.tournament_name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-                            }
-                            
-                            return (
-                              <div
-                                key={i}
-                                className="flex items-center justify-between px-3 py-2.5 rounded-lg border border-white/5 hover:border-white/10 transition-colors gap-3"
-                                style={{ background: medalBg }}
-                              >
-                                <div className="min-w-0 flex-1">
-                                  <div className="font-bold text-xs text-white truncate flex items-center gap-1.5">
-                                    {isFirst && <Trophy size={12} className="text-amber-400 shrink-0" />}
-                                    <span className="truncate">{ev.tournament_name}</span>
-                                  </div>
-                                  <div className="text-[10px] text-white/40 truncate font-mono mt-0.5">{ev.event_name}</div>
-                                </div>
-                                <div className="flex items-center gap-3 shrink-0">
-                                  <div className={`font-rajdhani font-bold text-lg ${isFirst ? 'text-amber-400' : isPodium ? 'text-slate-300' : 'text-white/60'}`}>
-                                    {ev.placement}<span className="text-[10px] opacity-50 font-mono ml-0.5">th</span>
-                                  </div>
-                                  {onImportBracket && tSlug && (
-                                    <button
-                                      onClick={() => {
-                                        if (onImportBracket && tSlug && !importedSlugs.has(tSlug)) {
-                                          setImportingSlug(tSlug);
-                                          onImportBracket(tSlug).then(() => {
-                                            setImportedSlugs(prev => new Set([...prev, tSlug]));
-                                          }).finally(() => setImportingSlug(null));
-                                        }
-                                      }}
-                                      disabled={importingSlug === tSlug || importedSlugs.has(tSlug)}
-                                      className={`p-1.5 rounded-md border transition-colors ${
-                                        importedSlugs.has(tSlug) 
-                                          ? 'border-emerald-500/30 text-emerald-400 bg-emerald-500/10'
-                                          : 'border-white/10 hover:border-cyan-500/30 hover:bg-cyan-500/10 hover:text-cyan-400 text-white/40'
-                                      }`}
-                                      title={importedSlugs.has(tSlug) ? "Added to Library" : "Add to Library"}
-                                    >
-                                      {importingSlug === tSlug ? (
-                                        <RefreshCw size={12} className="animate-spin" />
-                                      ) : importedSlugs.has(tSlug) ? (
-                                        <Check size={12} />
-                                      ) : (
-                                        <Swords size={12} />
-                                      )}
-                                    </button>
-                                  )}
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
+                    {/* Start.gg Player Career Analytics & Pro Ranking */}
+                    {(profile?.startgg_slug || profile?.startgg_data?.slug) && (
+                      <StartggCareerPanel
+                        startggSlug={profile.startgg_slug || profile.startgg_data?.slug}
+                        token={supabaseToken || undefined}
+                        onImportBracket={onImportBracket}
+                      />
                     )}
 
                     {(profile?.twitch_url || profile?.twitch_id) && (

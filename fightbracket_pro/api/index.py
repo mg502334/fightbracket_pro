@@ -991,6 +991,309 @@ def import_startgg_profile(req: StartggImportRequest, user_id: str = Depends(get
 
     return {"status": "success", "startgg_data": profile_info}
 
+@app.get("/api/users/startgg-career/{slug}")
+def get_startgg_user_career(slug: str, token: Optional[str] = None):
+    """
+    Fetch comprehensive Start.gg player career analytics, including:
+    - Overall Win/Loss Record & Win Rate Percentile
+    - Average Seed across brackets
+    - Average Placement / Placement tier
+    - Pro Rank Tier Badge calculation (S+ Grandmaster, S Pro, A Diamond, etc.)
+    - Per-game breakdown stats
+    - Recent Start.gg tournament history timeline
+    """
+    if not slug:
+        raise HTTPException(status_code=400, detail="Slug parameter required")
+    
+    slug_clean = slug.strip()
+    if 'start.gg/user/' in slug_clean:
+        slug_clean = slug_clean.split('start.gg/user/')[1].split('/')[0].split('?')[0]
+    elif 'user/' in slug_clean:
+        slug_clean = slug_clean.split('user/')[1].split('/')[0].split('?')[0]
+    else:
+        slug_clean = slug_clean.split('/')[0].split('?')[0]
+        
+    startgg_api_key = token or os.environ.get("STARTGG_API_KEY") or os.environ.get("STARTGG_API_TOKEN") or os.environ.get("STARTGG_3RD_PARTY_TOKEN")
+    
+    query = """
+    query UserCareerQuery($slug: String!) {
+      user(slug: $slug) {
+        id
+        name
+        gamerTag
+        prefix
+        avatar {
+          url
+        }
+        location {
+          city
+          state
+          country
+        }
+        events(query: { perPage: 35, page: 1 }) {
+          nodes {
+            id
+            name
+            numEntrants
+            startAt
+            videogame {
+              id
+              name
+            }
+            tournament {
+              id
+              name
+              slug
+              city
+              addrState
+              startAt
+            }
+            userEntrant {
+              id
+              name
+              standing {
+                placement
+              }
+              seeds {
+                seedNum
+              }
+            }
+          }
+        }
+        player {
+          id
+          gamerTag
+          sets(perPage: 50, page: 1) {
+            nodes {
+              id
+              displayScore
+              winnerId
+              round
+              fullRoundText
+              event {
+                id
+                name
+                videogame {
+                  name
+                }
+              }
+              slots {
+                id
+                entrant {
+                  id
+                  name
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    """
+    
+    headers = {"Content-Type": "application/json"}
+    if startgg_api_key:
+        headers["Authorization"] = f"Bearer {startgg_api_key}"
+        
+    try:
+        resp = requests.post(
+            "https://api.start.gg/gql/alpha",
+            json={"query": query, "variables": {"slug": slug_clean}},
+            headers=headers,
+            timeout=12
+        )
+        if resp.status_code != 200:
+            raise HTTPException(status_code=502, detail="Failed to reach Start.gg API")
+            
+        res_data = resp.json().get("data") or {}
+        user_node = res_data.get("user")
+        if not user_node:
+            raise HTTPException(status_code=404, detail=f"Start.gg user '{slug_clean}' not found")
+            
+        gamer_tag = user_node.get("gamerTag") or user_node.get("name") or slug_clean
+        prefix = user_node.get("prefix") or ""
+        avatar_url = (user_node.get("avatar") or {}).get("url")
+        location_obj = user_node.get("location") or {}
+        location_str = ", ".join([v for v in [location_obj.get("city"), location_obj.get("state"), location_obj.get("country")] if v])
+        
+        events_nodes = ((user_node.get("events") or {}).get("nodes")) or []
+        player_node = user_node.get("player") or {}
+        sets_nodes = ((player_node.get("sets") or {}).get("nodes")) or []
+        
+        # Calculate Wins & Losses
+        total_wins = 0
+        total_losses = 0
+        
+        for set_item in sets_nodes:
+            if not set_item:
+                continue
+            winner_id = set_item.get("winnerId")
+            if winner_id:
+                slots = set_item.get("slots") or []
+                is_winner = False
+                for s in slots:
+                    if not s:
+                        continue
+                    entrant = s.get("entrant") or {}
+                    if str(s.get("id")) == str(winner_id) or str(entrant.get("id")) == str(winner_id):
+                        if entrant.get("name") and gamer_tag.lower() in str(entrant.get("name")).lower():
+                            is_winner = True
+                            break
+                if is_winner:
+                    total_wins += 1
+                else:
+                    total_losses += 1
+
+        # Process Events (Tournament History, Seeds, Placements)
+        seeds_list = []
+        placements_list = []
+        tournaments_history = []
+        game_stats_map = {}
+        
+        first_place_count = 0
+        podium_count = 0
+        top8_count = 0
+
+        for ev in events_nodes:
+            if not ev:
+                continue
+            e_name = ev.get("name") or ""
+            t_obj = ev.get("tournament") or {}
+            t_name = t_obj.get("name") or "Tournament"
+            t_slug = (t_obj.get("slug") or "").replace("tournament/", "")
+            t_date = t_obj.get("startAt") or ev.get("startAt")
+            
+            game_obj = ev.get("videogame") or {}
+            game_name = game_obj.get("name") or "Fighting Game"
+            
+            user_entrant = ev.get("userEntrant") or {}
+            standing = user_entrant.get("standing") or {}
+            placement = standing.get("placement")
+            
+            seeds = user_entrant.get("seeds") or []
+            seed_num = seeds[0].get("seedNum") if seeds and isinstance(seeds, list) and len(seeds) > 0 and seeds[0] else None
+            
+            if placement and isinstance(placement, int):
+                placements_list.append(placement)
+                if placement == 1:
+                    first_place_count += 1
+                if placement <= 3:
+                    podium_count += 1
+                if placement <= 8:
+                    top8_count += 1
+
+            if seed_num and isinstance(seed_num, int):
+                seeds_list.append(seed_num)
+
+            if game_name not in game_stats_map:
+                game_stats_map[game_name] = {
+                    "game_name": game_name,
+                    "tournaments_count": 0,
+                    "placements": [],
+                    "seeds": [],
+                    "first_places": 0,
+                    "top8s": 0,
+                }
+            g_entry = game_stats_map[game_name]
+            g_entry["tournaments_count"] += 1
+            if placement and isinstance(placement, int):
+                g_entry["placements"].append(placement)
+                if placement == 1:
+                    g_entry["first_places"] += 1
+                if placement <= 8:
+                    g_entry["top8s"] += 1
+            if seed_num and isinstance(seed_num, int):
+                g_entry["seeds"].append(seed_num)
+
+            tournaments_history.append({
+                "tournament_name": t_name,
+                "tournament_slug": t_slug,
+                "event_name": e_name,
+                "game_name": game_name,
+                "placement": placement or "N/A",
+                "seed": seed_num or "N/A",
+                "num_entrants": ev.get("numEntrants") or "N/A",
+                "date": datetime.fromtimestamp(t_date, tz=timezone.utc).strftime("%b %d, %Y") if t_date else "Recent"
+            })
+
+        # Calculate Overall Career Metrics
+        total_sets = total_wins + total_losses
+        win_rate_pct = round((total_wins / total_sets * 100), 1) if total_sets > 0 else 0.0
+        avg_seed = round(sum(seeds_list) / len(seeds_list), 1) if seeds_list else 0.0
+        avg_placement = round(sum(placements_list) / len(placements_list), 1) if placements_list else 0.0
+
+        # Calculate Pro Ranking Tier Badge
+        tier = "CHALLENGER"
+        tier_title = "C · CHALLENGER"
+        tier_color = "#94A3B8"
+        
+        if first_place_count >= 3 or (win_rate_pct >= 75 and avg_placement <= 3.0 and total_sets >= 5):
+            tier = "GRANDMASTER"
+            tier_title = "S+ · GRANDMASTER"
+            tier_color = "#FFD700"
+        elif win_rate_pct >= 65 or (avg_placement <= 8.0 and podium_count >= 2):
+            tier = "PRO_MASTER"
+            tier_title = "S · PRO MASTER"
+            tier_color = "#00E5FF"
+        elif win_rate_pct >= 55 or (avg_placement <= 16.0 and top8_count >= 2):
+            tier = "DIAMOND"
+            tier_title = "A · DIAMOND"
+            tier_color = "#A855F7"
+        elif win_rate_pct >= 45 or (avg_placement <= 32.0 and len(placements_list) > 0):
+            tier = "PLATINUM"
+            tier_title = "B · PLATINUM"
+            tier_color = "#3B82F6"
+        elif total_sets > 0 or len(tournaments_history) > 0:
+            tier = "GOLD"
+            tier_title = "C · GOLD"
+            tier_color = "#10B981"
+
+        game_breakdown_list = []
+        for g_name, g_data in game_stats_map.items():
+            g_placements = g_data["placements"]
+            g_seeds = g_data["seeds"]
+            game_breakdown_list.append({
+                "game_name": g_name,
+                "tournaments_count": g_data["tournaments_count"],
+                "avg_placement": round(sum(g_placements) / len(g_placements), 1) if g_placements else 0.0,
+                "avg_seed": round(sum(g_seeds) / len(g_seeds), 1) if g_seeds else 0.0,
+                "first_places": g_data["first_places"],
+                "top8s": g_data["top8s"],
+            })
+
+        return {
+            "status": "success",
+            "career": {
+                "slug": slug_clean,
+                "gamer_tag": gamer_tag,
+                "prefix": prefix,
+                "avatar_url": avatar_url,
+                "location": location_str,
+                "total_tournaments": len(tournaments_history),
+                "total_sets": total_sets,
+                "total_wins": total_wins,
+                "total_losses": total_losses,
+                "win_rate_pct": win_rate_pct,
+                "avg_seed": avg_seed,
+                "avg_placement": avg_placement,
+                "first_place_count": first_place_count,
+                "podium_count": podium_count,
+                "top8_count": top8_count,
+                "pro_tier": {
+                    "code": tier,
+                    "title": tier_title,
+                    "color": tier_color,
+                },
+                "game_breakdown": game_breakdown_list,
+                "tournaments_history": tournaments_history,
+            }
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error fetching Start.gg career stats: {e}")
+        raise HTTPException(status_code=500, detail=f"Start.gg career fetch error: {str(e)}")
+
 # --- FRIENDS ENDPOINTS ---
 
 @app.get("/api/friends")
