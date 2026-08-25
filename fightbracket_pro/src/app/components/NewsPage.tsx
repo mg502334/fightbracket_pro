@@ -238,11 +238,10 @@ export function NewsPage({ onNavigateHome, onSignUp }: NewsPageProps) {
       .catch(() => {});
   }, []);
 
-  // Determine active vs auto-archived items based on 7-Day Rule (sales/deals are exempt)
+  // Determine active vs auto-archived items based on 7-Day Rule (sales/deals archive when expired or no longer available)
   const isItemArchived = (item: NewsItem): boolean => {
-    if (item.archived) return true;
-    // Deals/Sales are EXEMPT from 7-day auto-archiving
-    if (item.type === 'sale') return false;
+    if (item.archived || item.expired) return true;
+    if (item.type === 'sale') return Boolean(item.expired || item.archived);
 
     if (item.publishedAt) {
       const pubTime = typeof item.publishedAt === 'number'
@@ -258,8 +257,9 @@ export function NewsPage({ onNavigateHome, onSignUp }: NewsPageProps) {
   };
 
   const getRemainingDays = (item: NewsItem): string | null => {
-    // Deals are exempt
-    if (item.type === 'sale') return "Active Deal (Store Sale)";
+    if (item.type === 'sale') {
+      return (item.expired || item.archived) ? "EXPIRED DEAL" : "VERIFIED ACTIVE DEAL";
+    }
     if (!item.publishedAt) return null;
 
     const pubTime = typeof item.publishedAt === 'number'
@@ -314,48 +314,68 @@ export function NewsPage({ onNavigateHome, onSignUp }: NewsPageProps) {
                 {isArchive ? "NEWS ARCHIVE" : "NEWS & UPDATES"}
               </h1>
             </div>
-            <p className="text-xs text-gray-500 mb-6 font-mono">
-              {isArchive 
-                ? "Historical patch notes and archived announcements (>7 days old)." 
-                : "Active patches, announcements (showing for 7 days), and live store discounts across Steam, PS5, Xbox, and Switch."}
+            <p className="text-xs text-gray-400 mb-6">
+              Official FightBracket Pro platform updates, tournament announcements, and verified FGC deals.
             </p>
 
-            {/* Filter Tabs & Archive Toggle */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-              <div className="flex flex-wrap gap-2">
-                {FILTERS.map(f => (
+            {/* Archive / Active Tabs */}
+            <div className="flex items-center justify-between gap-4 mb-6 border-b border-white/10 pb-4">
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setIsArchive(false)}
+                  className={`px-4 py-2 rounded-lg text-xs font-bold tracking-wider transition-all font-mono ${
+                    !isArchive
+                      ? "bg-[#00E5FF] text-black shadow-lg shadow-[#00E5FF]/20"
+                      : "bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white"
+                  }`}
+                >
+                  ACTIVE NEWS & DEALS ({newsItems.filter(n => !isItemArchived(n)).length})
+                </button>
+                <button
+                  onClick={() => setIsArchive(true)}
+                  className={`px-4 py-2 rounded-lg text-xs font-bold tracking-wider transition-all font-mono ${
+                    isArchive
+                      ? "bg-[#a78bfa] text-black shadow-lg shadow-[#a78bfa]/20"
+                      : "bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white"
+                  }`}
+                >
+                  ARCHIVE ({newsItems.filter(n => isItemArchived(n)).length})
+                </button>
+              </div>
+
+              <div className="text-xs text-gray-500 font-mono hidden sm:block">
+                {isArchive ? "Displaying archived items & expired deals" : "Daily verified deal scraping active"}
+              </div>
+            </div>
+
+            {/* Category Filters */}
+            <div className="flex flex-wrap items-center gap-2 mb-6">
+              {FILTERS.map(f => {
+                const isActive = filter === f.id;
+                return (
                   <button
                     key={f.id}
                     onClick={() => setFilter(f.id)}
-                    className={`px-3.5 py-1.5 rounded-lg text-xs font-bold tracking-widest transition-all border ${
-                      filter === f.id
-                        ? 'bg-[#00E5FF]/10 border-[#00E5FF]/60 text-[#00E5FF]'
-                        : 'border-white/10 text-gray-500 hover:border-white/20 hover:text-gray-300'
+                    className={`px-3 py-1.5 rounded-md text-[11px] font-bold tracking-wider transition-all font-mono uppercase ${
+                      isActive
+                        ? "bg-white/20 text-white border border-white/30"
+                        : "bg-white/5 text-gray-400 border border-transparent hover:bg-white/10 hover:text-gray-200"
                     }`}
                   >
                     {f.label}
                   </button>
-                ))}
-              </div>
-
-              <button
-                onClick={() => setIsArchive(!isArchive)}
-                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold tracking-widest transition-all border shrink-0 ${
-                  isArchive
-                    ? 'bg-[#a78bfa]/10 border-[#a78bfa]/60 text-[#a78bfa]'
-                    : 'border-white/10 text-gray-500 hover:border-white/20 hover:text-gray-300'
-                }`}
-              >
-                {isArchive ? '← BACK TO ACTIVE NEWS' : 'VIEW ARCHIVE (>7 DAYS)'}
-              </button>
+                );
+              })}
             </div>
 
-            {/* News Cards */}
+            {/* News Stream List */}
             <div className="space-y-4">
               {filtered.map(item => {
                 const cfg = TYPE_CONFIG[item.type] || TYPE_CONFIG.update;
                 const Icon = cfg.icon;
                 const daysLeft = getRemainingDays(item);
+                const isDeal = item.type === 'sale';
+                const isExpiredDeal = isDeal && (item.expired || item.archived);
 
                 return (
                   <div
@@ -385,13 +405,19 @@ export function NewsPage({ onNavigateHome, onSignUp }: NewsPageProps) {
                             )}
                             <span className="text-[10px] text-gray-500">{item.date}</span>
 
-                            {!isArchive && daysLeft && (
+                            {daysLeft && (
                               <span 
-                                className="text-[9px] font-mono px-1.5 py-0.2 rounded ml-auto"
+                                className="text-[9px] font-mono px-2 py-0.5 rounded ml-auto font-bold tracking-wider uppercase"
                                 style={{ 
-                                  background: item.type === 'sale' ? "rgba(236,72,153,0.15)" : "rgba(6,182,212,0.1)",
-                                  color: item.type === 'sale' ? "#f472b6" : "#22d3ee",
-                                  border: item.type === 'sale' ? "1px solid rgba(236,72,153,0.3)" : "1px solid rgba(6,182,212,0.2)"
+                                  background: isDeal 
+                                    ? (isExpiredDeal ? "rgba(239, 68, 68, 0.15)" : "rgba(0, 255, 136, 0.15)") 
+                                    : "rgba(6,182,212,0.1)",
+                                  color: isDeal 
+                                    ? (isExpiredDeal ? "#f87171" : "#00FF88") 
+                                    : "#22d3ee",
+                                  border: isDeal 
+                                    ? (isExpiredDeal ? "1px solid rgba(239, 68, 68, 0.3)" : "1px solid rgba(0, 255, 136, 0.3)") 
+                                    : "1px solid rgba(6,182,212,0.2)"
                                 }}
                               >
                                 {daysLeft}
@@ -407,7 +433,9 @@ export function NewsPage({ onNavigateHome, onSignUp }: NewsPageProps) {
                           {item.type === 'sale' && item.salePrice && (
                             <div className="flex items-center gap-3 my-2 font-mono text-xs">
                               {item.originalPrice && <span className="text-gray-500 line-through text-[11px]">{item.originalPrice}</span>}
-                              <span className="text-green-400 font-bold text-sm">{item.salePrice}</span>
+                              <span className={`font-bold text-sm ${isExpiredDeal ? 'text-gray-400 line-through' : 'text-green-400'}`}>
+                                {item.salePrice}
+                              </span>
                               {item.platform && <span className="text-gray-400 text-[10px]">· {item.platform}</span>}
                             </div>
                           )}
@@ -424,38 +452,42 @@ export function NewsPage({ onNavigateHome, onSignUp }: NewsPageProps) {
                             </ul>
                           )}
 
-                          {item.linkLabel && (
-                            item.id === 'game_requests_support' ? (
-                              <button
-                                onClick={() => window.dispatchEvent(new CustomEvent('open-support'))}
-                                className="inline-flex items-center gap-1.5 mt-4 px-4 py-2 rounded-lg text-xs font-bold tracking-widest transition-all font-mono cursor-pointer"
-                                style={{ background: `${cfg.color}20`, color: cfg.color, border: `1px solid ${cfg.color}40` }}
-                              >
-                                {item.linkLabel} <ChevronRight size={12} />
-                              </button>
-                            ) : onSignUp && item.id === 'signup_promo' ? (
-                              <button
-                                onClick={onSignUp}
-                                className="inline-flex items-center gap-1.5 mt-4 px-4 py-2 rounded-lg text-xs font-bold tracking-widest transition-all font-mono cursor-pointer"
-                                style={{ background: `${cfg.color}20`, color: cfg.color, border: `1px solid ${cfg.color}40` }}
-                              >
-                                {item.linkLabel} <ChevronRight size={12} />
-                              </button>
-                            ) : item.link ? (
-                              <a
-                                href={item.link}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="inline-flex items-center gap-1.5 mt-4 px-4 py-2 rounded-lg text-xs font-bold tracking-widest transition-all no-underline font-mono"
-                                style={{ background: `${cfg.color}20`, color: cfg.color, border: `1px solid ${cfg.color}40` }}
-                              >
-                                {item.linkLabel} <ChevronRight size={12} />
-                              </a>
-                            ) : null
-                          )}
+                          {item.type === 'sale' && isExpiredDeal ? (
+                            <span
+                              className="inline-flex items-center gap-1.5 mt-4 px-4 py-2 rounded-lg text-xs font-bold tracking-widest font-mono opacity-50 cursor-not-allowed border border-white/10 bg-white/5 text-gray-400"
+                            >
+                              OFFER EXPIRED & ARCHIVED
+                            </span>
+                          ) : item.type === 'feature' && item.id === 'game_requests_support' ? (
+                            <button
+                              onClick={() => window.dispatchEvent(new CustomEvent('open-support'))}
+                              className="inline-flex items-center gap-1.5 mt-4 px-4 py-2 rounded-lg text-xs font-bold tracking-widest transition-all font-mono cursor-pointer"
+                              style={{ background: `${cfg.color}20`, color: cfg.color, border: `1px solid ${cfg.color}40` }}
+                            >
+                              {item.linkLabel} <ChevronRight size={12} />
+                            </button>
+                          ) : onSignUp && item.id === 'signup_promo' ? (
+                            <button
+                              onClick={onSignUp}
+                              className="inline-flex items-center gap-1.5 mt-4 px-4 py-2 rounded-lg text-xs font-bold tracking-widest transition-all font-mono cursor-pointer"
+                              style={{ background: `${cfg.color}20`, color: cfg.color, border: `1px solid ${cfg.color}40` }}
+                            >
+                              {item.linkLabel} <ChevronRight size={12} />
+                            </button>
+                          ) : item.link ? (
+                            <a
+                              href={item.link}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex items-center gap-1.5 mt-4 px-4 py-2 rounded-lg text-xs font-bold tracking-widest transition-all no-underline font-mono"
+                              style={{ background: `${cfg.color}20`, color: cfg.color, border: `1px solid ${cfg.color}40` }}
+                            >
+                              {item.linkLabel} <ChevronRight size={12} />
+                            </a>
+                          ) : null}
                         </div>
                       </div>
-                      {item.link && (
+                      {item.link && !isExpiredDeal && (
                         <a
                           href={item.link}
                           target="_blank"
