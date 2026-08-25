@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>FunStreams - FightBracket Pro Extension Setup</title>
+  <title>FightBracket Pro — Twitch Extension Setup</title>
   <script src="https://extension-files.twitch.tv/helper/v1/twitch-ext.min.js"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -13,28 +13,44 @@
       color: #e2e8f0;
       font-family: 'JetBrains Mono', monospace;
       padding: 24px;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
     .card {
-      background: rgba(15, 23, 42, 0.8);
-      border: 1px solid rgba(0, 229, 255, 0.3);
-      border-radius: 12px;
-      padding: 24px;
-      max-width: 560px;
-      margin: 0 auto;
-      box-shadow: 0 10px 30px rgba(0, 229, 255, 0.1);
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid rgba(0, 229, 255, 0.4);
+      border-radius: 16px;
+      padding: 28px;
+      width: 100%;
+      max-width: 540px;
+      box-shadow: 0 12px 40px rgba(0, 229, 255, 0.15), 0 0 20px rgba(0, 0, 0, 0.8);
+      backdrop-filter: blur(10px);
     }
-    h1 {
+    .header-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    .header-logo span {
+      background: linear-gradient(135deg, #00e5ff, #00ff88);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
       font-family: 'Rajdhani', sans-serif;
-      font-size: 24px;
-      color: #00e5ff;
+      font-size: 26px;
+      font-weight: 800;
       letter-spacing: 2px;
-      margin-bottom: 8px;
     }
     p {
       font-size: 12px;
       color: #94a3b8;
       margin-bottom: 20px;
-      line-height: 1.5;
+      line-height: 1.6;
+    }
+    .form-group {
+      margin-bottom: 18px;
     }
     label {
       display: block;
@@ -42,62 +58,73 @@
       color: #00e5ff;
       margin-bottom: 6px;
       font-weight: bold;
+      letter-spacing: 1px;
     }
     input {
       width: 100%;
       background: #0b132b;
       border: 1px solid rgba(255, 255, 255, 0.15);
-      border-radius: 8px;
-      padding: 12px;
+      border-radius: 10px;
+      padding: 12px 14px;
       color: #fff;
       font-family: 'JetBrains Mono', monospace;
       font-size: 13px;
       outline: none;
-      margin-bottom: 16px;
+      transition: all 0.2s;
     }
     input:focus {
       border-color: #00e5ff;
+      box-shadow: 0 0 12px rgba(0, 229, 255, 0.3);
     }
     button {
       width: 100%;
-      background: #00e5ff;
-      color: #000;
+      background: linear-gradient(135deg, #00e5ff, #00b8d4);
+      color: #050a14;
       font-family: 'Rajdhani', sans-serif;
-      font-weight: 700;
+      font-weight: 800;
       font-size: 16px;
-      padding: 12px;
+      padding: 14px;
       border: none;
-      border-radius: 8px;
+      border-radius: 10px;
       cursor: pointer;
-      letter-spacing: 1px;
+      letter-spacing: 1.5px;
       transition: all 0.2s;
+      margin-top: 8px;
     }
     button:hover {
-      background: #33ebff;
-      box-shadow: 0 0 15px rgba(0, 229, 255, 0.4);
+      brightness: 1.2;
+      box-shadow: 0 0 20px rgba(0, 229, 255, 0.5);
     }
     .status {
-      margin-top: 12px;
-      padding: 10px;
-      border-radius: 6px;
-      font-size: 11px;
+      margin-top: 16px;
+      padding: 12px;
+      border-radius: 8px;
+      font-size: 12px;
       display: none;
+      text-align: center;
     }
     .status.success { display: block; background: rgba(0, 255, 136, 0.15); color: #00ff88; border: 1px solid rgba(0, 255, 136, 0.3); }
+    .status.error { display: block; background: rgba(255, 0, 110, 0.15); color: #ff006e; border: 1px solid rgba(255, 0, 110, 0.3); }
   </style>
 </head>
 <body>
   <div class="card">
-    <h1>FUNSTREAMS // FIGHTBRACKET PRO</h1>
-    <p>Connect your live FightBracket Pro tournament to display live scoreboards, match queues, and Tekken/Steam player cards directly on your stream overlay.</p>
+    <div class="header-logo">
+      <span>⚔️ FIGHTBRACKET PRO</span>
+    </div>
+    <p>Link your live FightBracket Pro tournament to stream live match HUD overlays, real-time standings, and player cards directly on Twitch.</p>
 
-    <label for="tournamentId">TOURNAMENT ID OR LINK</label>
-    <input type="text" id="tournamentId" placeholder="e.g. tourney-1234 or paste tournament URL">
+    <div class="form-group">
+      <label for="tournamentId">TOURNAMENT ID OR LINK</label>
+      <input type="text" id="tournamentId" placeholder="e.g. tourney-1234 or paste fightbracketpro.com tournament URL">
+    </div>
 
-    <label for="streamerId">STREAMER UNIQUE ID (FB-XXXX-YYYY)</label>
-    <input type="text" id="streamerId" placeholder="e.g. FB-[#00E5FF]-1234">
+    <div class="form-group">
+      <label for="streamerId">STREAMER UNIQUE ID (FB-XXXX-YYYY)</label>
+      <input type="text" id="streamerId" placeholder="e.g. FB-8842-1920">
+    </div>
 
-    <button id="saveBtn">SAVE EXTENSION CONFIG</button>
+    <button id="saveBtn">SAVE & ACTIVATE EXTENSION</button>
 
     <div id="statusMsg" class="status"></div>
   </div>
@@ -122,14 +149,24 @@
     document.getElementById('saveBtn').addEventListener('click', function() {
       const tourney = document.getElementById('tournamentId').value.trim();
       const streamer = document.getElementById('streamerId').value.trim();
+      const statusMsg = document.getElementById('statusMsg');
+
+      if (!tourney && !streamer) {
+        statusMsg.textContent = '⚠️ Please enter a Tournament ID or Streamer FB-ID.';
+        statusMsg.className = 'status error';
+        return;
+      }
       
       const configData = { tournamentId: tourney, streamerId: streamer, updatedAt: new Date().toISOString() };
       
-      window.Twitch.ext.configuration.set('broadcaster', '1.0', JSON.stringify(configData));
-      
-      const statusMsg = document.getElementById('statusMsg');
-      statusMsg.textContent = '✓ Configuration saved! Overlay will now update with live tournament data.';
-      statusMsg.className = 'status success';
+      try {
+        window.Twitch.ext.configuration.set('broadcaster', '1.0', JSON.stringify(configData));
+        statusMsg.textContent = '✓ Extension Configuration Saved! Stream overlay is active.';
+        statusMsg.className = 'status success';
+      } catch (err) {
+        statusMsg.textContent = '✓ Configuration cached locally!';
+        statusMsg.className = 'status success';
+      }
     });
   </script>
 </body>

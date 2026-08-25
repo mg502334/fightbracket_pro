@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>FunStreams - Video Component</title>
+  <title>FightBracket Pro — Video Component</title>
   <script src="https://extension-files.twitch.tv/helper/v1/twitch-ext.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@700;800&family=JetBrains+Mono:wght@600;800&display=swap" rel="stylesheet">
   <style>
@@ -27,12 +27,12 @@
       gap: 8px;
     }
     .match-card {
-      background: rgba(5, 10, 20, 0.88);
+      background: rgba(5, 10, 20, 0.92);
       border: 1px solid rgba(0, 229, 255, 0.4);
       border-radius: 12px;
       padding: 12px 18px;
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6), 0 0 20px rgba(0, 229, 255, 0.15);
-      backdrop-filter: blur(8px);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8), 0 0 20px rgba(0, 229, 255, 0.2);
+      backdrop-filter: blur(10px);
       min-width: 320px;
       transition: all 0.3s ease;
     }
@@ -69,12 +69,8 @@
       border-radius: 6px;
       border: 1px solid rgba(255, 0, 110, 0.3);
     }
-    .versus {
-      font-size: 11px;
-      color: #64748b;
-    }
     .next-up {
-      background: rgba(5, 10, 20, 0.7);
+      background: rgba(5, 10, 20, 0.8);
       border: 1px solid rgba(255, 255, 255, 0.1);
       border-radius: 8px;
       padding: 6px 12px;
@@ -84,7 +80,7 @@
       justify-content: space-between;
     }
     .tekken-badge {
-      color: #ff003c;
+      color: #00ff88;
       font-weight: bold;
     }
   </style>
@@ -92,7 +88,7 @@
 <body>
   <div class="hud-container">
     <div class="match-card" id="matchCard">
-      <div class="badge">⚔️ FIGHTBRACKET PRO // NOW PLAYING</div>
+      <div class="badge" id="matchStatus">⚔️ FIGHTBRACKET PRO // NOW PLAYING</div>
       <div class="players-row">
         <div class="player text-cyan" id="p1Name">PLAYER 1</div>
         <div class="score" id="score">0 - 0</div>
@@ -100,12 +96,18 @@
       </div>
     </div>
     <div class="next-up" id="nextUp">
-      <span>UP NEXT: Match #4</span>
-      <span class="tekken-badge">TEKKEN 8 / SF6</span>
+      <span id="stationName">STATION A — WINNERS SEMIS</span>
+      <span class="tekken-badge" id="gameName">LIVE FGC</span>
     </div>
   </div>
 
   <script>
+    const API_BASE = window.location.origin.includes('ext-twitch.tv') || window.location.origin.includes('localhost') 
+      ? 'https://www.fightbracketpro.com' 
+      : window.location.origin;
+
+    let activeTourneyId = null;
+
     window.Twitch.ext.onAuthorized(function(auth) {
       console.log('Video component authorized');
     });
@@ -115,14 +117,16 @@
         try {
           const cfg = JSON.parse(window.Twitch.ext.configuration.broadcaster.content);
           if (cfg.tournamentId) {
-            fetchLiveData(cfg.tournamentId);
+            activeTourneyId = cfg.tournamentId;
+            fetchLiveData(activeTourneyId);
           }
         } catch(e) {}
       }
     });
 
     function fetchLiveData(tourneyId) {
-      fetch(`/api/tournaments/${tourneyId}`)
+      if (!tourneyId) return;
+      fetch(`${API_BASE}/api/tournaments/${tourneyId}`)
         .then(r => r.json())
         .then(data => {
           if (data.tournament && data.tournament.active_match) {
@@ -130,10 +134,17 @@
             document.getElementById('p1Name').textContent = m.player1 || 'P1';
             document.getElementById('p2Name').textContent = m.player2 || 'P2';
             document.getElementById('score').textContent = `${m.score1 || 0} - ${m.score2 || 0}`;
+            if (m.station) document.getElementById('stationName').textContent = m.station;
+            if (m.game) document.getElementById('gameName').textContent = m.game;
           }
         })
         .catch(() => {});
     }
+
+    // Auto-refresh every 8 seconds
+    setInterval(() => {
+      if (activeTourneyId) fetchLiveData(activeTourneyId);
+    }, 8000);
   </script>
 </body>
 </html>
