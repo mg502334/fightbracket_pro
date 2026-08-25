@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Megaphone, Wrench, Sparkles, Calendar, ExternalLink, ChevronRight, Trophy, Gamepad2, Tag, Radio, Clock, ShieldCheck } from 'lucide-react';
+import { Megaphone, Wrench, Sparkles, Calendar, ExternalLink, ChevronRight, Trophy, Gamepad2, Tag, Radio, Clock, ShieldCheck, Search, Filter, RefreshCw, ChevronDown, ChevronUp } from 'lucide-react';
 import { RecentsWidget } from './RecentsWidget';
 import { DealsWidget } from './DealsWidget';
 
@@ -30,6 +30,20 @@ export interface NewsItem {
   discount?: string;
   originalPrice?: string;
   salePrice?: string;
+}
+
+export interface GamePatch {
+  id: string;
+  gameId: string;
+  gameName: string;
+  gameColor: string;
+  appid: number;
+  title: string;
+  author: string;
+  url: string;
+  contents: string;
+  date: string;
+  timestamp: number;
 }
 
 // Helper to evaluate multi-phase registration state dynamically
@@ -64,6 +78,71 @@ export function getActiveRegistrationState(item: NewsItem) {
 
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 const NOW = Date.now();
+
+const DEFAULT_GAME_PATCHES: GamePatch[] = [
+  {
+    id: 'patch-t8-v105',
+    gameId: 'tekken8',
+    gameName: 'Tekken 8',
+    gameColor: '#00E5FF',
+    appid: 1778820,
+    title: 'Tekken 8 Ver 1.05.00 Patch Notes Notice',
+    author: 'Bandai Namco Entertainment',
+    url: 'https://store.steampowered.com/news/app/1778820',
+    contents: 'Adjustments to Heat System properties, Heat Dash combo scaling, character balance fixes for Mishima stance transitions, and online matchmaking stability updates.',
+    date: 'Aug 20, 2026',
+    timestamp: NOW - (5 * 24 * 60 * 60 * 1000)
+  },
+  {
+    id: 'patch-sf6-v2',
+    gameId: 'sf6',
+    gameName: 'Street Fighter 6',
+    gameColor: '#FF006E',
+    appid: 1364780,
+    title: 'Street Fighter 6 Year 2 Balance & Character Update',
+    author: 'Capcom',
+    url: 'https://store.steampowered.com/news/app/1364780',
+    contents: 'Drive Gauge recovery rates tuned, Perfect Parry scaling adjustments, and specific hurtbox refinements across all Year 2 roster characters.',
+    date: 'Aug 18, 2026',
+    timestamp: NOW - (7 * 24 * 60 * 60 * 1000)
+  },
+  {
+    id: 'patch-ggst-ver',
+    gameId: 'ggst',
+    gameName: 'Guilty Gear -Strive-',
+    gameColor: '#F59E0B',
+    appid: 1384160,
+    title: 'Guilty Gear -Strive- Season 4 Balance Patch Notice',
+    author: 'Arc System Works',
+    url: 'https://store.steampowered.com/news/app/1384160',
+    contents: 'Wild Assault tension cost adjustments, Deflect Shield active frames update, and individual move properties adjusted for competitive play.',
+    date: 'Aug 15, 2026',
+    timestamp: NOW - (10 * 24 * 60 * 60 * 1000)
+  },
+  {
+    id: 'patch-mk1-kombat',
+    gameId: 'mk1',
+    gameName: 'Mortal Kombat 1',
+    gameColor: '#EF4444',
+    appid: 1792670,
+    title: 'Mortal Kombat 1 Patch Notes & Kameo Adjustments',
+    author: 'NetherRealm Studios',
+    url: 'https://store.steampowered.com/news/app/1792670',
+    contents: 'Kameo assist cooldown rebalancing, fatal blow armor adjustments, and general fix for offline & online tournament modes.',
+    date: 'Aug 12, 2026',
+    timestamp: NOW - (13 * 24 * 60 * 60 * 1000)
+  }
+];
+
+const GAME_FILTER_OPTIONS = [
+  { id: 'all',          name: 'ALL GAMES',                    color: '#ffffff' },
+  { id: 'tekken8',      name: 'Tekken 8',                     color: '#00E5FF' },
+  { id: 'sf6',          name: 'Street Fighter 6',             color: '#FF006E' },
+  { id: 'ggst',         name: 'Guilty Gear -Strive-',         color: '#F59E0B' },
+  { id: 'mk1',          name: 'Mortal Kombat 1',              color: '#EF4444' },
+  { id: 'sparkingzero', name: 'DB: Sparking! ZERO',           color: '#3B82F6' },
+  { id: 'gbfvr',        name: 'GBVS: Rising',                 color: '#10B981' }
+];
 
 const DEFAULT_NEWS_ITEMS: NewsItem[] = [
   {
@@ -276,9 +355,17 @@ interface NewsPageProps {
 }
 
 export function NewsPage({ onNavigateHome, onSignUp }: NewsPageProps) {
+  const [mainTab, setMainTab] = useState<'news' | 'patches'>('news');
   const [filter, setFilter] = useState<string>('all');
   const [isArchive, setIsArchive] = useState(false);
   const [newsItems, setNewsItems] = useState<NewsItem[]>(DEFAULT_NEWS_ITEMS);
+
+  // Game Patches State (Steam ISteamNews API)
+  const [patchSearchQuery, setPatchSearchQuery] = useState('');
+  const [patchGameFilter, setPatchGameFilter] = useState('all');
+  const [gamePatches, setGamePatches] = useState<GamePatch[]>(DEFAULT_GAME_PATCHES);
+  const [isLoadingPatches, setIsLoadingPatches] = useState(false);
+  const [expandedPatchId, setExpandedPatchId] = useState<string | null>(null);
 
   useEffect(() => {
     fetch('/api/news')
@@ -293,6 +380,21 @@ export function NewsPage({ onNavigateHome, onSignUp }: NewsPageProps) {
       })
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (mainTab === 'patches') {
+      setIsLoadingPatches(true);
+      fetch(`/api/patches${patchGameFilter !== 'all' ? `?game=${patchGameFilter}` : ''}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data && Array.isArray(data.patches) && data.patches.length > 0) {
+            setGamePatches(data.patches);
+          }
+        })
+        .catch(() => {})
+        .finally(() => setIsLoadingPatches(false));
+    }
+  }, [mainTab, patchGameFilter]);
 
   // Determine active vs auto-archived items based on expiration date or 7-Day Rule
   const isItemArchived = (item: NewsItem): boolean => {
@@ -373,6 +475,19 @@ export function NewsPage({ onNavigateHome, onSignUp }: NewsPageProps) {
     return true;
   });
 
+  const filteredPatches = gamePatches.filter(p => {
+    if (patchGameFilter !== 'all' && p.gameId !== patchGameFilter) return false;
+    if (patchSearchQuery.trim()) {
+      const q = patchSearchQuery.toLowerCase();
+      const matchTitle = p.title.toLowerCase().includes(q);
+      const matchGame = p.gameName.toLowerCase().includes(q);
+      const matchContents = p.contents.toLowerCase().includes(q);
+      const matchAuthor = p.author.toLowerCase().includes(q);
+      if (!matchTitle && !matchGame && !matchContents && !matchAuthor) return false;
+    }
+    return true;
+  });
+
   return (
     <div className="min-h-full p-4 lg:p-8 animate-in fade-in duration-300" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
       <div className="max-w-7xl mx-auto">
@@ -397,228 +512,406 @@ export function NewsPage({ onNavigateHome, onSignUp }: NewsPageProps) {
             </div>
           </div>
 
-          {/* Main Column: News Header & Content */}
+          {/* Main Column */}
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-3 mb-2">
-              <Megaphone size={28} className={isArchive ? "text-[#a78bfa]" : "text-[#00E5FF]"} />
-              <h1 className="text-3xl lg:text-4xl font-bold tracking-widest text-white" style={{ fontFamily: 'Rajdhani, sans-serif' }}>
-                {isArchive ? "NEWS ARCHIVE" : "NEWS & UPDATES"}
-              </h1>
-            </div>
-            <p className="text-xs text-gray-400 mb-6">
-              Official FightBracket Pro platform updates, tournament announcements, and verified FGC deals.
-            </p>
 
-            {/* Archive / Active Tabs */}
-            <div className="flex items-center justify-between gap-4 mb-6 border-b border-white/10 pb-4">
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setIsArchive(false)}
-                  className={`px-4 py-2 rounded-lg text-xs font-bold tracking-wider transition-all font-mono ${
-                    !isArchive
-                      ? "bg-[#00E5FF] text-black shadow-lg shadow-[#00E5FF]/20"
-                      : "bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white"
-                  }`}
-                >
-                  ACTIVE NEWS & DEALS ({newsItems.filter(n => !isItemArchived(n)).length})
-                </button>
-                <button
-                  onClick={() => setIsArchive(true)}
-                  className={`px-4 py-2 rounded-lg text-xs font-bold tracking-wider transition-all font-mono ${
-                    isArchive
-                      ? "bg-[#a78bfa] text-black shadow-lg shadow-[#a78bfa]/20"
-                      : "bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white"
-                  }`}
-                >
-                  ARCHIVE ({newsItems.filter(n => isItemArchived(n)).length})
-                </button>
-              </div>
+            {/* Primary Navigation Tabs: PLATFORM NEWS vs GAME PATCHES */}
+            <div className="flex flex-wrap items-center gap-2 mb-6 border-b border-white/10 pb-4">
+              <button
+                onClick={() => setMainTab('news')}
+                className={`px-4 py-2.5 rounded-lg text-xs font-bold tracking-widest transition-all font-mono flex items-center gap-2 ${
+                  mainTab === 'news'
+                    ? "bg-[#00E5FF] text-black shadow-lg shadow-[#00E5FF]/20"
+                    : "bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white"
+                }`}
+              >
+                <Megaphone size={14} />
+                <span>PLATFORM NEWS & DEALS</span>
+              </button>
 
-              <div className="text-xs text-gray-500 font-mono hidden sm:block">
-                {isArchive ? "Displaying archived items & expired deals" : "Daily verified deal scraping active"}
-              </div>
+              <button
+                onClick={() => setMainTab('patches')}
+                className={`px-4 py-2.5 rounded-lg text-xs font-bold tracking-widest transition-all font-mono flex items-center gap-2 ${
+                  mainTab === 'patches'
+                    ? "bg-[#a78bfa] text-black shadow-lg shadow-[#a78bfa]/20"
+                    : "bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white"
+                }`}
+              >
+                <Gamepad2 size={14} />
+                <span>GAME PATCH NOTES (STEAM)</span>
+              </button>
             </div>
 
-            {/* Category Filters */}
-            <div className="flex flex-wrap items-center gap-2 mb-6">
-              {FILTERS.map(f => {
-                const isActive = filter === f.id;
-                return (
-                  <button
-                    key={f.id}
-                    onClick={() => setFilter(f.id)}
-                    className={`px-3 py-1.5 rounded-md text-[11px] font-bold tracking-wider transition-all font-mono uppercase ${
-                      isActive
-                        ? "bg-white/20 text-white border border-white/30"
-                        : "bg-white/5 text-gray-400 border border-transparent hover:bg-white/10 hover:text-gray-200"
-                    }`}
-                  >
-                    {f.label}
-                  </button>
-                );
-              })}
-            </div>
+            {/* MAIN TAB 1: PLATFORM NEWS & DEALS */}
+            {mainTab === 'news' ? (
+              <>
+                <div className="flex items-center gap-3 mb-2">
+                  <Megaphone size={28} className={isArchive ? "text-[#a78bfa]" : "text-[#00E5FF]"} />
+                  <h1 className="text-3xl lg:text-4xl font-bold tracking-widest text-white" style={{ fontFamily: 'Rajdhani, sans-serif' }}>
+                    {isArchive ? "NEWS ARCHIVE" : "NEWS & UPDATES"}
+                  </h1>
+                </div>
+                <p className="text-xs text-gray-400 mb-6">
+                  Official FightBracket Pro platform updates, tournament announcements, and verified FGC deals.
+                </p>
 
-            {/* News Stream List */}
-            <div className="space-y-4">
-              {filtered.map(item => {
-                const cfg = TYPE_CONFIG[item.type] || TYPE_CONFIG.update;
-                const Icon = cfg.icon;
-                const daysLeft = getRemainingDays(item);
-                const regState = getActiveRegistrationState(item);
-                const displayBadge = regState ? regState.badge : item.badge;
-                const isDeal = item.type === 'sale';
-                const isExpiredDeal = isDeal && (item.expired || item.archived);
-                const isRegistrationClosed = regState?.isAllClosed;
+                {/* Archive / Active Tabs */}
+                <div className="flex items-center justify-between gap-4 mb-6 border-b border-white/10 pb-4">
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setIsArchive(false)}
+                      className={`px-4 py-2 rounded-lg text-xs font-bold tracking-wider transition-all font-mono ${
+                        !isArchive
+                          ? "bg-[#00E5FF] text-black shadow-lg shadow-[#00E5FF]/20"
+                          : "bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white"
+                      }`}
+                    >
+                      ACTIVE NEWS & DEALS ({newsItems.filter(n => !isItemArchived(n)).length})
+                    </button>
+                    <button
+                      onClick={() => setIsArchive(true)}
+                      className={`px-4 py-2 rounded-lg text-xs font-bold tracking-wider transition-all font-mono ${
+                        isArchive
+                          ? "bg-[#a78bfa] text-black shadow-lg shadow-[#a78bfa]/20"
+                          : "bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white"
+                      }`}
+                    >
+                      ARCHIVE ({newsItems.filter(n => isItemArchived(n)).length})
+                    </button>
+                  </div>
 
-                return (
-                  <div
-                    key={item.id}
-                    className={`bg-[#050A14] border ${cfg.bg} rounded-xl p-5 transition-all hover:brightness-110`}
-                  >
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex items-start gap-4 flex-1 min-w-0">
-                        <div
-                          className="p-2 rounded-lg shrink-0 mt-0.5"
-                          style={{ background: `${cfg.color}12`, border: `1px solid ${cfg.color}30` }}
-                        >
-                          <Icon size={16} style={{ color: cfg.color }} />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex flex-wrap items-center gap-2 mb-1">
-                            <span
-                              className="text-[10px] font-bold tracking-widest px-2 py-0.5 rounded uppercase"
-                              style={{ background: `${cfg.color}15`, color: cfg.color }}
+                  <div className="text-xs text-gray-500 font-mono hidden sm:block">
+                    {isArchive ? "Displaying archived items & expired deals" : "Daily verified deal scraping active"}
+                  </div>
+                </div>
+
+                {/* Category Filters */}
+                <div className="flex flex-wrap items-center gap-2 mb-6">
+                  {FILTERS.map(f => {
+                    const isActive = filter === f.id;
+                    return (
+                      <button
+                        key={f.id}
+                        onClick={() => setFilter(f.id)}
+                        className={`px-3 py-1.5 rounded-md text-[11px] font-bold tracking-wider transition-all font-mono uppercase ${
+                          isActive
+                            ? "bg-white/20 text-white border border-white/30"
+                            : "bg-white/5 text-gray-400 border border-transparent hover:bg-white/10 hover:text-gray-200"
+                        }`}
+                      >
+                        {f.label}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* News Stream List */}
+                <div className="space-y-4">
+                  {filtered.map(item => {
+                    const cfg = TYPE_CONFIG[item.type] || TYPE_CONFIG.update;
+                    const Icon = cfg.icon;
+                    const daysLeft = getRemainingDays(item);
+                    const regState = getActiveRegistrationState(item);
+                    const displayBadge = regState ? regState.badge : item.badge;
+                    const isDeal = item.type === 'sale';
+                    const isExpiredDeal = isDeal && (item.expired || item.archived);
+                    const isRegistrationClosed = regState?.isAllClosed;
+
+                    return (
+                      <div
+                        key={item.id}
+                        className={`bg-[#050A14] border ${cfg.bg} rounded-xl p-5 transition-all hover:brightness-110`}
+                      >
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex items-start gap-4 flex-1 min-w-0">
+                            <div
+                              className="p-2 rounded-lg shrink-0 mt-0.5"
+                              style={{ background: `${cfg.color}12`, border: `1px solid ${cfg.color}30` }}
                             >
-                              {cfg.label}
-                            </span>
-                            {displayBadge && (
-                              <span className={`text-[10px] font-bold tracking-widest px-2 py-0.5 rounded font-mono ${
-                                isRegistrationClosed 
-                                  ? 'bg-red-500/15 text-red-400 border border-red-500/30' 
-                                  : 'bg-white/5 text-gray-300'
-                              }`}>
-                                {displayBadge}
-                              </span>
-                            )}
-                            <span className="text-[10px] text-gray-500">{item.date}</span>
-
-                            {daysLeft && (
-                              <span 
-                                className="text-[9px] font-mono px-2 py-0.5 rounded ml-auto font-bold tracking-wider uppercase"
-                                style={{ 
-                                  background: isRegistrationClosed || isExpiredDeal
-                                    ? "rgba(239, 68, 68, 0.15)"
-                                    : isDeal
-                                    ? "rgba(0, 255, 136, 0.15)"
-                                    : "rgba(6,182,212,0.1)",
-                                  color: isRegistrationClosed || isExpiredDeal
-                                    ? "#f87171"
-                                    : isDeal
-                                    ? "#00FF88"
-                                    : "#22d3ee",
-                                  border: isRegistrationClosed || isExpiredDeal
-                                    ? "1px solid rgba(239, 68, 68, 0.3)"
-                                    : isDeal
-                                    ? "1px solid rgba(0, 255, 136, 0.3)"
-                                    : "1px solid rgba(6,182,212,0.2)"
-                                }}
-                              >
-                                {daysLeft}
-                              </span>
-                            )}
-                          </div>
-
-                          <h2 className="text-base font-bold text-white mb-1" style={{ fontFamily: 'Rajdhani, sans-serif', fontSize: '1.15rem' }}>
-                            {item.title}
-                          </h2>
-
-                          {/* Deal specific price tags if available */}
-                          {item.type === 'sale' && item.salePrice && (
-                            <div className="flex items-center gap-3 my-2 font-mono text-xs">
-                              {item.originalPrice && <span className="text-gray-500 line-through text-[11px]">{item.originalPrice}</span>}
-                              <span className={`font-bold text-sm ${isExpiredDeal ? 'text-gray-400 line-through' : 'text-green-400'}`}>
-                                {item.salePrice}
-                              </span>
-                              {item.platform && <span className="text-gray-400 text-[10px]">· {item.platform}</span>}
+                              <Icon size={16} style={{ color: cfg.color }} />
                             </div>
-                          )}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex flex-wrap items-center gap-2 mb-1">
+                                <span
+                                  className="text-[10px] font-bold tracking-widest px-2 py-0.5 rounded uppercase"
+                                  style={{ background: `${cfg.color}15`, color: cfg.color }}
+                                >
+                                  {cfg.label}
+                                </span>
+                                {displayBadge && (
+                                  <span className={`text-[10px] font-bold tracking-widest px-2 py-0.5 rounded font-mono ${
+                                    isRegistrationClosed 
+                                      ? 'bg-red-500/15 text-red-400 border border-red-500/30' 
+                                      : 'bg-white/5 text-gray-300'
+                                  }`}>
+                                    {displayBadge}
+                                  </span>
+                                )}
+                                <span className="text-[10px] text-gray-500">{item.date}</span>
 
-                          <p className="text-xs text-gray-400 leading-relaxed">{item.body}</p>
-                          
-                          {item.bullets && (
-                            <ul className="mt-3 space-y-1.5">
-                              {item.bullets.map((b, i) => (
-                                <li key={i} className="flex items-start gap-2 text-xs text-gray-300">
-                                  <span>{b}</span>
-                                </li>
-                              ))}
-                            </ul>
-                          )}
+                                {daysLeft && (
+                                  <span 
+                                    className="text-[9px] font-mono px-2 py-0.5 rounded ml-auto font-bold tracking-wider uppercase"
+                                    style={{ 
+                                      background: isRegistrationClosed || isExpiredDeal
+                                        ? "rgba(239, 68, 68, 0.15)"
+                                        : isDeal
+                                        ? "rgba(0, 255, 136, 0.15)"
+                                        : "rgba(6,182,212,0.1)",
+                                      color: isRegistrationClosed || isExpiredDeal
+                                        ? "#f87171"
+                                        : isDeal
+                                        ? "#00FF88"
+                                        : "#22d3ee",
+                                      border: isRegistrationClosed || isExpiredDeal
+                                        ? "1px solid rgba(239, 68, 68, 0.3)"
+                                        : isDeal
+                                        ? "1px solid rgba(0, 255, 136, 0.3)"
+                                        : "1px solid rgba(6,182,212,0.2)"
+                                    }}
+                                  >
+                                    {daysLeft}
+                                  </span>
+                                )}
+                              </div>
 
-                          {isRegistrationClosed ? (
-                            <span
-                              className="inline-flex items-center gap-1.5 mt-4 px-4 py-2 rounded-lg text-xs font-bold tracking-widest font-mono opacity-50 cursor-not-allowed border border-white/10 bg-white/5 text-gray-400"
-                            >
-                              REGISTRATION CLOSED & ARCHIVED
-                            </span>
-                          ) : item.type === 'sale' && isExpiredDeal ? (
-                            <span
-                              className="inline-flex items-center gap-1.5 mt-4 px-4 py-2 rounded-lg text-xs font-bold tracking-widest font-mono opacity-50 cursor-not-allowed border border-white/10 bg-white/5 text-gray-400"
-                            >
-                              OFFER EXPIRED & ARCHIVED
-                            </span>
-                          ) : item.type === 'feature' && item.id === 'game_requests_support' ? (
-                            <button
-                              onClick={() => window.dispatchEvent(new CustomEvent('open-support'))}
-                              className="inline-flex items-center gap-1.5 mt-4 px-4 py-2 rounded-lg text-xs font-bold tracking-widest transition-all font-mono cursor-pointer"
-                              style={{ background: `${cfg.color}20`, color: cfg.color, border: `1px solid ${cfg.color}40` }}
-                            >
-                              {item.linkLabel} <ChevronRight size={12} />
-                            </button>
-                          ) : onSignUp && item.id === 'signup_promo' ? (
-                            <button
-                              onClick={onSignUp}
-                              className="inline-flex items-center gap-1.5 mt-4 px-4 py-2 rounded-lg text-xs font-bold tracking-widest transition-all font-mono cursor-pointer"
-                              style={{ background: `${cfg.color}20`, color: cfg.color, border: `1px solid ${cfg.color}40` }}
-                            >
-                              {item.linkLabel} <ChevronRight size={12} />
-                            </button>
-                          ) : item.link ? (
+                              <h2 className="text-base font-bold text-white mb-1" style={{ fontFamily: 'Rajdhani, sans-serif', fontSize: '1.15rem' }}>
+                                {item.title}
+                              </h2>
+
+                              {/* Deal specific price tags if available */}
+                              {item.type === 'sale' && item.salePrice && (
+                                <div className="flex items-center gap-3 my-2 font-mono text-xs">
+                                  {item.originalPrice && <span className="text-gray-500 line-through text-[11px]">{item.originalPrice}</span>}
+                                  <span className={`font-bold text-sm ${isExpiredDeal ? 'text-gray-400 line-through' : 'text-green-400'}`}>
+                                    {item.salePrice}
+                                  </span>
+                                  {item.platform && <span className="text-gray-400 text-[10px]">· {item.platform}</span>}
+                                </div>
+                              )}
+
+                              <p className="text-xs text-gray-400 leading-relaxed">{item.body}</p>
+                              
+                              {item.bullets && (
+                                <ul className="mt-3 space-y-1.5">
+                                  {item.bullets.map((b, i) => (
+                                    <li key={i} className="flex items-start gap-2 text-xs text-gray-300">
+                                      <span>{b}</span>
+                                    </li>
+                                  ))}
+                                </ul>
+                              )}
+
+                              {isRegistrationClosed ? (
+                                <span
+                                  className="inline-flex items-center gap-1.5 mt-4 px-4 py-2 rounded-lg text-xs font-bold tracking-widest font-mono opacity-50 cursor-not-allowed border border-white/10 bg-white/5 text-gray-400"
+                                >
+                                  REGISTRATION CLOSED & ARCHIVED
+                                </span>
+                              ) : item.type === 'sale' && isExpiredDeal ? (
+                                <span
+                                  className="inline-flex items-center gap-1.5 mt-4 px-4 py-2 rounded-lg text-xs font-bold tracking-widest font-mono opacity-50 cursor-not-allowed border border-white/10 bg-white/5 text-gray-400"
+                                >
+                                  OFFER EXPIRED & ARCHIVED
+                                </span>
+                              ) : item.type === 'feature' && item.id === 'game_requests_support' ? (
+                                <button
+                                  onClick={() => window.dispatchEvent(new CustomEvent('open-support'))}
+                                  className="inline-flex items-center gap-1.5 mt-4 px-4 py-2 rounded-lg text-xs font-bold tracking-widest transition-all font-mono cursor-pointer"
+                                  style={{ background: `${cfg.color}20`, color: cfg.color, border: `1px solid ${cfg.color}40` }}
+                                >
+                                  {item.linkLabel} <ChevronRight size={12} />
+                                </button>
+                              ) : onSignUp && item.id === 'signup_promo' ? (
+                                <button
+                                  onClick={onSignUp}
+                                  className="inline-flex items-center gap-1.5 mt-4 px-4 py-2 rounded-lg text-xs font-bold tracking-widest transition-all font-mono cursor-pointer"
+                                  style={{ background: `${cfg.color}20`, color: cfg.color, border: `1px solid ${cfg.color}40` }}
+                                >
+                                  {item.linkLabel} <ChevronRight size={12} />
+                                </button>
+                              ) : item.link ? (
+                                <a
+                                  href={item.link}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="inline-flex items-center gap-1.5 mt-4 px-4 py-2 rounded-lg text-xs font-bold tracking-widest transition-all no-underline font-mono"
+                                  style={{ background: `${cfg.color}20`, color: cfg.color, border: `1px solid ${cfg.color}40` }}
+                                >
+                                  {item.linkLabel} <ChevronRight size={12} />
+                                </a>
+                              ) : null}
+                            </div>
+                          </div>
+                          {item.link && !isExpiredDeal && !isRegistrationClosed && (
                             <a
                               href={item.link}
                               target="_blank"
                               rel="noreferrer"
-                              className="inline-flex items-center gap-1.5 mt-4 px-4 py-2 rounded-lg text-xs font-bold tracking-widest transition-all no-underline font-mono"
-                              style={{ background: `${cfg.color}20`, color: cfg.color, border: `1px solid ${cfg.color}40` }}
+                              className="shrink-0 flex items-center gap-1 text-[10px] text-gray-500 hover:text-[#00E5FF] transition-colors mt-1"
                             >
-                              {item.linkLabel} <ChevronRight size={12} />
+                              <ExternalLink size={11} />
                             </a>
-                          ) : null}
+                          )}
                         </div>
                       </div>
-                      {item.link && !isExpiredDeal && !isRegistrationClosed && (
-                        <a
-                          href={item.link}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="shrink-0 flex items-center gap-1 text-[10px] text-gray-500 hover:text-[#00E5FF] transition-colors mt-1"
-                        >
-                          <ExternalLink size={11} />
-                        </a>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+                    );
+                  })}
+                </div>
 
-            {filtered.length === 0 && (
-              <div className="text-center py-20 opacity-30">
-                <Trophy size={40} className="mx-auto mb-4" />
-                <p className="text-sm font-mono">No items in this category.</p>
-              </div>
+                {filtered.length === 0 && (
+                  <div className="text-center py-20 opacity-30">
+                    <Trophy size={40} className="mx-auto mb-4" />
+                    <p className="text-sm font-mono">No items in this category.</p>
+                  </div>
+                )}
+              </>
+            ) : (
+              /* MAIN TAB 2: GAME PATCH NOTES (STEAM ISteamNews) */
+              <>
+                <div className="flex items-center justify-between gap-4 mb-2">
+                  <div className="flex items-center gap-3">
+                    <Gamepad2 size={28} className="text-[#a78bfa]" />
+                    <h1 className="text-3xl lg:text-4xl font-bold tracking-widest text-white" style={{ fontFamily: 'Rajdhani, sans-serif' }}>
+                      GAME PATCH NOTES
+                    </h1>
+                  </div>
+
+                  <div className="flex items-center gap-2 text-[10px] font-mono text-[#a78bfa] bg-[#a78bfa]/10 px-2.5 py-1 rounded border border-[#a78bfa]/30">
+                    <Radio size={12} className="animate-pulse" />
+                    <span>STEAM ISteamNews ACTIVE</span>
+                  </div>
+                </div>
+
+                <p className="text-xs text-gray-400 mb-6">
+                  Official developer patch notes, character balance updates, and version releases fetched directly via Steam Web API.
+                </p>
+
+                {/* Search Bar & Game Filter Pills */}
+                <div className="space-y-3 mb-6">
+                  <div className="relative">
+                    <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input
+                      type="text"
+                      value={patchSearchQuery}
+                      onChange={(e) => setPatchSearchQuery(e.target.value)}
+                      placeholder="Search patch notes (e.g. Ver 1.05, Drive Gauge, Mishima, Combo)..."
+                      className="w-full bg-[#050A14] border border-white/10 focus:border-[#a78bfa] text-white text-xs rounded-xl pl-10 pr-10 py-2.5 transition-all outline-none font-mono"
+                    />
+                    {patchSearchQuery && (
+                      <button
+                        onClick={() => setPatchSearchQuery('')}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-500 hover:text-white"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Game Filter Pills */}
+                  <div className="flex flex-wrap items-center gap-2">
+                    {GAME_FILTER_OPTIONS.map(g => {
+                      const isActive = patchGameFilter === g.id;
+                      return (
+                        <button
+                          key={g.id}
+                          onClick={() => setPatchGameFilter(g.id)}
+                          className={`px-3 py-1.5 rounded-md text-[11px] font-bold tracking-wider transition-all font-mono uppercase flex items-center gap-1.5 ${
+                            isActive
+                              ? "bg-white/20 text-white border border-white/30"
+                              : "bg-white/5 text-gray-400 border border-transparent hover:bg-white/10 hover:text-gray-200"
+                          }`}
+                        >
+                          <span className="w-2 h-2 rounded-full" style={{ background: g.color }} />
+                          {g.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Patch Stream List */}
+                {isLoadingPatches ? (
+                  <div className="text-center py-20 text-gray-400 font-mono text-xs flex items-center justify-center gap-2">
+                    <RefreshCw size={16} className="animate-spin text-[#a78bfa]" />
+                    <span>Fetching live Steam patch notes...</span>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {filteredPatches.map(patch => {
+                      const isExpanded = expandedPatchId === patch.id;
+                      return (
+                        <div
+                          key={patch.id}
+                          className="bg-[#050A14] border border-white/10 hover:border-[#a78bfa]/40 rounded-xl p-5 transition-all"
+                        >
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex flex-wrap items-center gap-2 mb-2">
+                                <span
+                                  className="text-[10px] font-bold tracking-widest px-2.5 py-0.5 rounded font-mono uppercase"
+                                  style={{
+                                    background: `${patch.gameColor}15`,
+                                    color: patch.gameColor,
+                                    border: `1px solid ${patch.gameColor}30`
+                                  }}
+                                >
+                                  {patch.gameName}
+                                </span>
+                                <span className="text-[10px] font-mono text-gray-400">
+                                  by {patch.author}
+                                </span>
+                                <span className="text-[10px] font-mono text-gray-500 ml-auto">
+                                  {patch.date}
+                                </span>
+                              </div>
+
+                              <h2 className="text-lg font-bold text-white mb-2" style={{ fontFamily: 'Rajdhani, sans-serif' }}>
+                                {patch.title}
+                              </h2>
+
+                              <p className={`text-xs text-gray-300 leading-relaxed font-mono ${isExpanded ? '' : 'line-clamp-3'}`}>
+                                {patch.contents}
+                              </p>
+
+                              <div className="flex items-center gap-4 mt-4 pt-3 border-t border-white/5">
+                                <button
+                                  onClick={() => setExpandedPatchId(isExpanded ? null : patch.id)}
+                                  className="text-xs text-[#a78bfa] hover:text-purple-300 font-mono font-bold flex items-center gap-1"
+                                >
+                                  {isExpanded ? (
+                                    <>Collapse Notes <ChevronUp size={12} /></>
+                                  ) : (
+                                    <>Read Full Patch Notes <ChevronDown size={12} /></>
+                                  )}
+                                </button>
+
+                                <a
+                                  href={patch.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-xs text-gray-400 hover:text-white font-mono flex items-center gap-1 no-underline ml-auto"
+                                >
+                                  View on Steam <ExternalLink size={12} />
+                                </a>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+
+                    {filteredPatches.length === 0 && (
+                      <div className="text-center py-20 opacity-40 font-mono text-xs">
+                        <Gamepad2 size={40} className="mx-auto mb-3 text-purple-400" />
+                        <p>No patch notes found matching search query or game filter.</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </>
             )}
+
           </div>
         </div>
       </div>

@@ -3334,6 +3334,73 @@ def maintain_news():
     except Exception as e:
         return {"status": "error", "detail": str(e)}
 
+STEAM_FGC_GAMES = {
+    "tekken8": {"name": "Tekken 8", "appid": 1778820, "color": "#00E5FF"},
+    "sf6": {"name": "Street Fighter 6", "appid": 1364780, "color": "#FF006E"},
+    "ggst": {"name": "Guilty Gear -Strive-", "appid": 1384160, "color": "#F59E0B"},
+    "mk1": {"name": "Mortal Kombat 1", "appid": 1792670, "color": "#EF4444"},
+    "sparkingzero": {"name": "Dragon Ball: Sparking! ZERO", "appid": 1790600, "color": "#3B82F6"},
+    "gbfvr": {"name": "Granblue Fantasy Versus: Rising", "appid": 2157560, "color": "#10B981"}
+}
+
+@app.get("/api/patches")
+def get_game_patches(game: Optional[str] = None):
+    """
+    Fetches live official game patch notes and update announcements for FGC titles via Steam ISteamNews API.
+    """
+    import urllib.request
+    import json
+    import re
+    import html
+    from datetime import datetime, timezone
+
+    target_games = [game] if (game and game in STEAM_FGC_GAMES) else list(STEAM_FGC_GAMES.keys())
+    all_patches = []
+
+    for g_key in target_games:
+        info = STEAM_FGC_GAMES[g_key]
+        appid = info["appid"]
+        url = f"https://api.steampowered.com/ISteamNews/GetNewsForApp/v0002/?appid={appid}&count=5&maxlength=400&format=json"
+
+        try:
+            req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+            with urllib.request.urlopen(req, timeout=4) as resp:
+                data = json.loads(resp.read().decode('utf-8'))
+                news_items = data.get("appnews", {}).get("newsitems", [])
+
+                for item in news_items:
+                    raw_contents = item.get("contents", "")
+                    clean_text = re.sub(r'<[^>]+>', '', raw_contents)
+                    clean_text = re.sub(r'\[.*?\]', '', clean_text)
+                    clean_text = html.unescape(clean_text).strip()
+
+                    pub_date = item.get("date", 0)
+                    formatted_date = datetime.fromtimestamp(pub_date, tz=timezone.utc).strftime("%b %d, %Y") if pub_date else "Recent"
+
+                    all_patches.append({
+                        "id": str(item.get("gid", "")),
+                        "gameId": g_key,
+                        "gameName": info["name"],
+                        "gameColor": info["color"],
+                        "appid": appid,
+                        "title": item.get("title", "Game Patch Update"),
+                        "author": item.get("author", "Developer Announcement"),
+                        "url": item.get("url", f"https://store.steampowered.com/news/app/{appid}"),
+                        "contents": clean_text,
+                        "date": formatted_date,
+                        "timestamp": pub_date * 1000
+                    })
+        except Exception as e:
+            print(f"[-] Steam news fetch error for {g_key}: {e}")
+
+    all_patches.sort(key=lambda x: x["timestamp"], reverse=True)
+
+    return {
+        "patches": all_patches,
+        "count": len(all_patches),
+        "games": list(STEAM_FGC_GAMES.keys())
+    }
+
 
 
 @app.get("/api/feed/sidebar")
