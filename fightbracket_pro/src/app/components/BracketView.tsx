@@ -822,14 +822,19 @@ function BracketSection({
                       className="absolute w-full"
                       style={{ top: slot * SLOT_SIZE }}
                     >
-                      {/* Connection Line */}
+                      {/* Connection Line — Always Solid and Lit */}
                       {!isLast && (
                         (() => {
-                          let nextMatch = matches.find(m => m.prereqSetIds?.includes(match.id));
+                          let nextMatch = matches.find(
+                            m =>
+                              m.prereqSetIds?.includes(match.id) ||
+                              m.loserPrereqSetIds?.includes(match.id) ||
+                              m.id === match.loserNextMatchId
+                          );
                           if (!nextMatch && rIdx < rounds.length - 1) {
                             const nextRound = rounds[rIdx + 1];
                             const nextRoundMatches = matches.filter(m => m.round === nextRound);
-                            
+
                             // Visual Fallback: Only auto-connect if round sizes mathematically align
                             if (roundMatches.length === nextRoundMatches.length) {
                               nextMatch = nextRoundMatches[mIdx];
@@ -848,14 +853,19 @@ function BracketSection({
 
                             // Determine inlet position on next match card
                             let targetSlotY = 61; // default card center (divider)
-                            if (nextMatch.prereqSetIds && nextMatch.prereqSetIds[0] === match.id) {
+                            const isP1Prereq = nextMatch.prereqSetIds && nextMatch.prereqSetIds[0] === match.id;
+                            const isP2Prereq = nextMatch.prereqSetIds && nextMatch.prereqSetIds[1] === match.id;
+
+                            if (isP1Prereq) {
                               targetSlotY = 43; // P1 top slot
-                            } else if (nextMatch.prereqSetIds && nextMatch.prereqSetIds[1] === match.id) {
+                            } else if (isP2Prereq) {
                               targetSlotY = 80; // P2 bottom slot
                             } else if (slot < nextSlot) {
                               targetSlotY = 43;
                             } else if (slot > nextSlot) {
                               targetSlotY = 80;
+                            } else {
+                              targetSlotY = 61;
                             }
 
                             const yTarget = dy + targetSlotY;
@@ -865,18 +875,21 @@ function BracketSection({
 
                             const isMatchHovered = hoveredMatchId === match.id || hoveredMatchId === nextMatch.id;
                             const isWinnerAdvanced = match.winnerId && (nextMatch.player1Id === match.winnerId || nextMatch.player2Id === match.winnerId);
-                            const isPathActive = isLive || matchesSearch || isMatchHovered || isWinnerAdvanced;
+                            const isHighlighted = matchesSearch || isMatchHovered || isLive || isWinnerAdvanced;
 
                             const strokeColor = matchesSearch
                               ? '#00FF88'
                               : isMatchHovered
-                                ? theme.primaryColor
+                                ? '#00E5FF'
                                 : isLive
-                                  ? theme.primaryColor
+                                  ? '#00FF88'
                                   : isWinnerAdvanced
-                                    ? `${theme.primaryColor}90`
-                                    : 'rgba(122,158,192,0.22)';
-                            const strokeW = isPathActive ? 2 : 1.5;
+                                    ? '#00E5FF'
+                                    : theme.primaryColor;
+
+                            const strokeW = isHighlighted ? 2.5 : 2.0;
+                            const strokeOpacity = isHighlighted ? 1.0 : 0.85;
+                            const glowOpacity = isHighlighted ? 0.6 : 0.35;
 
                             return (
                               <svg 
@@ -887,35 +900,36 @@ function BracketSection({
                                   width: dx, 
                                   height: 1, 
                                   overflow: 'visible',
-                                  zIndex: isPathActive ? 2 : 0
+                                  zIndex: isHighlighted ? 3 : 1
                                 }}
                               >
-                                {isPathActive && (
-                                  <path 
-                                    d={pathD}
-                                    fill="none"
-                                    stroke={strokeColor}
-                                    strokeWidth={4}
-                                    strokeOpacity={0.25}
-                                    style={{ filter: `drop-shadow(0 0 6px ${strokeColor})` }}
-                                  />
-                                )}
+                                {/* Glowing Ambient Path Background */}
+                                <path 
+                                  d={pathD}
+                                  fill="none"
+                                  stroke={strokeColor}
+                                  strokeWidth={5}
+                                  strokeOpacity={glowOpacity}
+                                  style={{ filter: `drop-shadow(0 0 6px ${strokeColor})` }}
+                                />
+                                {/* Solid Main Connection Path */}
                                 <path 
                                   d={pathD}
                                   fill="none"
                                   stroke={strokeColor}
                                   strokeWidth={strokeW}
+                                  strokeOpacity={strokeOpacity}
                                 />
-                                <circle cx={0} cy={61} r={isPathActive ? 2.5 : 1.5} fill={strokeColor} />
-                                <circle cx={dx} cy={yTarget} r={isPathActive ? 2.5 : 1.5} fill={strokeColor} />
+                                <circle cx={0} cy={61} r={isHighlighted ? 3 : 2.5} fill={strokeColor} />
+                                <circle cx={dx} cy={yTarget} r={isHighlighted ? 3 : 2.5} fill={strokeColor} />
                               </svg>
                             );
                           }
                           
                           return (
                             <div 
-                              className="absolute top-[61px] left-full h-px w-6" 
-                              style={{ background: 'rgba(122,158,192,0.2)' }} 
+                              className="absolute top-[61px] left-full h-0.5 w-6 shadow-[0_0_8px_rgba(41,121,255,0.4)]" 
+                              style={{ background: theme.primaryColor, opacity: 0.75 }} 
                             />
                           );
                         })()
