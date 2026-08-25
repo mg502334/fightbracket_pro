@@ -126,6 +126,9 @@ class ProfileUpdateRequest(BaseModel):
     steam_id: Optional[str] = None
     twitch_id: Optional[str] = None
     twitch_url: Optional[str] = None
+    youtube_url: Optional[str] = None
+    tiktok_url: Optional[str] = None
+    spotify_url: Optional[str] = None
     discord_webhook_url: Optional[str] = None
     discord_server_id: Optional[str] = None
     games_data: Optional[str] = None
@@ -717,6 +720,9 @@ def get_user_profile(payload: dict = Depends(get_current_user_payload), db: Sess
                 "steam_id": getattr(user, 'steam_id', '') or "",
                 "twitch_id": getattr(user, 'twitch_id', '') or "",
                 "twitch_url": getattr(user, 'twitch_url', '') or "",
+                "youtube_url": getattr(user, 'youtube_url', '') or "",
+                "tiktok_url": getattr(user, 'tiktok_url', '') or "",
+                "spotify_url": getattr(user, 'spotify_url', '') or "",
                 "discord_webhook_url": getattr(user, 'discord_webhook_url', '') or "",
                 "discord_server_id": getattr(user, 'discord_server_id', '') or "",
                 "games_data": getattr(user, 'games_data', '') or "",
@@ -793,6 +799,12 @@ def update_user_profile(req: ProfileUpdateRequest, user_id: str = Depends(get_cu
         user.twitch_id = req.twitch_id.strip() # type: ignore
     if req.twitch_url is not None:
         user.twitch_url = req.twitch_url.strip() # type: ignore
+    if req.youtube_url is not None:
+        user.youtube_url = req.youtube_url.strip() # type: ignore
+    if req.tiktok_url is not None:
+        user.tiktok_url = req.tiktok_url.strip() # type: ignore
+    if req.spotify_url is not None:
+        user.spotify_url = req.spotify_url.strip() # type: ignore
     if req.discord_webhook_url is not None:
         user.discord_webhook_url = req.discord_webhook_url.strip() # type: ignore
     if req.discord_server_id is not None:
@@ -1812,6 +1824,9 @@ def get_target_user_profile(target_user_id: str, user_id: str = Depends(get_curr
             "steam_id": "" if public_restricted else (getattr(target_user, 'steam_id', '') or ""),
             "twitch_id": "" if public_restricted else (getattr(target_user, 'twitch_id', '') or ""),
             "twitch_url": "" if public_restricted else (getattr(target_user, 'twitch_url', '') or ""),
+            "youtube_url": "" if public_restricted else (getattr(target_user, 'youtube_url', '') or ""),
+            "tiktok_url": "" if public_restricted else (getattr(target_user, 'tiktok_url', '') or ""),
+            "spotify_url": "" if public_restricted else (getattr(target_user, 'spotify_url', '') or ""),
             "games_data": "" if public_restricted else (getattr(target_user, 'games_data', '') or ""),
             "is_public": is_public,
             "friends_only": friends_only,

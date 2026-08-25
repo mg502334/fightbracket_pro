@@ -33,6 +33,9 @@ export function AccountSettingsPanel({ user, userProfile, fetchUserProfile, getH
   const [userSteamId, setUserSteamId] = useState(userProfile?.steam_id || '');
   const [userTwitchId, setUserTwitchId] = useState(userProfile?.twitch_id || '');
   const [userTwitchUrl, setUserTwitchUrl] = useState(userProfile?.twitch_url || '');
+  const [userYoutubeUrl, setUserYoutubeUrl] = useState(userProfile?.youtube_url || '');
+  const [userTiktokUrl, setUserTiktokUrl] = useState(userProfile?.tiktok_url || '');
+  const [userSpotifyUrl, setUserSpotifyUrl] = useState(userProfile?.spotify_url || '');
   const [discordWebhookUrl, setDiscordWebhookUrl] = useState(userProfile?.discord_webhook_url || '');
   const [discordServerId, setDiscordServerId] = useState(userProfile?.discord_server_id || '');
   const [testingWebhook, setTestingWebhook] = useState(false);
@@ -68,6 +71,9 @@ export function AccountSettingsPanel({ user, userProfile, fetchUserProfile, getH
       setUserSteamId(userProfile.steam_id || '');
       setUserTwitchId(userProfile.twitch_id || '');
       setUserTwitchUrl(userProfile.twitch_url || '');
+      setUserYoutubeUrl(userProfile.youtube_url || '');
+      setUserTiktokUrl(userProfile.tiktok_url || '');
+      setUserSpotifyUrl(userProfile.spotify_url || '');
       setDiscordWebhookUrl(userProfile.discord_webhook_url || '');
       setDiscordServerId(userProfile.discord_server_id || '');
       
@@ -386,7 +392,7 @@ export function AccountSettingsPanel({ user, userProfile, fetchUserProfile, getH
               </div>
             </SettingsCard>
 
-            <SettingsCard title="Game IDs" description="Link your game specific IDs to display live stats.">
+            <SettingsCard title="Game & Social Media IDs" description="Link your game accounts and broadcast channels to feature on your public profile.">
               <div className="mb-4">
                 <SettingsInput label="Tekken 8 Polaris ID" value={userTekkenId} onChange={e => setUserTekkenId(e.target.value)} placeholder="e.g. 1234-5678-9012" />
                 <div className="flex justify-end mt-2"><SaveButton onClick={() => saveIntegrationData({ tekken_id: userTekkenId })} loading={savingIntegration} /></div>
@@ -395,10 +401,25 @@ export function AccountSettingsPanel({ user, userProfile, fetchUserProfile, getH
                 <SettingsInput label="Steam ID / Vanity URL" value={userSteamId} onChange={e => setUserSteamId(e.target.value)} placeholder="e.g. 76561198000000000" />
                 <div className="flex justify-end mt-2"><SaveButton onClick={() => saveIntegrationData({ steam_id: userSteamId })} loading={savingIntegration} /></div>
               </div>
-              <div className="mb-4 pt-4 border-t border-white/5">
+              <div className="mb-4 pt-4 border-t border-white/5 space-y-3">
                 <SettingsInput label="Twitch Username" value={userTwitchId} onChange={e => setUserTwitchId(e.target.value)} placeholder="e.g. fightbracket" />
-                <SettingsInput label="Twitch URL" value={userTwitchUrl} onChange={e => setUserTwitchUrl(e.target.value)} placeholder="e.g. https://twitch.tv/..." />
-                <div className="flex justify-end mt-2"><SaveButton onClick={() => saveIntegrationData({ twitch_id: userTwitchId, twitch_url: userTwitchUrl })} loading={savingIntegration} /></div>
+                <SettingsInput label="Twitch Channel URL" value={userTwitchUrl} onChange={e => setUserTwitchUrl(e.target.value)} placeholder="e.g. https://twitch.tv/..." />
+                <SettingsInput label="YouTube Channel URL" value={userYoutubeUrl} onChange={e => setUserYoutubeUrl(e.target.value)} placeholder="e.g. https://youtube.com/@fightbracket" />
+                <SettingsInput label="TikTok Profile URL" value={userTiktokUrl} onChange={e => setUserTiktokUrl(e.target.value)} placeholder="e.g. https://tiktok.com/@fightbracket" />
+                <SettingsInput label="Spotify Playlist / Track URL" value={userSpotifyUrl} onChange={e => setUserSpotifyUrl(e.target.value)} placeholder="e.g. https://open.spotify.com/playlist/..." />
+                <div className="flex justify-end mt-2">
+                  <SaveButton
+                    label="SAVE SOCIAL LINKS"
+                    onClick={() => saveIntegrationData({
+                      twitch_id: userTwitchId,
+                      twitch_url: userTwitchUrl,
+                      youtube_url: userYoutubeUrl,
+                      tiktok_url: userTiktokUrl,
+                      spotify_url: userSpotifyUrl
+                    })}
+                    loading={savingIntegration}
+                  />
+                </div>
               </div>
             </SettingsCard>
 

@@ -23,6 +23,9 @@ class DBUser(Base):
     steam_id = Column(String, nullable=True) # Steam ID 64 or vanity username
     twitch_id = Column(String, nullable=True) # Twitch channel username or ID
     twitch_url = Column(String, nullable=True) # Twitch channel URL
+    youtube_url = Column(String, nullable=True) # YouTube channel URL
+    tiktok_url = Column(String, nullable=True) # TikTok handle or URL
+    spotify_url = Column(String, nullable=True) # Spotify playlist / track URL
     discord_webhook_url = Column(String, nullable=True) # Discord webhook for TO announcements
     discord_server_id = Column(String, nullable=True) # Discord server ID for widget embed
     games_data = Column(Text, nullable=True) # Stored JSON string of main games & characters

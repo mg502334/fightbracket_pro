@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Shield, Lock, Globe, UserPlus, MessageSquare, Check, X, Trophy, ExternalLink, Sparkles, AlertTriangle, Swords, ChevronDown, ChevronUp, Eye, EyeOff, RefreshCw, Heart, UserCheck } from 'lucide-react';
+import { Shield, Lock, Globe, UserPlus, MessageSquare, Check, X, Trophy, ExternalLink, Sparkles, AlertTriangle, Swords, ChevronDown, ChevronUp, Eye, EyeOff, RefreshCw, Heart, UserCheck, Video, Music, Tv, Youtube } from 'lucide-react';
 import { TekkenStatsPanel } from './TekkenStatsPanel';
 import { SteamStatsPanel } from './SteamStatsPanel';
 import { StartggCareerPanel } from './StartggCareerPanel';
@@ -19,6 +19,9 @@ interface UserProfileData {
   steam_id?: string;
   twitch_url?: string;
   twitch_id?: string;
+  youtube_url?: string;
+  tiktok_url?: string;
+  spotify_url?: string;
   startgg_data?: {
     slug?: string;
     gamerTag?: string;
@@ -522,7 +525,108 @@ export function UserProfileModal({ isOpen, onClose, targetUserId, supabaseToken,
                       }
                     })()}
 
-                    {/* Start.gg Player Career Analytics & Pro Ranking */}
+                    {/* 2. Steam Player Card */}
+                    {profile?.steam_id && (
+                      <SteamStatsPanel steamId={profile.steam_id} compact />
+                    )}
+
+                    {/* 3. Broadcast & Social Media Channels (Twitch, YouTube, TikTok, Spotify) */}
+                    {((profile?.twitch_url || profile?.twitch_id) || profile?.youtube_url || profile?.tiktok_url || profile?.spotify_url) && (
+                      <div className="space-y-3">
+                        <div className="text-[10px] font-mono text-gray-400 uppercase tracking-widest font-bold flex items-center gap-1.5">
+                          <Globe size={12} className="text-cyan-400" /> BROADCASTS & SOCIAL MEDIA
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          {/* Twitch Card */}
+                          {(profile?.twitch_url || profile?.twitch_id) && (
+                            <a
+                              href={profile?.twitch_url ? (profile.twitch_url.startsWith('http') ? profile.twitch_url : `https://${profile.twitch_url}`) : `https://twitch.tv/${profile.twitch_id}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-3 p-3.5 rounded-xl bg-[#9146FF]/10 border border-[#9146FF]/30 hover:bg-[#9146FF]/20 hover:border-[#9146FF]/60 transition-all group shadow-md"
+                            >
+                              <div className="p-2 rounded-lg bg-[#9146FF]/20 border border-[#9146FF]/40 text-[#9146FF]">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                                  <path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714Z"/>
+                                </svg>
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="text-[10px] font-mono font-bold text-[#9146FF] tracking-wider uppercase">TWITCH LIVE</div>
+                                <div className="text-xs font-rajdhani font-bold text-white group-hover:text-[#9146FF] transition-colors truncate">
+                                  {profile?.twitch_id || 'Watch Stream'}
+                                </div>
+                              </div>
+                              <ExternalLink size={14} className="text-white/30 group-hover:text-[#9146FF] transition-colors shrink-0" />
+                            </a>
+                          )}
+
+                          {/* YouTube Card */}
+                          {profile?.youtube_url && (
+                            <a
+                              href={profile.youtube_url.startsWith('http') ? profile.youtube_url : `https://${profile.youtube_url}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-3 p-3.5 rounded-xl bg-red-500/10 border border-red-500/30 hover:bg-red-500/20 hover:border-red-500/60 transition-all group shadow-md"
+                            >
+                              <div className="p-2 rounded-lg bg-red-500/20 border border-red-500/40 text-red-500">
+                                <Youtube size={20} />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="text-[10px] font-mono font-bold text-red-500 tracking-wider uppercase">YOUTUBE CHANNEL</div>
+                                <div className="text-xs font-rajdhani font-bold text-white group-hover:text-red-400 transition-colors truncate">
+                                  Watch VODs & Highlights
+                                </div>
+                              </div>
+                              <ExternalLink size={14} className="text-white/30 group-hover:text-red-400 transition-colors shrink-0" />
+                            </a>
+                          )}
+
+                          {/* TikTok Card */}
+                          {profile?.tiktok_url && (
+                            <a
+                              href={profile.tiktok_url.startsWith('http') ? profile.tiktok_url : `https://${profile.tiktok_url}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-3 p-3.5 rounded-xl bg-gradient-to-r from-[#00F2FE]/10 to-[#FE2C55]/10 border border-cyan-500/30 hover:border-pink-500/60 transition-all group shadow-md"
+                            >
+                              <div className="p-2 rounded-lg bg-black/40 border border-cyan-500/40 text-[#00F2FE]">
+                                <Video size={20} />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="text-[10px] font-mono font-bold text-[#00F2FE] tracking-wider uppercase">TIKTOK HIGHLIGHTS</div>
+                                <div className="text-xs font-rajdhani font-bold text-white group-hover:text-cyan-300 transition-colors truncate">
+                                  Clips & Match Reels
+                                </div>
+                              </div>
+                              <ExternalLink size={14} className="text-white/30 group-hover:text-[#00F2FE] transition-colors shrink-0" />
+                            </a>
+                          )}
+
+                          {/* Spotify Card */}
+                          {profile?.spotify_url && (
+                            <a
+                              href={profile.spotify_url.startsWith('http') ? profile.spotify_url : `https://${profile.spotify_url}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-3 p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 hover:bg-emerald-500/20 hover:border-emerald-500/60 transition-all group shadow-md"
+                            >
+                              <div className="p-2 rounded-lg bg-emerald-500/20 border border-emerald-500/40 text-emerald-400">
+                                <Music size={20} />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="text-[10px] font-mono font-bold text-emerald-400 tracking-wider uppercase">SPOTIFY ANTHEM</div>
+                                <div className="text-xs font-rajdhani font-bold text-white group-hover:text-emerald-300 transition-colors truncate">
+                                  Player Track / Playlist
+                                </div>
+                              </div>
+                              <ExternalLink size={14} className="text-white/30 group-hover:text-emerald-400 transition-colors shrink-0" />
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* 4. Start.gg Player Career Analytics & Pro Ranking */}
                     {(profile?.startgg_slug || profile?.startgg_data?.slug) && (
                       <StartggCareerPanel
                         startggSlug={profile.startgg_slug || profile.startgg_data?.slug}
@@ -531,32 +635,15 @@ export function UserProfileModal({ isOpen, onClose, targetUserId, supabaseToken,
                       />
                     )}
 
-                    {(profile?.twitch_url || profile?.twitch_id) && (
-                      <a
-                        href={profile?.twitch_url ? (profile.twitch_url.startsWith('http') ? profile.twitch_url : `https://${profile.twitch_url}`) : `https://twitch.tv/${profile.twitch_id}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-3 p-3 rounded-lg bg-[#9146FF]/10 border border-[#9146FF]/30 hover:bg-[#9146FF]/20 transition-all group"
-                      >
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="#9146FF" xmlns="http://www.w3.org/2000/svg">
-                          <path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714Z"/>
-                        </svg>
-                        <div className="flex-1">
-                          <div className="text-xs font-mono font-bold text-[#9146FF]">TWITCH CHANNEL</div>
-                          <div className="text-sm font-rajdhani font-bold text-white group-hover:text-[#9146FF] transition-colors">
-                            {profile?.twitch_id || 'Watch Live'}
-                          </div>
-                        </div>
-                      </a>
+                    {/* 5. Tekken 8 Stats Card */}
+                    {profile?.tekken_id && (
+                      <TekkenStatsPanel 
+                        tekkenId={profile.tekken_id} 
+                        steamId={profile.steam_id}
+                        gamerTag={profile.gamer_tag}
+                        compact 
+                      />
                     )}
-
-                    <TekkenStatsPanel 
-                      tekkenId={profile?.tekken_id} 
-                      steamId={profile?.steam_id}
-                      gamerTag={profile?.gamer_tag}
-                      compact 
-                    />
-                    <SteamStatsPanel steamId={profile?.steam_id} compact />
                   </div>
                 )}
 
