@@ -1397,7 +1397,7 @@ function PlayerSlot({
             className="text-base truncate flex items-center gap-1 leading-snug"
             style={{
               fontFamily: 'Rajdhani, sans-serif',
-              fontWeight: isWinner || isSearched ? 800 : 700,
+              fontWeight: isWinner || isSearched ? 800 : isCompleted ? 500 : 600,
               color: isSearched ? '#00FF88' : isWinner ? theme.primaryColor : 'var(--foreground)',
               textDecoration: player.fbUserId ? 'underline' : 'none',
               textDecorationColor: theme.primaryColor,
@@ -1412,7 +1412,7 @@ function PlayerSlot({
       </div>
       <span
         className="text-base tabular-nums ml-2 shrink-0"
-        style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 800, color: isWinner ? theme.primaryColor : score > 0 ? 'var(--foreground)' : 'rgba(122,158,192,0.4)' }}
+        style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: isWinner ? 800 : isCompleted ? 500 : 600, color: isWinner ? theme.primaryColor : score > 0 ? 'var(--foreground)' : 'rgba(122,158,192,0.4)' }}
       >
         {score}
       </span>
