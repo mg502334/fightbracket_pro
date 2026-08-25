@@ -1361,10 +1361,10 @@ export default function App() {
   return (
     <div className="min-h-screen flex flex-col" style={{ background: 'var(--background)', color: 'var(--foreground)', fontFamily: 'Inter, sans-serif' }}>
       {/* Top bar */}
-      <header className="border-b flex items-center justify-between px-6 py-3 shrink-0" style={{ background: 'var(--sidebar)', borderColor: 'var(--border)' }}>
-        <div className="flex items-center gap-4">
+      <header className="border-b flex flex-wrap items-center justify-between gap-3 px-4 py-3 shrink-0" style={{ background: 'var(--sidebar)', borderColor: 'var(--border)' }}>
+        <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #00E5FF, #FF006E)', boxShadow: '0 0 12px rgba(0,229,255,0.4)' }}>
+            <div className="w-7 h-7 rounded flex items-center justify-center shrink-0" style={{ background: 'linear-gradient(135deg, #00E5FF, #FF006E)', boxShadow: '0 0 12px rgba(0,229,255,0.4)' }}>
               <Zap size={14} color="#050A14" />
             </div>
             <div>
@@ -1392,13 +1392,13 @@ export default function App() {
               <div className="text-xs opacity-60" style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9, color: '#00FFCC' }}>powered by start.gg</div>
             </div>
           </div>
-          <div className="w-px h-8 opacity-20" style={{ background: '#00E5FF' }} />
-          <div className="min-w-[150px]">
-            <div className="text-sm tracking-wider" style={{ fontFamily: 'Rajdhani, sans-serif', fontWeight: 700 }}>{activeTournament ? activeTournament.name : ''}</div>
+          <div className="hidden sm:block w-px h-8 opacity-20" style={{ background: '#00E5FF' }} />
+          <div className="min-w-0">
+            <div className="text-sm tracking-wider truncate font-bold" style={{ fontFamily: 'Rajdhani, sans-serif' }}>{activeTournament ? activeTournament.name : ''}</div>
             {activeTournament && (
               <div className="flex items-center gap-1.5">
                 <MapPin size={9} className="opacity-40" />
-                <span className="text-xs opacity-40" style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9 }}>
+                <span className="text-xs opacity-40 truncate" style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9 }}>
                   {activeTournament.location}
                 </span>
               </div>
@@ -1406,15 +1406,15 @@ export default function App() {
           </div>
           {(activeTournament || totalPlayers > 0) && (
             <>
-              <div className="w-px h-8 opacity-20" style={{ background: '#00E5FF' }} />
-              <div className="flex items-center gap-4 opacity-70">
+              <div className="hidden md:block w-px h-8 opacity-20" style={{ background: '#00E5FF' }} />
+              <div className="hidden md:flex items-center gap-4 opacity-70">
                 {[
                   { label: 'PLAYERS', value: totalPlayers },
                   { label: 'CHECKED IN', value: totalCheckedIn },
                   { label: 'LIVE', value: totalActive },
                   { label: 'BUSY', value: totalStationsActive },
                 ].map(s => (
-                  <div key={s.label} className="flex flex-col items-center justify-center min-w-[50px]">
+                  <div key={s.label} className="flex flex-col items-center justify-center min-w-[45px]">
                     <div className="text-xs leading-none mb-0.5" style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 8, opacity: 0.6 }}>{s.label}</div>
                     <div className="text-sm tabular-nums" style={{ fontFamily: 'Rajdhani, sans-serif', fontWeight: 700 }}>{s.value}</div>
                   </div>
@@ -1423,7 +1423,7 @@ export default function App() {
             </>
           )}
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2">
           {matches.some(m => m.state === 'in_progress' || m.state === 'called') && (
             <div className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: '#00FF88' }} />

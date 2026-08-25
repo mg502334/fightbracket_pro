@@ -66,12 +66,12 @@ export function GameBanner({ theme, entrantCount, checkedInCount, activeMatchCou
         style={{ background: `linear-gradient(90deg, transparent, ${theme.primaryColor}, transparent)` }}
       />
 
-      <div className="relative flex items-center justify-between px-6 py-4">
+      <div className="relative flex flex-wrap items-center justify-between gap-4 px-4 sm:px-6 py-4">
         {/* Left: Game identity */}
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3 sm:gap-4">
           {/* Game color badge */}
           <div
-            className="w-1 h-12 rounded-full"
+            className="w-1 h-12 rounded-full shrink-0"
             style={{ background: `linear-gradient(180deg, ${theme.primaryColor}, ${theme.secondaryColor})`, boxShadow: `0 0 12px ${theme.primaryColor}` }}
           />
           <div>
@@ -82,7 +82,7 @@ export function GameBanner({ theme, entrantCount, checkedInCount, activeMatchCou
               {theme.publisher}{isActive ? ' · NOW LIVE' : ''}
             </div>
             <div
-              className="text-2xl tracking-wider"
+              className="text-xl sm:text-2xl tracking-wider"
               style={{ fontFamily: 'Rajdhani, sans-serif', fontWeight: 700, color: theme.primaryColor, textShadow: `0 0 20px ${theme.primaryColor}` }}
             >
               {theme.displayName}
@@ -94,7 +94,7 @@ export function GameBanner({ theme, entrantCount, checkedInCount, activeMatchCou
         </div>
 
         {/* Right: Live stats */}
-        <div className="flex items-center gap-6">
+        <div className="flex flex-wrap items-center gap-4 sm:gap-6">
           <Stat icon={<Users size={14} />} label="ENTRANTS" value={entrantCount} color="#7A9EC0" />
           <Stat icon={<Zap size={14} />} label="CHECKED IN" value={checkedInCount} color="#00E5FF" />
           <Stat icon={<Globe size={14} />} label="LIVE MATCHES" value={activeMatchCount} color={activeMatchCount > 0 ? "#00FF88" : "#FF4D4D"} pulse={activeMatchCount > 0} />
