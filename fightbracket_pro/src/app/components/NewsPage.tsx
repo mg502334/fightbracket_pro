@@ -3,6 +3,12 @@ import { Megaphone, Wrench, Sparkles, Calendar, ExternalLink, ChevronRight, Trop
 import { RecentsWidget } from './RecentsWidget';
 import { DealsWidget } from './DealsWidget';
 
+export interface RegistrationPhase {
+  label: string;             // e.g. "Early Reg", "Normal Reg", "Late Reg"
+  badge: string;             // e.g. "EARLY REG", "NORMAL REG", "LATE REG"
+  endsAt: string | number;   // ISO timestamp or ms
+}
+
 export interface NewsItem {
   id: string;
   type: 'update' | 'fix' | 'feature' | 'event' | 'sale';
@@ -18,11 +24,42 @@ export interface NewsItem {
   publishedAt?: number | string; // timestamp in ms or ISO string
   expiresAt?: number | string;   // timestamp in ms or ISO string
   expiryLabel?: string;
+  registrationPhases?: RegistrationPhase[]; // Multi-phase registration schedule
   game?: string;
   platform?: string;
   discount?: string;
   originalPrice?: string;
   salePrice?: string;
+}
+
+// Helper to evaluate multi-phase registration state dynamically
+export function getActiveRegistrationState(item: NewsItem) {
+  if (item.registrationPhases && item.registrationPhases.length > 0) {
+    const now = Date.now();
+    for (const phase of item.registrationPhases) {
+      const expTime = typeof phase.endsAt === 'number'
+        ? phase.endsAt
+        : new Date(phase.endsAt).getTime();
+      if (!isNaN(expTime) && now <= expTime) {
+        const remainingMs = expTime - now;
+        const days = Math.ceil(remainingMs / (24 * 60 * 60 * 1000));
+        return {
+          activePhase: phase,
+          badge: phase.badge,
+          statusText: `${phase.label} Ends ${new Date(phase.endsAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} · ${days} ${days === 1 ? 'day' : 'days'} left`,
+          isAllClosed: false,
+        };
+      }
+    }
+    // If all registration phases have ended:
+    return {
+      activePhase: null,
+      badge: 'REGISTRATION CLOSED',
+      statusText: 'REGISTRATION CLOSED',
+      isAllClosed: true,
+    };
+  }
+  return null;
 }
 
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
@@ -73,11 +110,25 @@ const DEFAULT_NEWS_ITEMS: NewsItem[] = [
     type: 'event',
     date: 'Aug 18, 2026',
     publishedAt: NOW - (1 * 24 * 60 * 60 * 1000), // 1 day ago -> Active
-    expiresAt: '2026-08-30T23:59:59Z',
-    expiryLabel: 'Early Reg Ends Aug 30',
+    registrationPhases: [
+      {
+        label: 'Early Reg',
+        badge: 'EARLY REG',
+        endsAt: '2026-08-30T23:59:59Z'
+      },
+      {
+        label: 'Normal Reg',
+        badge: 'NORMAL REG',
+        endsAt: '2026-12-31T23:59:59Z'
+      },
+      {
+        label: 'Late Reg',
+        badge: 'LATE REG',
+        endsAt: '2027-04-15T23:59:59Z'
+      }
+    ],
     title: 'Texas Showdown 2027 Pre-Registration Live',
     body: 'Get ready for Texas Showdown 2027! Houston is bringing the heat once again with major brackets across all premier fighting games. Pre-registration is officially live on Start.gg. Early registration rates end August 30th.',
-    badge: 'EARLY REG',
     link: 'https://www.start.gg/tournament/texas-showdown-2027/details',
     linkLabel: 'View Start.gg Event',
   },
@@ -247,6 +298,12 @@ export function NewsPage({ onNavigateHome, onSignUp }: NewsPageProps) {
   const isItemArchived = (item: NewsItem): boolean => {
     if (item.archived || item.expired) return true;
 
+    // Multi-phase registration schedule check
+    const regState = getActiveRegistrationState(item);
+    if (regState) {
+      return regState.isAllClosed;
+    }
+
     // Custom expiration date check (e.g. Early Registration deadline)
     if (item.expiresAt) {
       const expTime = typeof item.expiresAt === 'number'
@@ -273,6 +330,11 @@ export function NewsPage({ onNavigateHome, onSignUp }: NewsPageProps) {
   };
 
   const getRemainingDays = (item: NewsItem): string | null => {
+    const regState = getActiveRegistrationState(item);
+    if (regState) {
+      return regState.statusText;
+    }
+
     if (item.expiresAt) {
       const expTime = typeof item.expiresAt === 'number'
         ? item.expiresAt
@@ -403,8 +465,11 @@ export function NewsPage({ onNavigateHome, onSignUp }: NewsPageProps) {
                 const cfg = TYPE_CONFIG[item.type] || TYPE_CONFIG.update;
                 const Icon = cfg.icon;
                 const daysLeft = getRemainingDays(item);
+                const regState = getActiveRegistrationState(item);
+                const displayBadge = regState ? regState.badge : item.badge;
                 const isDeal = item.type === 'sale';
                 const isExpiredDeal = isDeal && (item.expired || item.archived);
+                const isRegistrationClosed = regState?.isAllClosed;
 
                 return (
                   <div
@@ -427,9 +492,13 @@ export function NewsPage({ onNavigateHome, onSignUp }: NewsPageProps) {
                             >
                               {cfg.label}
                             </span>
-                            {item.badge && (
-                              <span className="text-[10px] font-bold tracking-widest px-2 py-0.5 rounded bg-white/5 text-gray-300">
-                                {item.badge}
+                            {displayBadge && (
+                              <span className={`text-[10px] font-bold tracking-widest px-2 py-0.5 rounded font-mono ${
+                                isRegistrationClosed 
+                                  ? 'bg-red-500/15 text-red-400 border border-red-500/30' 
+                                  : 'bg-white/5 text-gray-300'
+                              }`}>
+                                {displayBadge}
                               </span>
                             )}
                             <span className="text-[10px] text-gray-500">{item.date}</span>
@@ -438,14 +507,20 @@ export function NewsPage({ onNavigateHome, onSignUp }: NewsPageProps) {
                               <span 
                                 className="text-[9px] font-mono px-2 py-0.5 rounded ml-auto font-bold tracking-wider uppercase"
                                 style={{ 
-                                  background: isDeal 
-                                    ? (isExpiredDeal ? "rgba(239, 68, 68, 0.15)" : "rgba(0, 255, 136, 0.15)") 
+                                  background: isRegistrationClosed || isExpiredDeal
+                                    ? "rgba(239, 68, 68, 0.15)"
+                                    : isDeal
+                                    ? "rgba(0, 255, 136, 0.15)"
                                     : "rgba(6,182,212,0.1)",
-                                  color: isDeal 
-                                    ? (isExpiredDeal ? "#f87171" : "#00FF88") 
+                                  color: isRegistrationClosed || isExpiredDeal
+                                    ? "#f87171"
+                                    : isDeal
+                                    ? "#00FF88"
                                     : "#22d3ee",
-                                  border: isDeal 
-                                    ? (isExpiredDeal ? "1px solid rgba(239, 68, 68, 0.3)" : "1px solid rgba(0, 255, 136, 0.3)") 
+                                  border: isRegistrationClosed || isExpiredDeal
+                                    ? "1px solid rgba(239, 68, 68, 0.3)"
+                                    : isDeal
+                                    ? "1px solid rgba(0, 255, 136, 0.3)"
                                     : "1px solid rgba(6,182,212,0.2)"
                                 }}
                               >
@@ -481,7 +556,13 @@ export function NewsPage({ onNavigateHome, onSignUp }: NewsPageProps) {
                             </ul>
                           )}
 
-                          {item.type === 'sale' && isExpiredDeal ? (
+                          {isRegistrationClosed ? (
+                            <span
+                              className="inline-flex items-center gap-1.5 mt-4 px-4 py-2 rounded-lg text-xs font-bold tracking-widest font-mono opacity-50 cursor-not-allowed border border-white/10 bg-white/5 text-gray-400"
+                            >
+                              REGISTRATION CLOSED & ARCHIVED
+                            </span>
+                          ) : item.type === 'sale' && isExpiredDeal ? (
                             <span
                               className="inline-flex items-center gap-1.5 mt-4 px-4 py-2 rounded-lg text-xs font-bold tracking-widest font-mono opacity-50 cursor-not-allowed border border-white/10 bg-white/5 text-gray-400"
                             >
@@ -516,7 +597,7 @@ export function NewsPage({ onNavigateHome, onSignUp }: NewsPageProps) {
                           ) : null}
                         </div>
                       </div>
-                      {item.link && !isExpiredDeal && (
+                      {item.link && !isExpiredDeal && !isRegistrationClosed && (
                         <a
                           href={item.link}
                           target="_blank"
