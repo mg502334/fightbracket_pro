@@ -261,38 +261,6 @@ export default function App() {
     return () => clearInterval(interval);
   }, [autoSyncSlug]);
 
-  // Sync state with standalone venue Display Window via BroadcastChannel & localStorage
-  useEffect(() => {
-    let channel: BroadcastChannel | null = null;
-    try {
-      channel = new BroadcastChannel('fightbracket_display_channel');
-      const payload = {
-        type: 'STATE_UPDATE',
-        matches: gameMatches,
-        players: gamePlayers,
-        theme,
-        announcement,
-      };
-
-      channel.postMessage(payload);
-      try {
-        localStorage.setItem('fightbracket_display_state', JSON.stringify(payload));
-      } catch (e) {}
-
-      channel.onmessage = (event) => {
-        if (event.data?.type === 'REQUEST_INITIAL_STATE') {
-          channel?.postMessage(payload);
-        }
-      };
-    } catch (e) {
-      console.warn('BroadcastChannel not supported');
-    }
-
-    return () => {
-      channel?.close();
-    };
-  }, [gameMatches, gamePlayers, theme, announcement]);
-
   // Create anonymous user ID if not logged in
   const userId = useMemo(() => {
     if (supabaseUser?.id) return supabaseUser.id;
@@ -478,6 +446,38 @@ export default function App() {
   const completedMatches = gameMatches.filter(m => m.state === 'completed');
   const completionPercentage = gameMatches.length > 0 ? Math.round((completedMatches.length / gameMatches.length) * 100) : 0;
   const checkedInCount = gamePlayers.filter(p => p.checkedIn).length;
+
+  // Sync state with standalone venue Display Window via BroadcastChannel & localStorage
+  useEffect(() => {
+    let channel: BroadcastChannel | null = null;
+    try {
+      channel = new BroadcastChannel('fightbracket_display_channel');
+      const payload = {
+        type: 'STATE_UPDATE',
+        matches: gameMatches,
+        players: gamePlayers,
+        theme,
+        announcement,
+      };
+
+      channel.postMessage(payload);
+      try {
+        localStorage.setItem('fightbracket_display_state', JSON.stringify(payload));
+      } catch (e) {}
+
+      channel.onmessage = (event) => {
+        if (event.data?.type === 'REQUEST_INITIAL_STATE') {
+          channel?.postMessage(payload);
+        }
+      };
+    } catch (e) {
+      console.warn('BroadcastChannel not supported');
+    }
+
+    return () => {
+      channel?.close();
+    };
+  }, [gameMatches, gamePlayers, theme, announcement]);
 
   const handleCheckIn = useCallback(async (playerId: string, checked: boolean) => {
     setPlayers(prev => prev.map(p => p.id === playerId ? { ...p, checkedIn: checked } : p));
