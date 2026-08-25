@@ -2,7 +2,7 @@ import React, { useState, useCallback, useEffect, useMemo } from "react";
 import { Toaster, toast } from "sonner";
 import { motion, AnimatePresence } from "motion/react";
 import {
-  Trophy, GitBranch, UserCheck, Monitor, MessageSquare, Smartphone,
+  Trophy, GitBranch, UserCheck, User, Monitor, MessageSquare, Smartphone,
   ExternalLink, RefreshCw, Zap, MapPin, Globe, Moon, Sun, X, Tv, Cloud, Play, LayoutGrid, Trash2, Megaphone, Search
 } from "lucide-react";
 import { useTheme } from "next-themes";
@@ -51,7 +51,7 @@ const TABS: { id: Tab; label: string; icon: React.ComponentType<{ size?: number 
   { id: 'stations', label: 'STATIONS', icon: Monitor },
   { id: 'streams', label: 'STREAMS', icon: Tv },
   { id: 'vods', label: 'EXHIBITIONS', icon: Play },
-  { id: 'account', label: 'ACCOUNT', icon: UserCheck },
+  { id: 'account', label: 'ACCOUNT', icon: User },
 ];
 
 export function parseStreamUrl(streamName: string, streamSource?: string): string {
