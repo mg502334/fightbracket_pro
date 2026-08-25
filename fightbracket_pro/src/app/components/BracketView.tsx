@@ -21,6 +21,94 @@ const STATE_CONFIG = {
   completed: { label: 'DONE', color: '#3A5A7A', bg: 'rgba(58,90,122,0.1)', icon: CheckCircle2 },
 };
 
+export function getTop8Standings(matches: BracketMatch[], players: Player[]): { placement: number; player: Player }[] {
+  const playerMap = new Map(players.map(p => [p.id, p]));
+
+  // 1. If explicit placements exist from Start.gg or manual assignments, use them
+  const explicitPlacements = players
+    .filter(p => p.placement !== undefined && p.placement >= 1 && p.placement <= 8)
+    .sort((a, b) => (a.placement || 99) - (b.placement || 99));
+
+  if (explicitPlacements.length > 0) {
+    return explicitPlacements.map(p => ({ placement: p.placement!, player: p }));
+  }
+
+  // 2. Derive standings from match outcomes
+  const completedMatches = matches.filter(m => m.state === 'completed' && m.winnerId);
+  if (completedMatches.length === 0) return [];
+
+  const getLoser = (m: BracketMatch): Player | null => {
+    if (!m.winnerId) return null;
+    const loserId = m.winnerId === m.player1Id ? m.player2Id : m.player1Id;
+    return loserId ? playerMap.get(loserId) || null : null;
+  };
+
+  const getWinner = (m: BracketMatch): Player | null => {
+    return m.winnerId ? playerMap.get(m.winnerId) || null : null;
+  };
+
+  const standings: { placement: number; player: Player }[] = [];
+  const processedPlayerIds = new Set<string>();
+
+  const addStanding = (placement: number, player: Player | null) => {
+    if (!player || processedPlayerIds.has(player.id)) return;
+    processedPlayerIds.add(player.id);
+    standings.push({ placement, player });
+  };
+
+  // Grand Finals (Check for Reset match first)
+  const gfReset = completedMatches.find(m => m.roundName?.toLowerCase().includes('grand final reset'));
+  const gfMain = completedMatches.find(
+    m => m.roundName?.toLowerCase().includes('grand final') && !m.roundName?.toLowerCase().includes('reset')
+  );
+  const gfMatch = gfReset || gfMain;
+
+  if (gfMatch) {
+    addStanding(1, getWinner(gfMatch));
+    addStanding(2, getLoser(gfMatch));
+  }
+
+  // Group losers bracket matches by absolute round number descending
+  const losersMatches = completedMatches.filter(
+    m => m.round < 0 || m.roundName?.toLowerCase().includes('loser')
+  );
+
+  const losersRoundsMap = new Map<number, BracketMatch[]>();
+  losersMatches.forEach(m => {
+    const absRound = Math.abs(m.round);
+    if (!losersRoundsMap.has(absRound)) losersRoundsMap.set(absRound, []);
+    losersRoundsMap.get(absRound)!.push(m);
+  });
+
+  const sortedLoserRounds = Array.from(losersRoundsMap.keys()).sort((a, b) => b - a);
+
+  // Round 1 (highest abs round, e.g. Losers Final) -> 3rd Place
+  if (sortedLoserRounds.length > 0) {
+    const matchesInRound = losersRoundsMap.get(sortedLoserRounds[0]) || [];
+    matchesInRound.forEach(m => addStanding(3, getLoser(m)));
+  }
+
+  // Round 2 (e.g. Losers Semi) -> 4th Place
+  if (sortedLoserRounds.length > 1) {
+    const matchesInRound = losersRoundsMap.get(sortedLoserRounds[1]) || [];
+    matchesInRound.forEach(m => addStanding(4, getLoser(m)));
+  }
+
+  // Round 3 (e.g. Losers Quarter) -> 5th Place
+  if (sortedLoserRounds.length > 2) {
+    const matchesInRound = losersRoundsMap.get(sortedLoserRounds[2]) || [];
+    matchesInRound.forEach(m => addStanding(5, getLoser(m)));
+  }
+
+  // Round 4 (e.g. Losers Round 3) -> 7th Place
+  if (sortedLoserRounds.length > 3) {
+    const matchesInRound = losersRoundsMap.get(sortedLoserRounds[3]) || [];
+    matchesInRound.forEach(m => addStanding(7, getLoser(m)));
+  }
+
+  return standings;
+}
+
 export function BracketView({
   matches,
   players,
@@ -108,23 +196,39 @@ export function BracketView({
     const completedMatches = matches.filter(m => m.state === 'completed').length;
     const calledMatches = matches.filter(m => m.state === 'called' || m.state === 'in_progress').length;
     const progressPct = totalMatches > 0 ? Math.round((completedMatches / totalMatches) * 100) : 0;
+    const isCompleted = totalMatches > 0 && completedMatches === totalMatches;
 
     const lines: string[] = [
-      `⚔️ **LIVE BRACKET UPDATE**`,
+      isCompleted ? `**TOURNAMENT RESULTS**` : `**LIVE BRACKET UPDATE**`,
       ``,
-      `📊 Progress: **${completedMatches}/${totalMatches}** matches complete (${progressPct}%)`,
+      `📊 **Progress:** **${completedMatches}/${totalMatches}** matches complete (${progressPct}%)`,
     ];
-    if (calledMatches > 0) {
-      lines.push(`🎮 Active: **${calledMatches}** match${calledMatches === 1 ? '' : 'es'} in progress`);
+
+    if (calledMatches > 0 && !isCompleted) {
+      lines.push(`🎮 **Active:** **${calledMatches}** match${calledMatches === 1 ? '' : 'es'} in progress`);
     }
 
-    // Top 3 completed matches with results
+    const top8 = getTop8Standings(matches, players);
+
+    // When completed (or if top 8 results exist), show Top 8 Standings from 1st place to 8th player
+    if (top8.length > 0 && (isCompleted || top8.length >= 8)) {
+      lines.push(``);
+      lines.push(`🏆 **Top 8 Standings:**`);
+      top8.forEach(({ placement, player }) => {
+        const medal = placement === 1 ? '🥇 ' : placement === 2 ? '🥈 ' : placement === 3 ? '🥉 ' : '';
+        const flag = player.countryFlag ? `${player.countryFlag} ` : '';
+        const suffix = placement === 1 ? 'st' : placement === 2 ? 'nd' : placement === 3 ? 'rd' : 'th';
+        lines.push(`> ${medal}**${placement}${suffix}**: ${flag}**${player.tag}**`);
+      });
+    }
+
+    // Top 3 completed matches with results for live updates
     const recent = matches
       .filter(m => m.state === 'completed' && m.winnerId)
       .slice(-3)
       .reverse();
 
-    if (recent.length > 0) {
+    if (recent.length > 0 && (!isCompleted || top8.length === 0)) {
       lines.push(``);
       lines.push(`📋 **Recent Results:**`);
       recent.forEach(m => {
