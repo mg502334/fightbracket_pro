@@ -11,6 +11,8 @@ import requests
 import os
 import uuid
 import urllib.parse
+import socket
+import ipaddress
 from datetime import datetime, timezone
 import random
 import string
@@ -44,47 +46,127 @@ try:
 except ImportError:
     jwt = None
 
-from fastapi import Header
+from fastapi import Header, Depends
+from fastapi.responses import JSONResponse
+import traceback
+
+SUPABASE_JWT_SECRET = os.environ.get("SUPABASE_JWT_SECRET")
+SUPABASE_URL = os.environ.get("VITE_SUPABASE_URL") or os.environ.get("SUPABASE_URL") or "https://dagmdetirrbvcaggzmdh.supabase.co"
+SUPABASE_ANON_KEY = os.environ.get("VITE_SUPABASE_ANON_KEY") or os.environ.get("SUPABASE_ANON_KEY") or ""
 
 def get_current_user_payload(authorization: str = Header(None)):
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Missing or invalid token")
     token = authorization.split(" ")[1]
     if jwt is None:
-        return {"sub": "anon-user", "user_metadata": {}}
-    try:
-        payload = jwt.decode(token, options={"verify_signature": False}, algorithms=["HS256", "RS256", "EdDSA", "ES256"])
-        return payload
-    except Exception as e:
-        raise HTTPException(status_code=401, detail=f"Invalid token: {e}")
+        raise HTTPException(status_code=500, detail="JWT library not available")
 
-from fastapi import Depends
+    # 1. If SUPABASE_JWT_SECRET is configured in environment, verify signature locally
+    if SUPABASE_JWT_SECRET:
+        try:
+            payload = jwt.decode(
+                token,
+                SUPABASE_JWT_SECRET,
+                algorithms=["HS256"],
+                options={"verify_signature": True, "verify_aud": False}
+            )
+            return payload
+        except jwt.PyJWTError:
+            pass  # Fall through to Supabase auth provider validation
+
+    # 2. Cryptographic validation via Supabase Auth API endpoint
+    if SUPABASE_URL:
+        try:
+            headers = {
+                "Authorization": f"Bearer {token}",
+            }
+            if SUPABASE_ANON_KEY:
+                headers["apikey"] = SUPABASE_ANON_KEY
+            user_resp = requests.get(
+                f"{SUPABASE_URL.rstrip('/')}/auth/v1/user",
+                headers=headers,
+                timeout=5
+            )
+            if user_resp.status_code == 200:
+                user_data = user_resp.json()
+                return {
+                    "sub": user_data.get("id"),
+                    "email": user_data.get("email"),
+                    "user_metadata": user_data.get("user_metadata", {}),
+                    "role": user_data.get("role", "authenticated")
+                }
+        except Exception as e:
+            print(f"Supabase auth verification error: {e}")
+
+    raise HTTPException(status_code=401, detail="Invalid token signature or expired session")
+
 def get_current_user_id(payload: dict = Depends(get_current_user_payload)):
     return payload.get("sub")
 
+def is_safe_url(url_str: str) -> bool:
+    """Validate that a URL is safe to fetch and does not target internal/private resources."""
+    try:
+        parsed = urllib.parse.urlparse(url_str)
+        if parsed.scheme not in ("http", "https"):
+            return False
+        hostname = parsed.hostname
+        if not hostname:
+            return False
+        # Block localhost / common local and cloud metadata hostnames
+        if hostname.lower() in ("localhost", "127.0.0.1", "::1", "metadata.google.internal", "instance-data"):
+            return False
+        # Resolve hostname to IPs and check if any IP is private or reserved
+        addr_info = socket.getaddrinfo(hostname, None)
+        for item in addr_info:
+            ip_str = item[4][0]
+            ip = ipaddress.ip_address(ip_str)
+            if (
+                ip.is_private
+                or ip.is_loopback
+                or ip.is_link_local
+                or ip.is_multicast
+                or ip.is_reserved
+                or ip.is_unspecified
+            ):
+                return False
+        return True
+    except Exception:
+        return False
 
 app = FastAPI()
-
-from fastapi.responses import JSONResponse
-import traceback
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     print(f"Unhandled Exception on {request.url.path}: {exc}")
     traceback.print_exc()
+    is_dev = os.environ.get("VERCEL_ENV") != "production" and os.environ.get("ENV") != "production"
     return JSONResponse(
         status_code=500,
         content={
             "detail": "A server error occurred.",
-            "error_message": str(exc),
+            "error_message": str(exc) if is_dev else "An internal server error occurred.",
             "path": request.url.path
         }
     )
 
-# Configure CORS
+# Configure CORS with explicit allowed origins
+ALLOWED_ORIGINS = [
+    "https://fightbracketpro.com",
+    "https://www.fightbracketpro.com",
+    "http://localhost:5173",
+    "http://localhost:3000",
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:3000",
+]
+
+_frontend_env = os.environ.get("FRONTEND_URL")
+if _frontend_env and _frontend_env not in ALLOWED_ORIGINS:
+    ALLOWED_ORIGINS.append(_frontend_env)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=ALLOWED_ORIGINS,
+    allow_origin_regex=r"^https://([a-zA-Z0-9-]+\.)?fightbracketpro\.com$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -436,12 +518,15 @@ def verify_auth_turnstile(req: VerifyRequest, request: Request):
         client_ip = request.client.host if request.client else None
         
     secret = os.environ.get("TURNSTILE_SECRET")
+    is_prod = os.environ.get("VERCEL_ENV") == "production" or os.environ.get("ENV") == "production"
     if not secret:
+        if is_prod:
+            raise HTTPException(status_code=500, detail="Turnstile configuration missing on server")
         # In dev environment, if TURNSTILE_SECRET is not configured, bypass silently
         print("[Turnstile] Warning: TURNSTILE_SECRET not configured, bypassing in development mode.")
         return {"status": "success", "note": "Turnstile secret not set"}
 
-    if req.token == "dev_bypass_token" or secret.startswith("1x00000000000000000000") or secret.startswith("2x00000000000000000000"):
+    if not is_prod and (req.token == "dev_bypass_token" or secret.startswith("1x00000000000000000000") or secret.startswith("2x00000000000000000000")):
         return {"status": "success"}
         
     try:
@@ -1446,18 +1531,21 @@ def remove_friend(friend_id: str, user_id: str = Depends(get_current_user_id), d
     return {"status": "removed"}
 
 @app.get("/api/link-preview")
-def get_link_preview(url: str):
+def get_link_preview(url: str, user_id: str = Depends(get_current_user_id)):
     import requests
     from bs4 import BeautifulSoup
 
     if not url.startswith("http"):
         url = "https://" + url
 
+    if not is_safe_url(url):
+        raise HTTPException(status_code=400, detail="Invalid or prohibited URL")
+
     try:
         headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
         }
-        response = requests.get(url, headers=headers, timeout=5)
+        response = requests.get(url, headers=headers, timeout=5, allow_redirects=False)
         response.raise_for_status()
         
         soup = BeautifulSoup(response.content, 'html.parser')
@@ -2005,7 +2093,7 @@ def delete_tournament(tournament_id: str, user_id: str = Depends(get_current_use
     return {"status": "success"}
 
 @app.get("/api/state")
-def get_state(user_id: str, db: Session = Depends(get_db)):
+def get_state(user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
     return {
         "players": [],
         "stations": [],
@@ -2013,15 +2101,15 @@ def get_state(user_id: str, db: Session = Depends(get_db)):
     }
 
 @app.post("/api/checkin")
-def update_checkin(req: CheckInRequest, user_id: str, db: Session = Depends(get_db)):
+def update_checkin(req: CheckInRequest, user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
     return {"status": "success"}
 
 @app.post("/api/station/assign")
-def assign_station(req: StationAssignRequest, user_id: str, db: Session = Depends(get_db)):
+def assign_station(req: StationAssignRequest, user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
     return {"status": "success"}
 
 @app.post("/api/sms/send")
-def send_sms_endpoint(req: SMSRequest, user_id: str, db: Session = Depends(get_db)):
+def send_sms_endpoint(req: SMSRequest, user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
     TEXTBELT_URL = "https://textbelt.com/text"
     TEXTBELT_KEY = os.environ.get("TEXTBELT_API_KEY", "textbelt")
 
@@ -2056,7 +2144,7 @@ def send_sms_endpoint(req: SMSRequest, user_id: str, db: Session = Depends(get_d
     return {"status": "completed", "results": results}
 
 @app.delete("/api/user/data")
-def clear_user_data(user_id: str, db: Session = Depends(get_db)):
+def clear_user_data(user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
     return {"status": "success"}
 
 @app.get("/api/bracket/sync")
