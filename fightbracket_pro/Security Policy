@@ -1,10 +1,53 @@
-Overview
-FightBracket Pro is a competitive gaming platform that includes authentication, identity management, admin‑level operations, and privileged API routes. Because of this, security is a core priority.
+# FightBracket Pro — Security Policy & Guidelines
 
-This document outlines the security expectations, handling of sensitive data, and contribution rules for anyone interacting with the repository.
+## 1. Overview
+FightBracket Pro is a competitive gaming platform that includes authentication, identity management, player statistics, bracket operations, and privileged API routes. Because of this, security and privacy are top priorities.
 
-⚠️ Private Project Notice
-This repository is not public and is not open to external contributions.
-Only approved collaborators may access, modify, or review the codebase.
+This document outlines the security architecture, handling of sensitive data, and contribution rules for the repository.
 
-Unauthorized access, distribution, or modification is strictly prohibited.
+---
+
+## 2. ⚠️ Private Project Notice
+- This repository is private and is **not** open to unauthorized external contributions.
+- Only approved collaborators may access, modify, or review the codebase.
+- Unauthorized access, distribution, copying, or modification is strictly prohibited.
+
+---
+
+## 3. Security Architecture & Standards
+
+### A. Authentication & Session Validation
+- **Cryptographic Verification**: All incoming `Bearer` JWT tokens are cryptographically verified using `SUPABASE_JWT_SECRET` (HS256) or validated dynamically with the Supabase Auth service. Unsigned, forged, or expired tokens are strictly rejected with HTTP 401.
+- **Dependency Injection**: All authenticated backend routes must use `user_id: str = Depends(get_current_user_id)` to prevent unauthorized query parameter spoofing.
+
+### B. Cross-Origin Resource Sharing (CORS)
+- Allowed origins are restricted to production domains (`https://fightbracketpro.com`, `https://www.fightbracketpro.com`) and designated local development ports.
+- Wildcard origin reflection (`allow_origins=["*"]`) with `allow_credentials=True` is strictly forbidden.
+
+### C. Bot & CAPTCHA Mitigation
+- Cloudflare Turnstile CAPTCHA verification is enforced on sensitive user actions (login, registration, password recovery, support submission).
+- Development bypass tokens (`dev_bypass_token`) are strictly forbidden in production runtimes (`VERCEL_ENV=production`).
+
+### D. Server-Side Request Forgery (SSRF) Protection
+- Any outbound requests initiated by the server (e.g. link previewing, metadata fetching) must pass hostname and IP validation (`is_safe_url`).
+- Outbound requests targeting loopback addresses (`127.0.0.0/8`, `::1`), private subnets (RFC 1918), link-local addresses, and cloud instance metadata endpoints (`169.254.169.254`) are blocked.
+
+### E. HTTP Security Headers
+All production responses must include the following security headers:
+- `Strict-Transport-Security: max-age=63072000; includeSubDomains; preload`
+- `X-Content-Type-Options: nosniff`
+- `X-Frame-Options: SAMEORIGIN`
+- `Referrer-Policy: strict-origin-when-cross-origin`
+- `Permissions-Policy: camera=(), microphone=(), geolocation=(self)`
+
+---
+
+## 4. Sensitive Data & Git Hygiene
+- **Never Commit Secrets**: Never commit `.env`, `.env.*`, API keys, Service Role Keys, private keys, certificates, or database connection strings to version control.
+- **Excluded Files**: Local test scripts (`test_*.py`), query outputs (`*_out.json`), scratchpad files, and SQLite databases (`*.db`) are strictly ignored via `.gitignore`.
+- **Credential Storage**: Sensitive third-party API keys (e.g. Start.gg tokens) are encrypted at rest using Fernet before database persistence.
+
+---
+
+## 5. Reporting a Security Vulnerability
+If you discover a potential security issue in FightBracket Pro, please contact the maintainers directly. Do not create public issues or disclose details externally.
