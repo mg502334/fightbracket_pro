@@ -9,11 +9,14 @@ def get_fernet():
     if not secret:
         raise ValueError("ENCRYPTION_SECRET environment variable is missing")
     
+    salt_env = os.environ.get("ENCRYPTION_SALT")
+    salt = salt_env.encode() if salt_env else b"fightbracket_pro_salt"
+
     # We need a 32-byte url-safe base64-encoded key for Fernet.
     kdf = PBKDF2HMAC(
         algorithm=hashes.SHA256(),
         length=32,
-        salt=b"fightbracket_pro_salt",
+        salt=salt,
         iterations=480000,
     )
     key = base64.urlsafe_b64encode(kdf.derive(secret.encode()))

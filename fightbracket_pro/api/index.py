@@ -2392,20 +2392,24 @@ def sync_startgg_bracket(slug: str = "clash-of-kings-vii", token: str = None, ev
 
 @app.get("/api/oauth/login")
 def oauth_login():
-    # Bypass OAuth flow and use the provided Personal Access Token
-    token = os.environ.get("STARTGG_API_TOKEN")
-    if not token:
-        # Fallback to the token found in synctoken.txt
-        token = "7a0992d510fe43a2a308fdc60ad75c02"
+    STARTGG_CLIENT_ID = os.environ.get("STARTGG_CLIENT_ID")
+    STARTGG_REDIRECT_URI = os.environ.get("STARTGG_REDIRECT_URI", "https://fightbracketpro.com/api/oauth/callback")
+    if not STARTGG_CLIENT_ID:
+        raise HTTPException(status_code=400, detail="Start.gg OAuth client ID not configured on server")
     
-    frontend_url = os.environ.get("FRONTEND_URL", "http://fightbracketpro.com")
-    return RedirectResponse(f"{frontend_url}/oauth/callback?token={token}")
+    auth_url = (
+        f"https://start.gg/oauth/authorize?response_type=code"
+        f"&client_id={urllib.parse.quote_plus(STARTGG_CLIENT_ID)}"
+        f"&scope=user.identity%20user.email"
+        f"&redirect_uri={urllib.parse.quote_plus(STARTGG_REDIRECT_URI)}"
+    )
+    return RedirectResponse(auth_url)
 
 @app.get("/api/oauth/callback")
 def oauth_callback(code: str):
     STARTGG_CLIENT_ID = os.environ.get("STARTGG_CLIENT_ID")
     STARTGG_CLIENT_SECRET = os.environ.get("STARTGG_CLIENT_SECRET")
-    STARTGG_REDIRECT_URI = os.environ.get("STARTGG_REDIRECT_URI", "http://fightbracketpro.com")
+    STARTGG_REDIRECT_URI = os.environ.get("STARTGG_REDIRECT_URI", "https://fightbracketpro.com/api/oauth/callback")
     
     if not STARTGG_CLIENT_ID or not STARTGG_CLIENT_SECRET:
         raise HTTPException(status_code=500, detail="OAuth credentials not configured")
@@ -2416,17 +2420,15 @@ def oauth_callback(code: str):
         "client_secret": STARTGG_CLIENT_SECRET,
         "code": code,
         "redirect_uri": STARTGG_REDIRECT_URI
-    })
+    }, timeout=10)
     
     data = resp.json()
     if "access_token" not in data:
         raise HTTPException(status_code=400, detail="Failed to retrieve access token")
         
     access_token = data["access_token"]
-    # Redirect to frontend with token in fragment or query. 
-    # Query is simpler for the frontend to parse if it's purely a single page load redirect component.
-    frontend_url = os.environ.get("FRONTEND_URL", "http://fightbracketpro.com")
-    return RedirectResponse(f"{frontend_url}/oauth/callback?token={access_token}")
+    frontend_url = os.environ.get("FRONTEND_URL", "https://fightbracketpro.com")
+    return RedirectResponse(f"{frontend_url.rstrip('/')}/oauth/callback?token={urllib.parse.quote_plus(access_token)}")
 
 @app.get("/api/startgg/user")
 def get_startgg_user(slug: str, token: str = None):  # type: ignore

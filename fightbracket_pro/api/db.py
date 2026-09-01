@@ -225,7 +225,7 @@ def _get_engine():
         if DATABASE_URL.startswith("postgres://"):
             DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
         try:
-            _engine = create_engine(DATABASE_URL)
+            _engine = create_engine(DATABASE_URL, pool_pre_ping=True, pool_recycle=300)
             _SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=_engine)
         except Exception as e:
             print(f"DB connection failed: {e}")
