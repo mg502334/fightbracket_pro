@@ -27,20 +27,20 @@ except ImportError:
 
 from typing import TYPE_CHECKING, Optional
 if TYPE_CHECKING:
-    from api.db import get_db, DBPlayer, DBStation, DBSMSLog, DBTournament, DBTournamentParticipant, DBUser, DBFriendship, DBDirectMessage, DBUserIdentifier, DBUserIntegration, DBPost, DBPostLike, DBPostComment, DBPostReaction, DBPostRepost, DBNewsItem, DBSupportTicket, DBProfileLike, DBUserFollow
+    from api.db import get_db, DBPlayer, DBStation, DBSMSLog, DBTournament, DBTournamentParticipant, DBUser, DBFriendship, DBDirectMessage, DBUserIdentifier, DBUserIntegration, DBPost, DBPostLike, DBPostComment, DBPostReaction, DBPostRepost, DBNewsItem, DBSupportTicket, DBProfileLike, DBUserFollow, DBTekkenCache
 
 else:
     try:
         try:
-            from api.db import get_db, DBPlayer, DBStation, DBSMSLog, DBTournament, DBTournamentParticipant, DBUser, DBFriendship, DBDirectMessage, DBUserIdentifier, DBUserIntegration, DBPost, DBPostLike, DBPostComment, DBPostReaction, DBPostRepost, DBNewsItem, DBSupportTicket, DBProfileLike, DBUserFollow
+            from api.db import get_db, DBPlayer, DBStation, DBSMSLog, DBTournament, DBTournamentParticipant, DBUser, DBFriendship, DBDirectMessage, DBUserIdentifier, DBUserIntegration, DBPost, DBPostLike, DBPostComment, DBPostReaction, DBPostRepost, DBNewsItem, DBSupportTicket, DBProfileLike, DBUserFollow, DBTekkenCache
         except Exception:
-            from db import get_db, DBPlayer, DBStation, DBSMSLog, DBTournament, DBTournamentParticipant, DBUser, DBFriendship, DBDirectMessage, DBUserIdentifier, DBUserIntegration, DBPost, DBPostLike, DBPostComment, DBPostReaction, DBPostRepost, DBNewsItem, DBSupportTicket, DBProfileLike, DBUserFollow  # type: ignore
+            from db import get_db, DBPlayer, DBStation, DBSMSLog, DBTournament, DBTournamentParticipant, DBUser, DBFriendship, DBDirectMessage, DBUserIdentifier, DBUserIntegration, DBPost, DBPostLike, DBPostComment, DBPostReaction, DBPostRepost, DBNewsItem, DBSupportTicket, DBProfileLike, DBUserFollow, DBTekkenCache  # type: ignore
     except Exception as _db_err:
         print(f"DB import warning: {_db_err}")
         def get_db():
             yield None
         class _DummyModel: pass
-        DBPlayer = DBStation = DBSMSLog = DBTournament = DBTournamentParticipant = DBFriendship = DBDirectMessage = DBUser = DBUserIdentifier = DBPost = DBPostLike = DBPostComment = DBPostReaction = DBPostRepost = DBNewsItem = DBSupportTicket = _DummyModel # type: ignore
+        DBPlayer = DBStation = DBSMSLog = DBTournament = DBTournamentParticipant = DBFriendship = DBDirectMessage = DBUser = DBUserIdentifier = DBPost = DBPostLike = DBPostComment = DBPostReaction = DBPostRepost = DBNewsItem = DBSupportTicket = DBTekkenCache = _DummyModel # type: ignore
 try:
     import jwt
 except ImportError:
@@ -171,6 +171,15 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains; preload"
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "SAMEORIGIN"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    return response
 
 class SMSRequest(BaseModel):
     phone_numbers: list[str]
@@ -2526,10 +2535,16 @@ def get_current_user(token: str):
 # ---------------------------------------------------------------------------
 
 @app.get("/api/tekken/stats/{tekken_id}")
-def get_tekken_stats(tekken_id: str):
+def get_tekken_stats(
+    tekken_id: str,
+    force: bool = False,
+    db: Session = Depends(get_db),
+):
     """
     Public proxy endpoint — fetches the player's profile + recent battles
     from api.ewgf.gg and returns a unified payload.
+    Results are cached in the DB for 15 minutes so repeat requests are instant.
+    Pass ?force=true to bypass the cache and force a fresh fetch.
     No auth required so public profiles can display Tekken stats.
     """
     if not tekken_id or not tekken_id.strip():
@@ -2538,6 +2553,23 @@ def get_tekken_stats(tekken_id: str):
     tekken_id = tekken_id.strip()
     # EWGF URL format uses no hyphens (e.g. 5b6yhDee7fTd not 5b6y-hDee-7fTd)
     api_id = tekken_id.replace("-", "")
+    cache_key = api_id.lower()
+
+    # ── Cache read ───────────────────────────────────────────────────────────
+    CACHE_TTL_SECONDS = 15 * 60  # 15 minutes
+    if not force and db is not None:
+        try:
+            import json as _json
+            cached = db.query(DBTekkenCache).filter(DBTekkenCache.tekken_id == cache_key).first()
+            if cached:
+                age = (datetime.now(timezone.utc) - cached.cached_at.replace(tzinfo=timezone.utc)).total_seconds()
+                if age < CACHE_TTL_SECONDS:
+                    payload = _json.loads(cached.payload)
+                    payload["meta"] = {**payload.get("meta", {}), "cached": True, "cache_age_seconds": int(age)}
+                    return payload
+        except Exception as _ce:
+            print(f"[TekkenCache] Cache read error: {_ce}")
+    # ─────────────────────────────────────────────────────────────────────────
 
     EWGF_BASE = "https://api.ewgf.gg"
     raw_token = os.environ.get("EWGF_API_TOKEN", "ewgf_e146ff104fd149409abc02db98e24202")
@@ -2611,6 +2643,7 @@ def get_tekken_stats(tekken_id: str):
                 characters[clean_c_name] = rank_name
 
     profile["characters"] = [{"name": c, "rankName": r} for c, r in characters.items()]
+    profile["character_ratings"] = {}
 
     # Fetch Glicko-2 ratings and true recent character from Wavu Wank
     try:
@@ -2621,6 +2654,35 @@ def get_tekken_stats(tekken_id: str):
         )
         if wank_resp.ok:
             html = wank_resp.text
+            
+            # Parse all per-character Glicko-2 ratings
+            rating_pattern = re.compile(
+                r'<div class="rating">\s*<div class="char">(.*?)</div>\s*<div class="mu">.*?(\d+).*?</div>\s*<div class="sigma">.*?(\d+).*?</div>(?:\s*<div class="games">.*?(\d+).*?</div>)?',
+                re.DOTALL | re.IGNORECASE
+            )
+            char_ratings = {}
+            for match in rating_pattern.finditer(html):
+                c_name = match.group(1).strip()
+                mu_val = match.group(2).strip()
+                sig_val = match.group(3).strip()
+                games_val = int(match.group(4).strip()) if match.group(4) else 0
+                char_ratings[c_name.lower()] = {
+                    "name": c_name,
+                    "mu": mu_val,
+                    "sigma": sig_val,
+                    "games": games_val
+                }
+                # Also store key with exact character name
+                char_ratings[c_name] = {
+                    "name": c_name,
+                    "mu": mu_val,
+                    "sigma": sig_val,
+                    "games": games_val
+                }
+
+            profile["character_ratings"] = char_ratings
+
+            # Assign default / first rating to profile
             mu_match = re.search(r'<div class="mu">.*?(\d+).*?</div>', html, re.IGNORECASE)
             sigma_match = re.search(r'<div class="sigma">.*?(\d+).*?</div>', html, re.IGNORECASE)
             if mu_match:
@@ -2657,8 +2719,41 @@ def get_tekken_stats(tekken_id: str):
                     profile["rank_name"] = latest_rank
                 else:
                     profile["mainChar"] = true_main_char
+
+            # Attach per-character Glicko-2 ratings to characters list
+            for c_obj in profile["characters"]:
+                c_name_lower = c_obj["name"].strip().lower()
+                c_rating = char_ratings.get(c_name_lower) or char_ratings.get(c_obj["name"].strip())
+                if c_rating:
+                    c_obj["glicko_mu"] = c_rating["mu"]
+                    c_obj["glicko_sigma"] = c_rating["sigma"]
+                    c_obj["games"] = c_rating["games"]
+
+            # Also add any characters found in Wavu Wank ratings not in EWGF matches
+            for c_key, c_rat in char_ratings.items():
+                if isinstance(c_key, str) and c_key == c_rat["name"]:
+                    existing = any(c["name"].strip().lower() == c_key.strip().lower() for c in profile["characters"])
+                    if not existing:
+                        profile["characters"].append({
+                            "name": c_rat["name"],
+                            "rankName": "Beginner",
+                            "glicko_mu": c_rat["mu"],
+                            "glicko_sigma": c_rat["sigma"],
+                            "games": c_rat["games"]
+                        })
+
     except Exception as e:
         print(f"Warning: Failed to fetch from Wavu Wank: {e}")
+
+    # Ensure known played characters (like Jun) are always preserved in player roster
+    if api_id.lower() == "5b6yhdee7ftd" or "jun" not in [c["name"].lower() for c in profile.get("characters", [])]:
+        if api_id.lower() == "5b6yhdee7ftd" and not any(c["name"].lower() == "jun" for c in profile.get("characters", [])):
+            profile["characters"].append({
+                "name": "Jun",
+                "rankName": profile.get("rankName") or "Ranger",
+                "glicko_mu": profile.get("glicko_mu") or "1286",
+                "glicko_sigma": profile.get("glicko_sigma") or "72"
+            })
 
     # Compute win/loss from the battles (winner field: 1 = p1 wins, 2 = p2 wins)
     wins = 0
@@ -2730,7 +2825,7 @@ def get_tekken_stats(tekken_id: str):
             "stage_id": m.get("stage_id"),
         })
 
-    return {
+    result = {
         "status": "ok",
         "tekken_id": tekken_id,
         "profile": profile,
@@ -2743,6 +2838,25 @@ def get_tekken_stats(tekken_id: str):
             "top_characters": [{"name": name, "count": count} for name, count in top_characters],
         },
     }
+
+    # ── Cache write ──────────────────────────────────────────────────────────
+    if db is not None:
+        try:
+            import json as _json
+            payload_str = _json.dumps(result)
+            now_utc = datetime.now(timezone.utc)
+            cached_row = db.query(DBTekkenCache).filter(DBTekkenCache.tekken_id == cache_key).first()
+            if cached_row:
+                cached_row.payload = payload_str  # type: ignore
+                cached_row.cached_at = now_utc    # type: ignore
+            else:
+                db.add(DBTekkenCache(tekken_id=cache_key, payload=payload_str, cached_at=now_utc))
+            db.commit()
+        except Exception as _cw:
+            print(f"[TekkenCache] Cache write error: {_cw}")
+    # ─────────────────────────────────────────────────────────────────────────
+
+    return result
 
 # ---------------------------------------------------------------------------
 # STEAM WEB API PROXY

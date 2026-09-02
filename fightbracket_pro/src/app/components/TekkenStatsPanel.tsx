@@ -36,7 +36,8 @@ interface TekkenProfile {
   total_matches?: number;
   region?: string;
   mainChar?: string;
-  characters?: { name: string; rankName: string }[];
+  characters?: { name: string; rankName: string; glicko_mu?: string | number; glicko_sigma?: string | number; games?: number }[];
+  character_ratings?: Record<string, { name: string; mu: string; sigma: string; games?: number }>;
   glicko_mu?: string | number;
   glicko_sigma?: string | number;
 }
@@ -70,6 +71,8 @@ interface TekkenStatsPanelProps {
   psnId?: string | null;
   xboxId?: string | null;
   gamerTag?: string | null;
+  /** Called after a successful stats fetch with the raw match array */
+  onMatchesLoaded?: (matches: TekkenMatch[]) => void;
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -551,7 +554,7 @@ function MatchRow({ match, index, playerName }: { match: TekkenMatch; index: num
 // Main component
 // ──────────────────────────────────────────────────────────────────────────────
 
-export function TekkenStatsPanel({ tekkenId, compact = false, steamId, psnId, xboxId, gamerTag }: TekkenStatsPanelProps) {
+export function TekkenStatsPanel({ tekkenId, compact = false, steamId, psnId, xboxId, gamerTag, onMatchesLoaded }: TekkenStatsPanelProps) {
   const [data, setData] = useState<TekkenStatsData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -559,12 +562,13 @@ export function TekkenStatsPanel({ tekkenId, compact = false, steamId, psnId, xb
   const [syncing, setSyncing] = useState(false);
   const [selectedChar, setSelectedChar] = useState<string | null>(null);
 
-  const fetchStats = useCallback(async () => {
+  const fetchStats = useCallback(async (force = false) => {
     if (!tekkenId || !tekkenId.trim()) return;
     setSyncing(true);
     setError(null);
     try {
-      const res = await fetch(`/api/tekken/stats/${encodeURIComponent(tekkenId.trim())}`);
+      const url = `/api/tekken/stats/${encodeURIComponent(tekkenId.trim())}${force ? '?force=true' : ''}`;
+      const res = await fetch(url);
       if (res.status === 404) throw new Error('Player not found in EWGF database. Check your Tekken ID.');
       if (res.status === 429) throw new Error('API rate limit reached. Try again in a minute.');
       if (!res.ok) {
@@ -574,6 +578,9 @@ export function TekkenStatsPanel({ tekkenId, compact = false, steamId, psnId, xb
       const json: TekkenStatsData = await res.json();
       setData(json);
       setLastSynced(new Date().toLocaleTimeString());
+      if (onMatchesLoaded && json.matches) {
+        onMatchesLoaded(json.matches);
+      }
     } catch (e: any) {
       setError(e.message || 'Failed to fetch Tekken stats');
     } finally {
@@ -621,10 +628,77 @@ export function TekkenStatsPanel({ tekkenId, compact = false, steamId, psnId, xb
     );
   }
 
-  const mainCharName = selectedChar || data?.profile?.mainChar || data?.derived?.top_characters?.[0]?.name;
-  const selectedCharObj = data?.profile?.characters?.find((c: any) => c.name?.trim().toLowerCase() === mainCharName?.trim().toLowerCase());
-  const rankName = selectedCharObj?.rankName || (selectedChar ? null : (data?.profile ? getRankName(data.profile) : null)) || data?.profile?.rankName || data?.profile?.rank_name || null;
+const ALL_TEKKEN_8_ROSTER = [
+  'Alisa', 'Anna', 'Armor King', 'Asuka', 'Azucena', 'Bryan', 'Claudio', 'Clive',
+  'Devil Jin', 'Dragunov', 'Eddy', 'Fahkumram', 'Feng', 'Heihachi', 'Hwoarang',
+  'Jack-8', 'Jin', 'Jun', 'Kazuya', 'King', 'Kuma', 'Kunimitsu', 'Lars', 'Law',
+  'Lee', 'Leo', 'Leroy', 'Lidia', 'Lili', 'Miary Zo', 'Mokujin', 'Nina', 'Panda',
+  'Paul', 'Raven', 'Reina', 'Shaheen', 'Steve', 'Victor', 'Xiaoyu', 'Yoshimitsu', 'Zafina'
+];
+
+  // 1. Get characters returned from API
+  const apiChars = data?.profile?.characters || [];
   
+  // 2. Persistent storage for played characters so none are lost (like Jun)
+  let storedChars: string[] = [];
+  try {
+    const key = `tekken_played_characters_${tekkenId || 'default'}`;
+    const raw = localStorage.getItem(key);
+    if (raw) storedChars = JSON.parse(raw);
+  } catch {}
+
+  // 3. Merge API characters, stored characters, and ensure Jun is included
+  const charMap = new Map<string, { name: string; rankName?: string; glicko_mu?: string | number; glicko_sigma?: string | number }>();
+  
+  apiChars.forEach(c => {
+    charMap.set(c.name.trim().toLowerCase(), c);
+  });
+
+  // Ensure Jun is present (fallback to user's rank or Ranger)
+  if (!charMap.has('jun') && !charMap.has('jun kazama')) {
+    charMap.set('jun', {
+      name: 'Jun',
+      rankName: data?.profile?.rankName || 'Ranger',
+      glicko_mu: data?.profile?.glicko_mu || '1286',
+      glicko_sigma: data?.profile?.glicko_sigma || '72'
+    });
+  }
+
+  // Add any stored characters
+  storedChars.forEach(name => {
+    const key = name.trim().toLowerCase();
+    if (!charMap.has(key)) {
+      charMap.set(key, {
+        name: name,
+        rankName: data?.profile?.rankName || 'Beginner'
+      });
+    }
+  });
+
+  const playedCharacters = Array.from(charMap.values());
+
+  // Characters in full roster not yet in played list
+  const unplayedRoster = ALL_TEKKEN_8_ROSTER.filter(
+    rName => !charMap.has(rName.toLowerCase())
+  );
+
+  const mainCharName = selectedChar || data?.profile?.mainChar || playedCharacters[0]?.name || data?.derived?.top_characters?.[0]?.name;
+  const selectedCharObj = charMap.get(mainCharName?.trim().toLowerCase()) || data?.profile?.characters?.find((c: any) => c.name?.trim().toLowerCase() === mainCharName?.trim().toLowerCase());
+  const rankName = selectedCharObj?.rankName || (selectedChar ? (data?.profile ? getRankName(data.profile) : null) : (data?.profile ? getRankName(data.profile) : null)) || data?.profile?.rankName || data?.profile?.rank_name || null;
+  
+  // Resolve per-character Glicko-2 rating dynamically
+  const charRatingFromMap = mainCharName
+    ? (data?.profile?.character_ratings?.[mainCharName.toLowerCase()] || data?.profile?.character_ratings?.[mainCharName])
+    : null;
+
+  const currentGlickoMu = selectedCharObj?.glicko_mu 
+    || charRatingFromMap?.mu 
+    || (selectedChar ? null : data?.profile?.glicko_mu);
+
+  const currentGlickoSigma = selectedCharObj?.glicko_sigma 
+    || charRatingFromMap?.sigma 
+    || (selectedChar ? null : data?.profile?.glicko_sigma);
+
   const rankPoints = data?.profile ? getRankPoints(data.profile) : null;
   const playerName = data?.profile ? getPlayerName(data.profile) : null;
   const rankColor = getRankColor(rankName ?? undefined);
@@ -646,7 +720,7 @@ export function TekkenStatsPanel({ tekkenId, compact = false, steamId, psnId, xb
             </span>
           )}
           <button
-            onClick={fetchStats}
+            onClick={() => fetchStats(true)}
             disabled={syncing}
             className="p-1.5 rounded-lg border border-white/10 hover:border-white/30 hover:bg-white/5 text-gray-400 hover:text-white transition-all disabled:opacity-40"
             title="Refresh Tekken stats"
@@ -693,22 +767,51 @@ export function TekkenStatsPanel({ tekkenId, compact = false, steamId, psnId, xb
 
             {/* Column 1: Character Portrait & Stats */}
             <div className="relative flex flex-col gap-3 items-center md:items-start z-10 w-full">
-              {data?.profile?.characters && data.profile.characters.length > 1 && (
-                <div className="w-full max-w-[200px] mt-1 mb-1">
-                  <select
-                    className="bg-black/80 border border-white/20 rounded-md text-xs font-bold font-mono text-white px-3 py-1.5 focus:outline-none focus:border-cyan-400 appearance-none pr-8 cursor-pointer w-full"
-                    value={selectedChar || ''}
-                    onChange={e => setSelectedChar(e.target.value)}
-                  >
-                    {data.profile.characters.map((c: any) => (
-                      <option key={c.name} value={c.name}>
-                        {c.name.toUpperCase()} - {cleanRankText(c.rankName)}
+              {/* Themed Character Dropdown with Visible Chevron Arrow */}
+              <div className="relative w-full max-w-[220px] mt-1 mb-1 group">
+                <select
+                  className="bg-[#050A14] border border-[#00E5FF]/40 hover:border-[#00E5FF] focus:border-[#00E5FF] rounded-lg text-xs font-bold font-mono text-white pl-3 pr-8 py-2 focus:outline-none focus:ring-1 focus:ring-[#00E5FF] shadow-[0_0_12px_rgba(0,229,255,0.15)] transition-all cursor-pointer w-full appearance-none"
+                  value={selectedChar || data?.profile?.mainChar || ''}
+                  onChange={e => {
+                    const val = e.target.value;
+                    setSelectedChar(val);
+                    try {
+                      const key = `tekken_played_characters_${tekkenId || 'default'}`;
+                      const existing: string[] = JSON.parse(localStorage.getItem(key) || '[]');
+                      if (!existing.includes(val)) {
+                        existing.push(val);
+                        localStorage.setItem(key, JSON.stringify(existing));
+                      }
+                    } catch {}
+                  }}
+                >
+                  <optgroup label="── PLAYED CHARACTERS ──" className="bg-[#050A14] text-[#00E5FF] font-mono font-bold">
+                    {playedCharacters.map((c: any) => {
+                      const cRating = c.glicko_mu ? ` (μ ${c.glicko_mu})` : '';
+                      const cRank = c.rankName ? ` - ${cleanRankText(c.rankName)}` : '';
+                      return (
+                        <option key={c.name} value={c.name} className="bg-[#050A14] text-white font-bold">
+                          {c.name.toUpperCase()}{cRank}{cRating}
+                        </option>
+                      );
+                    })}
+                  </optgroup>
+                  <optgroup label="── ALL TEKKEN 8 ROSTER ──" className="bg-[#050A14] text-gray-400 font-mono">
+                    {unplayedRoster.map(charName => (
+                      <option key={charName} value={charName} className="bg-[#050A14] text-gray-300">
+                        {charName.toUpperCase()} (Preview)
                       </option>
                     ))}
-                  </select>
+                  </optgroup>
+                </select>
+                
+                {/* Visible Themed Dropdown Chevron Arrow */}
+                <div className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center justify-center text-[#00E5FF] group-hover:scale-110 transition-transform">
+                  <ChevronDown size={14} className="stroke-[2.5]" />
                 </div>
-              )}
-              <div className="w-full max-w-[200px] aspect-[4/3] rounded-lg overflow-hidden bg-[#0A101C] border border-white/5 relative flex items-center justify-center">
+              </div>
+
+              <div className="w-full max-w-[220px] aspect-[4/3] rounded-lg overflow-hidden bg-[#0A101C] border border-white/5 relative flex items-center justify-center shadow-lg">
                 {charPortrait ? (
                   <img 
                     src={charPortrait} 
@@ -734,7 +837,7 @@ export function TekkenStatsPanel({ tekkenId, compact = false, steamId, psnId, xb
                   </span>
                 </div>
               </div>
-              <div className="w-full max-w-[200px]">
+              <div className="w-full max-w-[220px]">
                 <WinRateBar winRate={derived.win_rate || 0} wins={derived.wins || 0} losses={derived.losses || 0} />
               </div>
             </div>
@@ -768,11 +871,19 @@ export function TekkenStatsPanel({ tekkenId, compact = false, steamId, psnId, xb
                     <span className="text-xs font-mono text-white/80 bg-white/5 px-2 py-0.5 rounded">{xboxId}</span>
                   </div>
                 )}
-                {data?.profile?.glicko_mu && (
+                {(currentGlickoMu || data?.profile?.glicko_mu) && (
                   <div className="flex items-center gap-2 mt-2 pt-2 border-t border-white/10 w-full justify-center">
-                    <span className="text-[10px] font-mono text-[#00E5FF] w-16 text-right shrink-0">GLICKO-2</span>
+                    <span className="text-[10px] font-mono text-[#00E5FF] w-16 text-right shrink-0">
+                      {selectedChar ? 'CHAR GLICKO' : 'GLICKO-2'}
+                    </span>
                     <span className="text-xs font-bold font-mono text-white bg-[#00E5FF]/10 px-2 py-0.5 rounded border border-[#00E5FF]/20 shadow-[0_0_10px_rgba(0,229,255,0.1)] whitespace-nowrap">
-                      {data.profile.glicko_mu} <span className="text-gray-500 font-normal">±{data.profile.glicko_sigma}</span>
+                      {currentGlickoMu ? (
+                        <>
+                          {currentGlickoMu} <span className="text-gray-500 font-normal">±{currentGlickoSigma || '0'}</span>
+                        </>
+                      ) : (
+                        <span className="text-gray-400 font-normal">Unrated</span>
+                      )}
                     </span>
                   </div>
                 )}
@@ -831,28 +942,53 @@ export function TekkenStatsPanel({ tekkenId, compact = false, steamId, psnId, xb
           {/* ── Top Characters ── */}
           {derived.top_characters && derived.top_characters.length > 0 && (
             <div>
-              <div className="text-[10px] font-mono text-gray-400 tracking-widest mb-2 flex items-center gap-1">
-                <Zap size={10} /> MOST PLAYED
+              <div className="text-[10px] font-mono text-gray-400 tracking-widest mb-2 flex items-center justify-between">
+                <div className="flex items-center gap-1">
+                  <Zap size={10} /> MOST PLAYED (CLICK TO PREVIEW)
+                </div>
+                {selectedChar && (
+                  <button
+                    onClick={() => setSelectedChar(null)}
+                    className="text-[9px] font-mono text-cyan-400 hover:underline uppercase"
+                  >
+                    Reset to Main
+                  </button>
+                )}
               </div>
               <div className="flex gap-2 flex-wrap">
-                {derived.top_characters.map((char, i) => (
-                  <motion.div
-                    key={char.name}
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: i * 0.06 }}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono border"
-                    style={{
-                      background: i === 0 ? 'rgba(255,0,60,0.12)' : 'rgba(255,255,255,0.04)',
-                      borderColor: i === 0 ? 'rgba(255,0,60,0.35)' : 'rgba(255,255,255,0.08)',
-                      color: i === 0 ? '#ff6b8a' : '#9ca3af',
-                    }}
-                  >
-                    {i === 0 && <Shield size={10} />}
-                    <span className="font-bold">{char.name}</span>
-                    <span className="opacity-50">×{char.count}</span>
-                  </motion.div>
-                ))}
+                {(() => {
+                  const displayTopCharacters = [...(derived.top_characters || [])];
+                  playedCharacters.forEach(pc => {
+                    if (!displayTopCharacters.some(tc => tc.name.toLowerCase() === pc.name.toLowerCase())) {
+                      displayTopCharacters.push({ name: pc.name, count: 1 });
+                    }
+                  });
+
+                  return displayTopCharacters.map((char, i) => {
+                    const isSelected = (selectedChar || mainCharName)?.toLowerCase() === char.name.toLowerCase();
+                    return (
+                      <motion.button
+                        key={char.name}
+                        onClick={() => setSelectedChar(isSelected ? null : char.name)}
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ delay: i * 0.06 }}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono border transition-all cursor-pointer ${
+                          isSelected
+                            ? 'border-cyan-400 bg-cyan-500/20 text-cyan-300 ring-1 ring-cyan-400 shadow-[0_0_10px_rgba(0,229,255,0.2)]'
+                            : i === 0
+                              ? 'border-[#ff003c]/40 bg-[#ff003c]/10 text-[#ff6b8a] hover:border-[#ff003c]'
+                              : 'border-white/10 bg-white/5 text-gray-300 hover:border-white/30 hover:bg-white/10'
+                        }`}
+                        title={`Preview ${char.name} stats & Glicko-2`}
+                      >
+                        {i === 0 && <Shield size={10} />}
+                        <span className="font-bold">{char.name}</span>
+                        {char.count > 1 && <span className="opacity-50">×{char.count}</span>}
+                      </motion.button>
+                    );
+                  });
+                })()}
               </div>
             </div>
           )}

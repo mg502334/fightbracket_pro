@@ -11,6 +11,8 @@ import { FeedPanel, PostCard, Post } from './FeedPanel';
 import { RecentsWidget } from './RecentsWidget';
 import { DealsWidget } from './DealsWidget';
 import { EventsPanel } from './EventsPanel';
+import { ActivityHeatmapWidget } from './ActivityHeatmapWidget';
+import { StatPentagonWidget } from './StatPentagonWidget';
 
 const API_URL = import.meta.env.VITE_API_URL || '';
 
@@ -126,6 +128,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
   
   const [myFeedPosts, setMyFeedPosts] = useState<Post[]>([]);
   const [fetchingMyFeed, setFetchingMyFeed] = useState(false);
+  const [tekkenMatches, setTekkenMatches] = useState<any[]>([]);
 
   // Account Settings state
   const [newEmail, setNewEmail] = useState('');
@@ -1698,6 +1701,12 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
 
             <div className="max-w-6xl space-y-8 animate-in fade-in duration-300">
 
+              {/* Activity Heatmap + Stat Pentagon — side-by-side */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <ActivityHeatmapWidget matches={tekkenMatches} />
+                <StatPentagonWidget matches={tekkenMatches} />
+              </div>
+
               {/* Full Width Tekken 8 Live Stats Box */}
               <div className="bg-[#050A14] border border-white/10 rounded-2xl shadow-2xl overflow-hidden w-full">
                 <div className="px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/10 bg-black/40">
@@ -1723,6 +1732,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
                     tekkenId={userProfile?.tekken_id}
                     steamId={userProfile?.steam_id}
                     gamerTag={userProfile?.gamer_tag}
+                    onMatchesLoaded={setTekkenMatches}
                   />
                 </div>
               </div>

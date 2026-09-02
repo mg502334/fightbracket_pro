@@ -212,6 +212,13 @@ class DBSupportTicket(Base):
     status = Column(String, default="open") # 'open' | 'in_progress' | 'resolved'
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
+class DBTekkenCache(Base):
+    """15-minute cache for EWGF + Wavu Wank responses, keyed by normalised Polaris ID."""
+    __tablename__ = "tekken_cache"
+    tekken_id = Column(String, primary_key=True, index=True)  # normalised (no hyphens, lower)
+    payload = Column(Text, nullable=False)                     # full JSON response as a string
+    cached_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+
 # Lazy engine — only created when first needed, prevents cold-start crash on Vercel
 _engine = None
 _SessionLocal = None
