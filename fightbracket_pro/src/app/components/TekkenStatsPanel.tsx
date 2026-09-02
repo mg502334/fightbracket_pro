@@ -639,32 +639,28 @@ const ALL_TEKKEN_8_ROSTER = [
   // 1. Get characters returned from API
   const apiChars = data?.profile?.characters || [];
   
-  // 2. Persistent storage for played characters so none are lost (like Jun)
+  // 2. Persistent storage for played characters
   let storedChars: string[] = [];
   try {
     const key = `tekken_played_characters_${tekkenId || 'default'}`;
     const raw = localStorage.getItem(key);
-    if (raw) storedChars = JSON.parse(raw);
+    if (raw) {
+      storedChars = (JSON.parse(raw) as string[]).filter(
+        name => typeof name === 'string' && name.toLowerCase() !== 'jun' && name.toLowerCase() !== 'jun kazama'
+      );
+    }
   } catch {}
 
-  // 3. Merge API characters, stored characters, and ensure Jun is included
+  // 3. Merge API characters and valid stored selections
   const charMap = new Map<string, { name: string; rankName?: string; glicko_mu?: string | number; glicko_sigma?: string | number }>();
   
   apiChars.forEach(c => {
-    charMap.set(c.name.trim().toLowerCase(), c);
+    if (c.name) {
+      charMap.set(c.name.trim().toLowerCase(), c);
+    }
   });
 
-  // Ensure Jun is present (fallback to user's rank or Ranger)
-  if (!charMap.has('jun') && !charMap.has('jun kazama')) {
-    charMap.set('jun', {
-      name: 'Jun',
-      rankName: data?.profile?.rankName || 'Ranger',
-      glicko_mu: data?.profile?.glicko_mu || '1286',
-      glicko_sigma: data?.profile?.glicko_sigma || '72'
-    });
-  }
-
-  // Add any stored characters
+  // Add any user-selected characters
   storedChars.forEach(name => {
     const key = name.trim().toLowerCase();
     if (!charMap.has(key)) {

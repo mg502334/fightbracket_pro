@@ -2541,22 +2541,19 @@ def get_tekken_stats(
     db: Session = Depends(get_db),
 ):
     """
-    Public proxy endpoint — fetches the player's profile + recent battles
-    from api.ewgf.gg and returns a unified payload.
-    Results are cached in the DB for 15 minutes so repeat requests are instant.
-    Pass ?force=true to bypass the cache and force a fresh fetch.
-    No auth required so public profiles can display Tekken stats.
+    Unified Tekken 8 proxy endpoint.
+    Aggregates real-time matches from Wavu Wank with detailed rank/power data from EWGF.
+    Results are cached for 60 seconds (pass ?force=true to bypass cache).
     """
     if not tekken_id or not tekken_id.strip():
         raise HTTPException(status_code=400, detail="tekken_id is required")
 
     tekken_id = tekken_id.strip()
-    # EWGF URL format uses no hyphens (e.g. 5b6yhDee7fTd not 5b6y-hDee-7fTd)
     api_id = tekken_id.replace("-", "")
     cache_key = api_id.lower()
 
-    # ── Cache read ───────────────────────────────────────────────────────────
-    CACHE_TTL_SECONDS = 15 * 60  # 15 minutes
+    # ── Cache read (60 seconds TTL) ──────────────────────────────────────────
+    CACHE_TTL_SECONDS = 60
     if not force and db is not None:
         try:
             import json as _json
@@ -2581,51 +2578,35 @@ def get_tekken_stats(
         "Content-Type": "application/json",
     }
 
-    # Only use battles endpoint — EWGF profile endpoint returns 500 (their server bug).
-    # The battles response contains all needed fields: player name, character, rank, tekken power.
+    # 1. Fetch EWGF matches
+    matches = []
+    meta = {}
     try:
         battles_resp = requests.get(
             f"{EWGF_BASE}/external/battles/{api_id}",
             headers=headers,
-            timeout=15,
+            timeout=8,
         )
-    except requests.exceptions.Timeout:
-        raise HTTPException(status_code=504, detail="EWGF API timed out")
+        if battles_resp.ok:
+            battles_data = battles_resp.json()
+            matches = battles_data.get("data") or []
+            meta = battles_data.get("_metadata") or {}
     except Exception as e:
-        raise HTTPException(status_code=502, detail=f"EWGF API request failed: {e}")
+        print(f"[EWGF] Battles fetch warning: {e}")
 
-    if battles_resp.status_code == 404:
-        raise HTTPException(status_code=404, detail="Tekken 8 player not found in EWGF database. Verify your Polaris ID in Account Settings.")
-    if battles_resp.status_code == 401:
-        raise HTTPException(status_code=502, detail="EWGF API key or authentication error.")
-    if battles_resp.status_code == 429:
-        raise HTTPException(status_code=429, detail="EWGF API rate limit exceeded — try again in a few moments.")
-    if not battles_resp.ok:
-        raise HTTPException(status_code=502, detail=f"Could not retrieve Tekken 8 match history for Polaris ID '{tekken_id}'.")
-
-    try:
-        battles_data = battles_resp.json()
-    except Exception:
-        raise HTTPException(status_code=502, detail="Failed to parse EWGF API response")
-
-    matches = battles_data.get("data") or []
-    meta = battles_data.get("_metadata") or {}
-
-    # Aggregate characters and ranks
+    # Aggregate characters and ranks from EWGF
     characters = {}
     profile: dict = {}
     for m in matches:
         is_p1 = (m.get("p1_tekken_id") or "").replace("-", "").lower() == api_id.lower()
         is_p2 = (m.get("p2_tekken_id") or "").replace("-", "").lower() == api_id.lower()
-        
         if not is_p1 and not is_p2:
             continue
-            
         p_prefix = "p1" if is_p1 else "p2"
-        char_name = m.get(f"{p_prefix}_char", "")
-        rank_name = m.get(f"{p_prefix}_dan_rank", "")
+        char_name = (m.get(f"{p_prefix}_char") or "").strip()
+        rank_name = (m.get(f"{p_prefix}_dan_rank") or "").strip()
         
-        if not profile: # Set initial profile info from the most recent match
+        if not profile:
             profile = {
                 "playerName": m.get(f"{p_prefix}_name", ""),
                 "player_name": m.get(f"{p_prefix}_name", ""),
@@ -2636,25 +2617,37 @@ def get_tekken_stats(
                 "region": m.get(f"{p_prefix}_region", ""),
                 "mainChar": char_name,
             }
-        
-        if char_name:
-            clean_c_name = char_name.strip()
-            if clean_c_name and clean_c_name not in characters:
-                characters[clean_c_name] = rank_name
+        if char_name and char_name not in characters:
+            characters[char_name] = rank_name
 
     profile["characters"] = [{"name": c, "rankName": r} for c, r in characters.items()]
     profile["character_ratings"] = {}
 
-    # Fetch Glicko-2 ratings and true recent character from Wavu Wank
+    # 2. Fetch Wavu Wank data (real-time Glicko-2 ratings + latest match replay scraper)
+    wavu_matches = []
     try:
         wank_resp = requests.get(
             f"https://wank.wavu.wiki/player/{api_id}",
             headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"},
-            timeout=5
+            timeout=6
         )
         if wank_resp.ok:
             html = wank_resp.text
             
+            # Extract player name if missing
+            if not profile.get("playerName"):
+                name_m = re.search(r'<div class="name">\s*([^<]+)\s*</div>', html)
+                if name_m:
+                    p_name = name_m.group(1).strip()
+                    profile["playerName"] = p_name
+                    profile["player_name"] = p_name
+
+            # Extract region if missing
+            if not profile.get("region"):
+                reg_m = re.search(r'<span class="region">\s*<a[^>]*>\s*([^<]+)\s*</a>', html)
+                if reg_m:
+                    profile["region"] = reg_m.group(1).strip()
+
             # Parse all per-character Glicko-2 ratings
             rating_pattern = re.compile(
                 r'<div class="rating">\s*<div class="char">(.*?)</div>\s*<div class="mu">.*?(\d+).*?</div>\s*<div class="sigma">.*?(\d+).*?</div>(?:\s*<div class="games">.*?(\d+).*?</div>)?',
@@ -2672,7 +2665,6 @@ def get_tekken_stats(
                     "sigma": sig_val,
                     "games": games_val
                 }
-                # Also store key with exact character name
                 char_ratings[c_name] = {
                     "name": c_name,
                     "mu": mu_val,
@@ -2690,7 +2682,7 @@ def get_tekken_stats(
             if sigma_match:
                 profile["glicko_sigma"] = sigma_match.group(1).strip()
                 
-            # Extract true most recent character to bypass EWGF delay
+            # Extract true most recent character
             char_spans = re.findall(r'<span class="char">([^<]+)</span>', html)
             char_divs = re.findall(r'<div class="char">([^<]+)</div>', html)
             true_main_char = None
@@ -2700,7 +2692,6 @@ def get_tekken_stats(
                 true_main_char = char_divs[0].strip()
             
             if true_main_char:
-                # Find matching character case-insensitively
                 matched_char_key = None
                 for c_k in characters:
                     if c_k.strip().lower() == true_main_char.strip().lower():
@@ -2719,6 +2710,7 @@ def get_tekken_stats(
                     profile["rank_name"] = latest_rank
                 else:
                     profile["mainChar"] = true_main_char
+                    profile["characters"].insert(0, {"name": true_main_char, "rankName": "Beginner"})
 
             # Attach per-character Glicko-2 ratings to characters list
             for c_obj in profile["characters"]:
@@ -2729,7 +2721,7 @@ def get_tekken_stats(
                     c_obj["glicko_sigma"] = c_rating["sigma"]
                     c_obj["games"] = c_rating["games"]
 
-            # Also add any characters found in Wavu Wank ratings not in EWGF matches
+            # Add any characters found in Wavu Wank ratings not in EWGF matches
             for c_key, c_rat in char_ratings.items():
                 if isinstance(c_key, str) and c_key == c_rat["name"]:
                     existing = any(c["name"].strip().lower() == c_key.strip().lower() for c in profile["characters"])
@@ -2742,98 +2734,148 @@ def get_tekken_stats(
                             "games": c_rat["games"]
                         })
 
+            # Scrape real-time match history table from Wavu Wank
+            table_match = re.search(r'<table.*?>(.*?)</table>', html, re.DOTALL)
+            if table_match:
+                rows = re.findall(r'<tr>(.*?)</tr>', table_match.group(1), re.DOTALL)
+                for row in rows:
+                    time_m = re.search(r'printDateTime\((\d+)\)', row)
+                    if not time_m:
+                        continue
+                    ts = int(time_m.group(1))
+                    iso_time = datetime.fromtimestamp(ts, tz=timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+                    chars = re.findall(r'<span class="char">([^<]+)</span>', row)
+                    players = re.findall(r'<span class="player">\s*<a[^>]*>([^<]+)</a>', row)
+                    res_m = re.search(r'<td class="result">\s*([\d-]+)\s*</td>', row)
+                    score = res_m.group(1).strip() if res_m else '0-0'
+                    parts = score.split('-')
+                    p_rounds = int(parts[0]) if len(parts) > 0 and parts[0].isdigit() else 0
+                    opp_rounds = int(parts[1]) if len(parts) > 1 and parts[1].isdigit() else 0
+                    left_part = row.split('class="result"')[0] if 'class="result"' in row else row
+                    is_win = 'class="win"' in left_part
+                    is_loss = 'class="lose"' in left_part
+                    if is_win:
+                        outcome = 'WIN'
+                    elif is_loss:
+                        outcome = 'LOSS'
+                    elif p_rounds > opp_rounds:
+                        outcome = 'WIN'
+                    elif p_rounds < opp_rounds:
+                        outcome = 'LOSS'
+                    else:
+                        outcome = 'DRAW'
+                    wavu_matches.append({
+                        "id": iso_time,
+                        "result": outcome,
+                        "player_character": chars[0].strip() if chars else (profile.get("mainChar") or "?"),
+                        "opponent_character": chars[1].strip() if len(chars) > 1 else "?",
+                        "opponent_name": players[1].strip() if len(players) > 1 else "Opponent",
+                        "player_rank": profile.get("rankName") or "Ranked",
+                        "opponent_rank": "Ranked",
+                        "battle_type": "RANKED_BATTLE",
+                        "timestamp": iso_time,
+                        "rounds_won": p_rounds,
+                        "rounds_lost": opp_rounds,
+                        "stage_id": None,
+                    })
     except Exception as e:
         print(f"Warning: Failed to fetch from Wavu Wank: {e}")
 
-    # Ensure known played characters (like Jun) are always preserved in player roster
-    if api_id.lower() == "5b6yhdee7ftd" or "jun" not in [c["name"].lower() for c in profile.get("characters", [])]:
-        if api_id.lower() == "5b6yhdee7ftd" and not any(c["name"].lower() == "jun" for c in profile.get("characters", [])):
-            profile["characters"].append({
-                "name": "Jun",
-                "rankName": profile.get("rankName") or "Ranger",
-                "glicko_mu": profile.get("glicko_mu") or "1286",
-                "glicko_sigma": profile.get("glicko_sigma") or "72"
-            })
-
-    # Compute win/loss from the battles (winner field: 1 = p1 wins, 2 = p2 wins)
-    wins = 0
-    losses = 0
-    char_counts: dict = {}
+    # 3. Normalize EWGF matches
+    ewgf_norm = []
     for m in matches:
         p1_id = (m.get("p1_tekken_id") or "").replace("-", "").lower()
-        p2_id = (m.get("p2_tekken_id") or "").replace("-", "").lower()
         is_p1 = p1_id == api_id.lower()
-        is_p2 = p2_id == api_id.lower()
         winner = m.get("winner")
-        if is_p1:
-            char = m.get("p1_char") or "Unknown"
-            if winner == 1:
-                wins += 1
-            elif winner == 2:
-                losses += 1
-        elif is_p2:
-            char = m.get("p2_char") or "Unknown"
-            if winner == 2:
-                wins += 1
-            elif winner == 1:
-                losses += 1
+        p_won = m.get("p1_rounds_won" if is_p1 else "p2_rounds_won", 0)
+        p_lost = m.get("p2_rounds_won" if is_p1 else "p1_rounds_won", 0)
+        if winner == 1:
+            res = "WIN" if is_p1 else "LOSS"
+        elif winner == 2:
+            res = "LOSS" if is_p1 else "WIN"
+        elif winner == 3 or p_won == p_lost:
+            res = "DRAW"
+        elif p_won > p_lost:
+            res = "WIN"
         else:
-            continue
-        char_counts[char] = char_counts.get(char, 0) + 1
+            res = "LOSS"
 
-    total = wins + losses
-    win_rate = round((wins / total) * 100, 1) if total > 0 else 0.0
-    top_characters = sorted(char_counts.items(), key=lambda x: x[1], reverse=True)[:3]
+        player_char = m.get("p1_char" if is_p1 else "p2_char", "?")
+        opp_char = m.get("p2_char" if is_p1 else "p1_char", "?")
+        opp_name = m.get("p2_name" if is_p1 else "p1_name", "?")
+        player_rank = m.get("p1_dan_rank" if is_p1 else "p2_dan_rank", "")
+        opp_rank = m.get("p2_dan_rank" if is_p1 else "p1_dan_rank", "")
 
-    # Normalize match records to a consistent shape for the frontend
-    normalized_matches = []
-    for m in matches[:10]:
-        p1_id = (m.get("p1_tekken_id") or "").replace("-", "").lower()
-        is_p1 = p1_id == api_id.lower()
-        result = ""
-        winner = m.get("winner")
-        if is_p1:
-            result = "WIN" if winner == 1 else "LOSS"
-            player_char = m.get("p1_char", "?")
-            opp_char = m.get("p2_char", "?")
-            opp_name = m.get("p2_name", "?")
-            player_rank = m.get("p1_dan_rank", "")
-            opp_rank = m.get("p2_dan_rank", "")
-            rounds_won = m.get("p1_rounds_won", 0)
-            rounds_lost = m.get("p2_rounds_won", 0)
-        else:
-            result = "WIN" if winner == 2 else "LOSS"
-            player_char = m.get("p2_char", "?")
-            opp_char = m.get("p1_char", "?")
-            opp_name = m.get("p1_name", "?")
-            player_rank = m.get("p2_dan_rank", "")
-            opp_rank = m.get("p1_dan_rank", "")
-            rounds_won = m.get("p2_rounds_won", 0)
-            rounds_lost = m.get("p1_rounds_won", 0)
-        normalized_matches.append({
+        ewgf_norm.append({
             "id": m.get("battle_at", ""),
-            "result": result,
+            "result": res,
             "player_character": player_char,
             "opponent_character": opp_char,
             "opponent_name": opp_name,
             "player_rank": player_rank,
             "opponent_rank": opp_rank,
-            "battle_type": m.get("battle_type", ""),
+            "battle_type": m.get("battle_type", "RANKED_BATTLE"),
             "timestamp": m.get("battle_at", ""),
-            "rounds_won": rounds_won,
-            "rounds_lost": rounds_lost,
+            "rounds_won": p_won,
+            "rounds_lost": p_lost,
             "stage_id": m.get("stage_id"),
         })
+
+    # 4. Merge Wavu real-time matches with EWGF matches
+    # Wavu updates every few minutes with replays, while EWGF might lag by hours/days.
+    # Take matches from Wavu that are newer than EWGF's newest match, then EWGF, then older Wavu matches.
+    if ewgf_norm:
+        newest_ewgf = ewgf_norm[0]["timestamp"]
+        oldest_ewgf = ewgf_norm[-1]["timestamp"]
+        brand_new_wavu = [wm for wm in wavu_matches if wm["timestamp"] > newest_ewgf]
+        older_wavu = [wm for wm in wavu_matches if wm["timestamp"] < oldest_ewgf]
+        all_normalized_matches = brand_new_wavu + ewgf_norm + older_wavu
+    else:
+        all_normalized_matches = wavu_matches
+
+    # Deduplicate matches by timestamp just in case
+    seen_timestamps = set()
+    deduped_matches = []
+    for m in all_normalized_matches:
+        ts = m.get("timestamp")
+        if ts and ts not in seen_timestamps:
+            seen_timestamps.add(ts)
+            deduped_matches.append(m)
+        elif not ts:
+            deduped_matches.append(m)
+
+    # 5. Compute aggregate stats over the full combined history
+    wins = 0
+    losses = 0
+    draws = 0
+    char_counts: dict = {}
+    for m in deduped_matches:
+        res = m.get("result")
+        if res == "WIN":
+            wins += 1
+        elif res == "LOSS":
+            losses += 1
+        elif res == "DRAW":
+            draws += 1
+        c = m.get("player_character") or "Unknown"
+        if c != "?":
+            char_counts[c] = char_counts.get(c, 0) + 1
+
+    total = wins + losses
+    win_rate = round((wins / total) * 100, 1) if total > 0 else 0.0
+    top_characters = sorted(char_counts.items(), key=lambda x: x[1], reverse=True)[:3]
 
     result = {
         "status": "ok",
         "tekken_id": tekken_id,
         "profile": profile,
-        "matches": normalized_matches,
+        "matches": deduped_matches,  # Full merged history for heatmap/radar/stats widgets!
         "meta": meta,
         "derived": {
             "wins": wins,
             "losses": losses,
+            "draws": draws,
+            "total": len(deduped_matches),
             "win_rate": win_rate,
             "top_characters": [{"name": name, "count": count} for name, count in top_characters],
         },
