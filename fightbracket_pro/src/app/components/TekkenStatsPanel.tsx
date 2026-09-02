@@ -73,6 +73,8 @@ interface TekkenStatsPanelProps {
   gamerTag?: string | null;
   /** Called after a successful stats fetch with the raw match array */
   onMatchesLoaded?: (matches: TekkenMatch[]) => void;
+  /** Called after a successful stats fetch with the full unified payload */
+  onDataLoaded?: (data: any) => void;
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -554,7 +556,7 @@ function MatchRow({ match, index, playerName }: { match: TekkenMatch; index: num
 // Main component
 // ──────────────────────────────────────────────────────────────────────────────
 
-export function TekkenStatsPanel({ tekkenId, compact = false, steamId, psnId, xboxId, gamerTag, onMatchesLoaded }: TekkenStatsPanelProps) {
+export function TekkenStatsPanel({ tekkenId, compact = false, steamId, psnId, xboxId, gamerTag, onMatchesLoaded, onDataLoaded }: TekkenStatsPanelProps) {
   const [data, setData] = useState<TekkenStatsData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -580,6 +582,9 @@ export function TekkenStatsPanel({ tekkenId, compact = false, steamId, psnId, xb
       setLastSynced(new Date().toLocaleTimeString());
       if (onMatchesLoaded && json.matches) {
         onMatchesLoaded(json.matches);
+      }
+      if (onDataLoaded) {
+        onDataLoaded(json);
       }
     } catch (e: any) {
       setError(e.message || 'Failed to fetch Tekken stats');

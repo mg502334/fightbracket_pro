@@ -13,6 +13,7 @@ import { DealsWidget } from './DealsWidget';
 import { EventsPanel } from './EventsPanel';
 import { ActivityHeatmapWidget } from './ActivityHeatmapWidget';
 import { StatPentagonWidget } from './StatPentagonWidget';
+import { GlobalStatisticsWidget } from './GlobalStatisticsWidget';
 
 const API_URL = import.meta.env.VITE_API_URL || '';
 
@@ -129,6 +130,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
   const [myFeedPosts, setMyFeedPosts] = useState<Post[]>([]);
   const [fetchingMyFeed, setFetchingMyFeed] = useState(false);
   const [tekkenMatches, setTekkenMatches] = useState<any[]>([]);
+  const [tekkenData, setTekkenData] = useState<any>(null);
 
   // Account Settings state
   const [newEmail, setNewEmail] = useState('');
@@ -1701,10 +1703,17 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
 
             <div className="max-w-6xl space-y-8 animate-in fade-in duration-300">
 
-              {/* Activity Heatmap + Stat Pentagon — side-by-side */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* EWGF Stats Widgets Row — Activity Heatmap + Stat Pentagon + Global Statistics */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <ActivityHeatmapWidget matches={tekkenMatches} />
-                <StatPentagonWidget matches={tekkenMatches} />
+                <StatPentagonWidget
+                  matches={tekkenMatches}
+                  stats={tekkenData?.pentagon_stats || tekkenData?.profile?.pentagon_stats}
+                />
+                <GlobalStatisticsWidget
+                  matches={tekkenMatches}
+                  globalStats={tekkenData?.global_stats || tekkenData?.profile?.global_stats}
+                />
               </div>
 
               {/* Full Width Tekken 8 Live Stats Box */}
@@ -1733,6 +1742,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
                     steamId={userProfile?.steam_id}
                     gamerTag={userProfile?.gamer_tag}
                     onMatchesLoaded={setTekkenMatches}
+                    onDataLoaded={setTekkenData}
                   />
                 </div>
               </div>
