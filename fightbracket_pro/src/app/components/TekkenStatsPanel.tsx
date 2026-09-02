@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { formatDistanceToNow, format } from 'date-fns';
-import { RefreshCw, Swords, Trophy, TrendingUp, Shield, Zap, AlertCircle } from 'lucide-react';
+import { RefreshCw, Swords, Trophy, TrendingUp, Shield, Zap, AlertCircle, ChevronDown } from 'lucide-react';
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Types
