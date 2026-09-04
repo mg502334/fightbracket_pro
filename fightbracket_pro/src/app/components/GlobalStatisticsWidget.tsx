@@ -24,12 +24,15 @@ interface Match {
 interface GlobalStatisticsWidgetProps {
   matches?: Match[];
   globalStats?: GlobalStatsPayload;
+  rankColor?: string;
 }
 
 type SeasonFilter = 'ALL' | 'S2' | 'S3';
 
-export function GlobalStatisticsWidget({ matches = [], globalStats }: GlobalStatisticsWidgetProps) {
+export function GlobalStatisticsWidget({ matches = [], globalStats, rankColor }: GlobalStatisticsWidgetProps) {
   const [season, setSeason] = useState<SeasonFilter>('ALL');
+
+  const accentColor = rankColor || '#00E5FF';
 
   const stats = useMemo(() => {
     if (globalStats && (globalStats.ranked || globalStats.quick)) {
@@ -85,32 +88,32 @@ export function GlobalStatisticsWidget({ matches = [], globalStats }: GlobalStat
 
   return (
     <div
-      className="rounded-2xl p-5 border flex flex-col justify-between"
+      className="rounded-xl p-4 sm:p-5 border flex flex-col justify-between transition-all"
       style={{
-        background: '#070b14',
-        borderColor: 'rgba(255,255,255,0.08)',
-        boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
-        minHeight: '380px',
+        background: 'linear-gradient(135deg, rgba(10,16,28,0.95) 0%, rgba(5,10,20,0.98) 100%)',
+        borderColor: rankColor ? `${rankColor}30` : 'rgba(255,255,255,0.1)',
+        boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
       }}
     >
       {/* ── Header ── */}
       <div>
         <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             <div
-              className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-              style={{ background: 'rgba(139,92,246,0.15)', border: '1px solid rgba(139,92,246,0.3)' }}
+              className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+              style={{
+                background: `${accentColor}18`,
+                border: `1px solid ${accentColor}40`,
+                color: accentColor,
+              }}
             >
-              <BarChart2 size={14} className="text-purple-400" />
+              <BarChart2 size={16} />
             </div>
             <div>
-              <div
-                className="text-sm font-bold text-white tracking-widest uppercase"
-                style={{ fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: '0.1em' }}
-              >
+              <div className="text-sm font-bold text-white tracking-widest uppercase font-rajdhani">
                 Global Statistics
               </div>
-              <div className="text-[10px] text-gray-500 font-mono">
+              <div className="text-[10px] text-gray-400 font-mono">
                 Overall performance for all seasons
               </div>
             </div>
@@ -118,18 +121,19 @@ export function GlobalStatisticsWidget({ matches = [], globalStats }: GlobalStat
         </div>
 
         {/* Season Filter Tabs */}
-        <div className="flex items-center gap-1.5 mt-3 mb-4">
+        <div className="flex items-center gap-1.5 mt-2.5 mb-3">
           {(['ALL', 'S2', 'S3'] as SeasonFilter[]).map((tab) => {
             const active = season === tab;
             return (
               <button
                 key={tab}
                 onClick={() => setSeason(tab)}
-                className="px-3 py-1 rounded-full text-[11px] font-bold font-mono transition-all cursor-pointer"
+                className="px-2.5 py-1 rounded text-[10px] font-bold font-mono transition-all cursor-pointer"
                 style={{
-                  background: active ? '#8b5cf6' : 'rgba(255,255,255,0.05)',
-                  color: active ? '#ffffff' : 'rgba(255,255,255,0.4)',
-                  border: active ? '1px solid #a78bfa' : '1px solid rgba(255,255,255,0.08)',
+                  background: active ? `${accentColor}25` : 'rgba(255,255,255,0.04)',
+                  color: active ? (accentColor === '#00E5FF' ? '#00E5FF' : accentColor) : '#9ca3af',
+                  border: active ? `1px solid ${accentColor}60` : '1px solid rgba(255,255,255,0.08)',
+                  boxShadow: active ? `0 0 10px ${accentColor}20` : 'none',
                 }}
               >
                 {tab}
@@ -140,98 +144,130 @@ export function GlobalStatisticsWidget({ matches = [], globalStats }: GlobalStat
       </div>
 
       {/* ── Stat Cards ── */}
-      <div className="space-y-3 my-auto">
+      <div className="space-y-2.5 my-auto">
         {/* Ranked Card */}
         <div
-          className="p-3.5 rounded-xl border flex items-center justify-between transition-all"
+          className="p-3 rounded-lg border transition-all"
           style={{
-            background: 'rgba(255,255,255,0.02)',
-            borderColor: 'rgba(255,255,255,0.06)',
+            background: 'rgba(5,10,20,0.85)',
+            borderColor: 'rgba(255,255,255,0.08)',
           }}
         >
-          <div className="flex items-center gap-3">
-            <div
-              className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
-              style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}
-            >
-              <Trophy size={18} className="text-gray-300" />
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div
+                className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                style={{ background: 'rgba(0,229,255,0.1)', border: '1px solid rgba(0,229,255,0.25)', color: '#00E5FF' }}
+              >
+                <Trophy size={16} />
+              </div>
+              <div>
+                <div className="text-sm font-bold text-white font-rajdhani tracking-wide">Ranked</div>
+                <div className="text-[10px] text-gray-400 font-mono">
+                  {hasData ? `${ranked.matches} matches` : '—'}
+                </div>
+              </div>
             </div>
-            <div>
-              <div className="text-sm font-bold text-white tracking-wide">Ranked</div>
-              <div className="text-[11px] text-gray-400 font-mono">
-                {hasData ? `${ranked.matches} matches` : '—'}
+
+            <div className="text-right">
+              <div
+                className="text-base font-bold font-rajdhani"
+                style={{
+                  color: hasData
+                    ? ranked.win_rate >= 50
+                      ? '#22c55e'
+                      : ranked.win_rate >= 35
+                      ? '#eab308'
+                      : '#f97316'
+                    : 'rgba(255,255,255,0.3)',
+                }}
+              >
+                {hasData ? `${ranked.win_rate.toFixed(1)}%` : '—'}
+              </div>
+              <div className="text-[10px] text-gray-400 font-mono">
+                {hasData ? `${ranked.wins}W - ${ranked.losses}L - ${ranked.draws}D` : 'No data'}
               </div>
             </div>
           </div>
 
-          <div className="text-right">
-            <div
-              className="text-lg font-bold font-mono"
-              style={{
-                color: hasData
-                  ? ranked.win_rate >= 50
-                    ? '#22c55e'
-                    : ranked.win_rate >= 35
-                    ? '#eab308'
-                    : '#f97316'
-                  : 'rgba(255,255,255,0.2)',
-              }}
-            >
-              {hasData ? `${ranked.win_rate.toFixed(1)}%` : '—'}
+          {/* Mini Win/Loss Bar */}
+          {hasData && ranked.matches > 0 && (
+            <div className="h-1.5 rounded-full bg-white/10 overflow-hidden flex mt-2">
+              <div
+                style={{ width: `${(ranked.wins / ranked.matches) * 100}%` }}
+                className="bg-emerald-400 transition-all duration-500"
+              />
+              <div
+                style={{ width: `${(ranked.losses / ranked.matches) * 100}%` }}
+                className="bg-red-500 transition-all duration-500"
+              />
             </div>
-            <div className="text-[10px] text-gray-500 font-mono">
-              {hasData ? `${ranked.wins}W - ${ranked.losses}L - ${ranked.draws}D` : 'No data'}
-            </div>
-          </div>
+          )}
         </div>
 
         {/* Quick Card */}
         <div
-          className="p-3.5 rounded-xl border flex items-center justify-between transition-all"
+          className="p-3 rounded-lg border transition-all"
           style={{
-            background: 'rgba(255,255,255,0.02)',
-            borderColor: 'rgba(255,255,255,0.06)',
+            background: 'rgba(5,10,20,0.85)',
+            borderColor: 'rgba(255,255,255,0.08)',
           }}
         >
-          <div className="flex items-center gap-3">
-            <div
-              className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
-              style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}
-            >
-              <Swords size={18} className="text-gray-300" />
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div
+                className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                style={{ background: 'rgba(255,0,60,0.1)', border: '1px solid rgba(255,0,60,0.25)', color: '#ff4d6d' }}
+              >
+                <Swords size={16} />
+              </div>
+              <div>
+                <div className="text-sm font-bold text-white font-rajdhani tracking-wide">Quick</div>
+                <div className="text-[10px] text-gray-400 font-mono">
+                  {hasData ? `${quick.matches} matches` : '—'}
+                </div>
+              </div>
             </div>
-            <div>
-              <div className="text-sm font-bold text-white tracking-wide">Quick</div>
-              <div className="text-[11px] text-gray-400 font-mono">
-                {hasData ? `${quick.matches} matches` : '—'}
+
+            <div className="text-right">
+              <div
+                className="text-base font-bold font-rajdhani"
+                style={{
+                  color: hasData
+                    ? quick.win_rate >= 50
+                      ? '#22c55e'
+                      : quick.win_rate >= 35
+                      ? '#eab308'
+                      : '#f97316'
+                    : 'rgba(255,255,255,0.3)',
+                }}
+              >
+                {hasData ? `${quick.win_rate.toFixed(1)}%` : '—'}
+              </div>
+              <div className="text-[10px] text-gray-400 font-mono">
+                {hasData ? `${quick.wins}W - ${quick.losses}L - ${quick.draws}D` : 'No data'}
               </div>
             </div>
           </div>
 
-          <div className="text-right">
-            <div
-              className="text-lg font-bold font-mono"
-              style={{
-                color: hasData
-                  ? quick.win_rate >= 50
-                    ? '#22c55e'
-                    : quick.win_rate >= 35
-                    ? '#eab308'
-                    : '#f97316'
-                  : 'rgba(255,255,255,0.2)',
-              }}
-            >
-              {hasData ? `${quick.win_rate.toFixed(1)}%` : '—'}
+          {/* Mini Win/Loss Bar */}
+          {hasData && quick.matches > 0 && (
+            <div className="h-1.5 rounded-full bg-white/10 overflow-hidden flex mt-2">
+              <div
+                style={{ width: `${(quick.wins / quick.matches) * 100}%` }}
+                className="bg-emerald-400 transition-all duration-500"
+              />
+              <div
+                style={{ width: `${(quick.losses / quick.matches) * 100}%` }}
+                className="bg-red-500 transition-all duration-500"
+              />
             </div>
-            <div className="text-[10px] text-gray-500 font-mono">
-              {hasData ? `${quick.wins}W - ${quick.losses}L - ${quick.draws}D` : 'No data'}
-            </div>
-          </div>
+          )}
         </div>
       </div>
 
       {/* ── Footer ── */}
-      <div className="pt-2 text-center text-[10px] font-mono text-gray-600 border-t border-white/5 mt-2">
+      <div className="pt-2 text-center text-[10px] font-mono text-gray-400 border-t border-white/5 mt-2">
         {hasData
           ? `${ranked.matches + quick.matches} total games tracked across all modes`
           : 'Link your Tekken 8 Polaris ID to view global statistics'}

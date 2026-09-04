@@ -23,6 +23,7 @@ interface StatPentagonWidgetProps {
     spirit: number;
     appeal: number;
   };
+  rankColor?: string;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -102,10 +103,10 @@ function deriveStats(matches: Match[]): { attack: number; defense: number; techn
 
 const AXES = [
   { key: 'attack',    label: 'ATTACK',    color: '#ef4444', textColor: '#f87171' },
-  { key: 'technique', label: 'TECHNIQUE', color: '#06b6d4', textColor: '#22d3ee' },
+  { key: 'technique', label: 'TECHNIQUE', color: '#00E5FF', textColor: '#22d3ee' },
   { key: 'appeal',    label: 'APPEAL',    color: '#f59e0b', textColor: '#fbbf24' },
-  { key: 'spirit',    label: 'SPIRIT',    color: '#8b5cf6', textColor: '#a78bfa' },
-  { key: 'defense',   label: 'DEFENSE',   color: '#22c55e', textColor: '#4ade80' },
+  { key: 'spirit',    label: 'SPIRIT',    color: '#a855f7', textColor: '#c084fc' },
+  { key: 'defense',   label: 'DEFENSE',   color: '#3b82f6', textColor: '#60a5fa' },
 ] as const;
 
 // Pentagon vertex order: Attack (top), Technique (right), Appeal (lower-right), Spirit (lower-left), Defense (left)
@@ -114,7 +115,7 @@ const AXIS_ORDER: (typeof AXES[number]['key'])[] = ['attack', 'technique', 'appe
 
 const CX = 130, CY = 130, R = 100;
 
-export function StatPentagonWidget({ matches, stats: statsProp }: StatPentagonWidgetProps) {
+export function StatPentagonWidget({ matches, stats: statsProp, rankColor }: StatPentagonWidgetProps) {
   const [showDetails, setShowDetails] = useState(false);
 
   const stats = useMemo(() => statsProp || deriveStats(matches), [matches, statsProp]);
@@ -124,6 +125,8 @@ export function StatPentagonWidget({ matches, stats: statsProp }: StatPentagonWi
   const average = hasData
     ? Math.round(Object.values(stats).reduce((a, b) => a + b, 0) / Object.values(stats).length)
     : 0;
+
+  const accentColor = rankColor || '#00E5FF';
 
   // Background reference rings at 25%, 50%, 75%, 100%
   const rings = [0.25, 0.5, 0.75, 1.0];
@@ -136,194 +139,204 @@ export function StatPentagonWidget({ matches, stats: statsProp }: StatPentagonWi
 
   return (
     <div
-      className="flex flex-col gap-3 p-5 rounded-2xl"
-      style={{ background: '#151520', border: '1px solid rgba(255,255,255,0.07)' }}
+      className="flex flex-col justify-between gap-3 p-4 sm:p-5 rounded-xl border transition-all"
+      style={{
+        background: 'linear-gradient(135deg, rgba(10,16,28,0.95) 0%, rgba(5,10,20,0.98) 100%)',
+        borderColor: rankColor ? `${rankColor}30` : 'rgba(255,255,255,0.1)',
+        boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+      }}
     >
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div
-            className="w-8 h-8 flex items-center justify-center rounded-lg flex-shrink-0"
-            style={{ background: 'rgba(139,92,246,0.2)', border: '1px solid rgba(139,92,246,0.3)' }}
+      <div>
+        {/* Header */}
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-3">
+            <div
+              className="w-8 h-8 flex items-center justify-center rounded-lg flex-shrink-0"
+              style={{
+                background: `${accentColor}18`,
+                border: `1px solid ${accentColor}40`,
+                color: accentColor,
+              }}
+            >
+              {/* Pentagon icon */}
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <polygon points="12,2 22,9 18,21 6,21 2,9" />
+              </svg>
+            </div>
+            <div>
+              <div className="text-sm font-bold text-white tracking-widest uppercase font-rajdhani">
+                Stat Pentagon
+              </div>
+              <div className="text-[10px] text-gray-400 font-mono">
+                {hasData ? `Average ${average}` : 'No data'}
+              </div>
+            </div>
+          </div>
+
+          {/* Details toggle */}
+          <button
+            onClick={() => setShowDetails(!showDetails)}
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded text-[10px] font-bold uppercase tracking-wider font-mono transition-all cursor-pointer"
+            style={{
+              background: showDetails ? `${accentColor}25` : 'rgba(255,255,255,0.04)',
+              border: showDetails ? `1px solid ${accentColor}60` : '1px solid rgba(255,255,255,0.08)',
+              color: showDetails ? (accentColor === '#00E5FF' ? '#00E5FF' : accentColor) : '#9ca3af',
+              boxShadow: showDetails ? `0 0 10px ${accentColor}20` : 'none',
+            }}
           >
-            {/* Pentagon icon */}
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgb(167,139,250)" strokeWidth="2">
-              <polygon points="12,2 22,9 18,21 6,21 2,9" />
+            DETAILS
+            <svg
+              width="10" height="10" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" strokeWidth="2.5"
+              style={{ transform: showDetails ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}
+            >
+              <polyline points="6 9 12 15 18 9" />
             </svg>
-          </div>
-          <div>
-            <div className="text-sm font-bold text-white tracking-widest uppercase" style={{ fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: '0.1em' }}>
-              Stat Pentagon
-            </div>
-            <div className="text-[10px] text-gray-500 font-mono">
-              {hasData ? `Average ${average}` : 'No data'}
-            </div>
-          </div>
+          </button>
         </div>
 
-        {/* Details toggle */}
-        <button
-          onClick={() => setShowDetails(!showDetails)}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all duration-150"
-          style={{
-            fontFamily: "'Barlow Condensed', sans-serif",
-            background: showDetails ? 'rgba(139,92,246,0.25)' : 'rgba(255,255,255,0.06)',
-            border: showDetails ? '1px solid rgba(139,92,246,0.5)' : '1px solid rgba(255,255,255,0.1)',
-            color: showDetails ? '#c4b5fd' : '#8a8a9a',
-          }}
-        >
-          DETAILS
+        {/* SVG Pentagon */}
+        <div className="flex justify-center my-2">
           <svg
-            width="10" height="10" viewBox="0 0 24 24" fill="none"
-            stroke="currentColor" strokeWidth="2.5"
-            style={{ transform: showDetails ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}
+            width="260"
+            height="250"
+            viewBox="0 0 260 260"
+            style={{ overflow: 'visible' }}
           >
-            <polyline points="6 9 12 15 18 9" />
-          </svg>
-        </button>
-      </div>
-
-      {/* SVG Pentagon */}
-      <div className="flex justify-center">
-        <svg
-          width="260"
-          height="260"
-          viewBox="0 0 260 260"
-          style={{ overflow: 'visible' }}
-        >
-          {/* Reference rings */}
-          {rings.map((ringVal) => (
-            <polygon
-              key={ringVal}
-              points={polygonPoints(Array(5).fill(ringVal), CX, CY, R)}
-              fill="none"
-              stroke="rgba(255,255,255,0.07)"
-              strokeWidth="1"
-            />
-          ))}
-
-          {/* Axis spokes */}
-          {AXIS_ORDER.map((key, i) => {
-            const [x, y] = pentagonPoint(i, 1, CX, CY, R);
-            return (
-              <line
-                key={key}
-                x1={CX} y1={CY}
-                x2={x} y2={y}
+            {/* Reference rings */}
+            {rings.map((ringVal) => (
+              <polygon
+                key={ringVal}
+                points={polygonPoints(Array(5).fill(ringVal), CX, CY, R)}
+                fill="none"
                 stroke="rgba(255,255,255,0.08)"
                 strokeWidth="1"
               />
-            );
-          })}
+            ))}
 
-          {/* Filled data polygon — only when data exists */}
-          {hasData && (
-            <>
-              <polygon
-                points={polygonPoints(values, CX, CY, R)}
-                fill="rgba(109,79,200,0.45)"
-                stroke="rgba(139,92,246,0.8)"
-                strokeWidth="1.5"
-                style={{ filter: 'drop-shadow(0 0 8px rgba(139,92,246,0.5))' }}
-              />
-              {values.map((v, i) => {
-                const [x, y] = pentagonPoint(i, v, CX, CY, R);
-                return (
-                  <circle
-                    key={i}
-                    cx={x} cy={y} r="3"
-                    fill="rgba(167,139,250,0.9)"
-                    stroke="rgba(255,255,255,0.5)"
-                    strokeWidth="1"
-                  />
-                );
-              })}
-            </>
-          )}
+            {/* Axis spokes */}
+            {AXIS_ORDER.map((key, i) => {
+              const [x, y] = pentagonPoint(i, 1, CX, CY, R);
+              return (
+                <line
+                  key={key}
+                  x1={CX} y1={CY}
+                  x2={x} y2={y}
+                  stroke="rgba(255,255,255,0.08)"
+                  strokeWidth="1"
+                />
+              );
+            })}
 
-          {/* Empty state label in centre */}
-          {!hasData && (
-            <text
-              x={CX} y={CY}
-              textAnchor="middle"
-              dominantBaseline="middle"
-              fill="rgba(255,255,255,0.18)"
-              fontSize="11"
-              fontFamily="'Barlow Condensed', sans-serif"
-              letterSpacing="2"
-            >
-              LINK TEKKEN ID
-            </text>
-          )}
+            {/* Filled data polygon — only when data exists */}
+            {hasData && (
+              <>
+                <polygon
+                  points={polygonPoints(values, CX, CY, R)}
+                  fill={accentColor === '#00E5FF' ? 'rgba(0,229,255,0.22)' : `${accentColor}25`}
+                  stroke={accentColor}
+                  strokeWidth="1.8"
+                  style={{ filter: `drop-shadow(0 0 10px ${accentColor}60)` }}
+                />
+                {values.map((v, i) => {
+                  const [x, y] = pentagonPoint(i, v, CX, CY, R);
+                  return (
+                    <circle
+                      key={i}
+                      cx={x} cy={y} r="3.5"
+                      fill={accentColor}
+                      stroke="#ffffff"
+                      strokeWidth="1.5"
+                    />
+                  );
+                })}
+              </>
+            )}
 
-          {/* Axis labels */}
-          {labelPositions.map(({ key, x, y }) => {
-            const axis = AXES.find(a => a.key === key)!;
-            const statVal = stats[key as keyof typeof stats];
-            return (
-              <g key={key}>
-                <text
-                  x={x} y={y - 4}
-                  textAnchor="middle"
-                  dominantBaseline="auto"
-                  fill={axis.textColor}
-                  fontSize="9"
-                  fontFamily="'Barlow Condensed', sans-serif"
-                  fontWeight="700"
-                  letterSpacing="1.5"
-                >
-                  {axis.label}
-                </text>
-                <text
-                  x={x} y={y + 8}
-                  textAnchor="middle"
-                  dominantBaseline="auto"
-                  fill="white"
-                  fontSize="14"
-                  fontFamily="'Barlow Condensed', sans-serif"
-                  fontWeight="800"
-                >
-                  {statVal}
-                </text>
-              </g>
-            );
-          })}
-        </svg>
+            {/* Empty state label in centre */}
+            {!hasData && (
+              <text
+                x={CX} y={CY}
+                textAnchor="middle"
+                dominantBaseline="middle"
+                fill="rgba(255,255,255,0.2)"
+                fontSize="11"
+                fontFamily="Rajdhani, monospace"
+                letterSpacing="2"
+              >
+                LINK TEKKEN ID
+              </text>
+            )}
+
+            {/* Axis labels */}
+            {labelPositions.map(({ key, x, y }) => {
+              const axis = AXES.find(a => a.key === key)!;
+              const statVal = stats[key as keyof typeof stats];
+              return (
+                <g key={key}>
+                  <text
+                    x={x} y={y - 4}
+                    textAnchor="middle"
+                    dominantBaseline="auto"
+                    fill={axis.textColor}
+                    fontSize="10"
+                    fontFamily="Rajdhani, sans-serif"
+                    fontWeight="700"
+                    letterSpacing="1"
+                  >
+                    {axis.label}
+                  </text>
+                  <text
+                    x={x} y={y + 9}
+                    textAnchor="middle"
+                    dominantBaseline="auto"
+                    fill="white"
+                    fontSize="13"
+                    fontFamily="monospace"
+                    fontWeight="700"
+                  >
+                    {statVal}
+                  </text>
+                </g>
+              );
+            })}
+          </svg>
+        </div>
       </div>
 
       {/* Details expansion */}
       {showDetails && (
         <div
-          className="rounded-xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200"
-          style={{ border: '1px solid rgba(255,255,255,0.07)' }}
+          className="rounded-xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200 mt-1"
+          style={{ background: 'rgba(5,10,20,0.95)', border: '1px solid rgba(255,255,255,0.08)' }}
         >
           <table className="w-full text-xs">
             <thead>
-              <tr style={{ background: 'rgba(255,255,255,0.04)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-                <th className="px-4 py-2 text-left font-mono text-gray-500 uppercase tracking-wider text-[9px]">STAT</th>
-                <th className="px-4 py-2 text-right font-mono text-gray-500 uppercase tracking-wider text-[9px]">VALUE</th>
-                <th className="px-4 py-2 text-left font-mono text-gray-500 uppercase tracking-wider text-[9px]">BAR</th>
+              <tr style={{ background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                <th className="px-4 py-2 text-left font-mono text-gray-400 uppercase tracking-wider text-[9px]">STAT</th>
+                <th className="px-4 py-2 text-right font-mono text-gray-400 uppercase tracking-wider text-[9px]">VALUE</th>
+                <th className="px-4 py-2 text-left font-mono text-gray-400 uppercase tracking-wider text-[9px]">BAR</th>
               </tr>
             </thead>
             <tbody>
-              {AXES.map(({ key, label, textColor }) => {
+              {AXES.map(({ key, label, textColor, color }) => {
                 const val = stats[key as keyof typeof stats];
                 return (
                   <tr
                     key={key}
                     style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}
                   >
-                    <td className="px-4 py-2.5 font-bold uppercase tracking-wider text-[10px]" style={{ color: textColor, fontFamily: "'Barlow Condensed', sans-serif" }}>
+                    <td className="px-4 py-2 font-bold uppercase tracking-wider text-[11px] font-rajdhani" style={{ color: textColor }}>
                       {label}
                     </td>
-                    <td className="px-4 py-2.5 text-right font-bold text-white text-sm" style={{ fontFamily: "'Barlow Condensed', sans-serif" }}>
+                    <td className="px-4 py-2 text-right font-bold text-white text-xs font-mono">
                       {val}
                     </td>
-                    <td className="px-4 py-2.5 w-32">
+                    <td className="px-4 py-2 w-28">
                       <div className="h-1.5 rounded-full bg-white/10 overflow-hidden">
                         <div
                           className="h-full rounded-full transition-all duration-500"
-                          style={{ width: `${val}%`, background: textColor, boxShadow: `0 0 6px ${textColor}80` }}
+                          style={{ width: `${val}%`, background: color, boxShadow: `0 0 6px ${color}80` }}
                         />
                       </div>
                     </td>
@@ -334,7 +347,7 @@ export function StatPentagonWidget({ matches, stats: statsProp }: StatPentagonWi
           </table>
 
           {matches.length === 0 && (
-            <div className="px-4 py-2 text-[9px] text-gray-600 font-mono border-t border-white/5 text-center">
+            <div className="px-4 py-2 text-[9px] text-gray-500 font-mono border-t border-white/5 text-center">
               Demo values — link your Tekken ID in Settings for real stats
             </div>
           )}

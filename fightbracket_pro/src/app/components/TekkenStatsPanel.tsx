@@ -2,6 +2,9 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { formatDistanceToNow, format } from 'date-fns';
 import { RefreshCw, Swords, Trophy, TrendingUp, Shield, Zap, AlertCircle, ChevronDown } from 'lucide-react';
+import { ActivityHeatmapWidget } from './ActivityHeatmapWidget';
+import { StatPentagonWidget } from './StatPentagonWidget';
+import { GlobalStatisticsWidget } from './GlobalStatisticsWidget';
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Types
@@ -57,10 +60,12 @@ interface TekkenMeta {
 interface TekkenStatsData {
   status: string;
   tekken_id: string;
-  profile: TekkenProfile;
+  profile: TekkenProfile & { pentagon_stats?: any; global_stats?: any };
   matches: TekkenMatch[];
   meta: TekkenMeta;
   derived: TekkenDerived;
+  pentagon_stats?: any;
+  global_stats?: any;
 }
 
 interface TekkenStatsPanelProps {
@@ -939,6 +944,21 @@ const ALL_TEKKEN_8_ROSTER = [
               )}
             </div>
           </motion.div>
+
+          {/* ── EWGF Live Analytics & Performance (Heatmap, Pentagon, Global Stats) ── */}
+          <div className={`grid grid-cols-1 ${compact ? 'gap-4' : 'lg:grid-cols-3 gap-4'} mt-4`}>
+            <ActivityHeatmapWidget matches={matches} rankColor={rankColor} />
+            <StatPentagonWidget
+              matches={matches}
+              stats={data?.pentagon_stats || data?.profile?.pentagon_stats}
+              rankColor={rankColor}
+            />
+            <GlobalStatisticsWidget
+              matches={matches}
+              globalStats={data?.global_stats || data?.profile?.global_stats}
+              rankColor={rankColor}
+            />
+          </div>
 
           {/* ── Top Characters ── */}
           {derived.top_characters && derived.top_characters.length > 0 && (
