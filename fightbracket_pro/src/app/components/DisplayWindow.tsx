@@ -266,6 +266,7 @@ export function DisplayWindow() {
           players={players}
           theme={theme}
           onCallMatch={() => {}}
+          onViewAnnouncement={m => setAnnouncement(m)}
           selectedPool="ALL"
           isImported={true}
         />

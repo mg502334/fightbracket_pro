@@ -37,7 +37,7 @@ import { Users } from "lucide-react";
 
 import {
   type BracketMatch, type Player, type Station, type SMSLog, type GameTheme, type ExhibitionMatch,
-  GAME_THEMES, generateMockDataForGame, generateDynamicBracket, BracketType
+  GAME_THEMES, PLAYERS, gen16Bracket, generateMockDataForGame, generateDynamicBracket, BracketType
 } from "./data/tournamentData";
 
 type Tab = 'overview' | 'bracket' | 'checkin' | 'stations' | 'streams' | 'vods' | 'pools' | 'account' | 'news';
@@ -132,8 +132,23 @@ export default function App() {
   const [autoSyncSlug, setAutoSyncSlug] = useState<string | null>(() => safeParse('fb_autoSyncSlug', null));
   const [exhibitions, setExhibitions] = useState<ExhibitionMatch[]>(() => safeParse('fb_exhibitions', []));
 
-  // Dynamic games state
-  const [gameThemes, setGameThemes] = useState<Record<string, GameTheme>>(() => safeParse('fb_themes', {}));
+  // Dynamic games state with user-specified franchise palettes
+  const [gameThemes, setGameThemes] = useState<Record<string, GameTheme>>(() => {
+    const raw = safeParse<Record<string, GameTheme>>('fb_themes', {});
+    const updated = { ...raw };
+    Object.keys(updated).forEach(id => {
+      const g = updated[id];
+      const name = (g.displayName || '').toLowerCase();
+      if (name.includes('tekken')) {
+        updated[id] = { ...g, primaryColor: '#FF1744', secondaryColor: '#FFD600', bgFrom: '#1A0006', glowColor: 'rgba(255, 23, 68, 0.45)' };
+      } else if (name.includes('street fighter')) {
+        updated[id] = { ...g, primaryColor: '#9D4EDD', secondaryColor: '#00E5FF', bgFrom: '#150524', glowColor: 'rgba(157, 78, 221, 0.45)' };
+      } else if (name.includes('wolves') || name.includes('fatal fury') || name.includes('king of fighters') || name.includes('kof')) {
+        updated[id] = { ...g, primaryColor: '#FFD600', secondaryColor: '#FF6D00', bgFrom: '#1C1500', glowColor: 'rgba(255, 214, 0, 0.45)' };
+      }
+    });
+    return updated;
+  });
   const [gameOrder, setGameOrder] = useState<string[]>(() => safeParse('fb_gameOrder', []));
 
   // Host & editing state
@@ -879,18 +894,37 @@ export default function App() {
           newGameIds.push(gameId);
           let hue = Math.floor(Math.random() * 360);
           const gameName = (ev.videogame?.name || evName).toLowerCase();
-          if (gameName.includes('tekken 8')) hue = 0;
-          else if (gameName.includes('street fighter 6')) hue = 280;
-          else if (gameName.includes('wolves') || gameName.includes('fatal fury')) hue = 50;
+          
+          let primaryColor = `hsl(${hue}, 100%, 60%)`;
+          let secondaryColor = `hsl(${(hue + 45) % 360}, 100%, 60%)`;
+          let bgFrom = `hsl(${hue}, 80%, 10%)`;
+          let glowColor = `hsla(${hue}, 100%, 60%, 0.4)`;
+
+          if (gameName.includes('tekken')) {
+            primaryColor = '#FF1744'; // Red
+            secondaryColor = '#FFD600';
+            bgFrom = '#1A0006';
+            glowColor = 'rgba(255, 23, 68, 0.45)';
+          } else if (gameName.includes('street fighter')) {
+            primaryColor = '#9D4EDD'; // Purple
+            secondaryColor = '#00E5FF';
+            bgFrom = '#150524';
+            glowColor = 'rgba(157, 78, 221, 0.45)';
+          } else if (gameName.includes('wolves') || gameName.includes('fatal fury') || gameName.includes('king of fighters') || gameName.includes('kof')) {
+            primaryColor = '#FFD600'; // Mainly yellow
+            secondaryColor = '#FF6D00';
+            bgFrom = '#1C1500';
+            glowColor = 'rgba(255, 214, 0, 0.45)';
+          }
 
           newThemes[gameId] = {
             id: gameId,
             displayName: fullDisplayName,
             shortName: evName.substring(0, 3).toUpperCase(),
-            primaryColor: `hsl(${hue}, 100%, 60%)`,
-            secondaryColor: `hsl(${(hue + 45) % 360}, 100%, 60%)`,
-            bgFrom: `hsl(${hue}, 80%, 10%)`,
-            glowColor: `hsla(${hue}, 100%, 60%, 0.4)`,
+            primaryColor,
+            secondaryColor,
+            bgFrom,
+            glowColor,
             description: `${tName} — ${evName}`,
             publisher: 'Start.gg',
           };
@@ -1219,25 +1253,40 @@ export default function App() {
   }
 
   const handleClearTournament = async () => {
-    if (!confirm("Are you sure you want to clear all tournament data? This action cannot be undone.")) return;
+    localStorage.removeItem('fb_tournament');
+    localStorage.removeItem('fb_players');
+    localStorage.removeItem('fb_matches');
+    localStorage.removeItem('fb_themes');
+    localStorage.removeItem('fb_gameOrder');
+    localStorage.removeItem('fb_autoSyncSlug');
+    localStorage.removeItem('fb_activeGame');
 
-    setPlayers([]);
-    setMatches([]);
-    setGameThemes({});
-    setGameOrder([]);
-    setActiveGame(null);
+    const defaultGameIds = ['tekken8', 'sf6', 'fatalFury'];
+    const defaultThemes: Record<string, GameTheme> = {
+      tekken8: GAME_THEMES.tekken8,
+      sf6: GAME_THEMES.sf6,
+      fatalFury: GAME_THEMES.fatalFury,
+    };
+
+    setPlayers(PLAYERS);
+    setGameThemes(defaultThemes);
+    setGameOrder(defaultGameIds);
+    setActiveGame('tekken8');
     setActiveTournament(null);
     setAutoSyncSlug(null);
     setExhibitions([]);
     setSmsLogs([]);
+    setMatches([
+      ...gen16Bracket('tekken8', PLAYERS.filter(p => p.gameId === 'tekken8').map(p => p.id)),
+      ...gen16Bracket('sf6', PLAYERS.filter(p => p.gameId === 'sf6').map(p => p.id)),
+      ...gen16Bracket('fatalFury', PLAYERS.filter(p => p.gameId === 'fatalFury').map(p => p.id)),
+    ]);
     setStations(Array.from({ length: 8 }).map((_, i) => ({ id: i + 1, name: `Station ${i + 1}`, active: true, matchId: null, gameId: null })));
 
     try {
       await fetch(`/api/user/data?user_id=${userId}`, { method: 'DELETE' });
-      toast.success('Tournament data cleared');
-    } catch (e) {
-      toast.error('Failed to clear database records');
-    }
+    } catch (_) {}
+    toast.success('Reset to default tournament mode!');
   };
 
   const handleReportScore = (matchId: string, p1Score: number, p2Score: number, winnerId: string | null) => {
@@ -1653,10 +1702,9 @@ export default function App() {
                     players={gamePlayers}
                     theme={theme}
                     onCallMatch={m => {
-                      const availStation = stations.find(s => s.active && !s.matchId);
-                      if (availStation) handleCallMatch(m, availStation.id);
-                      else toast.error('No available stations', { style: { background: 'var(--card)', color: 'var(--foreground)' } });
+                      setPendingCallMatch(m);
                     }}
+                    onViewAnnouncement={m => setAnnouncement(m)}
                     onGenerateBracket={handleGenerateBracket}
                     selectedPool={selectedPool}
                     onSelectPool={setSelectedPool}
@@ -1747,11 +1795,14 @@ export default function App() {
           id: 'default', displayName: 'FightBracket', shortName: 'FB', primaryColor: '#00E5FF', secondaryColor: '#FF006E', bgFrom: '#050A14', glowColor: 'rgba(0,229,255,0.4)', description: '', publisher: ''
         })}
         onDismiss={() => {
-          if (announcement) {
-            setMatches(prev => prev.map(m => m.id === announcement.id ? { ...m, state: 'in_progress' } : m));
-          }
           setAnnouncement(null);
         }}
+        onStartMatch={(m) => {
+          setMatches(prev => prev.map(match => match.id === m.id ? { ...match, state: 'in_progress' } : match));
+          setAnnouncement(null);
+          toast.success(`Match started at Station ${m.stationId}`);
+        }}
+        onUndoCall={(id) => handleUndoCall(id)}
       />
 
       {pendingCallMatch && theme && (

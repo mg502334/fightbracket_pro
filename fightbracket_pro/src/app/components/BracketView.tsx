@@ -12,6 +12,7 @@ interface BracketViewProps {
   onSelectPool?: (pool: string) => void;
   isImported?: boolean;
   onPlayerClick?: (playerId: string) => void;
+  onViewAnnouncement?: (match: BracketMatch) => void;
   onManualSync?: () => void;
   lastSyncedAt?: Date | null;
   isSyncing?: boolean;
@@ -123,6 +124,7 @@ export function BracketView({
   onSelectPool: externalOnSelectPool,
   isImported = false,
   onPlayerClick,
+  onViewAnnouncement,
   onManualSync,
   lastSyncedAt,
   isSyncing,
@@ -1024,46 +1026,45 @@ function BracketSection({
                             const dx = (colsDiff - 1) * (250 + 48) + 48;
                             const dy = (nextSlot - slot) * SLOT_SIZE;
 
-                            // 1. Calculate source card outlet Y position (43 = P1 slot, 80 = P2 slot, 61 = center divider)
-                            let yStart = 61;
+                            // 1. Calculate source card outlet Y position (38.5 = P1 slot, 68.5 = P2 slot, 53.5 = center)
+                            let yStart = 53.5;
                             if (match.winnerId) {
-                              if (match.winnerId === match.player1Id) yStart = 43;
-                              else if (match.winnerId === match.player2Id) yStart = 80;
+                              yStart = match.winnerId === match.player1Id ? 38.5 : 68.5;
                             } else if (nextMatch.player1Id && (nextMatch.player1Id === match.player1Id || nextMatch.player1Id === match.player2Id)) {
-                              yStart = nextMatch.player1Id === match.player1Id ? 43 : 80;
+                              yStart = nextMatch.player1Id === match.player1Id ? 38.5 : 68.5;
                             } else if (nextMatch.player2Id && (nextMatch.player2Id === match.player1Id || nextMatch.player2Id === match.player2Id)) {
-                              yStart = nextMatch.player2Id === match.player1Id ? 43 : 80;
+                              yStart = nextMatch.player2Id === match.player1Id ? 38.5 : 68.5;
                             }
 
-                            // 2. Calculate target card inlet Y position (43 = P1 slot, 80 = P2 slot, 61 = center divider)
-                            let targetSlotY = 61;
+                            // 2. Calculate target card inlet Y position (38.5 = P1 slot, 68.5 = P2 slot, 53.5 = center)
+                            let targetSlotY = 53.5;
                             const isP1Prereq = nextMatch.prereqSetIds && nextMatch.prereqSetIds[0] === match.id;
                             const isP2Prereq = nextMatch.prereqSetIds && nextMatch.prereqSetIds[1] === match.id;
 
                             if (match.winnerId && nextMatch.player1Id === match.winnerId) {
-                              targetSlotY = 43;
+                              targetSlotY = 38.5;
                             } else if (match.winnerId && nextMatch.player2Id === match.winnerId) {
-                              targetSlotY = 80;
+                              targetSlotY = 68.5;
                             } else if (nextMatch.player1Id && (nextMatch.player1Id === match.player1Id || nextMatch.player1Id === match.player2Id)) {
-                              targetSlotY = 43;
+                              targetSlotY = 38.5;
                             } else if (nextMatch.player2Id && (nextMatch.player2Id === match.player1Id || nextMatch.player2Id === match.player2Id)) {
-                              targetSlotY = 80;
+                              targetSlotY = 68.5;
                             } else if (isP1Prereq) {
-                              targetSlotY = 43;
+                              targetSlotY = 38.5;
                             } else if (isP2Prereq) {
-                              targetSlotY = 80;
+                              targetSlotY = 68.5;
                             } else if (slot < nextSlot) {
-                              targetSlotY = 43;
+                              targetSlotY = 38.5;
                             } else if (slot > nextSlot) {
-                              targetSlotY = 80;
+                              targetSlotY = 68.5;
                             } else {
-                              targetSlotY = yStart; // Match outlet position for straight horizontal line if same slot level
+                              targetSlotY = yStart;
                             }
 
                             const yTarget = dy + targetSlotY;
                             const pathD = (dy === 0 && yStart === yTarget)
                               ? `M 0 ${yStart} L ${dx} ${yTarget}`
-                              : `M 0 ${yStart} C ${dx * 0.45} ${yStart}, ${dx * 0.55} ${yTarget}, ${dx} ${yTarget}`;
+                              : `M 0 ${yStart} C ${dx * 0.5} ${yStart}, ${dx * 0.5} ${yTarget}, ${dx} ${yTarget}`;
 
                             const isMatchHovered = hoveredMatchId === match.id || hoveredMatchId === nextMatch.id;
                             const isWinnerAdvanced = match.winnerId && (nextMatch.player1Id === match.winnerId || nextMatch.player2Id === match.winnerId);
@@ -1120,7 +1121,7 @@ function BracketSection({
                           
                           return (
                             <div 
-                              className="absolute top-[61px] left-full h-0.5 w-6 shadow-[0_0_8px_rgba(41,121,255,0.4)]" 
+                              className="absolute top-[53.5px] left-full h-0.5 w-6 shadow-[0_0_8px_rgba(41,121,255,0.4)]" 
                               style={{ background: theme.primaryColor, opacity: 0.75 }} 
                             />
                           );
@@ -1186,35 +1187,22 @@ function BracketSection({
                           const p2Won = match.winnerId === match.player2Id;
                           
                           const wPill = (
-                            <div className="flex items-center gap-1 text-[10px] font-mono font-bold px-2 py-1 rounded-full bg-cyan-500/20 text-cyan-400 border border-cyan-500/40 shadow-lg whitespace-nowrap">
+                            <div className="flex items-center gap-1 text-[9px] font-mono font-bold px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-md whitespace-nowrap">
                               <span>→</span> {winDest} [W]
                             </div>
                           );
                           const lPill = !isLosers && loseDest !== "Eliminated" ? (
-                            <div className="flex items-center gap-1 text-[10px] font-mono font-bold px-2 py-1 rounded-full bg-slate-800 text-slate-400 border border-slate-700 whitespace-nowrap opacity-60">
+                            <div className="flex items-center gap-1 text-[9px] font-mono font-bold px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700 whitespace-nowrap opacity-60">
                               <span>→</span> {loseDest} [L]
                             </div>
                           ) : null;
 
                           return (
-                            <div className="absolute top-0 left-full ml-4 h-full flex flex-col z-10 pointer-events-none">
-                              {/* Header Ghost Spacer */}
-                              <div className="px-2.5 py-1 border-b border-transparent flex items-center">
-                                <span className="text-xs invisible leading-tight" style={{ fontSize: 10 }}>S</span>
-                              </div>
-                              
-                              {/* Player 1 Pill */}
-                              <div className="px-3 py-2 flex items-center">
-                                <span className="text-sm invisible leading-tight w-0">S</span>
+                            <div className="absolute top-0 left-full ml-3 flex flex-col justify-around h-[83px] pointer-events-none z-10">
+                              <div className="h-[29px] flex items-center">
                                 {p2Won ? lPill : wPill}
                               </div>
-
-                              {/* Divider Ghost Spacer */}
-                              <div className="h-px" />
-
-                              {/* Player 2 Pill */}
-                              <div className="px-3 py-2 flex items-center">
-                                <span className="text-sm invisible leading-tight w-0">S</span>
+                              <div className="h-[29px] flex items-center">
                                 {p2Won ? wPill : lPill}
                               </div>
                             </div>
@@ -1224,22 +1212,54 @@ function BracketSection({
 
                       <div
                         className={`rounded-lg overflow-hidden cursor-pointer transition-all duration-200 w-full ${
-                          matchesSearch ? 'ring-2 ring-cyan-400 shadow-[0_0_20px_rgba(0,229,255,0.4)] scale-[1.02]' : ''
+                          matchesSearch
+                            ? 'ring-2 ring-cyan-400 shadow-[0_0_20px_rgba(0,229,255,0.4)] scale-[1.02]'
+                            : match.state === 'called'
+                              ? 'ring-2 ring-amber-400/90 shadow-[0_0_18px_rgba(255,214,0,0.35)]'
+                              : ''
                         }`}
                         style={{
-                          background: isHovered ? `${theme.primaryColor}12` : cfg.bg,
+                          background: isHovered
+                            ? `${theme.primaryColor}12`
+                            : match.state === 'called'
+                              ? 'rgba(255, 214, 0, 0.08)'
+                              : cfg.bg,
                           border: `1px solid ${
-                            matchesSearch ? theme.primaryColor : isLive ? theme.primaryColor : isHovered ? `${theme.primaryColor}40` : 'rgba(122,158,192,0.15)'
+                            matchesSearch
+                              ? theme.primaryColor
+                              : match.state === 'called'
+                                ? '#FFD600'
+                                : isLive
+                                  ? theme.primaryColor
+                                  : isHovered
+                                    ? `${theme.primaryColor}40`
+                                    : 'rgba(122,158,192,0.15)'
                           }`,
-                          boxShadow: isLive ? `0 0 12px ${theme.glowColor}` : matchesSearch ? `0 0 20px ${theme.primaryColor}` : 'none',
+                          boxShadow:
+                            match.state === 'called'
+                              ? '0 0 16px rgba(255, 214, 0, 0.35)'
+                              : isLive
+                                ? `0 0 12px ${theme.glowColor}`
+                                : matchesSearch
+                                  ? `0 0 20px ${theme.primaryColor}`
+                                  : 'none',
                         }}
                         onMouseEnter={() => setHoveredMatchId(match.id)}
                         onMouseLeave={() => setHoveredMatchId(null)}
-                        onClick={() => canCall && onCallMatch(match)}
+                        onClick={() => {
+                          if (canCall) {
+                            onCallMatch(match);
+                          } else if (match.state === 'called' && onViewAnnouncement) {
+                            onViewAnnouncement(match);
+                          }
+                        }}
                       >
                         <div
                           className="flex items-center justify-between px-2.5 py-1"
-                          style={{ background: 'rgba(0,0,0,0.4)', borderBottom: '1px solid rgba(122,158,192,0.1)' }}
+                          style={{
+                            background: match.state === 'called' ? 'rgba(255, 214, 0, 0.15)' : 'rgba(0,0,0,0.4)',
+                            borderBottom: `1px solid ${match.state === 'called' ? 'rgba(255, 214, 0, 0.3)' : 'rgba(122,158,192,0.1)'}`,
+                          }}
                         >
                           <span className="text-xs opacity-60 flex items-center gap-1" style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10 }}>
                             {match.pool && (
@@ -1247,13 +1267,18 @@ function BracketSection({
                                 POOL {match.pool}
                               </span>
                             )}
-                            {match.identifier ? `MATCH ${match.identifier} · ` : ''}BO{match.bestOf} {match.stationId ? `· STN ${match.stationId}` : ''}
+                            {match.identifier ? `MATCH ${match.identifier} · ` : ''}BO{match.bestOf}
                           </span>
                           <div className="flex items-center gap-1">
-                            <Icon size={10} style={{ color: cfg.color }} />
-                            <span className="text-xs" style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10, color: cfg.color }}>
+                            <Icon size={10} style={{ color: cfg.color }} className={match.state === 'called' ? 'animate-pulse' : ''} />
+                            <span className="text-xs font-bold" style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10, color: cfg.color }}>
                               {cfg.label}
                             </span>
+                            {match.state === 'called' && match.stationId && (
+                              <span className="px-1.5 py-0.5 rounded bg-amber-500/25 text-amber-300 font-mono font-bold text-[9px] border border-amber-500/40 ml-0.5 animate-pulse">
+                                STN {match.stationId}
+                              </span>
+                            )}
                           </div>
                         </div>
 
@@ -1264,10 +1289,13 @@ function BracketSection({
                           isCompleted={match.state === 'completed'}
                           theme={theme}
                           isSearched={Boolean(p1 && searchMatchingPlayerIds.has(p1.id))}
-                          onClick={() => { if (canCall && onCallMatch) { onCallMatch(match); } }}
+                          onClick={() => {
+                            if (canCall && onCallMatch) onCallMatch(match);
+                            else if (match.state === 'called' && onViewAnnouncement) onViewAnnouncement(match);
+                          }}
                           onPlayerClick={onPlayerClick}
                         />
-                        <div className="h-px" style={{ background: 'var(--border)' }} />
+                        <div className="h-px" style={{ background: 'rgba(255,255,255,0.06)' }} />
                         <PlayerSlot
                           player={p2}
                           score={match.player2Score}
@@ -1275,7 +1303,10 @@ function BracketSection({
                           isCompleted={match.state === 'completed'}
                           theme={theme}
                           isSearched={Boolean(p2 && searchMatchingPlayerIds.has(p2.id))}
-                          onClick={() => { if (canCall && onCallMatch) { onCallMatch(match); } }}
+                          onClick={() => {
+                            if (canCall && onCallMatch) onCallMatch(match);
+                            else if (match.state === 'called' && onViewAnnouncement) onViewAnnouncement(match);
+                          }}
                           onPlayerClick={onPlayerClick}
                         />
 
@@ -1292,6 +1323,25 @@ function BracketSection({
                           >
                             <ChevronRight size={12} />
                             CALL MATCH
+                          </div>
+                        )}
+
+                        {match.state === 'called' && isHovered && (
+                          <div
+                            className="flex items-center justify-center gap-1 py-1 text-xs tracking-widest cursor-pointer bg-amber-500/20 text-amber-300 hover:bg-amber-500/30 border-t border-amber-500/30 transition-colors"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (onViewAnnouncement) onViewAnnouncement(match);
+                              else onCallMatch(match);
+                            }}
+                            style={{
+                              fontFamily: 'JetBrains Mono, monospace',
+                              fontWeight: 700,
+                              fontSize: 10,
+                            }}
+                          >
+                            <Radio size={11} className="animate-pulse" />
+                            VIEW CALLOUT SCREEN
                           </div>
                         )}
                         {match.streamUrl && (() => {
@@ -1361,23 +1411,34 @@ function PlayerSlot({
 }) {
   if (!player) {
     return (
-      <div className="flex items-center gap-2 px-3 py-2">
-        <span className="text-xs opacity-20 italic" style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 11 }}>TBD</span>
+      <div className="flex items-center gap-2 px-3 py-1.5 h-[29px]">
+        <span className="text-xs opacity-30 italic font-mono text-[11px]">TBD</span>
       </div>
     );
   }
 
+  const countryBadge = player.countryFlag ? (
+    <span className="text-[9px] font-mono font-bold px-1 py-0.5 rounded bg-white/5 border border-white/10 text-cyan-400/90 uppercase shrink-0">
+      {player.countryFlag}
+    </span>
+  ) : null;
+
   return (
     <div
-      className={`flex items-center justify-between px-3 py-2 transition-colors ${
-        isSearched ? 'bg-cyan-500/15' : ''
+      className={`flex items-center justify-between px-3 py-1.5 h-[29px] transition-colors ${
+        isSearched ? 'bg-cyan-500/15' : isWinner ? 'bg-white/[0.03]' : ''
       }`}
-      style={{ opacity: isCompleted && !isWinner ? 0.4 : 1 }}
+      style={{ opacity: isCompleted && !isWinner ? 0.45 : 1 }}
     >
-      <div className="flex items-center gap-2 min-w-0">
-        <span className="text-xs opacity-40 tabular-nums w-4 shrink-0" style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10 }}>
-          {player.seed}
-        </span>
+      <div className="flex items-center gap-1.5 min-w-0 flex-1">
+        {player.seed !== undefined && player.seed !== null && (
+          <span 
+            className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-white/5 border border-white/5 text-gray-400 shrink-0 min-w-[24px] text-center tabular-nums"
+          >
+            {player.seed}
+          </span>
+        )}
+        {countryBadge}
         <button
           onClick={(e) => {
             if (player.fbUserId && onPlayerClick) {
@@ -1387,36 +1448,34 @@ function PlayerSlot({
               onClick();
             }
           }}
-          className={`flex items-center gap-1.5 text-left transition-opacity min-w-0 ${player.fbUserId ? 'hover:opacity-80 cursor-pointer' : ''}`}
+          className={`flex items-center gap-1 text-left transition-colors min-w-0 flex-1 ${
+            player.fbUserId ? 'hover:text-cyan-300 cursor-pointer' : ''
+          }`}
         >
-          {player.avatarUrl && (
-            <img 
-              src={player.avatarUrl} 
-              alt={player.tag} 
-              className="w-4 h-4 rounded-full object-cover shrink-0 ring-1"
-              style={{ borderColor: theme.primaryColor }}
-            />
-          )}
           <span
-            className="text-base truncate flex items-center gap-1 leading-snug"
+            className="text-sm truncate leading-snug flex items-center gap-1"
             style={{
               fontFamily: 'Rajdhani, sans-serif',
               fontWeight: isWinner || isSearched ? 800 : isCompleted ? 500 : 600,
               color: isSearched ? '#00FF88' : isWinner ? theme.primaryColor : 'var(--foreground)',
               textDecoration: player.fbUserId ? 'underline' : 'none',
-              textDecorationColor: theme.primaryColor,
+              textDecorationColor: `${theme.primaryColor}80`,
               textDecorationThickness: '1px',
               textUnderlineOffset: '2px',
             }}
           >
-            {!player.avatarUrl && player.countryFlag} {player.tag}
-            {isSearched && <Sparkles size={12} className="text-cyan-400 animate-pulse" />}
+            {player.tag}
+            {isSearched && <Sparkles size={11} className="text-cyan-400 animate-pulse shrink-0" />}
           </span>
         </button>
       </div>
       <span
-        className="text-base tabular-nums ml-2 shrink-0"
-        style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: isWinner ? 800 : isCompleted ? 500 : 600, color: isWinner ? theme.primaryColor : score > 0 ? 'var(--foreground)' : 'rgba(122,158,192,0.4)' }}
+        className="text-sm tabular-nums ml-2 shrink-0 font-bold"
+        style={{
+          fontFamily: 'JetBrains Mono, monospace',
+          fontWeight: isWinner ? 800 : isCompleted ? 500 : 600,
+          color: isWinner ? theme.primaryColor : score > 0 ? 'var(--foreground)' : 'rgba(122,158,192,0.4)'
+        }}
       >
         {score}
       </span>
