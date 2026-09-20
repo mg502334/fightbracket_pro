@@ -1,0 +1,1 @@
+import sys; sys.path.append('api'); from index import ProfileUpdateRequest; req = ProfileUpdateRequest.model_validate_json('{\"station_names\": \"test\"}'); print('tekken_id:', repr(req.tekken_id))

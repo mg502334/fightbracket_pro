@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "vite build",
-    "dev": "vite"
+    "dev": "concurrently \"vite\" \"uv run uvicorn api.index:app --port 8000\""
   },
   "dependencies": {
     "@emotion/react": "11.14.0",
@@ -58,8 +58,8 @@
     "react-popper": "2.3.0",
     "react-resizable-panels": "2.1.7",
     "react-responsive-masonry": "2.7.1",
-    "react-router": "7.13.0",
-    "react-router-dom": "^7.18.0",
+    "react-router": "7.18.3",
+    "react-router-dom": "^7.18.3",
     "react-slick": "0.31.0",
     "recharts": "2.15.2",
     "sonner": "2.0.3",
@@ -69,9 +69,14 @@
   },
   "devDependencies": {
     "@tailwindcss/vite": "4.1.12",
+    "@types/node": "^26.3.0",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.5",
     "@vitejs/plugin-react": "4.7.0",
+    "concurrently": "^10.0.4",
     "tailwindcss": "4.1.12",
-    "vite": "6.3.5"
+    "typescript": "^5.7.3",
+    "vite": "^6.4.3"
   },
   "peerDependencies": {
     "react": "18.3.1",
@@ -87,7 +92,11 @@
   },
   "pnpm": {
     "overrides": {
-      "vite": "6.3.5"
+      "vite": "^6.4.3"
     }
+  },
+  "allowScripts": {
+    "@tailwindcss/oxide": true,
+    "esbuild": true
   }
 }

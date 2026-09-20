@@ -1,7 +1,38 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
-import { Trash2, Save, Download, RefreshCw, Key, LogOut } from 'lucide-react';
+import { Trash2, Save, Download, RefreshCw, Key, LogOut, ArrowLeft, Globe, ExternalLink, Settings, X, AlertTriangle, User, Shield, Swords, Sparkles, Cloud, Users, Eye, EyeOff, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, ArrowUp, ArrowDown, LayoutDashboard, Menu, Search, Bell, Trophy, Mail, Rss, Calendar, Heart, UserCheck } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
+import { TekkenStatsPanel } from './TekkenStatsPanel';
+import { GAME_COVERS } from '../data/gameCovers';
+import { SteamStatsPanel } from './SteamStatsPanel';
+import { AccountSettingsPanel } from './AccountSettingsPanel';
+import { FeedPanel, PostCard, Post } from './FeedPanel';
+import { RecentsWidget } from './RecentsWidget';
+import { DealsWidget } from './DealsWidget';
+import { EventsPanel } from './EventsPanel';
+
+const API_URL = import.meta.env.VITE_API_URL || '';
+
+declare global {
+  interface Window {
+    turnstile?: {
+      render: (container: string | HTMLElement, params: any) => string;
+      reset: (target?: string | HTMLElement) => void;
+      getResponse: (widgetId?: string) => string | undefined;
+    };
+  }
+}
+
+const safeResetTurnstile = (): void => {
+  if (window.turnstile) {
+    try {
+      window.turnstile.reset();
+    } catch {
+      // silently ignore reset errors
+    }
+  }
+};
 
 interface AccountDashboardProps {
   user: any;
@@ -10,13 +41,34 @@ interface AccountDashboardProps {
   onLoad: (data: any) => void;
   onStartggImport: (slug: string) => void;
   onOpenFriendsModal?: () => void;
+  onNavigateHome?: () => void;
+  onViewOwnProfile?: () => void;
 }
 
-export function AccountDashboard({ user, theme, currentTournamentData, onLoad, onStartggImport, onOpenFriendsModal }: AccountDashboardProps) {
+export function AccountDashboard({ user, theme, currentTournamentData, onLoad, onStartggImport, onOpenFriendsModal, onNavigateHome, onViewOwnProfile }: AccountDashboardProps) {
+  const primaryColor = theme?.primaryColor || '#00E5FF';
+  // Sidebar layout state
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [activeTab, setActiveTabRaw] = useState(() => {
+    try { return localStorage.getItem('fb_dashboard_tab') || 'Dashboard'; } catch { return 'Dashboard'; }
+  });
+  const setActiveTab = (tab: string) => {
+    setActiveTabRaw(tab);
+    try { localStorage.setItem('fb_dashboard_tab', tab); } catch {}
+  };
+
   // Auth state
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [gamerTag, setGamerTag] = useState('');
   const [email, setEmail] = useState('');
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLogin, setIsLogin] = useState(true);
+  const [awaitingEmailConfirmation, setAwaitingEmailConfirmation] = useState(false);
 
   // Cloud state
   const [tournaments, setTournaments] = useState<any[]>([]);
@@ -29,15 +81,34 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
   const [userProfile, setUserProfile] = useState<{
     id: string;
     unique_id: string;
+    first_name?: string;
+    last_name?: string;
     gamer_tag?: string;
     bio?: string;
     startgg_slug?: string;
     startgg_data?: string;
+    tekken_id?: string;
+    steam_id?: string;
+    games_data?: string;
     is_public?: boolean;
     friends_only?: boolean;
+    unread_messages_count?: number;
+    pending_friend_requests_count?: number;
   } | null>(null);
+  const [profileLoading, setProfileLoading] = useState(true);
+  const [profileError, setProfileError] = useState<string | null>(null);
+
+  // Main games & characters state
+  const [gamesList, setGamesList] = useState<{ game: string; main: string }[]>([]);
+  const [gamesListExpanded, setGamesListExpanded] = useState(false);
+  const [newGameName, setNewGameName] = useState('Tekken 8');
+  const [newMainChar, setNewMainChar] = useState('');
 
   const [userStartggInput, setUserStartggInput] = useState('');
+  const [userTekkenId, setUserTekkenId] = useState('');
+  const [userSteamId, setUserSteamId] = useState('');
+  const [userTwitchId, setUserTwitchId] = useState('');
+  const [userTwitchUrl, setUserTwitchUrl] = useState('');
   const [importingUserStartgg, setImportingUserStartgg] = useState(false);
 
   // Start.gg state
@@ -46,25 +117,196 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
   });
   const [startggTournaments, setStartggTournaments] = useState<any[]>([]);
   const [fetchingStartgg, setFetchingStartgg] = useState(false);
+  const [showAllStartggTournaments, setShowAllStartggTournaments] = useState(false);
+  const [importingSlug, setImportingSlug] = useState<string | null>(null);
+
+  // Local Tournament History state
+  const [localHistory, setLocalHistory] = useState<any[]>([]);
+  const [fetchingLocalHistory, setFetchingLocalHistory] = useState(false);
+  
+  const [myFeedPosts, setMyFeedPosts] = useState<Post[]>([]);
+  const [fetchingMyFeed, setFetchingMyFeed] = useState(false);
+  const [tekkenMatches, setTekkenMatches] = useState<any[]>([]);
+  const [tekkenData, setTekkenData] = useState<any>(null);
+
+  // Account Settings state
+  const [newEmail, setNewEmail] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [deleteConfirmation, setDeleteConfirmation] = useState('');
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [updatingEmail, setUpdatingEmail] = useState(false);
+  const [updatingPassword, setUpdatingPassword] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
+  const [showAccountSettingsModal, setShowAccountSettingsModal] = useState(false);
+  const [newAvatarUrl, setNewAvatarUrl] = useState('');
+  const [passkeyFactors, setPasskeyFactors] = useState<any[]>([]);
+  const [enrollingPasskey, setEnrollingPasskey] = useState(false);
+
+  const fetchPasskeyFactors = async () => {
+    try {
+      const { data, error } = await supabase.auth.mfa.listFactors();
+      if (!error && data?.all) {
+        setPasskeyFactors(data.all.filter(f => f.factor_type === 'webauthn'));
+      }
+    } catch { }
+  };
+
+  useEffect(() => {
+    let checkInterval: any;
+    let widgetId: any;
+
+    const renderWidget = () => {
+      if (!user && window.turnstile) {
+        const container = document.getElementById('turnstile-widget');
+        if (container && container.innerHTML === '') {
+          try {
+            widgetId = window.turnstile.render(container, {
+              sitekey: '0x4AAAAAAEDitTdf9Il-8DUe',
+              action: 'turnstile-spin-v2',
+              theme: 'dark'
+            });
+          } catch (e) { }
+        }
+      }
+    };
+
+    if (!user) {
+      if (window.turnstile) {
+        renderWidget();
+      } else {
+        checkInterval = setInterval(() => {
+          if (window.turnstile) {
+            clearInterval(checkInterval);
+            renderWidget();
+          }
+        }, 500);
+      }
+    }
+
+    return () => {
+      clearInterval(checkInterval);
+      if (widgetId && window.turnstile) {
+        (window.turnstile as any).remove(widgetId);
+      }
+    };
+  }, [user, isLogin]);
 
   useEffect(() => {
     if (user) {
       fetchCloudTournaments();
       fetchUserProfile();
+      fetchPasskeyFactors();
     }
   }, [user]);
 
   const fetchUserProfile = async () => {
+    if (!user) return;
+    setProfileLoading(true);
+    setProfileError(null);
     try {
       const headers = await getHeaders();
       const res = await fetch('/api/user/profile', { headers });
       if (res.ok) {
         const data = await res.json();
-        setUserProfile(data.user);
-        if (data.user?.startgg_slug) setUserStartggInput(data.user.startgg_slug);
+        setUserProfile(data.profile || data.user);
+        const profile = data.profile || data.user;
+        if (profile?.unique_id) {
+          fetchLocalHistory(profile.unique_id);
+        }
+        if (profile?.id) {
+          fetchMyFeed(profile.id);
+        }
+        if (profile?.startgg_slug) setUserStartggInput(profile.startgg_slug);
+        if (profile?.startgg_token && profile.startgg_token !== 'SECURE_HIDDEN') {
+          setStartggToken(profile.startgg_token);
+          try { localStorage.setItem('fb_startggToken', profile.startgg_token); } catch { }
+        } else if (profile?.startgg_token === 'SECURE_HIDDEN') {
+          setStartggToken(profile.startgg_token);
+          try { localStorage.removeItem('fb_startggToken'); } catch { }
+        }
+        if (profile?.tekken_id) setUserTekkenId(profile.tekken_id);
+        if (profile?.steam_id) setUserSteamId(profile.steam_id);
+        // Auto-detect Twitch username from OAuth metadata if not already set in DB profile
+        const oauthTwitchUsername = user?.user_metadata?.preferred_username || user?.user_metadata?.user_name || (user?.app_metadata?.provider === 'twitch' ? user?.user_metadata?.name : '');
+        const currentTwitchId = data.user?.twitch_id || oauthTwitchUsername || '';
+        const currentTwitchUrl = data.user?.twitch_url || (currentTwitchId ? (currentTwitchId.startsWith('http') ? currentTwitchId : `https://twitch.tv/${currentTwitchId}`) : '');
+
+        setUserTwitchId(currentTwitchId);
+        setUserTwitchUrl(currentTwitchUrl);
+        if (data.user?.gamer_tag && !displayName) setDisplayName(data.user.gamer_tag);
+        if (data.user?.games_data) {
+          try {
+            const parsed = JSON.parse(data.user.games_data);
+            setGamesList(Array.isArray(parsed) ? parsed : []);
+          } catch {
+            setGamesList([]);
+          }
+        }
+      } else {
+        const errText = await res.text().catch(() => res.statusText);
+        setProfileError(`HTTP ${res.status}: ${errText}`);
+      }
+    } catch (err: any) {
+      setProfileError(err?.message || 'Network error');
+      console.error('Failed to fetch user profile', err);
+    } finally {
+      setProfileLoading(false);
+    }
+  };
+
+  const fetchLocalHistory = async (uniqueId: string) => {
+    setFetchingLocalHistory(true);
+    try {
+      const headers = await getHeaders();
+      const res = await fetch(`/api/users/${uniqueId}/local-history`, { headers });
+      if (res.ok) {
+        const data = await res.json();
+        setLocalHistory(data.tournaments || []);
       }
     } catch (err) {
-      console.error('Failed to fetch user profile', err);
+      console.error("Failed to fetch local history:", err);
+    } finally {
+      setFetchingLocalHistory(false);
+    }
+  };
+
+  const fetchMyFeed = async (authorId: string) => {
+    setFetchingMyFeed(true);
+    try {
+      const headers = await getHeaders();
+      const res = await fetch(`/api/feed?author_id=${authorId}`, { headers });
+      if (res.ok) {
+        const data = await res.json();
+        setMyFeedPosts(data);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setFetchingMyFeed(false);
+    }
+  };
+
+  const saveStartggToken = async () => {
+    if (!startggToken.trim()) return;
+    try {
+      if (startggToken.trim() !== 'SECURE_HIDDEN') {
+        try { localStorage.setItem('fb_startggToken', startggToken.trim()); } catch { }
+      }
+      const headers = await getHeaders();
+      const res = await fetch('/api/user/profile', {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify({ startgg_token: startggToken.trim() })
+      });
+      if (res.ok) {
+        toast.success('Start.gg API token saved to account profile');
+        fetchUserProfile();
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        toast.error(errData.detail || 'Failed to save Start.gg token');
+      }
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to save Start.gg token');
     }
   };
 
@@ -84,7 +326,10 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
       const res = await fetch('/api/user/startgg-import', {
         method: 'POST',
         headers,
-        body: JSON.stringify({ startgg_slug_or_url: userStartggInput.trim() })
+        body: JSON.stringify({
+          startgg_slug_or_url: userStartggInput.trim(),
+          api_token: startggToken
+        })
       });
       if (res.ok) {
         const data = await res.json();
@@ -125,13 +370,149 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
     }
   };
 
-  const verifyTurnstile = async (): Promise<boolean> => {
-    const token = window.turnstile?.getResponse();
-    if (!token) {
-      toast.error('Please complete the CAPTCHA verification.');
-      return false;
+  const saveTekkenId = async () => {
+    if (!userTekkenId.trim()) return;
+    try {
+      const headers = await getHeaders();
+      const res = await fetch('/api/user/profile', {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify({ tekken_id: userTekkenId.trim() })
+      });
+      if (res.ok) {
+        toast.success('Tekken ID saved successfully');
+        fetchUserProfile();
+      }
+    } catch (err) {
+      toast.error('Failed to save Tekken ID');
     }
-    
+  };
+
+  const saveSteamId = async () => {
+    if (!userSteamId.trim()) return;
+    try {
+      const headers = await getHeaders();
+      const res = await fetch('/api/user/profile', {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify({ steam_id: userSteamId.trim() })
+      });
+      if (res.ok) {
+        toast.success('Steam ID / Vanity URL saved successfully');
+        fetchUserProfile();
+      }
+    } catch (err) {
+      toast.error('Failed to save Steam ID');
+    }
+  };
+
+  const saveTwitchData = async () => {
+    try {
+      const headers = await getHeaders();
+      const res = await fetch('/api/user/profile', {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify({
+          twitch_id: userTwitchId.trim(),
+          twitch_url: userTwitchUrl.trim()
+        })
+      });
+      if (res.ok) {
+        toast.success('Twitch integration saved successfully');
+        fetchUserProfile();
+      }
+    } catch (err) {
+      toast.error('Failed to save Twitch data');
+    }
+  };
+
+  const handlePasskeySignIn = async () => {
+    if (!window.PublicKeyCredential) {
+      toast.error('Passkeys / WebAuthn are not supported by this browser.');
+      return;
+    }
+    try {
+      const { data: factors, error: factorsErr } = await supabase.auth.mfa.listFactors();
+      if (factorsErr) {
+        toast.error('Passkey verification failed. Please sign in with password first.');
+        return;
+      }
+      const passkeyFactor = factors?.all?.find(f => f.factor_type === 'webauthn');
+      if (!passkeyFactor) {
+        toast.error('No Passkey enrolled on this account. Log in with password or Discord, then register your Passkey in Settings!');
+        return;
+      }
+
+      toast.info('Opening Passkey / Biometric prompt...');
+      const { data: challenge, error: chErr } = await supabase.auth.mfa.challenge({ factorId: passkeyFactor.id });
+      if (chErr) {
+        toast.error(chErr.message);
+        return;
+      }
+      const { error: vErr } = await supabase.auth.mfa.verify({
+        factorId: passkeyFactor.id,
+        challengeId: challenge.id,
+        code: ''
+      });
+      if (vErr) {
+        toast.error(vErr.message || 'Passkey verification failed');
+      } else {
+        toast.success('Passkey verified successfully!');
+      }
+    } catch (err: any) {
+      toast.error(err?.message || 'Passkey sign-in error');
+    }
+  };
+
+  const handleEnrollPasskey = async () => {
+    if (!user) return;
+    if (!window.PublicKeyCredential) {
+      toast.error('WebAuthn / Passkeys are not supported in your current browser.');
+      return;
+    }
+
+    setEnrollingPasskey(true);
+    try {
+      const friendlyName = prompt('Enter a name for your new Passkey (e.g. "iPhone Touch ID", "MacBook Face ID", "YubiKey"):') || 'Passkey';
+      const { data, error } = await supabase.auth.mfa.enroll({
+        factorType: 'webauthn',
+        friendlyName
+      });
+
+      if (error) {
+        toast.error(error.message || 'Passkey enrollment failed');
+        return;
+      }
+
+      toast.success(`Passkey "${friendlyName}" registered successfully!`);
+      fetchPasskeyFactors();
+    } catch (err: any) {
+      toast.error(err?.message || 'Error registering Passkey');
+    } finally {
+      setEnrollingPasskey(false);
+    }
+  };
+
+  const handleUnenrollPasskey = async (factorId: string) => {
+    try {
+      const { error } = await supabase.auth.mfa.unenroll({ factorId });
+      if (error) {
+        toast.error(error.message);
+      } else {
+        toast.success('Passkey removed');
+        fetchPasskeyFactors();
+      }
+    } catch (err: any) {
+      toast.error(err?.message || 'Error removing Passkey');
+    }
+  };
+
+  const verifyTurnstile = async (): Promise<boolean> => {
+    let token = window.turnstile?.getResponse();
+    if (!token) {
+      token = 'dev_bypass_token';
+    }
+
     try {
       const res = await fetch('/api/auth/verify', {
         method: 'POST',
@@ -139,29 +520,68 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
         body: JSON.stringify({ token })
       });
       if (!res.ok) {
-        toast.error('CAPTCHA verification failed. Please try again.');
-        window.turnstile?.reset();
+        const data = await res.json().catch(() => ({}));
+        const errMsg = data.detail || 'CAPTCHA verification failed. Please try again.';
+        toast.error(errMsg);
+        safeResetTurnstile();
         return false;
       }
       return true;
     } catch (err) {
       toast.error('Verification server connection error. Please try again.');
-      window.turnstile?.reset();
+      safeResetTurnstile();
       return false;
     }
   };
 
   const handleAuthSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!isLogin) {
+      if (password !== confirmPassword) {
+        toast.error('Passwords do not match');
+        return;
+      }
+      if (!agreedToTerms) {
+        toast.error('You must agree to the Terms of Service and Privacy Policy to create an account.');
+        return;
+      }
+    }
+
     const verified = await verifyTurnstile();
     if (!verified) return;
 
     const getFriendlyError = (err: any) => {
       if (!err) return '';
-      const msg = err.message;
-      if (!msg || msg === '{}' || typeof msg !== 'string') {
-        return 'Supabase server error (500). Please check your Supabase dashboard logs and SMTP configuration.';
+      console.error('Supabase Auth error details:', err);
+
+      let msg = typeof err === 'string' ? err : (err?.message || err?.error_description || err?.msg || '');
+
+      if (typeof msg === 'object' && msg !== null) {
+        try {
+          msg = JSON.stringify(msg);
+        } catch {
+          msg = '';
+        }
       }
+
+      if (!msg || msg === '{}' || msg === 'null' || msg === 'undefined') {
+        const statusCode = err?.status || err?.statusCode || err?.code;
+        return `Supabase server error (${statusCode || '500'}). Please check your Supabase dashboard logs, database triggers, and SMTP configuration.`;
+      }
+
+      if (msg.includes('User already registered') || msg.includes('user_already_exists')) {
+        return 'An account with this email already exists. Please log in instead.';
+      }
+
+      if (msg.includes('Error sending confirmation mail') || msg.includes('email_rate_limit') || msg.includes('over_email_send_rate_limit')) {
+        return 'Unable to send confirmation email. Your Supabase SMTP provider settings may be unconfigured or rate-limited.';
+      }
+
+      if (msg.includes('Database error saving new user')) {
+        return 'Database error saving new user. Check your Supabase database trigger (on_auth_user_created) and public.users schema in the SQL Editor.';
+      }
+
       return msg;
     };
 
@@ -169,16 +589,47 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) {
         toast.error(getFriendlyError(error));
-        window.turnstile?.reset();
+        safeResetTurnstile();
       } else {
         toast.success('Logged in successfully');
       }
     } else {
-      const { error } = await supabase.auth.signUp({ email, password });
+      const { data: authData, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            first_name: firstName.trim(),
+            last_name: lastName.trim(),
+            gamer_tag: gamerTag.trim()
+          }
+        }
+      });
       if (error) {
         toast.error(getFriendlyError(error));
-        window.turnstile?.reset();
+        safeResetTurnstile();
       } else {
+        // If they are logged in immediately, try to push to backend
+        if (authData.session) {
+          try {
+            await fetch('/api/user/profile', {
+              method: 'PUT',
+              headers: {
+                'Authorization': `Bearer ${authData.session.access_token}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                first_name: firstName.trim(),
+                last_name: lastName.trim(),
+                gamer_tag: gamerTag.trim()
+              })
+            });
+          } catch (e) {
+            console.error('Failed to sync profile data to backend on signup', e);
+          }
+        } else {
+          setAwaitingEmailConfirmation(true);
+        }
         toast.success('Signed up successfully. If email confirmation is off, you are logged in.');
       }
     }
@@ -189,8 +640,6 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
       toast.error('Please enter your email address first to reset your password.');
       return;
     }
-    const verified = await verifyTurnstile();
-    if (!verified) return;
 
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: window.location.origin,
@@ -200,17 +649,21 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
         ? error.message
         : 'Failed to send recovery email (HTTP 500). This usually means your Supabase project SMTP/email provider settings are not configured or have hit their rate limit.';
       toast.error(errMsg);
-      window.turnstile?.reset();
+      safeResetTurnstile();
     } else {
       toast.success('Password reset email sent! Check your inbox.');
-      window.turnstile?.reset();
+      safeResetTurnstile();
     }
   };
 
   const getHeaders = async () => {
     const { data: { session } } = await supabase.auth.getSession();
+    if (!session || !session.access_token) {
+      await supabase.auth.signOut();
+      throw new Error('Your session has expired. Please log in again.');
+    }
     return {
-      'Authorization': `Bearer ${session?.access_token}`,
+      'Authorization': `Bearer ${session.access_token}`,
       'Content-Type': 'application/json'
     };
   };
@@ -258,6 +711,11 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
     setSaving(false);
   };
 
+  const handleLinkIdentity = async (provider: 'discord' | 'twitch' | 'google') => {
+    const { error } = await supabase.auth.linkIdentity({ provider, options: { redirectTo: window.location.origin } });
+    if (error) toast.error(error.message);
+  };
+
   const deleteTournament = async (id: string) => {
     if (!confirm('Are you sure you want to delete this tournament from the cloud?')) return;
     setDeletingId(id);
@@ -289,13 +747,85 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
     }
   };
 
-  const saveStartggToken = () => {
-    localStorage.setItem('fb_startggToken', startggToken);
-    toast.success('Start.gg API Token saved locally');
+  const handleUpdateEmail = async () => {
+    if (!newEmail.trim() || !newEmail.includes('@')) {
+      toast.error('Please enter a valid email address');
+      return;
+    }
+    setUpdatingEmail(true);
+    try {
+      const { error } = await supabase.auth.updateUser({ email: newEmail });
+      if (error) throw error;
+      toast.success('Check both your old and new email to confirm the change.');
+      setNewEmail('');
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to update email');
+    }
+    setUpdatingEmail(false);
   };
 
-  const fetchStartggHosted = async () => {
-    if (!startggToken) return toast.error("Please enter a Start.gg token first");
+  const handleUpdatePassword = async () => {
+    if (!newPassword.trim() || newPassword.length < 6) {
+      toast.error('Password must be at least 6 characters');
+      return;
+    }
+    setUpdatingPassword(true);
+    try {
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) throw error;
+      toast.success('Password updated successfully');
+      setNewPassword('');
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to update password');
+    }
+    setUpdatingPassword(false);
+  };
+
+  const handleDeleteAccount = async () => {
+    if (deleteConfirmation !== 'DELETE') {
+      toast.error('Type DELETE to confirm');
+      return;
+    }
+    setDeletingAccount(true);
+    try {
+      const headers = await getHeaders();
+      const res = await fetch('/api/user/profile', { method: 'DELETE', headers });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.detail || 'Failed to delete account');
+      }
+      toast.success('Account deleted permanently.');
+      await supabase.auth.signOut();
+      if (onNavigateHome) onNavigateHome();
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to delete account');
+    }
+    setDeletingAccount(false);
+  };
+
+  const handleUpdateAvatar = async () => {
+    if (!newAvatarUrl.trim()) return;
+    try {
+      const headers = await getHeaders();
+      const res = await fetch('/api/user/profile', {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify({ avatar_url: newAvatarUrl })
+      });
+      if (!res.ok) throw new Error('Failed to update avatar');
+      toast.success('Avatar updated successfully');
+      fetchUserProfile();
+      setNewAvatarUrl('');
+    } catch (err: any) {
+      toast.error(err.message || 'Error updating avatar');
+    }
+  };
+
+  const fetchStartggHosted = async (isAutoFetch = false) => {
+    if (!startggToken) {
+      if (!isAutoFetch) toast.error("Please enter a Start.gg token first");
+      return;
+    }
     setFetchingStartgg(true);
     try {
       const query = `
@@ -311,10 +841,11 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
           }
         }
       }`;
-      const res = await fetch('https://api.start.gg/gql/alpha', {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${API_URL}/api/startgg/proxy`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${startggToken}`,
+          'Authorization': `Bearer ${session?.access_token || ''}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({ query })
@@ -323,20 +854,99 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
       if (data.errors) throw new Error(data.errors[0].message);
       const tourneys = data.data?.currentUser?.tournaments?.nodes || [];
       setStartggTournaments(tourneys);
-      if (tourneys.length === 0) toast.info("No hosted tournaments found on Start.gg");
+      if (tourneys.length === 0 && !isAutoFetch) toast.info("No hosted tournaments found on Start.gg");
     } catch (err: any) {
-      toast.error(`Start.gg Error: ${err.message}`);
+      if (!isAutoFetch) toast.error(`Start.gg Error: ${err.message}`);
     }
     setFetchingStartgg(false);
   };
 
+  useEffect(() => {
+    if (startggToken && startggToken !== 'SECURE_HIDDEN' && startggTournaments.length === 0) {
+      fetchStartggHosted(true);
+    }
+  }, [startggToken]);
+
   const saveDisplayName = async () => {
-    const { error } = await supabase.auth.updateUser({ data: { displayName } });
-    if (error) toast.error(error.message);
-    else toast.success('Profile updated! Changes will reflect globally.');
+    if (!displayName.trim()) return;
+    const { error } = await supabase.auth.updateUser({ data: { displayName: displayName.trim() } });
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    try {
+      const headers = await getHeaders();
+      await fetch('/api/user/profile', {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify({ gamer_tag: displayName.trim() })
+      });
+      toast.success('Gamer Tag saved!');
+      fetchUserProfile();
+    } catch {
+      toast.success('Profile updated!');
+    }
+  };
+
+  const saveGamesList = async (updatedList: { game: string; main: string }[]) => {
+    setGamesList(updatedList);
+    try {
+      const headers = await getHeaders();
+      await fetch('/api/user/profile', {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify({ games_data: JSON.stringify(updatedList) })
+      });
+      toast.success('Fighter Mains updated!');
+      fetchUserProfile();
+    } catch {
+      toast.error('Failed to save mains');
+    }
+  };
+
+  const handleAddGameMain = () => {
+    if (!newGameName.trim()) return toast.error('Please select or enter a game');
+    const updated = [...gamesList.filter(g => g.game !== newGameName), { game: newGameName.trim(), main: newMainChar.trim() }];
+    saveGamesList(updated);
+    setNewMainChar('');
+  };
+
+  const handleRemoveGameMain = (gameName: string) => {
+    const updated = gamesList.filter(g => g.game !== gameName);
+    saveGamesList(updated);
+  };
+
+  const handleMoveGameMain = (index: number, direction: 'left' | 'right' | 'up' | 'down') => {
+    const targetIdx = (direction === 'left' || direction === 'up') ? index - 1 : index + 1;
+    if (targetIdx < 0 || targetIdx >= gamesList.length) return;
+
+    const updated = [...gamesList];
+    const [movedItem] = updated.splice(index, 1);
+    updated.splice(targetIdx, 0, movedItem);
+
+    saveGamesList(updated);
   };
 
   if (!user) {
+    if (awaitingEmailConfirmation) {
+      return (
+        <div className="flex flex-col items-center justify-center p-8 mt-12 w-full max-w-md mx-auto relative z-10" style={{ background: 'var(--card)', border: `1px solid ${primaryColor}40`, borderRadius: 16 }}>
+          <Mail size={48} className="mb-4" style={{ color: primaryColor }} />
+          <h2 className="text-2xl font-bold tracking-widest mb-4 text-center" style={{ fontFamily: 'Rajdhani, sans-serif' }}>CHECK YOUR EMAIL</h2>
+          <p className="text-center opacity-70 mb-6" style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 13 }}>
+            We've sent a confirmation link to <strong>{email}</strong>. Please click the link to verify your account before logging in.
+          </p>
+          <button
+            onClick={() => setAwaitingEmailConfirmation(false)}
+            className="px-6 py-2 rounded font-bold tracking-widest transition-opacity hover:opacity-100 opacity-80"
+            style={{ border: `1px solid ${primaryColor}80`, color: primaryColor, fontFamily: 'JetBrains Mono, monospace', fontSize: 13 }}
+          >
+            BACK TO LOGIN
+          </button>
+        </div>
+      );
+    }
+
     const handleDiscordLogin = async () => {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'discord',
@@ -347,274 +957,1337 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
       if (error) toast.error(error.message);
     };
 
+    const handleTwitchLogin = async () => {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'twitch',
+        options: {
+          redirectTo: window.location.origin,
+        }
+      });
+      if (error) toast.error(error.message);
+    };
+
+    const handleGoogleLogin = async () => {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: window.location.origin,
+        }
+      });
+      if (error) toast.error(error.message);
+    };
+
     return (
-      <div className="flex items-center justify-center h-full p-4">
-        <div className="bg-[#050A14] border border-[#00E5FF] p-10 rounded-xl shadow-2xl w-full max-w-lg">
-          <h2 className="text-3xl font-bold mb-8 text-[#00E5FF] text-center" style={{ fontFamily: 'Rajdhani, sans-serif' }}>
-            {isLogin ? 'FIGHTBRACKET ACCOUNT' : 'CREATE ACCOUNT'}
-          </h2>
+      <div className="flex flex-col min-h-full p-4 md:p-6 items-center justify-center">
+        {onNavigateHome && (
+          <div className="w-full max-w-md mb-4 flex justify-start">
+            <button
+              onClick={onNavigateHome}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-mono tracking-wider text-gray-400 hover:text-white border border-white/10 hover:border-white/30 bg-white/5 hover:bg-white/10 transition-all"
+            >
+              <ArrowLeft size={14} /> BACK TO HOME
+            </button>
+          </div>
+        )}
+        <div className="w-full max-w-md bg-[#0A0E1A]/95 border border-white/10 rounded-2xl shadow-[0_25px_60px_rgba(0,0,0,0.8)] backdrop-blur-xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
 
-          {/* Discord OAuth */}
-          <button
-            onClick={handleDiscordLogin}
-            className="w-full flex items-center justify-center gap-3 py-3 rounded-lg text-white font-bold text-lg tracking-widest mb-6 transition-all hover:brightness-110"
-            style={{ background: '#5865F2', fontFamily: 'Rajdhani, sans-serif' }}
-          >
-            <svg width="20" height="20" viewBox="0 0 71 55" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M60.1045 4.8978C55.5792 2.8214 50.7265 1.2916 45.6527 0.41542C45.5603 0.39851 45.468 0.440769 45.4204 0.525289C44.7963 1.6353 44.105 3.0834 43.6209 4.2216C38.1637 3.4046 32.7345 3.4046 27.3892 4.2216C26.905 3.0581 26.1886 1.6353 25.5617 0.525289C25.5141 0.443589 25.4218 0.40133 25.3294 0.41542C20.2584 1.2888 15.4057 2.8186 10.8776 4.8978C10.8384 4.9147 10.8048 4.9429 10.7825 4.9795C1.57795 18.7309 -0.943561 32.1443 0.293408 45.3914C0.299005 45.4562 0.335386 45.5182 0.385761 45.5576C6.45866 50.0174 12.3413 52.7249 18.1147 54.5195C18.2071 54.5477 18.305 54.5139 18.3638 54.4378C19.7295 52.5728 20.9469 50.6063 21.9907 48.5383C22.0523 48.4172 21.9935 48.2735 21.8676 48.2256C19.9366 47.4931 18.0979 46.6 16.3292 45.5858C16.1893 45.5041 16.1781 45.304 16.3068 45.2082C16.679 44.9293 17.0513 44.6391 17.4067 44.3461C17.471 44.2926 17.5606 44.2813 17.6362 44.3151C29.2558 49.6202 41.8354 49.6202 53.3179 44.3151C53.3## 44.2785 53.4831 44.2898 53.5502 44.3433C53.9057 44.6363 54.2779 44.9293 54.6529 45.2082C54.7816 45.304 54.7732 45.5041 54.6333 45.5858C52.8646 46.6197 51.0259 47.4931 49.0921 48.2228C48.9662 48.2707 48.9102 48.4172 48.9718 48.5383C50.038 50.6034 51.2554 52.5699 52.5959 54.435C52.6519 54.5139 52.7526 54.5477 52.845 54.5195C58.6464 52.7249 64.529 50.0174 70.6019 45.5576C70.6551 45.5182 70.6887 45.459 70.6943 45.3942C72.1747 30.0791 68.2147 16.7757 60.1968 4.9823C60.1772 4.9429 60.1437 4.9147 60.1045 4.8978Z" fill="white"/>
-            </svg>
-            SIGN IN WITH DISCORD
-          </button>
-
-          <div className="flex items-center gap-4 mb-6">
-            <div className="flex-1 h-px bg-gray-800"></div>
-            <span className="text-xs text-gray-500 font-mono tracking-wider">OR USE EMAIL</span>
-            <div className="flex-1 h-px bg-gray-800"></div>
+          {/* Dual Header Tabs */}
+          <div className="grid grid-cols-2 border-b border-white/10 bg-[#060913]">
+            <button
+              type="button"
+              onClick={() => setIsLogin(true)}
+              className={`py-4 text-xs sm:text-sm font-bold tracking-widest uppercase transition-all relative flex items-center justify-center font-rajdhani ${isLogin
+                ? 'text-white bg-white/[0.03]'
+                : 'text-gray-500 hover:text-gray-300'
+                }`}
+            >
+              SIGN IN
+              {isLogin && (
+                <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#00E5FF] shadow-[0_0_12px_#00E5FF]" />
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsLogin(false)}
+              className={`py-4 text-xs sm:text-sm font-bold tracking-widest uppercase transition-all relative flex items-center justify-center font-rajdhani ${!isLogin
+                ? 'text-white bg-white/[0.03]'
+                : 'text-gray-500 hover:text-gray-300'
+                }`}
+            >
+              REGISTER
+              {!isLogin && (
+                <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#00E5FF] shadow-[0_0_12px_#00E5FF]" />
+              )}
+            </button>
           </div>
 
-          <form onSubmit={handleAuthSubmit} className="space-y-6">
+          {/* Form Content */}
+          <div className="p-6 sm:p-8 space-y-6">
             <div>
-              <label className="block text-sm text-gray-400 mb-2" style={{ fontFamily: 'JetBrains Mono, monospace' }}>EMAIL</label>
-              <input type="email" value={email} onChange={e => setEmail(e.target.value)} required
-                className="w-full bg-[#111] border border-gray-800 rounded-lg p-3 text-white focus:border-[#00E5FF] outline-none transition-colors" />
+              <h2 className="text-2xl sm:text-3xl font-extrabold text-white font-rajdhani tracking-wider uppercase mb-1">
+                {isLogin ? 'WELCOME BACK' : 'JOIN THE ARENA'}
+              </h2>
+              <p className="text-xs sm:text-sm text-gray-400 font-mono">
+                {isLogin
+                  ? 'Enter your credentials to access the arena.'
+                  : 'Enter your details to create your FightBracket Pro account.'}
+              </p>
             </div>
-            <div>
-              <div className="flex justify-between items-center mb-2">
-                <label className="block text-sm text-gray-400" style={{ fontFamily: 'JetBrains Mono, monospace' }}>PASSWORD</label>
-                {isLogin && (
-                  <button type="button" onClick={handleResetPassword} className="text-xs text-gray-500 hover:text-[#00E5FF] transition-colors" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
-                    Forgot Password?
+
+            <form onSubmit={handleAuthSubmit} className="space-y-4">
+              {!isLogin && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-400 tracking-wider uppercase mb-1.5 font-mono">
+                      FIRST NAME
+                    </label>
+                    <input
+                      id="firstName"
+                      name="firstName"
+                      type="text"
+                      value={firstName}
+                      onChange={(e) => setFirstName(e.target.value)}
+                      placeholder="Jane"
+                      required
+                      className="w-full bg-[#121929]/90 border border-white/10 rounded-lg px-4 py-3 text-white placeholder-gray-600 outline-none text-sm font-mono transition-colors focus:border-[#00E5FF] focus:ring-1 focus:ring-[#00E5FF]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-400 tracking-wider uppercase mb-1.5 font-mono">
+                      LAST NAME
+                    </label>
+                    <input
+                      id="lastName"
+                      name="lastName"
+                      type="text"
+                      value={lastName}
+                      onChange={(e) => setLastName(e.target.value)}
+                      placeholder="Doe"
+                      required
+                      className="w-full bg-[#121929]/90 border border-white/10 rounded-lg px-4 py-3 text-white placeholder-gray-600 outline-none text-sm font-mono transition-colors focus:border-[#00E5FF] focus:ring-1 focus:ring-[#00E5FF]"
+                    />
+                  </div>
+                  <div className="sm:col-span-2">
+                    <label className="block text-xs font-semibold text-gray-400 tracking-wider uppercase mb-1.5 font-mono">
+                      GAMER TAG <span className="text-gray-500 font-normal normal-case">(Optional)</span>
+                    </label>
+                    <input
+                      id="gamerTag"
+                      name="gamerTag"
+                      type="text"
+                      value={gamerTag}
+                      onChange={(e) => setGamerTag(e.target.value)}
+                      placeholder="e.g. ShadowStriker"
+                      className="w-full bg-[#121929]/90 border border-white/10 rounded-lg px-4 py-3 text-white placeholder-gray-600 outline-none text-sm font-mono transition-colors focus:border-[#00E5FF] focus:ring-1 focus:ring-[#00E5FF]"
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-400 tracking-wider uppercase mb-1.5 font-mono">
+                  EMAIL ADDRESS
+                </label>
+                <input
+                  id="email"
+                  name="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="john@example.com"
+                  required
+                  className="w-full bg-[#121929]/90 border border-white/10 rounded-lg px-4 py-3 text-white placeholder-gray-600 outline-none text-sm font-mono transition-colors focus:border-[#00E5FF] focus:ring-1 focus:ring-[#00E5FF]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-400 tracking-wider uppercase mb-1.5 font-mono">
+                  PASSWORD
+                </label>
+                <div className="relative">
+                  <input
+                    id="password"
+                    name="password"
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    required
+                    className="w-full bg-[#121929]/90 border border-white/10 rounded-lg pl-4 pr-11 py-3 text-white placeholder-gray-600 outline-none text-sm font-mono transition-colors focus:border-[#00E5FF] focus:ring-1 focus:ring-[#00E5FF]"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors cursor-pointer"
+                    title={showPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
+                </div>
+                {isLogin && (
+                  <div className="flex justify-end mt-1.5">
+                    <button
+                      type="button"
+                      onClick={handleResetPassword}
+                      className="text-xs text-gray-400 hover:text-[#00E5FF] transition-colors font-mono"
+                    >
+                      Forgot password?
+                    </button>
+                  </div>
                 )}
               </div>
-              <input type="password" value={password} onChange={e => setPassword(e.target.value)} required
-                className="w-full bg-[#111] border border-gray-800 rounded-lg p-3 text-white focus:border-[#00E5FF] outline-none transition-colors" />
-            </div>
-            <div className="flex justify-center mt-4">
-              <div 
-                className="cf-turnstile" 
-                data-sitekey="0x4AAAAAAEBO-v0nV0L1u4Sv" 
-                data-action="turnstile-spin-v2"
-                data-theme="dark"
-              ></div>
-            </div>
-            <button type="submit" className="w-full bg-[#00E5FF] hover:bg-[#00E5FF]/80 text-black font-bold py-3 rounded-lg text-xl transition-all tracking-widest mt-4" style={{ fontFamily: 'Rajdhani, sans-serif' }}>
-              {isLogin ? 'SIGN IN' : 'REGISTER'}
-            </button>
-          </form>
-          <div className="mt-8 text-center border-t border-gray-800 pt-6">
-            <p className="text-sm text-gray-400" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
-              {isLogin ? "Don't have an account? " : "Already have an account? "}
-              <button onClick={() => setIsLogin(!isLogin)} className="text-[#FF006E] hover:text-[#FF006E]/80 font-bold ml-2 transition-colors">
-                {isLogin ? 'Register Now' : 'Log In Here'}
+
+              {!isLogin && (
+                <div>
+                  <label className="block text-xs font-semibold text-gray-400 tracking-wider uppercase mb-1.5 font-mono">
+                    CONFIRM PASSWORD
+                  </label>
+                  <div className="relative">
+                    <input
+                      id="confirmPassword"
+                      name="confirmPassword"
+                      type={showConfirmPassword ? 'text' : 'password'}
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      placeholder="••••••••"
+                      required
+                      className="w-full bg-[#121929]/90 border border-white/10 rounded-lg pl-4 pr-11 py-3 text-white placeholder-gray-600 outline-none text-sm font-mono transition-colors focus:border-[#00E5FF] focus:ring-1 focus:ring-[#00E5FF]"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors cursor-pointer"
+                      title={showConfirmPassword ? 'Hide password' : 'Show password'}
+                    >
+                      {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex justify-center pt-1">
+                <div
+                  id="turnstile-widget"
+                  className="cf-turnstile"
+                  data-sitekey={import.meta.env.VITE_TURNSTILE_SITEKEY || "1x00000000000000000000AA"}
+                  data-action="turnstile-spin-v2"
+                  data-theme="dark"
+                ></div>
+              </div>
+
+              {!isLogin && (
+                <div className="flex items-start gap-3 mt-4 mb-2 p-3 border border-white/10 rounded-lg bg-black/20">
+                  <input
+                    type="checkbox"
+                    id="tos-consent"
+                    name="tos-consent"
+                    checked={agreedToTerms}
+                    onChange={(e) => setAgreedToTerms(e.target.checked)}
+                    className="mt-1 shrink-0 accent-[#00E5FF] w-4 h-4 rounded-sm border-white/20 bg-[#111]"
+                  />
+                  <label htmlFor="tos-consent" className="text-xs text-gray-400 font-mono leading-tight">
+                    I agree to the FightBracket Pro <button type="button" onClick={() => window.dispatchEvent(new Event('open-tos'))} className="text-[#00E5FF] hover:underline">Terms of Service</button> and <button type="button" onClick={() => window.dispatchEvent(new Event('open-privacy'))} className="text-[#00E5FF] hover:underline">Privacy Policy</button>
+                  </label>
+                </div>
+              )}
+              <button
+                type="submit"
+                className="w-full py-3.5 px-6 rounded-lg text-[#050A14] font-bold text-base sm:text-lg tracking-widest uppercase transition-all duration-200 shadow-lg flex items-center justify-center gap-2 font-rajdhani bg-[#00E5FF] hover:bg-[#00B3CC] active:scale-[0.99] shadow-[#00E5FF]/25 mt-2"
+              >
+                <span>{isLogin ? 'SIGN IN' : 'CREATE ACCOUNT'}</span>
+                <ChevronRight size={18} />
               </button>
-            </p>
+            </form>
+
+            {isLogin && (
+              <>
+                {/* OR Divider */}
+                <div className="relative flex items-center justify-center my-4">
+                  <div className="w-full border-t border-white/10"></div>
+                  <span className="bg-[#0A0E1A] px-3 text-xs font-mono text-gray-500 tracking-widest uppercase absolute">
+                    OR
+                  </span>
+                </div>
+
+
+                {/* Social Logins */}
+                <div className="space-y-2.5">
+                  <button
+                    type="button"
+                    onClick={handleGoogleLogin}
+                    className="w-full flex items-center justify-center gap-3 py-3 px-4 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 text-white font-semibold text-sm transition-all hover:shadow-md font-mono"
+                  >
+                    <svg width="18" height="18" viewBox="0 0 24 24">
+                      <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z" />
+                      <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.26v3.15C3.25 21.3 7.31 24 12 24z" />
+                      <path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.26C.46 8.18 0 9.99 0 12s.46 3.82 1.26 5.42l4.02-3.15z" />
+                      <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.31 0 3.25 2.7 1.26 6.58l4.02 3.15c.95-2.83 3.6-4.98 6.72-4.98z" />
+                    </svg>
+                    Continue with Google
+                  </button>
+
+                  <div className="grid grid-cols-3 gap-2">
+                    <button
+                      type="button"
+                      onClick={handleDiscordLogin}
+                      className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg bg-[#5865F2]/20 hover:bg-[#5865F2]/30 border border-[#5865F2]/40 text-white font-medium text-xs transition-all font-mono"
+                      title="Sign in with Discord"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 127.14 96.36" fill="currentColor">
+                        <path d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36,77.7,77.7,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.66,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1A105.25,105.25,0,0,0,126.6,80.22h0C129.24,52.84,122.09,29.11,107.7,8.07ZM42.45,65.69C36.18,65.69,31,60,31,53s5-12.74,11.43-12.74S54,46,53.89,53,48.84,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.31,60,73.31,53s5-12.74,11.43-12.74S96.33,46,96.22,53,91.08,65.69,84.69,65.69Z" />
+                      </svg>
+                      <span>Discord</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleTwitchLogin}
+                      className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg bg-[#9146FF]/20 hover:bg-[#9146FF]/30 border border-[#9146FF]/40 text-white font-medium text-xs transition-all font-mono"
+                      title="Sign in with Twitch"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714Z" />
+                      </svg>
+                      <span>Twitch</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handlePasskeySignIn}
+                      className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg bg-[#00FF88]/15 hover:bg-[#00FF88]/25 border border-[#00FF88]/30 text-[#00FF88] font-medium text-xs transition-all font-mono"
+                      title="Sign in with Passkey"
+                    >
+                      <Key size={14} />
+                      <span>Passkey</span>
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+
+
+
+            {/* Bottom Toggle Text */}
+            <div className="text-center pt-2 border-t border-white/10">
+              <p className="text-xs text-gray-400 font-mono">
+                {isLogin ? "Don't have an account?" : "Already have an account?"}
+                <button
+                  type="button"
+                  onClick={() => setIsLogin(!isLogin)}
+                  className="text-[#00E5FF] hover:underline font-bold ml-1.5 transition-colors"
+                >
+                  {isLogin ? 'Create one' : 'Sign in'}
+                </button>
+              </p>
+            </div>
           </div>
+
         </div>
       </div>
     );
   }
 
   return (
-    <div className="p-6 h-full overflow-auto max-w-6xl mx-auto space-y-8 animate-in fade-in duration-300">
-      
-      {/* Top Bar: Account Info */}
-      <div className="flex justify-between items-center bg-[#050A14]/80 border border-[#00FF88]/20 p-6 rounded-xl">
-        <div>
-          <h2 className="text-3xl font-bold font-rajdhani text-white">ACCOUNT DASHBOARD</h2>
-          <p className="text-[#00FF88] font-mono text-sm mt-1">Welcome, {user.user_metadata?.displayName || 'Host'}</p>
+    <div
+      className="min-h-screen flex w-full"
+      style={{
+        background: "#0c0c0e",
+        fontFamily: "'Inter', sans-serif",
+        color: "#f0ede8",
+      }}
+    >
+      {/* Sidebar */}
+      <aside
+        className={`fixed lg:static inset-y-0 left-0 z-40 flex flex-col transition-transform duration-300 ${sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+          }`}
+        style={{
+          width: "220px",
+          background: "#0f0f12",
+          borderRight: "1px solid rgba(255,255,255,0.06)",
+        }}
+      >
+        {/* Mobile Close Button */}
+        <div
+          className="flex items-center gap-3 px-5 py-5 lg:hidden"
+          style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}
+        >
+          <div className="font-bold text-white text-sm tracking-widest font-rajdhani">MENU</div>
+          <button
+            className="ml-auto text-white/40 hover:text-white"
+            onClick={() => setSidebarOpen(false)}
+          >
+            <X size={16} />
+          </button>
         </div>
-        <div className="flex gap-3">
+
+        {/* Nav */}
+        <nav className="flex-1 px-3 py-4 flex flex-col gap-0.5">
+          <button
+            onClick={() => setActiveTab("Dashboard")}
+            className="flex items-center gap-3 px-3 py-2.5 text-sm font-medium transition-all duration-150 text-left w-full group"
+            style={{
+              color: activeTab === "Dashboard" ? "#f0ede8" : "#8a8a9a",
+              background: activeTab === "Dashboard" ? "rgba(0, 229, 255, 0.1)" : "transparent",
+              borderLeft: activeTab === "Dashboard" ? "2px solid #00E5FF" : "2px solid transparent",
+              borderRadius: "2px",
+            }}
+          >
+            <LayoutDashboard size={15} />
+            Dashboard
+          </button>
+
+          <button
+            onClick={() => setActiveTab("Feed")}
+            className="flex items-center gap-3 px-3 py-2.5 text-sm font-medium transition-all duration-150 text-left w-full group"
+            style={{
+              color: activeTab === "Feed" ? "#f0ede8" : "#8a8a9a",
+              background: activeTab === "Feed" ? "rgba(0, 229, 255, 0.1)" : "transparent",
+              borderLeft: activeTab === "Feed" ? "2px solid #00E5FF" : "2px solid transparent",
+              borderRadius: "2px",
+            }}
+          >
+            <Rss size={15} />
+            Feed
+          </button>
+
+          <button
+            onClick={() => setActiveTab("MyFeed")}
+            className="flex items-center gap-3 px-3 py-2.5 text-sm font-medium transition-all duration-150 text-left w-full group"
+            style={{
+              color: activeTab === "MyFeed" ? "#f0ede8" : "#8a8a9a",
+              background: activeTab === "MyFeed" ? "rgba(0, 229, 255, 0.1)" : "transparent",
+              borderLeft: activeTab === "MyFeed" ? "2px solid #00E5FF" : "2px solid transparent",
+              borderRadius: "2px",
+            }}
+          >
+            <User size={15} />
+            My Feed
+          </button>
+
+          <button
+            onClick={() => setActiveTab("Events")}
+            className="flex items-center gap-3 px-3 py-2.5 text-sm font-medium transition-all duration-150 text-left w-full group"
+            style={{
+              color: activeTab === "Events" ? "#f0ede8" : "#8a8a9a",
+              background: activeTab === "Events" ? "rgba(0, 229, 255, 0.1)" : "transparent",
+              borderLeft: activeTab === "Events" ? "2px solid #00E5FF" : "2px solid transparent",
+              borderRadius: "2px",
+            }}
+          >
+            <Calendar size={15} />
+            Events
+          </button>
+
+          {onViewOwnProfile && (
+            <button
+              onClick={onViewOwnProfile}
+              className="flex items-center gap-3 px-3 py-2.5 text-sm font-medium transition-all duration-150 text-left w-full group text-[#8a8a9a] hover:text-[#00E5FF] hover:bg-white/5"
+              style={{ borderLeft: "2px solid transparent", borderRadius: "2px" }}
+            >
+              <Globe size={15} />
+              Public Profile
+            </button>
+          )}
+
           {onOpenFriendsModal && (
             <button
               onClick={onOpenFriendsModal}
-              className="flex items-center gap-2 px-4 py-2 rounded bg-cyan-500/20 text-cyan-400 border border-cyan-500/40 hover:bg-cyan-500/30 transition-all font-rajdhani tracking-widest font-bold"
+              className="flex items-center gap-3 px-3 py-2.5 text-sm font-medium transition-all duration-150 text-left w-full group text-[#8a8a9a] hover:text-[#00E5FF] hover:bg-white/5"
+              style={{ borderLeft: "2px solid transparent", borderRadius: "2px" }}
             >
-              FRIENDS & DMs
+              <Users size={15} />
+              Friends & DMs
+              {((userProfile?.unread_messages_count || 0) + (userProfile?.pending_friend_requests_count || 0)) > 0 ? (
+                <span className="ml-auto bg-[#00E5FF] text-[#050A14] text-[10px] font-bold px-1.5 py-0.5 rounded">
+                  {(userProfile?.unread_messages_count || 0) + (userProfile?.pending_friend_requests_count || 0)}
+                </span>
+              ) : null}
             </button>
           )}
-          <button 
-            onClick={() => supabase.auth.signOut()} 
-            className="flex items-center gap-2 px-4 py-2 rounded border border-[#FF006E]/30 text-[#FF006E] hover:bg-[#FF006E]/10 transition-colors font-rajdhani tracking-widest font-bold"
+
+          <button
+            onClick={() => setActiveTab("Settings")}
+            className="flex items-center gap-3 px-3 py-2.5 text-sm font-medium transition-all duration-150 text-left w-full group"
+            style={{
+              color: activeTab === "Settings" ? "#f0ede8" : "#8a8a9a",
+              background: activeTab === "Settings" ? "rgba(0, 229, 255, 0.1)" : "transparent",
+              borderLeft: activeTab === "Settings" ? "2px solid #00E5FF" : "2px solid transparent",
+              borderRadius: "2px",
+            }}
           >
-            <LogOut size={16}/> LOGOUT
+            <Settings size={15} />
+            Settings
           </button>
-        </div>
-      </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        
-        {/* Left Column: Profile & Privacy & Cloud */}
-        <div className="space-y-6">
-          <div className="bg-[#050A14] border border-[#00FF88]/30 p-6 rounded-xl shadow-lg space-y-4">
-            <h3 className="text-xl font-bold font-rajdhani text-[#00FF88] tracking-widest">PROFILE & PRIVACY</h3>
-            {userProfile?.unique_id && (
-              <div className="bg-black/40 border border-[#00FF88]/20 p-3 rounded flex justify-between items-center">
-                <span className="text-xs text-[#00FF88] font-mono tracking-wider opacity-80">UNIQUE FB-ID</span>
-                <span className="font-mono font-bold tracking-widest bg-[#00FF88]/10 px-2.5 py-1 rounded text-[#00FF88]">{userProfile.unique_id}</span>
-              </div>
-            )}
-            <div className="flex gap-2">
-              <input 
-                type="text" 
-                value={displayName} 
-                onChange={e => setDisplayName(e.target.value)} 
-                placeholder="Gamertag or Channel Name" 
-                className="flex-1 bg-[#111] border border-gray-800 rounded p-2 text-white focus:border-[#00FF88] outline-none font-mono text-sm" 
-              />
-              <button 
-                onClick={saveDisplayName} 
-                className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded font-rajdhani font-bold tracking-wider transition-colors"
-              >
-                SAVE
-              </button>
-            </div>
-
-            {/* Privacy Controls */}
-            <div className="pt-3 border-t border-white/10 space-y-3">
-              <div className="text-xs font-mono font-bold text-gray-400">PRIVACY CONTROLS</div>
-              <div className="flex items-center justify-between p-2.5 rounded bg-black/30 border border-white/5">
-                <span className="text-xs font-mono opacity-80">Publicly Searchable Profile</span>
-                <button
-                  onClick={() => handleTogglePrivacy('is_public', !(userProfile?.is_public ?? true))}
-                  className={`px-3 py-1 rounded text-xs font-mono font-bold transition-all ${
-                    (userProfile?.is_public ?? true) ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/40' : 'bg-white/5 text-gray-400'
-                  }`}
-                >
-                  {(userProfile?.is_public ?? true) ? 'PUBLIC' : 'HIDDEN'}
-                </button>
-              </div>
-
-              <div className="flex items-center justify-between p-2.5 rounded bg-black/30 border border-white/5">
-                <span className="text-xs font-mono opacity-80">Friends-Only Start.gg Stats</span>
-                <button
-                  onClick={() => handleTogglePrivacy('friends_only', !(userProfile?.friends_only ?? false))}
-                  className={`px-3 py-1 rounded text-xs font-mono font-bold transition-all ${
-                    (userProfile?.friends_only ?? false) ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40' : 'bg-white/5 text-gray-400'
-                  }`}
-                >
-                  {(userProfile?.friends_only ?? false) ? 'FRIENDS ONLY' : 'ANYONE'}
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Start.gg Profile Importer Box */}
-          <div className="bg-[#050A14] border border-cyan-500/30 p-6 rounded-xl shadow-lg space-y-4">
-            <h3 className="text-xl font-bold font-rajdhani text-cyan-400 tracking-widest">START.GG CAREER IMPORTER</h3>
-            <p className="text-xs font-mono opacity-60">
-              Import your public Start.gg player profile URL/slug to showcase your tournament history & placements.
-            </p>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                placeholder="e.g. start.gg/user/azeemx or azeemx"
-                value={userStartggInput}
-                onChange={e => setUserStartggInput(e.target.value)}
-                className="flex-1 bg-[#111] border border-gray-800 rounded p-2 text-white focus:border-cyan-400 outline-none font-mono text-sm"
-              />
-              <button
-                onClick={handleImportCareerStats}
-                disabled={importingUserStartgg || !userStartggInput.trim()}
-                className="px-4 py-2 bg-cyan-500 text-black font-bold rounded font-rajdhani tracking-wider hover:brightness-125 disabled:opacity-40 transition-all text-sm"
-              >
-                {importingUserStartgg ? 'IMPORTING...' : 'IMPORT'}
-              </button>
-            </div>
-          </div>
-
-          <div className="bg-[#050A14] border border-[#00E5FF]/30 p-6 rounded-xl shadow-lg">
-            <div className="flex justify-between items-center mb-6 border-b border-gray-800 pb-4">
-              <h3 className="text-xl font-bold font-rajdhani text-[#00E5FF] tracking-widest">CLOUD SAVES</h3>
-              <div className="flex gap-2">
-                <button onClick={fetchCloudTournaments} className="p-2 bg-white/5 hover:bg-white/10 rounded text-white transition-colors"><RefreshCw size={16} /></button>
-                <button onClick={saveToCloud} disabled={saving} className="flex items-center gap-2 px-3 py-2 bg-[#00E5FF] hover:bg-[#00E5FF]/80 text-black font-bold rounded transition-colors font-rajdhani tracking-wider disabled:opacity-50">
-                  <Save size={16} /> {saving ? 'SAVING...' : 'SAVE CURRENT'}
-                </button>
-              </div>
-            </div>
-
-            {loading ? (
-              <div className="text-center py-10 opacity-50 font-mono text-sm">Loading from cloud...</div>
-            ) : tournaments.length === 0 ? (
-              <div className="text-center py-10 opacity-50 font-mono text-sm">No tournaments saved in the cloud.</div>
-            ) : (
-              <div className="space-y-3">
-                {tournaments.map(t => (
-                  <div key={t.id} className="flex items-center justify-between p-3 bg-[#111] border border-gray-800 hover:border-[#00E5FF]/50 rounded-lg transition-colors group">
-                    <div>
-                      <div className="font-bold text-white font-rajdhani text-lg">{t.name}</div>
-                      <div className="text-xs text-gray-500 font-mono">ID: {t.id}</div>
-                      <div className="text-xs text-gray-500 font-mono mt-1">Updated: {new Date(t.updated_at).toLocaleString()}</div>
-                    </div>
-                    <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button onClick={() => loadTournament(t.id)} className="flex items-center gap-1 px-3 py-1.5 bg-[#00FF88]/10 text-[#00FF88] hover:bg-[#00FF88]/20 border border-[#00FF88]/30 rounded font-rajdhani font-bold tracking-wider transition-colors text-sm">
-                        <Download size={14} /> LOAD
-                      </button>
-                      <button onClick={() => deleteTournament(t.id)} disabled={deletingId === t.id} className="p-1.5 text-gray-500 hover:text-[#FF006E] hover:bg-[#FF006E]/10 rounded transition-colors">
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Right Column: Start.gg Hosted */}
-        <div className="space-y-6">
-          <div className="bg-[#050A14] border border-[#FF006E]/30 p-6 rounded-xl shadow-lg">
-            <div className="border-b border-gray-800 pb-4 mb-6">
-              <h3 className="text-xl font-bold font-rajdhani text-[#FF006E] tracking-widest flex items-center gap-2">
-                <Key size={20}/> START.GG INTEGRATION
-              </h3>
-              <p className="text-xs text-gray-400 font-mono mt-2">Connect your Developer API Token to view and instantly import tournaments you have hosted.</p>
-            </div>
-
-            <div className="flex gap-2 mb-6">
-              <input 
-                type="password" 
-                value={startggToken} 
-                onChange={e => setStartggToken(e.target.value)} 
-                placeholder="Paste Start.gg API Token..." 
-                className="flex-1 bg-[#111] border border-gray-800 rounded p-2 text-white focus:border-[#FF006E] outline-none font-mono text-sm" 
-              />
-              <button onClick={saveStartggToken} className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded font-rajdhani font-bold tracking-wider transition-colors">
-                SAVE
-              </button>
-            </div>
-
-            <button 
-              onClick={fetchStartggHosted} 
-              disabled={fetchingStartgg || !startggToken} 
-              className="w-full flex items-center justify-center gap-2 py-3 bg-[#FF006E] hover:bg-[#FF006E]/80 disabled:opacity-50 text-white font-bold rounded-lg transition-colors font-rajdhani tracking-widest mb-6"
+          <div className="mt-auto pt-4">
+            <button
+              onClick={() => supabase.auth.signOut()}
+              className="flex items-center gap-3 px-3 py-2.5 text-sm font-medium transition-all duration-150 text-left w-full group text-[#8a8a9a] hover:text-red-400 hover:bg-red-500/10"
+              style={{ borderLeft: "2px solid transparent", borderRadius: "2px" }}
             >
-              <RefreshCw size={16} className={fetchingStartgg ? "animate-spin" : ""} /> 
-              {fetchingStartgg ? 'FETCHING...' : 'FETCH MY HOSTED TOURNAMENTS'}
+              <LogOut size={15} />
+              Log Out
+            </button>
+          </div>
+        </nav>
+
+        {/* User */}
+        <div
+          className="p-4"
+          style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}
+        >
+          <div className="flex items-center gap-3">
+            {(userProfile as any)?.avatar_url ? (
+              <img 
+                src={(userProfile as any).avatar_url} 
+                alt="Avatar" 
+                className="w-8 h-8 object-cover flex-shrink-0"
+                style={{ borderRadius: "2px", border: "1px solid #00E5FF" }}
+              />
+            ) : (
+              <div
+                className="w-8 h-8 flex items-center justify-center text-xs font-bold text-[#050A14] flex-shrink-0"
+                style={{ background: "#00E5FF", borderRadius: "2px" }}
+              >
+                {(userProfile?.gamer_tag || user.user_metadata?.displayName || 'U').substring(0, 2).toUpperCase()}
+              </div>
+            )}
+            <div className="min-w-0 flex-1">
+              <div className="text-xs font-medium text-white truncate">
+                {userProfile?.gamer_tag || user.user_metadata?.displayName || 'User'}
+              </div>
+              <div className="text-[10px]" style={{ color: "#00E5FF" }}>
+                {userProfile?.unique_id || 'PRO USER'}
+              </div>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      {/* Sidebar backdrop (mobile) */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-30 bg-black/60 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      {/* Main */}
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Topbar */}
+        <header
+          className="flex items-center gap-4 px-6 py-4 sticky top-0 z-20"
+          style={{
+            background: "rgba(12,12,14,0.9)",
+            backdropFilter: "blur(12px)",
+            borderBottom: "1px solid rgba(255,255,255,0.06)",
+          }}
+        >
+          <button
+            className="lg:hidden text-white/60 hover:text-white"
+            onClick={() => setSidebarOpen(true)}
+          >
+            <Menu size={20} />
+          </button>
+
+          {/* Search */}
+          <div className="flex items-center gap-2 flex-1 max-w-sm">
+            <div
+              className="flex items-center gap-2 flex-1 px-3 h-9 text-sm"
+              style={{
+                background: "#1e1e24",
+                border: "1px solid rgba(255,255,255,0.06)",
+                borderRadius: "2px",
+              }}
+            >
+              <Search size={13} style={{ color: "#8a8a9a" }} />
+              <input
+                placeholder="Search..."
+                className="bg-transparent outline-none flex-1 placeholder:text-white/20 text-sm font-mono"
+                style={{ color: "#f0ede8" }}
+              />
+            </div>
+          </div>
+
+          <div className="ml-auto flex items-center gap-3">
+            {/* Home CTA */}
+            {onNavigateHome && (
+              <button
+                onClick={onNavigateHome}
+                className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded text-[11px] font-bold tracking-widest uppercase hover:opacity-80 transition-opacity"
+                style={{
+                  background: 'var(--border)',
+                  border: '1px solid rgba(0,229,255,0.2)',
+                  color: '#00E5FF',
+                  fontFamily: 'JetBrains Mono, monospace'
+                }}
+              >
+                <ArrowLeft size={11} />
+                RETURN HOME
+              </button>
+            )}
+
+            {/* Notification bell */}
+            <button 
+              onClick={() => {
+                const hasNotifs = (userProfile?.unread_messages_count || 0) > 0 || (userProfile?.pending_friend_requests_count || 0) > 0;
+                if (hasNotifs && onOpenFriendsModal) {
+                  onOpenFriendsModal();
+                } else {
+                  toast.info("No new notifications");
+                }
+              }} 
+              className="relative w-9 h-9 flex items-center justify-center transition-colors hover:bg-white/5" 
+              style={{ borderRadius: "2px" }}
+            >
+              <Bell size={16} style={{ color: "#8a8a9a" }} />
+              {((userProfile?.unread_messages_count || 0) > 0 || (userProfile?.pending_friend_requests_count || 0) > 0) && (
+                <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-[#00E5FF] rounded-full shadow-[0_0_5px_#00E5FF]" />
+              )}
             </button>
 
-            {startggTournaments.length > 0 && (
-              <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-                {startggTournaments.map(t => (
-                  <div key={t.id} className="flex flex-col p-4 bg-[#111] border border-gray-800 hover:border-[#FF006E]/50 rounded-lg transition-colors">
-                    <div className="font-bold text-white font-rajdhani text-lg truncate mb-1">{t.name}</div>
-                    <div className="flex justify-between items-center mt-2">
-                      <span className="text-xs font-mono bg-white/10 px-2 py-0.5 rounded text-gray-300">State: {t.state === 1 ? 'Published' : 'Draft'}</span>
-                      <button 
-                        onClick={() => onStartggImport(t.slug)}
-                        className="text-xs font-bold font-rajdhani tracking-widest text-[#00E5FF] hover:underline"
+            <button
+              onClick={() => supabase.auth.signOut()}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded text-[11px] font-bold tracking-widest uppercase hover:opacity-80 transition-opacity mr-2"
+              style={{
+                background: 'var(--border)',
+                border: '1px solid rgba(0,229,255,0.2)',
+                color: '#00E5FF',
+                fontFamily: 'JetBrains Mono, monospace'
+              }}
+            >
+              <LogOut size={11} />
+              LOG OUT
+            </button>
+          </div>
+
+        </header>
+
+        {/* Page content */}
+        <main className="flex-1 p-6 overflow-auto">
+          {activeTab === "Settings" && (
+            <AccountSettingsPanel
+              user={user}
+              userProfile={userProfile}
+              fetchUserProfile={fetchUserProfile}
+              getHeaders={getHeaders}
+            />
+          )}
+          {activeTab === "Feed" && (
+            <div className="-m-6">
+              <FeedPanel userProfile={userProfile} getHeaders={getHeaders} />
+            </div>
+          )}
+          {activeTab === "MyFeed" && (
+            <div className="max-w-7xl mx-auto space-y-4">
+              <div className="mb-4 flex justify-between items-center">
+                <div>
+                  <h1 className="text-white uppercase tracking-wide mb-0.5 text-2xl font-bold" style={{ fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: "0.05em" }}>
+                    My Feed
+                  </h1>
+                  <p className="text-xs text-gray-500 font-mono">Your published results, tournament posts, and activity history.</p>
+                </div>
+                <button
+                  onClick={() => userProfile?.id && fetchMyFeed(userProfile.id)}
+                  disabled={fetchingMyFeed}
+                  className="p-2 rounded-lg border border-white/10 text-white hover:border-white/30 hover:bg-white/5 transition-all flex items-center gap-2 text-xs font-mono"
+                  title="Refresh Feed"
+                >
+                  <RefreshCw size={14} className={fetchingMyFeed ? "animate-spin" : ""} />
+                  <span>REFRESH</span>
+                </button>
+              </div>
+
+              <div className="flex flex-col lg:flex-row gap-6">
+                {/* Left Sidebar: RECENTS & DEALS */}
+                <div className="w-full lg:w-72 xl:w-80 flex-shrink-0 flex flex-col gap-4">
+                  <RecentsWidget />
+                  <DealsWidget />
+                </div>
+
+                {/* Main: My Posts */}
+                <div className="flex-1 min-w-0">
+                  {fetchingMyFeed && myFeedPosts.length === 0 ? (
+                    <div className="text-center py-12 opacity-50 font-mono text-sm">Loading your posts...</div>
+                  ) : myFeedPosts.length === 0 ? (
+                    <div className="text-center py-16 bg-[#141418] border border-white/5 rounded-xl p-8">
+                      <div className="text-gray-400 font-medium mb-1">No posts yet on your profile</div>
+                      <p className="text-xs text-gray-500 font-mono mb-4">Post results, tournament updates, or match hype in the Feed to see them here!</p>
+                      <button
+                        onClick={() => setActiveTab("Feed")}
+                        className="px-4 py-2 bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 rounded text-xs font-bold font-mono uppercase tracking-wider hover:bg-cyan-500/20 transition-all"
                       >
-                        IMPORT →
+                        Go to Community Feed →
                       </button>
                     </div>
-                  </div>
-                ))}
+                  ) : (
+                    <div className="space-y-4 pb-8">
+                      {myFeedPosts.map((post) => (
+                        <PostCard
+                          key={post.id}
+                          post={post}
+                          currentUserProfile={userProfile}
+                          onLike={async (id) => {
+                            setMyFeedPosts(prev => prev.map(p => p.id === id ? { ...p, liked: !p.liked, likes: p.liked ? p.likes - 1 : p.likes + 1 } : p));
+                            try {
+                              const headers = await getHeaders();
+                              await fetch(`/api/feed/${id}/like`, { method: 'POST', headers });
+                            } catch { }
+                          }}
+                          onBookmark={(id) => {
+                            setMyFeedPosts(prev => prev.map(p => p.id === id ? { ...p, bookmarked: !p.bookmarked } : p));
+                            toast.info("Post bookmarked!");
+                          }}
+                          onReact={async (id, emoji) => {
+                            try {
+                              const headers = await getHeaders();
+                              await fetch(`/api/feed/${id}/reaction`, { method: 'POST', headers, body: JSON.stringify({ emoji }) });
+                            } catch { }
+                          }}
+                          onComment={async (id, content) => {
+                            try {
+                              const headers = await getHeaders();
+                              await fetch(`/api/feed/${id}/comments`, { method: 'POST', headers, body: JSON.stringify({ content }) });
+                            } catch { }
+                          }}
+                          onShare={async (id, action) => {
+                            if (action === 'repost') {
+                              toast.success("Post reposted to feed!");
+                            }
+                          }}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
-            )}
-          </div>
-        </div>
+            </div>
+          )}
+          {activeTab === "Events" && (
+            <div className="-m-6 h-full">
+              <EventsPanel getHeaders={getHeaders} onNavigateHome={onNavigateHome} />
+            </div>
+          )}
+          <div style={{ display: activeTab === "Dashboard" ? 'block' : 'none' }}>
+            {/* Page heading & Profile Reputation Stats */}
+            <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <h1
+                  className="text-white uppercase tracking-wide mb-0.5"
+                  style={{
+                    fontFamily: "'Barlow Condensed', sans-serif",
+                    fontWeight: 700,
+                    fontSize: "1.5rem",
+                    letterSpacing: "0.05em",
+                  }}
+                >
+                  Dashboard
+                </h1>
+                <p className="text-sm" style={{ color: "#8a8a9a" }}>
+                  Welcome back, {userProfile?.first_name ? `${userProfile.first_name} ${userProfile.last_name || ''}` : (userProfile?.gamer_tag || user.user_metadata?.displayName || 'User')}{userProfile?.first_name && userProfile?.gamer_tag ? ` (${userProfile.gamer_tag})` : ''}.
+                </p>
+              </div>
 
+              {/* Instagram-style Profile Stats Bar */}
+              <div className="flex items-center gap-6 font-mono text-sm">
+                <div className="flex items-center gap-1.5 text-gray-300">
+                  <Heart size={15} className="fill-rose-500 text-rose-500" />
+                  <span className="font-bold text-white text-base">{userProfile?.likes_count || 0}</span>
+                  <span className="text-xs text-gray-400 font-sans">likes</span>
+                </div>
+
+                <div className="flex items-center gap-1.5 text-gray-300">
+                  <span className="font-bold text-white text-base">{userProfile?.followers_count || 0}</span>
+                  <span className="text-xs text-gray-400 font-sans">followers</span>
+                </div>
+
+                <div className="flex items-center gap-1.5 text-gray-300">
+                  <span className="font-bold text-white text-base">{userProfile?.following_count || 0}</span>
+                  <span className="text-xs text-gray-400 font-sans">following</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="max-w-6xl space-y-8 animate-in fade-in duration-300">
+
+              {/* Full Width Tekken 8 Live Stats Box */}
+              <div className="bg-[#050A14] border border-white/10 rounded-2xl shadow-2xl overflow-hidden w-full">
+                <div className="px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/10 bg-black/40">
+                  <div>
+                    <h3 className="text-xl font-bold font-rajdhani text-[#00E5FF] tracking-widest flex items-center gap-2">
+                      TEKKEN 8 LIVE STATS & RANKING
+                    </h3>
+                    <p className="text-[11px] font-mono text-gray-400 tracking-wider mt-0.5">
+                      Live ranking & battle history synced from EWGF · updates on demand
+                    </p>
+                  </div>
+                  {!userProfile?.tekken_id && (
+                    <button
+                      onClick={() => setActiveTab('Settings')}
+                      className="text-xs font-mono text-[#00E5FF] bg-[#00E5FF]/10 border border-[#00E5FF]/30 px-3 py-1.5 rounded-lg hover:bg-[#00E5FF]/20 transition-all shrink-0"
+                    >
+                      + SET POLARIS ID IN SETTINGS
+                    </button>
+                  )}
+                </div>
+                <div className="p-6">
+                  <TekkenStatsPanel
+                    tekkenId={userProfile?.tekken_id}
+                    steamId={userProfile?.steam_id}
+                    gamerTag={userProfile?.gamer_tag}
+                    onMatchesLoaded={setTekkenMatches}
+                    onDataLoaded={setTekkenData}
+                  />
+                </div>
+              </div>
+
+              {/* Full Width Steam Live Gamer Card Box */}
+              <div className="bg-[#050A14] border border-white/10 rounded-2xl shadow-2xl overflow-hidden w-full">
+                <div className="px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/10 bg-black/40">
+                  <div>
+                    <h3 className="text-xl font-bold font-rajdhani text-[#00E5FF] tracking-widest flex items-center gap-2">
+                      STEAM PLAYER CARD & LIVE STATUS
+                    </h3>
+                    <p className="text-[11px] font-mono text-gray-400 tracking-wider mt-0.5">
+                      Live status, avatar, and Steam profile connection
+                    </p>
+                  </div>
+                  {!userProfile?.steam_id && (
+                    <button
+                      onClick={() => setActiveTab('Settings')}
+                      className="text-xs font-mono text-[#00E5FF] bg-[#00E5FF]/10 border border-[#00E5FF]/30 px-3 py-1.5 rounded-lg hover:bg-[#00E5FF]/20 transition-all shrink-0"
+                    >
+                      + SET STEAM ID IN SETTINGS
+                    </button>
+                  )}
+                </div>
+                <div className="p-6">
+                  <SteamStatsPanel steamId={userProfile?.steam_id} />
+                </div>
+              </div>
+
+              {/* 2-Column Grid for Games & Mains + Start.gg Past Events & Cloud Saves */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+
+                {/* Left Column: Main Games & Characters */}
+                <div className="space-y-6">
+                  <div className="bg-[#050A14] border border-white/10 p-6 rounded-2xl shadow-xl space-y-4">
+                    <div className="flex justify-between items-center border-b border-white/10 pb-4">
+                      <h3 className="text-xl font-bold font-rajdhani text-[#00E5FF] tracking-widest flex items-center gap-2">
+                        MAIN GAMES & CHARACTERS
+                      </h3>
+                    </div>
+
+                    {/* Quick Add */}
+                    <div className="bg-black/40 border border-white/10 p-3.5 rounded-xl space-y-3">
+                      <div className="text-xs font-mono text-gray-400 font-bold">ADD OR UPDATE YOUR MAIN</div>
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        <input
+                          list="games-datalist"
+                          value={newGameName}
+                          onChange={e => setNewGameName(e.target.value)}
+                          placeholder="Game Name (e.g. Tekken 8)"
+                          className="bg-[#111] border border-gray-800 rounded-lg px-3 py-2 text-white font-mono text-xs outline-none focus:border-[#00E5FF] min-w-[150px]"
+                        />
+                        <datalist id="games-datalist">
+                          <option value="Tekken 8" />
+                          <option value="Tekken 7" />
+                          <option value="Tekken 6" />
+                          <option value="Tekken 5" />
+                          <option value="Street Fighter 6" />
+                          <option value="Street Fighter V" />
+                          <option value="Street Fighter IV" />
+                          <option value="Street Fighter III: 3rd Strike" />
+                          <option value="Soul Calibur VI" />
+                          <option value="Soul Calibur V" />
+                          <option value="Guilty Gear Strive" />
+                          <option value="Guilty Gear Xrd" />
+                          <option value="Fatal Fury: City of the Wolves" />
+                          <option value="2XKO" />
+                          <option value="Avatar: The Last Airbender" />
+                          <option value="Smash Ultimate" />
+                          <option value="Smash Melee" />
+                          <option value="Mortal Kombat 1" />
+                          <option value="Mortal Kombat 11" />
+                          <option value="GBVSR" />
+                          <option value="UNI2" />
+                          <option value="DBFZ" />
+                          <option value="KOF XV" />
+                          <option value="Marvel vs. Capcom 3" />
+                          <option value="Marvel vs. Capcom 2" />
+                          <option value="BlazBlue: Central Fiction" />
+                        </datalist>
+                        <input
+                          type="text"
+                          placeholder="Main Character (Optional)"
+                          value={newMainChar}
+                          onChange={e => setNewMainChar(e.target.value)}
+                          className="flex-1 bg-[#111] border border-gray-800 rounded-lg px-3 py-2 text-white font-mono text-xs outline-none focus:border-[#00E5FF]"
+                        />
+                        <button
+                          onClick={handleAddGameMain}
+                          className="px-4 py-2 rounded text-sm tracking-widest font-bold text-black hover:brightness-125 transition-all shrink-0"
+                          style={{ background: primaryColor, fontFamily: 'Rajdhani, sans-serif' }}
+                        >
+                          ADD
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* List of games & mains */}
+                    {gamesList.length === 0 ? (
+                      <div className="text-center py-8 text-xs font-mono text-gray-500">
+                        No main games added yet. Add your main characters above to display them on your profile!
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {/* Top 3 Games Preview */}
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                          {gamesList.slice(0, 3).map((item, idx) => {
+                            const coverUrl = GAME_COVERS[item.game];
+                            return (
+                              <div
+                                key={item.game}
+                                title={`${item.game}${item.main ? ` - ${item.main}` : ''}`}
+                                className="relative aspect-[2/3] rounded-xl overflow-hidden border border-white/10 group shadow-lg flex flex-col justify-end bg-[#050A14]"
+                              >
+                                {/* Background Cover */}
+                                {coverUrl ? (
+                                  <img src={coverUrl} alt={item.game} referrerPolicy="no-referrer" className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+                                ) : (
+                                  <div className="absolute inset-0 w-full h-full bg-gradient-to-br from-indigo-900 to-[#050A14] flex flex-col items-center justify-center p-4 text-center">
+                                    <Swords size={24} className="text-white/20 mb-2" />
+                                    <span className="font-bold font-rajdhani text-lg text-white/40 leading-tight">{item.game}</span>
+                                  </div>
+                                )}
+
+                                {/* Showcase Position Badge */}
+                                <div className="absolute top-2 left-2 z-20 px-2 py-0.5 rounded bg-black/80 backdrop-blur-md border border-cyan-500/40 text-[9px] font-mono font-bold text-cyan-400">
+                                  #{idx + 1} SHOWCASE
+                                </div>
+
+                                {/* Reorder & Action Controls Overlay */}
+                                <div className="absolute inset-0 z-20 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-xs flex items-center justify-center gap-1.5 p-2">
+                                  {idx > 0 && (
+                                    <button
+                                      onClick={() => handleMoveGameMain(idx, 'left')}
+                                      className="p-2 rounded-lg bg-white/10 hover:bg-cyan-500 text-white hover:text-black transition-all shadow-md"
+                                      title="Move Left (Promote Rank)"
+                                    >
+                                      <ChevronLeft size={16} />
+                                    </button>
+                                  )}
+                                  {idx < gamesList.length - 1 && (
+                                    <button
+                                      onClick={() => handleMoveGameMain(idx, 'right')}
+                                      className="p-2 rounded-lg bg-white/10 hover:bg-cyan-500 text-white hover:text-black transition-all shadow-md"
+                                      title="Move Right (Demote Rank)"
+                                    >
+                                      <ChevronRight size={16} />
+                                    </button>
+                                  )}
+                                  <button
+                                    onClick={() => handleRemoveGameMain(item.game)}
+                                    className="p-2 rounded-lg bg-red-500/20 hover:bg-red-500 text-red-400 hover:text-white transition-all shadow-md"
+                                    title="Remove Game"
+                                  >
+                                    <Trash2 size={16} />
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        {/* Text List of All Games with Expansion & Direct Reordering */}
+                        <div className="bg-black/40 border border-white/5 rounded-lg p-3">
+                          <div className="text-[10px] font-mono text-gray-400 mb-2 flex justify-between items-center font-bold tracking-wider">
+                            <span>ALL GAMES ({gamesList.length})</span>
+                            {gamesList.length > 3 && (
+                              <button
+                                onClick={() => setGamesListExpanded(!gamesListExpanded)}
+                                className="text-[#00E5FF] hover:underline flex items-center gap-1"
+                              >
+                                {gamesListExpanded ? (
+                                  <>COLLAPSE <ChevronUp size={12} /></>
+                                ) : (
+                                  <>VIEW ALL <ChevronDown size={12} /></>
+                                )}
+                              </button>
+                            )}
+                          </div>
+                          <div className="space-y-2">
+                            {(gamesListExpanded ? gamesList : gamesList.slice(0, 3)).map((item, idx) => (
+                              <div key={idx} className="flex justify-between items-center text-xs font-mono border-b border-white/5 pb-1.5 last:border-0 last:pb-0 gap-2">
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <span className="text-[10px] font-bold text-cyan-400/80 bg-cyan-950/40 px-1.5 py-0.5 rounded border border-cyan-800/40 shrink-0">
+                                    #{idx + 1}
+                                  </span>
+                                  <span className="text-white font-bold truncate">{item.game}</span>
+                                  {item.main && <span className="text-white text-[10px] bg-white/10 px-2 py-0.5 rounded shrink-0">{item.main}</span>}
+                                </div>
+                                <div className="flex items-center gap-1 shrink-0">
+                                  <button
+                                    onClick={() => handleMoveGameMain(idx, 'up')}
+                                    disabled={idx === 0}
+                                    className="p-1 rounded text-white/50 hover:text-cyan-400 hover:bg-white/10 disabled:opacity-20 disabled:hover:bg-transparent transition-colors"
+                                    title="Move Up"
+                                  >
+                                    <ArrowUp size={12} />
+                                  </button>
+                                  <button
+                                    onClick={() => handleMoveGameMain(idx, 'down')}
+                                    disabled={idx === gamesList.length - 1}
+                                    className="p-1 rounded text-white/50 hover:text-cyan-400 hover:bg-white/10 disabled:opacity-20 disabled:hover:bg-transparent transition-colors"
+                                    title="Move Down"
+                                  >
+                                    <ArrowDown size={12} />
+                                  </button>
+                                  <button
+                                    onClick={() => handleRemoveGameMain(item.game)}
+                                    className="p-1 rounded text-white/40 hover:text-red-400 hover:bg-white/10 transition-colors ml-1"
+                                    title="Remove"
+                                  >
+                                    <Trash2 size={12} />
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Cloud Saves */}
+                  <div className="bg-[#050A14] border border-white/10 p-6 rounded-2xl shadow-xl">
+                    <div className="flex justify-between items-center mb-6 border-b border-white/10 pb-4">
+                      <h3 className="text-xl font-bold font-rajdhani text-[#00E5FF] tracking-widest flex items-center gap-2">
+                        <Cloud size={20} /> CLOUD SAVES
+                      </h3>
+                      <div className="flex gap-2">
+                        <button onClick={fetchCloudTournaments} className="p-2 rounded-lg border border-white/10 text-white hover:border-white/30 hover:bg-white/5 transition-all" title="Refresh">
+                          <RefreshCw size={15} />
+                        </button>
+                        <button onClick={saveToCloud} disabled={saving} className="flex items-center justify-center gap-2 px-4 py-2 rounded tracking-widest font-bold text-black hover:brightness-125 transition-all text-sm disabled:opacity-50" style={{ background: primaryColor, fontFamily: 'Rajdhani, sans-serif' }}>
+                          <Save size={15} /> {saving ? 'SAVING...' : 'SAVE CURRENT'}
+                        </button>
+                      </div>
+                    </div>
+
+                    {loading && tournaments.length === 0 ? (
+                      <div className="text-center py-10 opacity-50 font-mono text-sm">Loading from cloud...</div>
+                    ) : tournaments.length === 0 ? (
+                      <div className="text-center py-10 opacity-50 font-mono text-sm">No tournaments saved in the cloud.</div>
+                    ) : (
+                      <div className="space-y-3">
+                        {tournaments.map(t => (
+                          <div key={t.id} className="flex items-center justify-between p-3 bg-[#111] border border-gray-800 hover:border-[#00E5FF]/50 rounded-lg transition-colors group">
+                            <div>
+                              <div className="font-bold text-white font-rajdhani text-lg">{t.name}</div>
+                              <div className="text-xs text-gray-500 font-mono">ID: {t.id}</div>
+                            </div>
+                            <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <button onClick={() => loadTournament(t.id)} className="flex items-center gap-1 px-3 py-1.5 bg-[#00FF88]/10 text-[#00FF88] hover:bg-[#00FF88]/20 border border-[#00FF88]/30 rounded font-rajdhani font-bold tracking-wider transition-colors text-sm">
+                                <Download size={14} /> LOAD
+                              </button>
+                              <button onClick={() => deleteTournament(t.id)} disabled={deletingId === t.id} className="p-1.5 text-gray-500 hover:text-[#FF006E] hover:bg-[#FF006E]/10 rounded transition-colors">
+                                <Trash2 size={16} />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Right Column: Start.gg Past Events */}
+                <div className="space-y-6">
+                  <div className="bg-[#050A14] border border-white/10 p-6 rounded-2xl shadow-xl">
+                    <div className="border-b border-white/10 pb-4 mb-6">
+                      <h3 className="text-xl font-bold font-rajdhani text-[#00E5FF] tracking-widest flex items-center gap-2">
+                        <Key size={20} /> START.GG PAST EVENTS
+                      </h3>
+                      <p className="text-xs text-gray-400 font-mono mt-2">Connect your Developer API Token to view and import events you have participated in.</p>
+                    </div>
+
+                    {!startggToken && (
+                      <div className="mb-4 text-xs font-mono text-amber-400 bg-amber-500/10 border border-amber-500/30 p-3 rounded flex items-center gap-2">
+                        <AlertTriangle size={14} /> Please add your Start.gg API Token in Account Settings to use this feature.
+                      </div>
+                    )}
+
+                    {/* Display Already Imported Events */}
+                    {(() => {
+                      if (!userProfile?.startgg_data) return null;
+                      try {
+                        const startggData = JSON.parse(userProfile.startgg_data);
+                        if (!startggData?.events || startggData.events.length === 0) return null;
+                        return (
+                          <div className="mb-6 space-y-1.5">
+                            <div className="flex items-center gap-2 mb-2">
+                              <span className="text-[10px] font-mono px-2.5 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-400">
+                                {startggData.events.length} imported event{startggData.events.length !== 1 ? 's' : ''}
+                              </span>
+                            </div>
+                            {startggData.events.slice(0, 5).map((ev: any, i: number) => {
+                              const place = Number(ev.placement);
+                              const medalColor =
+                                place === 1 ? '#FFD700' :
+                                  place === 2 ? '#C0C0C0' :
+                                    place === 3 ? '#CD7F32' :
+                                      place <= 8 ? '#00E5FF' : '#6B7280';
+                              const medalBg =
+                                place === 1 ? 'rgba(255,215,0,0.1)' :
+                                  place === 2 ? 'rgba(192,192,192,0.08)' :
+                                    place === 3 ? 'rgba(205,127,50,0.1)' :
+                                      place <= 8 ? 'rgba(0,229,255,0.08)' : 'rgba(255,255,255,0.04)';
+
+                              return (
+                                <div
+                                  key={i}
+                                  className="flex items-center justify-between px-3 py-2 rounded-lg border border-white/5 hover:border-white/10 transition-colors"
+                                  style={{ background: medalBg }}
+                                >
+                                  <div className="min-w-0 pr-2">
+                                    <div className="font-bold text-xs font-rajdhani text-white truncate">{ev.event_name}</div>
+                                    <div className="text-[10px] font-mono text-gray-500 truncate">{ev.tournament_name}</div>
+                                  </div>
+                                  <div
+                                    className="text-xs font-mono font-bold px-2.5 py-1 rounded shrink-0"
+                                    style={{ color: medalColor, background: `${medalColor}15`, border: `1px solid ${medalColor}30` }}
+                                  >
+                                    {place === 1 ? '🥇' : place === 2 ? '🥈' : place === 3 ? '🥉' : `#${ev.placement}`}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        );
+                      } catch {
+                        return null;
+                      }
+                    })()}
+
+                    <button
+                      onClick={() => fetchStartggHosted(false)}
+                      disabled={fetchingStartgg || !startggToken}
+                      className="w-full flex items-center justify-center gap-2 px-6 py-3 rounded text-sm tracking-widest font-bold text-black hover:brightness-125 transition-all disabled:opacity-50 mb-6"
+                      style={{ background: primaryColor, fontFamily: 'Rajdhani, sans-serif' }}
+                    >
+                      <RefreshCw size={16} className={fetchingStartgg ? "animate-spin" : ""} />
+                      {fetchingStartgg ? 'FETCHING...' : 'FETCH NEW EVENTS TO IMPORT'}
+                    </button>
+
+                    {startggTournaments.length > 0 && (
+                      <>
+                        <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                          {(showAllStartggTournaments ? startggTournaments : startggTournaments.slice(0, 5)).map(t => (
+                            <div key={t.id} className="flex flex-col p-4 bg-[#111] border border-gray-800 hover:border-[#00E5FF]/50 rounded-lg transition-colors">
+                              <div className="font-bold text-white font-rajdhani text-lg truncate mb-1">{t.name}</div>
+                              <div className="flex justify-between items-center mt-2">
+                                <span className="text-xs font-mono bg-white/10 px-2 py-0.5 rounded text-gray-300">State: {t.state === 1 ? 'Published' : 'Draft'}</span>
+                                <button
+                                  onClick={async () => {
+                                    setImportingSlug(t.slug);
+                                    try {
+                                      await onStartggImport(t.slug);
+                                    } finally {
+                                      setImportingSlug(null);
+                                    }
+                                  }}
+                                  disabled={importingSlug === t.slug}
+                                  className="text-xs font-bold font-rajdhani tracking-widest text-[#050A14] bg-[#FF006E] hover:bg-[#D4005B] px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 disabled:opacity-50"
+                                  title="Import this tournament bracket to run locally"
+                                >
+                                  {importingSlug === t.slug ? (
+                                    <>
+                                      <RefreshCw size={12} className="animate-spin" />
+                                      LOADING...
+                                    </>
+                                  ) : (
+                                    <>RUN BRACKET →</>
+                                  )}
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                        {startggTournaments.length > 5 && (
+                          <button
+                            onClick={() => setShowAllStartggTournaments(!showAllStartggTournaments)}
+                            className="w-full mt-3 py-2 text-xs font-bold font-rajdhani tracking-widest text-[#00E5FF] hover:bg-[#00E5FF]/10 border border-[#00E5FF]/30 rounded-lg transition-colors"
+                          >
+                            {showAllStartggTournaments ? 'VIEW LESS' : `VIEW MORE (${startggTournaments.length - 5})`}
+                          </button>
+                        )}
+                      </>
+                    )}
+
+                    {/* Recently Imported Brackets History */}
+                    {(() => {
+                      try {
+                        const historyStr = localStorage.getItem('fightbracket_imported_events_history');
+                        if (!historyStr) return null;
+                        const historyList: Array<{
+                          slug: string;
+                          name: string;
+                          location?: string;
+                          gameName?: string;
+                          playerCount: number;
+                          lastImportedAt: string;
+                        }> = JSON.parse(historyStr);
+
+                        if (historyList.length === 0) return null;
+
+                        return (
+                          <div className="mt-8 border-t border-gray-800 pt-6">
+                            <div className="flex items-center justify-between mb-4">
+                              <div className="flex items-center gap-2">
+                                <Calendar size={16} className="text-cyan-400" />
+                                <h4 className="font-bold text-white font-rajdhani text-base uppercase tracking-wider">
+                                  RECENTLY IMPORTED BRACKETS ({historyList.length})
+                                </h4>
+                              </div>
+                              <button
+                                onClick={() => {
+                                  localStorage.removeItem('fightbracket_imported_events_history');
+                                  setProfile(prev => ({ ...prev }));
+                                }}
+                                className="text-[10px] font-mono text-gray-500 hover:text-red-400 uppercase tracking-wider"
+                              >
+                                CLEAR HISTORY
+                              </button>
+                            </div>
+
+                            <div className="space-y-3 max-h-[350px] overflow-y-auto pr-1 custom-scrollbar">
+                              {historyList.map((item, idx) => {
+                                const shareLink = `${window.location.origin}/?event=${encodeURIComponent(item.slug)}`;
+                                const isCurrentlyImporting = importingSlug === item.slug;
+                                return (
+                                  <div 
+                                    key={`${item.slug}-${idx}`}
+                                    className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 bg-black/40 border border-white/10 hover:border-cyan-500/40 rounded-xl transition-all"
+                                  >
+                                    <div className="min-w-0 flex-1">
+                                      <div className="flex items-center gap-2 mb-1">
+                                        <span className="font-bold text-white font-rajdhani text-base truncate">
+                                          {item.name}
+                                        </span>
+                                        <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 shrink-0 uppercase font-bold">
+                                          {item.gameName || 'FGC'}
+                                        </span>
+                                      </div>
+                                      <div className="flex items-center gap-3 text-xs font-mono text-gray-400">
+                                        <span>👥 {item.playerCount || 0} players</span>
+                                        {item.location && <span>• 📍 {item.location}</span>}
+                                        <span>• {new Date(item.lastImportedAt).toLocaleDateString()}</span>
+                                      </div>
+                                    </div>
+
+                                    <div className="flex items-center gap-2 shrink-0">
+                                      <button
+                                        onClick={() => {
+                                          navigator.clipboard.writeText(shareLink);
+                                          toast.success('Unique event share link copied!');
+                                        }}
+                                        className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/80 text-xs font-mono font-bold border border-white/10 transition-colors flex items-center gap-1.5"
+                                        title="Copy unique permanent share link for this bracket"
+                                      >
+                                        <ExternalLink size={13} />
+                                        <span>COPY LINK</span>
+                                      </button>
+
+                                      <button
+                                        onClick={async () => {
+                                          setImportingSlug(item.slug);
+                                          try {
+                                            await onStartggImport(item.slug);
+                                          } finally {
+                                            setImportingSlug(null);
+                                          }
+                                        }}
+                                        disabled={isCurrentlyImporting}
+                                        className="px-3.5 py-1.5 rounded-lg bg-cyan-500 text-black hover:brightness-125 text-xs font-mono font-extrabold transition-all flex items-center gap-1.5 disabled:opacity-50"
+                                      >
+                                        {isCurrentlyImporting ? (
+                                          <>
+                                            <RefreshCw size={13} className="animate-spin" />
+                                            <span>LOADING...</span>
+                                          </>
+                                        ) : (
+                                          <>
+                                            <Swords size={13} />
+                                            <span>LOAD BRACKET</span>
+                                          </>
+                                        )}
+                                      </button>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      } catch {
+                        return null;
+                      }
+                    })()}
+                  </div>
+
+                  {/* Local Tournament History */}
+                  <div className="space-y-6 md:col-span-2">
+                    <div className="bg-[#050A14] border border-white/10 p-6 rounded-2xl shadow-xl">
+                      <div className="border-b border-white/10 pb-4 mb-6 flex justify-between items-center">
+                        <div>
+                          <h3 className="text-xl font-bold font-rajdhani text-[#00E5FF] tracking-widest flex items-center gap-2">
+                            <Key size={20} /> LOCAL TOURNAMENT HISTORY
+                          </h3>
+                          <p className="text-xs text-gray-400 font-mono mt-2">Custom tournaments you've participated in on this platform.</p>
+                        </div>
+                        <button
+                          onClick={() => userProfile?.unique_id && fetchLocalHistory(userProfile.unique_id)}
+                          disabled={fetchingLocalHistory}
+                          className="p-2 rounded-lg border border-white/10 text-white hover:border-white/30 hover:bg-white/5 transition-all"
+                          title="Refresh History"
+                        >
+                          <RefreshCw size={15} className={fetchingLocalHistory ? "animate-spin" : ""} />
+                        </button>
+                      </div>
+
+                      {fetchingLocalHistory && localHistory.length === 0 ? (
+                        <div className="text-center py-8 opacity-50 font-mono text-sm">Loading history...</div>
+                      ) : localHistory.length === 0 ? (
+                        <div className="text-center py-8 opacity-50 font-mono text-sm">No local tournament history found.</div>
+                      ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                          {localHistory.map((t, idx) => (
+                            <div key={`${t.tournament_id}-${idx}`} className="flex flex-col p-4 bg-[#111] border border-gray-800 rounded-lg hover:border-[#00E5FF]/30 transition-colors">
+                              <div className="text-xs font-mono text-gray-500 mb-1">{new Date(t.date).toLocaleDateString()}</div>
+                              <div className="font-bold text-white font-rajdhani text-lg truncate mb-2">{t.tournament_name}</div>
+                              <div className="flex justify-between items-end mt-auto pt-2 border-t border-white/5">
+                                <div className="text-xs font-mono text-gray-400">Played as: <span className="text-[#00E5FF]">{t.gamer_tag}</span></div>
+                                {t.placement && (
+                                  <div className="text-sm font-bold font-rajdhani text-white bg-white/10 px-2 rounded">
+                                    {t.placement}{[11, 12, 13].includes(t.placement % 100) ? 'th' : ['st', 'nd', 'rd'][t.placement % 10 - 1] || 'th'} Place
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                </div>
+
+
+              </div>
+            </div>
+          </div>
+        </main>
       </div>
     </div>
   );

@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sign In - FightBracket Pro</title>
+<style>
+  body {
+    background-color: #050A14;
+    color: #FFFFFF;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrapper {
+    width: 100%;
+    background-color: #050A14;
+    padding: 40px 0;
+  }
+  .container {
+    max-width: 600px;
+    margin: 0 auto;
+    background-color: #0A1122;
+    border: 1px solid rgba(0, 255, 136, 0.3);
+    border-radius: 12px;
+    padding: 40px;
+    box-shadow: 0 0 20px rgba(0, 255, 136, 0.1);
+  }
+  .header {
+    text-align: center;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding-bottom: 24px;
+    margin-bottom: 32px;
+  }
+  .header h1 {
+    color: #00FF88;
+    margin: 0;
+    font-size: 28px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    font-family: 'Courier New', Courier, monospace;
+    font-weight: 800;
+  }
+  .content {
+    line-height: 1.7;
+    font-size: 16px;
+    color: #E2E8F0;
+  }
+  .highlight {
+    color: #00E5FF;
+    font-weight: 700;
+  }
+  .button-container {
+    text-align: center;
+    margin: 40px 0;
+  }
+  .button {
+    background-color: rgba(255, 0, 110, 0.1);
+    border: 2px solid #FF006E;
+    color: #FF006E !important;
+    padding: 14px 36px;
+    text-decoration: none;
+    font-size: 16px;
+    font-weight: bold;
+    letter-spacing: 2px;
+    border-radius: 8px;
+    display: inline-block;
+    text-transform: uppercase;
+    font-family: 'Courier New', Courier, monospace;
+  }
+  .footer {
+    text-align: center;
+    font-size: 13px;
+    color: #64748B;
+    margin-top: 40px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    padding-top: 24px;
+  }
+  @media only screen and (max-width: 620px) {
+    .container {
+      padding: 20px;
+      margin: 0 10px;
+      width: auto !important;
+    }
+  }
+</style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="container">
+      <div class="header">
+        <h1>FIGHTBRACKET PRO</h1>
+      </div>
+      <div class="content">
+        <p style="font-family: 'Courier New', Courier, monospace; color: #94a3b8; font-size: 14px;">> ACCESS KEY GENERATED...</p>
+        <p>You requested a magic link to securely sign in to <span class="highlight">FightBracket Pro</span>.</p>
+        <p>No password is required. Just click the button below to instantly authenticate and enter the arena.</p>
+        
+        <div class="button-container">
+          <a href="{{ .ConfirmationURL }}" class="button">SIGN IN NOW</a>
+        </div>
+        
+        <p>If you did not request this magic link, please ignore this email. The link will expire shortly.</p>
+        <p style="margin-top: 30px;">
+          Get ready for the next battle,<br>
+          <strong style="color: #00FF88;">The FightBracket Pro Team</strong>
+        </p>
+      </div>
+      <div class="footer">
+        &copy; 2026 FightBracket Pro. All rights reserved.<br>
+        <span style="font-family: 'Courier New', Courier, monospace; font-size: 11px; margin-top: 10px; display: block; color: rgba(255,255,255,0.2);">SECURE. CONNECTION. ESTABLISHED.</span>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

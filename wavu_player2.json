@@ -1,0 +1,989 @@
+<!DOCTYPE html>
+<html lang="en">
+   <head>
+      <title>dyingrest • Wavu Wank</title>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width">
+      <link rel="stylesheet" href="/assets/wank-v10.css">
+
+      <script src="https://unpkg.com/htmx.org@1.9.11"
+         integrity="sha384-0gxUXCCR8yv9FM2b+U3FDbsKthCI66oH5IA9fHppQq9DDMHuMauqq1ZHBpJxQ0J0" crossorigin="anonymous"></script>
+      <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0"
+         integrity="sha384-CjloA8y00+1SDAUkjs099PVfnY2KmDC2BZnws9kh8D/lX1s46w6EPhpXdqMfjK6i" crossorigin="anonymous"></script>
+      <script src="https://cdn.jsdelivr.net/npm/@observablehq/plot@0.6.16"
+         integrity="sha384-XzQ+KW4LBWHv6FLjiPA1vjDz//oGlY8We4XROgpir5jHgg2+Qvo/6fT5TjbnqyYi" crossorigin="anonymous"></script>
+      <script>
+         function parseHTML(html) {
+             var t = document.createElement('template');
+             t.innerHTML = html;
+             return t.content;
+         }
+
+         function debounce(f, t) {
+            let tid;
+            return function() {
+               clearTimeout(tid);
+               tid = setTimeout(f, t);
+            }
+         }
+
+         function printDate(t) {
+            document.currentScript.insertAdjacentHTML('beforebegin', (new Date(t*1000)).toLocaleString(undefined, {
+               day: "numeric",
+               month: "short",
+               year: "2-digit",
+            }));
+         }
+
+         function printDateTime(t) {
+            document.currentScript.insertAdjacentHTML('beforebegin', (new Date(t*1000)).toLocaleString(undefined, {
+               day: "numeric",
+               month: "short",
+               year: "2-digit",
+               hour: "2-digit",
+               minute: "2-digit",
+               hourCycle: "h23",
+            }));
+         }
+      </script>
+   </head>
+   <body>
+
+      <header>
+         <div class="header-container">
+            <nav class="site-links">
+               <ul>
+                  <li><a href="/about">About</a></li>
+                  <li><a href="/api">API</a></li>
+                  <li><a href="/updates">Updates</a></li>
+               </ul>
+            </nav>
+            <h1 class="site-index"><a href="/">Wavu Wank</a></h1>
+            <div class="site-tagline">TEKKEN® 8 glicko2 Ratings &amp;<br> Online Ranked Statistics</div>
+         </div>
+      </header>
+
+      <main class="canvas">
+<div class="sheet">
+   <section class="player-header">
+      <div class="player-meta">
+         <div class="name">
+            dyingrest
+         </div>
+         <div class="other">
+            <span class="pola">
+               <a href="/player/5b6yhDee7fTd">
+                  5b6y-hDee-7fTd
+               </a>
+            </span>
+            <span class="platform">
+               <svg class="platform-icon" fill="currentColor" viewBox="0 0 32 32" height="32" width="32" version="1.1" xmlns="http://www.w3.org/2000/svg">
+   <title>steam</title>
+   <path d="M18.102 12.129c0-0 0-0 0-0.001 0-1.564 1.268-2.831 2.831-2.831s2.831 1.268 2.831 2.831c0 1.564-1.267 2.831-2.831 2.831-0 0-0 0-0.001 0h0c-0 0-0 0-0.001 0-1.563 0-2.83-1.267-2.83-2.83 0-0 0-0 0-0.001v0zM24.691 12.135c0-2.081-1.687-3.768-3.768-3.768s-3.768 1.687-3.768 3.768c0 2.081 1.687 3.768 3.768 3.768v0c2.080-0.003 3.765-1.688 3.768-3.767v-0zM10.427 23.76l-1.841-0.762c0.524 1.078 1.611 1.808 2.868 1.808 1.317 0 2.448-0.801 2.93-1.943l0.008-0.021c0.155-0.362 0.246-0.784 0.246-1.226 0-1.757-1.424-3.181-3.181-3.181-0.405 0-0.792 0.076-1.148 0.213l0.022-0.007 1.903 0.787c0.852 0.364 1.439 1.196 1.439 2.164 0 1.296-1.051 2.347-2.347 2.347-0.324 0-0.632-0.066-0.913-0.184l0.015 0.006zM15.974 1.004c-7.857 0.001-14.301 6.046-14.938 13.738l-0.004 0.054 8.038 3.322c0.668-0.462 1.495-0.737 2.387-0.737 0.001 0 0.002 0 0.002 0h-0c0.079 0 0.156 0.005 0.235 0.008l3.575-5.176v-0.074c0.003-3.12 2.533-5.648 5.653-5.648 3.122 0 5.653 2.531 5.653 5.653s-2.531 5.653-5.653 5.653h-0.131l-5.094 3.638c0 0.065 0.005 0.131 0.005 0.199 0 0.001 0 0.002 0 0.003 0 2.342-1.899 4.241-4.241 4.241-2.047 0-3.756-1.451-4.153-3.38l-0.005-0.027-5.755-2.383c1.841 6.345 7.601 10.905 14.425 10.905 8.281 0 14.994-6.713 14.994-14.994s-6.713-14.994-14.994-14.994c-0 0-0.001 0-0.001 0h0z"></path>
+</svg>
+
+                  <a href="https://steamcommunity.com/profiles/76561198041202789">76561198041202789</a>
+
+            </span>
+            <span class="region">
+               <a href="/leaderboard/am">
+                  America
+               </a>
+            </span>
+         </div>
+      </div>
+
+      <div class="player-ratings">
+         <div class="card card-green">
+            <section class="card-surface" style="background-color: var(--bg);">
+               <h2>Ratings</h2>
+               <div class="carousel">
+               
+                  <div class="rating-group">
+                     <div class="label">Provisional (σ² ≥ 110)</div>
+                     <div class="ratings">
+                        <div class="rating">
+                           <div class="char">Nina</div>
+                           <div class="mu">μ 1147</div>
+                           <div class="sigma"><sup>σ² 167</sup></div>
+                           <div class="games">12 games</div>
+                           <div class="last-seen"><sup><time><noscript>31 Jul 26</noscript><script>printDate(1785471738)</script></time></sup></div>
+                        </div>
+                     </div>
+                  </div>
+               </div>
+            </section>
+         </div>
+      </div>
+
+
+      <div class="player-tabs">
+         <a href="/player/5b6yhDee7fTd" class="current">Games</a>
+         <a href="/player/5b6yhDee7fTd/opps" class="">Opps</a>
+         <a href="/player/5b6yhDee7fTd/matchups" class="">Matchups</a>
+      </div>
+   </section>
+</div>
+
+<script class="hidden">
+(function () {
+   var nameHistory = document.querySelector('.name-history');
+   var playerHeader = document.querySelector('.player-header');
+   var playerRatings = document.querySelector('.player-ratings');
+   var carousel = document.querySelector('.player-ratings .carousel');
+   var button = document.querySelector('.name-history button');
+   var showMore = false;
+   var collapsible = {};
+
+   if (button) {
+      button.addEventListener('click', function () {
+         showMore = !showMore;
+         nameHistory.classList[showMore ? 'remove' : 'add']('collapsed');
+      });
+   }
+
+   var prevWidth = 0;
+   var sizeCheck = function () {
+      // CSS isn't loaded yet, so following checks are invalid
+      if (window.getComputedStyle(playerRatings).getPropertyValue("grid-area") === "") return;
+
+      if (window.innerWidth === prevWidth) return;
+      prevWidth = window.innerWidth;
+
+      // If ratings are short enough, no need for scrolling
+      playerRatings.classList.remove('short');
+      if (carousel.scrollWidth == carousel.clientWidth) {
+         playerRatings.classList.add('short');
+      }
+
+      // If name history is small enough, no need for collapsible behaviour
+      if (!nameHistory) return;
+
+      // Only need to test once for each breakpoint
+      var bp = window.getComputedStyle(nameHistory).getPropertyValue('min-height') == "100%" ? "big" : "small";
+      if (collapsible[bp] === undefined) {
+         nameHistory.classList.add('collapsed');
+         button.classList.remove('hidden');
+         var containerHeight = nameHistory.querySelector('.table').getBoundingClientRect().height;
+         var tableHeight = nameHistory.querySelector('.table table').getBoundingClientRect().height;
+         var buttonHeight = button.getBoundingClientRect().height;
+         collapsible[bp] = tableHeight >= containerHeight + buttonHeight;
+      }
+
+      if (collapsible[bp]) {
+         nameHistory.classList[ showMore ? 'remove' : 'add' ]('collapsed');
+         button.classList.remove('hidden');
+      } else {
+         nameHistory.classList.remove('collapsed');
+         button.classList.add('hidden');
+      }
+   };
+
+   sizeCheck();
+   document.addEventListener('DOMContentLoaded', sizeCheck);
+   window.addEventListener('resize', sizeCheck);
+})()
+</script>
+
+
+<div class="sheet papyrus">
+   <section style="--main-max-width: var(--games-list-max-width)">
+      <form class="flex-row-wrap col-gap-2"
+   hx-get="/player/5b6yhDee7fTd"
+   hx-trigger="change"
+   hx-select=".profile-filters-target"
+   hx-target=".profile-filters-target"
+   hx-swap="outerHTML"
+   hx-replace-url="true"
+   hx-indicator=".htmx-progress">
+
+   <label>
+      dyingrest
+      <select name="char">
+         <option value="">All characters</option>
+         <option value="nina" >
+            Nina
+            (1147??)
+         </option>
+      </select>
+   </label>
+
+   <label>
+      Opponent
+      <select name="opp_char">
+         <option value="">All characters</option>
+         <option value="alisa" >
+            Alisa
+         </option>
+         <option value="anna" >
+            Anna
+         </option>
+         <option value="ak" >
+            Armor King
+         </option>
+         <option value="asuka" >
+            Asuka
+         </option>
+         <option value="azu" >
+            Azucena
+         </option>
+         <option value="bryan" >
+            Bryan
+         </option>
+         <option value="claudio" >
+            Claudio
+         </option>
+         <option value="clive" >
+            Clive
+         </option>
+         <option value="dj" >
+            Devil Jin
+         </option>
+         <option value="drag" >
+            Dragunov
+         </option>
+         <option value="eddy" >
+            Eddy
+         </option>
+         <option value="fahk" >
+            Fahkumram
+         </option>
+         <option value="feng" >
+            Feng
+         </option>
+         <option value="heihachi" >
+            Heihachi
+         </option>
+         <option value="hwo" >
+            Hwoarang
+         </option>
+         <option value="jack" >
+            Jack-8
+         </option>
+         <option value="jin" >
+            Jin
+         </option>
+         <option value="jun" >
+            Jun
+         </option>
+         <option value="kazuya" >
+            Kazuya
+         </option>
+         <option value="king" >
+            King
+         </option>
+         <option value="kuma" >
+            Kuma
+         </option>
+         <option value="kuni" >
+            Kunimitsu
+         </option>
+         <option value="lars" >
+            Lars
+         </option>
+         <option value="law" >
+            Law
+         </option>
+         <option value="lee" >
+            Lee
+         </option>
+         <option value="leo" >
+            Leo
+         </option>
+         <option value="leroy" >
+            Leroy
+         </option>
+         <option value="lidia" >
+            Lidia
+         </option>
+         <option value="lili" >
+            Lili
+         </option>
+         <option value="miary" >
+            Miary Zo
+         </option>
+         <option value="nina" >
+            Nina
+         </option>
+         <option value="panda" >
+            Panda
+         </option>
+         <option value="paul" >
+            Paul
+         </option>
+         <option value="raven" >
+            Raven
+         </option>
+         <option value="reina" >
+            Reina
+         </option>
+         <option value="shaheen" >
+            Shaheen
+         </option>
+         <option value="steve" >
+            Steve
+         </option>
+         <option value="victor" >
+            Victor
+         </option>
+         <option value="xiaoyu" >
+            Xiaoyu
+         </option>
+         <option value="yoshi" >
+            Yoshimitsu
+         </option>
+         <option value="zafina" >
+            Zafina
+         </option>
+      </select>
+   </label>
+
+   <label>
+      Graph
+      <select name="graph">
+         <option value="">Opponents</option>
+         <option value="sess3" >Sessions (Last 3)</option>
+         <option value="sess5" >Sessions (Last 5)</option>
+         <option value="sess" >Sessions (Last 10)</option>
+      </select>
+   </label>
+
+</form>
+<div class="htmx-progress"></div>
+
+
+      
+
+      <div class="replays profile-filters-target">
+         <div id="session-plot"></div>
+
+         <script type="module">
+            (function () {
+
+               const data = [{"battle_at":1785471738,"n":1,"opp_name":"Dlew","rating_after":1146,"rating_before":1056,"sess_start":1785471232},{"battle_at":1785471232,"n":2,"opp_name":"BOJACK","rating_after":1055,"rating_before":1074,"sess_start":1785471232},{"battle_at":1765346602,"n":3,"opp_name":"Daffy.66","rating_after":1074,"rating_before":1085,"sess_start":1765346284},{"battle_at":1765346455,"n":4,"opp_name":"Daffy.66","rating_after":1085,"rating_before":1099,"sess_start":1765346284},{"battle_at":1765346284,"n":5,"opp_name":"Daffy.66","rating_after":1099,"rating_before":1119,"sess_start":1765346284},{"battle_at":1765013858,"n":6,"opp_name":"LIMN","rating_after":1119,"rating_before":1136,"sess_start":1765010246},{"battle_at":1765013726,"n":7,"opp_name":"LIMN","rating_after":1135,"rating_before":1161,"sess_start":1765010246},{"battle_at":1765010515,"n":8,"opp_name":"Felix","rating_after":1160,"rating_before":1212,"sess_start":1765010246},{"battle_at":1765010246,"n":9,"opp_name":"Felix","rating_after":1212,"rating_before":1312,"sess_start":1765010246},{"battle_at":1764043837,"n":10,"opp_name":"Riku","rating_after":1311,"rating_before":1346,"sess_start":1764043302},{"battle_at":1764043623,"n":11,"opp_name":"Riku","rating_after":1346,"rating_before":1407,"sess_start":1764043302},{"battle_at":1764043302,"n":12,"opp_name":"JusticeBrigade","rating_after":1407,"rating_before":1500,"sess_start":1764043302}];
+               if (!data.length) return;
+
+               let [min, max] = [Number.MAX_VALUE, 0];
+               data.forEach(e => {
+                  if (e.rating_after < min) min = e.rating_after;
+                  if (e.rating_before < min) min = e.rating_before;
+                  if (e.rating_after > max) max = e.rating_after;
+                  if (e.rating_before > max) max = e.rating_before;
+               });
+
+               const height = 300;
+               const yAxisWidth = 55;
+               const margin = { top: 30, bottom: 15, left: yAxisWidth - 5, right: 10 };
+               const target = document.querySelector("#session-plot");
+               const minDomain = 200;
+               const gutter = (max - min < minDomain) ? (minDomain - max + min) / 2 : 0;
+
+               let draw = function () {
+                  const containerWidth = target.getBoundingClientRect().width;
+
+                  const yScale = Plot.scale({ y: { domain: [ min - gutter, max + gutter ], nice: true } });
+
+                  const yAxis = Plot.plot({
+                     width: yAxisWidth,
+                     height: height,
+                     marginTop: margin.top,
+                     marginBottom: margin.bottom,
+                     marginLeft: margin.left,
+                     y: yScale,
+                     style: { fontSize: "14px", maxWidth: "initial", flexShrink: 0, alignSelf: "start" },
+                     marks: [
+                        Plot.axisY({ label: "Rating", tickFormat: (d) => d.toLocaleString(undefined, { useGrouping: "min2" }) }),
+                     ],
+                  });
+
+                  const chart = Plot.plot({
+                     height: height,
+                     width: Math.max(50 + data.length * 13, Math.min(containerWidth - yAxisWidth, 50 + data.length * 35)),
+                     marginTop: margin.top,
+                     marginRight: margin.right,
+                     marginBottom: margin.bottom,
+                     marginLeft: 0,
+                     x: { axis: null, reverse: true },
+                     y: yScale,
+                     color: {
+                        scheme: "observable10",
+                        type: "categorical",
+                     },
+                     style: { maxWidth: "initial" },
+                     marks: [
+                        Plot.gridY({ stroke: "lch( from var(--bg) calc(l * 0.4 + 20) c h)", strokeOpacity: 1 }),
+                        Plot.link(data, {
+                           x1: "n",
+                           x2: (d) => d.n - 1,
+                           y1: "rating_before",
+                           y2: "rating_after",
+                              stroke: "opp_name",
+                           strokeWidth: 3,
+                           markerEnd: "circle-stroke",
+                        }),
+                        Plot.axisY({ ticks: [] }),
+                     ]
+                  });
+
+                  let legend = chart.legend('color');
+                  legend.style.fontSize = "0.8em";
+
+                  let flex = document.createElement('div');
+                  flex.style.display = "flex";
+
+                  let wrapper =  document.createElement('div');
+                  wrapper.style.overflowX = "auto";
+
+                  wrapper.append(chart);
+                  flex.append(yAxis);
+                  flex.append(wrapper);
+
+                  target.replaceChildren(legend);
+                  target.append(flex);
+               };
+
+               draw();
+               window.addEventListener('resize', debounce(draw, 100));
+            })();
+         </script>
+
+         
+
+
+<div class="game-list">
+   <table>
+         <tr>
+            <td class="battle-at"><time><noscript>31 Jul 26  4:22</noscript><script>printDateTime(1785471738)</script></time></td>
+            <td class="left">
+               <span class="player">
+                  <a href="/player/5b6yhDee7fTd">dyingrest</a>
+               </span>
+               <span class="char">Nina</span>
+               <span class="rating">
+                  1056
+                  <span class="win">
+   +90
+</span>
+
+               </span>
+            </td>
+            <td class="result">
+               3-1
+            </td>
+            <td class="right">
+               <span class="rating">
+                  1500
+                  <span class="lose">
+   -441
+</span>
+
+               </span>
+               <span class="char">Reina</span>
+               <span class="player">
+                  <a href="/player/5iBBrTyAehGh">Dlew</a>
+               </span>
+            </td>
+            <td class="h2h">
+               <a href="/h2h/5b6yhDee7fTd/5iBBrTyAehGh">h2h</a>
+            </td>
+         </tr>
+         <tr>
+            <td class="battle-at"><time><noscript>31 Jul 26  4:13</noscript><script>printDateTime(1785471232)</script></time></td>
+            <td class="left">
+               <span class="player">
+                  <a href="/player/5b6yhDee7fTd">dyingrest</a>
+               </span>
+               <span class="char">Nina</span>
+               <span class="rating">
+                  1074
+                  <span class="lose">
+   -19
+</span>
+
+               </span>
+            </td>
+            <td class="result">
+               2-3
+            </td>
+            <td class="right">
+               <span class="rating">
+                  1500
+                  <span class="win">
+   +50
+</span>
+
+               </span>
+               <span class="char">Heihachi</span>
+               <span class="player">
+                  <a href="/player/5NjELAQi5LhB">BOJACK</a>
+               </span>
+            </td>
+            <td class="h2h">
+               <a href="/h2h/5b6yhDee7fTd/5NjELAQi5LhB">h2h</a>
+            </td>
+         </tr>
+         <tr>
+            <td class="battle-at"><time><noscript>10 Dec 25  6:03</noscript><script>printDateTime(1765346602)</script></time></td>
+            <td class="left">
+               <span class="player">
+                  <a href="/player/5b6yhDee7fTd">dyingrest</a>
+               </span>
+               <span class="char">Nina</span>
+               <span class="rating">
+                  1085
+                  <span class="lose">
+   -11
+</span>
+
+               </span>
+            </td>
+            <td class="result">
+               0-3
+            </td>
+            <td class="right">
+               <span class="rating">
+                  1592
+                  <span class="win">
+   +24
+</span>
+
+               </span>
+               <span class="char">King</span>
+               <span class="player">
+                  <a href="/player/5nJeme6a9tTd">Daffy.66</a>
+               </span>
+            </td>
+            <td class="h2h">
+               <a href="/h2h/5b6yhDee7fTd/5nJeme6a9tTd">h2h</a>
+            </td>
+         </tr>
+         <tr>
+            <td class="battle-at"><time><noscript>10 Dec 25  6:00</noscript><script>printDateTime(1765346455)</script></time></td>
+            <td class="left">
+               <span class="player">
+                  <a href="/player/5b6yhDee7fTd">dyingrest</a>
+               </span>
+               <span class="char">Nina</span>
+               <span class="rating">
+                  1099
+                  <span class="lose">
+   -14
+</span>
+
+               </span>
+            </td>
+            <td class="result">
+               0-3
+            </td>
+            <td class="right">
+               <span class="rating">
+                  1558
+                  <span class="win">
+   +34
+</span>
+
+               </span>
+               <span class="char">King</span>
+               <span class="player">
+                  <a href="/player/5nJeme6a9tTd">Daffy.66</a>
+               </span>
+            </td>
+            <td class="h2h">
+               <a href="/h2h/5b6yhDee7fTd/5nJeme6a9tTd">h2h</a>
+            </td>
+         </tr>
+         <tr>
+            <td class="battle-at"><time><noscript>10 Dec 25  5:58</noscript><script>printDateTime(1765346284)</script></time></td>
+            <td class="left">
+               <span class="player">
+                  <a href="/player/5b6yhDee7fTd">dyingrest</a>
+               </span>
+               <span class="char">Nina</span>
+               <span class="rating">
+                  1119
+                  <span class="lose">
+   -20
+</span>
+
+               </span>
+            </td>
+            <td class="result">
+               0-3
+            </td>
+            <td class="right">
+               <span class="rating">
+                  1500
+                  <span class="win">
+   +58
+</span>
+
+               </span>
+               <span class="char">King</span>
+               <span class="player">
+                  <a href="/player/5nJeme6a9tTd">Daffy.66</a>
+               </span>
+            </td>
+            <td class="h2h">
+               <a href="/h2h/5b6yhDee7fTd/5nJeme6a9tTd">h2h</a>
+            </td>
+         </tr>
+         <tr>
+            <td class="battle-at"><time><noscript> 6 Dec 25  9:37</noscript><script>printDateTime(1765013858)</script></time></td>
+            <td class="left">
+               <span class="player">
+                  <a href="/player/5b6yhDee7fTd">dyingrest</a>
+               </span>
+               <span class="char">Nina</span>
+               <span class="rating">
+                  1136
+                  <span class="lose">
+   -17
+</span>
+
+               </span>
+            </td>
+            <td class="result">
+               0-3
+            </td>
+            <td class="right">
+               <span class="rating">
+                  1568
+                  <span class="win">
+   +37
+</span>
+
+               </span>
+               <span class="char">King</span>
+               <span class="player">
+                  <a href="/player/3hnDA8brJ2qT">LIMN</a>
+               </span>
+            </td>
+            <td class="h2h">
+               <a href="/h2h/5b6yhDee7fTd/3hnDA8brJ2qT">h2h</a>
+            </td>
+         </tr>
+         <tr>
+            <td class="battle-at"><time><noscript> 6 Dec 25  9:35</noscript><script>printDateTime(1765013726)</script></time></td>
+            <td class="left">
+               <span class="player">
+                  <a href="/player/5b6yhDee7fTd">dyingrest</a>
+               </span>
+               <span class="char">Nina</span>
+               <span class="rating">
+                  1161
+                  <span class="lose">
+   -26
+</span>
+
+               </span>
+            </td>
+            <td class="result">
+               0-3
+            </td>
+            <td class="right">
+               <span class="rating">
+                  1500
+                  <span class="win">
+   +68
+</span>
+
+               </span>
+               <span class="char">King</span>
+               <span class="player">
+                  <a href="/player/3hnDA8brJ2qT">LIMN</a>
+               </span>
+            </td>
+            <td class="h2h">
+               <a href="/h2h/5b6yhDee7fTd/3hnDA8brJ2qT">h2h</a>
+            </td>
+         </tr>
+         <tr>
+            <td class="battle-at"><time><noscript> 6 Dec 25  8:41</noscript><script>printDateTime(1765010515)</script></time></td>
+            <td class="left">
+               <span class="player">
+                  <a href="/player/5b6yhDee7fTd">dyingrest</a>
+               </span>
+               <span class="char">Nina</span>
+               <span class="rating">
+                  1212
+                  <span class="lose">
+   -52
+</span>
+
+               </span>
+            </td>
+            <td class="result">
+               2-3
+            </td>
+            <td class="right">
+               <span class="rating">
+                  1378
+                  <span class="win">
+   +24
+</span>
+
+               </span>
+               <span class="char">Alisa</span>
+               <span class="player">
+                  <a href="/player/55ddNjEe49hG">Felix</a>
+               </span>
+            </td>
+            <td class="h2h">
+               <a href="/h2h/5b6yhDee7fTd/55ddNjEe49hG">h2h</a>
+            </td>
+         </tr>
+         <tr>
+            <td class="battle-at"><time><noscript> 6 Dec 25  8:37</noscript><script>printDateTime(1765010246)</script></time></td>
+            <td class="left">
+               <span class="player">
+                  <a href="/player/5b6yhDee7fTd">dyingrest</a>
+               </span>
+               <span class="char">Nina</span>
+               <span class="rating">
+                  1312
+                  <span class="lose">
+   -100
+</span>
+
+               </span>
+            </td>
+            <td class="result">
+               0-3
+            </td>
+            <td class="right">
+               <span class="rating">
+                  1340
+                  <span class="win">
+   +37
+</span>
+
+               </span>
+               <span class="char">Alisa</span>
+               <span class="player">
+                  <a href="/player/55ddNjEe49hG">Felix</a>
+               </span>
+            </td>
+            <td class="h2h">
+               <a href="/h2h/5b6yhDee7fTd/55ddNjEe49hG">h2h</a>
+            </td>
+         </tr>
+         <tr>
+            <td class="battle-at"><time><noscript>25 Nov 25  4:10</noscript><script>printDateTime(1764043837)</script></time></td>
+            <td class="left">
+               <span class="player">
+                  <a href="/player/5b6yhDee7fTd">dyingrest</a>
+               </span>
+               <span class="char">Nina</span>
+               <span class="rating">
+                  1346
+                  <span class="lose">
+   -35
+</span>
+
+               </span>
+            </td>
+            <td class="result">
+               0-3
+            </td>
+            <td class="right">
+               <span class="rating">
+                  1750
+                  <span class="win">
+   +26
+</span>
+
+               </span>
+               <span class="char">Steve</span>
+               <span class="player">
+                  <a href="/player/3mtg6AGfQh62">Riku</a>
+               </span>
+            </td>
+            <td class="h2h">
+               <a href="/h2h/5b6yhDee7fTd/3mtg6AGfQh62">h2h</a>
+            </td>
+         </tr>
+         <tr>
+            <td class="battle-at"><time><noscript>25 Nov 25  4:07</noscript><script>printDateTime(1764043623)</script></time></td>
+            <td class="left">
+               <span class="player">
+                  <a href="/player/5b6yhDee7fTd">dyingrest</a>
+               </span>
+               <span class="char">Nina</span>
+               <span class="rating">
+                  1407
+                  <span class="lose">
+   -61
+</span>
+
+               </span>
+            </td>
+            <td class="result">
+               1-3
+            </td>
+            <td class="right">
+               <span class="rating">
+                  1708
+                  <span class="win">
+   +42
+</span>
+
+               </span>
+               <span class="char">Steve</span>
+               <span class="player">
+                  <a href="/player/3mtg6AGfQh62">Riku</a>
+               </span>
+            </td>
+            <td class="h2h">
+               <a href="/h2h/5b6yhDee7fTd/3mtg6AGfQh62">h2h</a>
+            </td>
+         </tr>
+         <tr>
+            <td class="battle-at"><time><noscript>25 Nov 25  4:01</noscript><script>printDateTime(1764043302)</script></time></td>
+            <td class="left">
+               <span class="player">
+                  <a href="/player/5b6yhDee7fTd">dyingrest</a>
+               </span>
+               <span class="char">Nina</span>
+               <span class="rating">
+                  1500
+                  <span class="lose">
+   -93
+</span>
+
+               </span>
+            </td>
+            <td class="result">
+               1-3
+            </td>
+            <td class="right">
+               <span class="rating">
+                  1753
+                  <span class="win">
+   +61
+</span>
+
+               </span>
+               <span class="char">King</span>
+               <span class="player">
+                  <a href="/player/5m8MbhbTtaG8">JusticeBrigade</a>
+               </span>
+            </td>
+            <td class="h2h">
+               <a href="/h2h/5b6yhDee7fTd/5m8MbhbTtaG8">h2h</a>
+            </td>
+         </tr>
+   </table>
+</div>
+
+<p>
+   Found 12 games.
+<p>
+
+
+
+
+
+      </div>
+   </section>
+</div>
+</main>
+
+      <footer>
+         <div class="footer-stats">
+            <div class="summary-stats">
+               <div>
+                  <span>Database size:</span>
+                  <span>141G (606,300,369 games)</span>
+               </div>
+
+               <div>
+                  <span>First game:</span>
+                  <span>
+                     27 Mar 2024
+                  </span>
+               </div>
+
+               <div>
+                  <span><a href="/latest">Latest game</a>:</span>
+                  <span>
+                     33 seconds ago
+                  </span>
+               </div>
+
+               <div>
+                  <span>Unrated games:</span>
+                  <span>757</span>
+               </div>
+
+               <div>
+                  <span>Stats generated:</span>
+                  <span>8 seconds ago</span>
+               </div>
+            </div>
+
+            <div class="footer-divider"></div>
+
+            <div class="hourly-games">
+               <div>Games per hour over last 3 days</div>
+               <div id="hourly-plot"></div>
+            </div>
+         </div>
+
+         <div class="footer-sosumi">
+            This site is not affiliated with or endorsed by Bandai Namco Holdings Inc. or any of its subsidiaries.<br>
+            Any use of TEKKEN® copyrighted materials is believed to be fair use.
+         </div>
+      </footer>
+
+      <script type="module">
+         // Filter out blank parameters so they don't pollute URLs with noise
+         document.body.addEventListener('htmx:configRequest', function(evt) {
+            for (const [k, v] of Object.entries(evt.detail.parameters)) {
+               if (typeof v === "string" && v === "") {
+                  delete evt.detail.parameters[k];
+               }
+            }
+         });
+      </script>
+      <script type="module">
+         (function () {
+            const data = [{"games":26821,"time_end":1785879900},{"games":27342,"time_end":1785879000},{"games":27685,"time_end":1785878100},{"games":27855,"time_end":1785877200},{"games":27983,"time_end":1785876300},{"games":28115,"time_end":1785875400},{"games":28428,"time_end":1785874500},{"games":28702,"time_end":1785873600},{"games":28675,"time_end":1785872700},{"games":28555,"time_end":1785871800},{"games":28414,"time_end":1785870900},{"games":28332,"time_end":1785870000},{"games":28462,"time_end":1785869100},{"games":28728,"time_end":1785868200},{"games":28876,"time_end":1785867300},{"games":29120,"time_end":1785866400},{"games":29439,"time_end":1785865500},{"games":29755,"time_end":1785864600},{"games":30142,"time_end":1785863700},{"games":30397,"time_end":1785862800},{"games":30537,"time_end":1785861900},{"games":30774,"time_end":1785861000},{"games":30963,"time_end":1785860100},{"games":31250,"time_end":1785859200},{"games":31733,"time_end":1785858300},{"games":31954,"time_end":1785857400},{"games":32082,"time_end":1785856500},{"games":32234,"time_end":1785855600},{"games":32135,"time_end":1785854700},{"games":31869,"time_end":1785853800},{"games":31399,"time_end":1785852900},{"games":30691,"time_end":1785852000},{"games":29925,"time_end":1785851100},{"games":29072,"time_end":1785850200},{"games":28239,"time_end":1785849300},{"games":27436,"time_end":1785848400},{"games":26721,"time_end":1785847500},{"games":26019,"time_end":1785846600},{"games":25437,"time_end":1785845700},{"games":24654,"time_end":1785844800},{"games":23678,"time_end":1785843900},{"games":22635,"time_end":1785843000},{"games":21574,"time_end":1785842100},{"games":20715,"time_end":1785841200},{"games":19949,"time_end":1785840300},{"games":19477,"time_end":1785839400},{"games":19162,"time_end":1785838500},{"games":18875,"time_end":1785837600},{"games":18765,"time_end":1785836700},{"games":18620,"time_end":1785835800},{"games":18335,"time_end":1785834900},{"games":18319,"time_end":1785834000},{"games":18103,"time_end":1785833100},{"games":18036,"time_end":1785832200},{"games":18121,"time_end":1785831300},{"games":18097,"time_end":1785830400},{"games":18186,"time_end":1785829500},{"games":18257,"time_end":1785828600},{"games":18241,"time_end":1785827700},{"games":18292,"time_end":1785826800},{"games":18362,"time_end":1785825900},{"games":18512,"time_end":1785825000},{"games":18925,"time_end":1785824100},{"games":19267,"time_end":1785823200},{"games":19775,"time_end":1785822300},{"games":20289,"time_end":1785821400},{"games":20750,"time_end":1785820500},{"games":21197,"time_end":1785819600},{"games":21643,"time_end":1785818700},{"games":22030,"time_end":1785817800},{"games":22228,"time_end":1785816900},{"games":22507,"time_end":1785816000},{"games":22678,"time_end":1785815100},{"games":22845,"time_end":1785814200},{"games":23159,"time_end":1785813300},{"games":23429,"time_end":1785812400},{"games":23802,"time_end":1785811500},{"games":24096,"time_end":1785810600},{"games":24089,"time_end":1785809700},{"games":23880,"time_end":1785808800},{"games":23511,"time_end":1785807900},{"games":23306,"time_end":1785807000},{"games":23345,"time_end":1785806100},{"games":23513,"time_end":1785805200},{"games":23874,"time_end":1785804300},{"games":24129,"time_end":1785803400},{"games":24439,"time_end":1785802500},{"games":24799,"time_end":1785801600},{"games":25059,"time_end":1785800700},{"games":25479,"time_end":1785799800},{"games":25649,"time_end":1785798900},{"games":25830,"time_end":1785798000},{"games":26046,"time_end":1785797100},{"games":26278,"time_end":1785796200},{"games":26813,"time_end":1785795300},{"games":27329,"time_end":1785794400},{"games":27905,"time_end":1785793500},{"games":28217,"time_end":1785792600},{"games":28427,"time_end":1785791700},{"games":28586,"time_end":1785790800},{"games":28656,"time_end":1785789900},{"games":28603,"time_end":1785789000},{"games":28349,"time_end":1785788100},{"games":28063,"time_end":1785787200},{"games":27854,"time_end":1785786300},{"games":27908,"time_end":1785785400},{"games":28258,"time_end":1785784500},{"games":28727,"time_end":1785783600},{"games":29049,"time_end":1785782700},{"games":29293,"time_end":1785781800},{"games":29365,"time_end":1785780900},{"games":29577,"time_end":1785780000},{"games":29853,"time_end":1785779100},{"games":30248,"time_end":1785778200},{"games":30617,"time_end":1785777300},{"games":30880,"time_end":1785776400},{"games":31156,"time_end":1785775500},{"games":31363,"time_end":1785774600},{"games":31518,"time_end":1785773700},{"games":31720,"time_end":1785772800},{"games":31905,"time_end":1785771900},{"games":32005,"time_end":1785771000},{"games":32229,"time_end":1785770100},{"games":32152,"time_end":1785769200},{"games":31808,"time_end":1785768300},{"games":31471,"time_end":1785767400},{"games":30841,"time_end":1785766500},{"games":30184,"time_end":1785765600},{"games":29613,"time_end":1785764700},{"games":28927,"time_end":1785763800},{"games":28121,"time_end":1785762900},{"games":27231,"time_end":1785762000},{"games":26342,"time_end":1785761100},{"games":25509,"time_end":1785760200},{"games":24868,"time_end":1785759300},{"games":24085,"time_end":1785758400},{"games":23303,"time_end":1785757500},{"games":22452,"time_end":1785756600},{"games":21572,"time_end":1785755700},{"games":20904,"time_end":1785754800},{"games":20361,"time_end":1785753900},{"games":19836,"time_end":1785753000},{"games":19381,"time_end":1785752100},{"games":19061,"time_end":1785751200},{"games":18755,"time_end":1785750300},{"games":18658,"time_end":1785749400},{"games":18686,"time_end":1785748500},{"games":18702,"time_end":1785747600},{"games":18754,"time_end":1785746700},{"games":18685,"time_end":1785745800},{"games":18490,"time_end":1785744900},{"games":18334,"time_end":1785744000},{"games":18079,"time_end":1785743100},{"games":17993,"time_end":1785742200},{"games":18200,"time_end":1785741300},{"games":18517,"time_end":1785740400},{"games":18860,"time_end":1785739500},{"games":19139,"time_end":1785738600},{"games":19117,"time_end":1785737700},{"games":19251,"time_end":1785736800},{"games":19533,"time_end":1785735900},{"games":19661,"time_end":1785735000},{"games":19918,"time_end":1785734100},{"games":20115,"time_end":1785733200},{"games":20203,"time_end":1785732300},{"games":20493,"time_end":1785731400},{"games":20844,"time_end":1785730500},{"games":21170,"time_end":1785729600},{"games":21529,"time_end":1785728700},{"games":21784,"time_end":1785727800},{"games":21762,"time_end":1785726900},{"games":21695,"time_end":1785726000},{"games":21638,"time_end":1785725100},{"games":21766,"time_end":1785724200},{"games":22120,"time_end":1785723300},{"games":22407,"time_end":1785722400},{"games":22726,"time_end":1785721500},{"games":22906,"time_end":1785720600},{"games":23185,"time_end":1785719700},{"games":23558,"time_end":1785718800},{"games":23816,"time_end":1785717900},{"games":24170,"time_end":1785717000},{"games":24523,"time_end":1785716100},{"games":24851,"time_end":1785715200},{"games":25459,"time_end":1785714300},{"games":26030,"time_end":1785713400},{"games":26526,"time_end":1785712500},{"games":27045,"time_end":1785711600},{"games":27392,"time_end":1785710700},{"games":27684,"time_end":1785709800},{"games":28054,"time_end":1785708900},{"games":28317,"time_end":1785708000},{"games":28533,"time_end":1785707100},{"games":28853,"time_end":1785706200},{"games":29186,"time_end":1785705300},{"games":29489,"time_end":1785704400},{"games":29773,"time_end":1785703500},{"games":30026,"time_end":1785702600},{"games":30311,"time_end":1785701700},{"games":30431,"time_end":1785700800},{"games":30714,"time_end":1785699900},{"games":30932,"time_end":1785699000},{"games":31094,"time_end":1785698100},{"games":31454,"time_end":1785697200},{"games":31704,"time_end":1785696300},{"games":31842,"time_end":1785695400},{"games":32008,"time_end":1785694500},{"games":32294,"time_end":1785693600},{"games":32737,"time_end":1785692700},{"games":33168,"time_end":1785691800},{"games":33412,"time_end":1785690900},{"games":33485,"time_end":1785690000},{"games":33309,"time_end":1785689100},{"games":33038,"time_end":1785688200},{"games":32886,"time_end":1785687300},{"games":32686,"time_end":1785686400},{"games":32511,"time_end":1785685500},{"games":32625,"time_end":1785684600},{"games":32775,"time_end":1785683700},{"games":32914,"time_end":1785682800},{"games":32979,"time_end":1785681900},{"games":32771,"time_end":1785681000},{"games":32325,"time_end":1785680100},{"games":31786,"time_end":1785679200},{"games":31258,"time_end":1785678300},{"games":30611,"time_end":1785677400},{"games":29988,"time_end":1785676500},{"games":29448,"time_end":1785675600},{"games":28894,"time_end":1785674700},{"games":28428,"time_end":1785673800},{"games":28074,"time_end":1785672900},{"games":27717,"time_end":1785672000},{"games":27461,"time_end":1785671100},{"games":27270,"time_end":1785670200},{"games":26872,"time_end":1785669300},{"games":26608,"time_end":1785668400},{"games":26244,"time_end":1785667500},{"games":25843,"time_end":1785666600},{"games":25594,"time_end":1785665700},{"games":25263,"time_end":1785664800},{"games":24989,"time_end":1785663900},{"games":24870,"time_end":1785663000},{"games":24819,"time_end":1785662100},{"games":24803,"time_end":1785661200},{"games":24797,"time_end":1785660300},{"games":24789,"time_end":1785659400},{"games":24746,"time_end":1785658500},{"games":24645,"time_end":1785657600},{"games":24456,"time_end":1785656700},{"games":24275,"time_end":1785655800},{"games":24233,"time_end":1785654900},{"games":24377,"time_end":1785654000},{"games":24655,"time_end":1785653100},{"games":24849,"time_end":1785652200},{"games":25068,"time_end":1785651300},{"games":25210,"time_end":1785650400},{"games":25269,"time_end":1785649500},{"games":25439,"time_end":1785648600},{"games":25400,"time_end":1785647700},{"games":25244,"time_end":1785646800},{"games":25088,"time_end":1785645900},{"games":24982,"time_end":1785645000},{"games":25051,"time_end":1785644100},{"games":25326,"time_end":1785643200},{"games":25687,"time_end":1785642300},{"games":25981,"time_end":1785641400},{"games":26156,"time_end":1785640500},{"games":26121,"time_end":1785639600},{"games":26002,"time_end":1785638700},{"games":25824,"time_end":1785637800},{"games":25588,"time_end":1785636900},{"games":25401,"time_end":1785636000},{"games":25393,"time_end":1785635100},{"games":25422,"time_end":1785634200},{"games":25453,"time_end":1785633300},{"games":25539,"time_end":1785632400},{"games":25499,"time_end":1785631500},{"games":25710,"time_end":1785630600},{"games":26089,"time_end":1785629700},{"games":26455,"time_end":1785628800},{"games":27017,"time_end":1785627900},{"games":27342,"time_end":1785627000},{"games":27421,"time_end":1785626100},{"games":27686,"time_end":1785625200},{"games":27940,"time_end":1785624300},{"games":28187,"time_end":1785623400},{"games":28586,"time_end":1785622500},{"games":28914,"time_end":1785621600}];
+            const plot = Plot.plot({
+               width: 360,
+               height: 240,
+               marginLeft: 47,
+               marginBottom: 42,
+               x: {
+                  type: 'time',
+                  transform: function (x) { return new Date(x * 1000) },
+               },
+               marks: [
+                  Plot.lineY(data, {
+                     x: "time_end",
+                     y: "games",
+                  }),
+                  Plot.text(data, Plot.pointerX({
+                     px: "time_end",
+                     py: "games",
+                     dy: -17,
+                     fontSize: 14,
+                     frameAnchor: "bottom",
+                     text: (d) => [
+                        (new Date(d.time_end * 1000)).toLocaleString(undefined, {
+                           weekday: "short",
+                           hour: "numeric",
+                           minute: "numeric",
+                        }),
+                        `Games ${d3.format(",")(d.games)}`
+                     ].join("   ")
+                  })),
+                  Plot.axisX({label: null, fontSize: 14}),
+                  Plot.axisY({fontSize: 12}),
+                  Plot.ruleY([0]),
+               ]
+            });
+            document.querySelector("#hourly-plot").append(plot);
+         })();
+      </script>
+   <script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a260d072becf90ed',t:'MTc4NTg4MDYwOQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>

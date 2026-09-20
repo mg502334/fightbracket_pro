@@ -1,16 +1,63 @@
-# Node
+# Node & Build Artifacts
 node_modules/
 dist/
-.env
+build/
+.next/
+.cache/
 
-# Python
+# Environments & Sensitive Credentials
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.crt
+*.cert
+keys/
+
+# Python Virtual Environments & Bytecode
 __pycache__/
 *.py[cod]
 *$py.class
 .venv/
 venv/
 env/
-.env
+.pytest_cache/
 
+# Databases & SQLite files
+*.db
+*.sqlite
+*.sqlite3
+**/*.db
+app.db
+local_data.db
+fightbracket_pro/*.db
+fightbracket_pro/app.db
+fightbracket_pro/local_data.db
+
+# Vercel & Deployment
 .vercel
-.env*
+fightbracketpro.com.txt
+
+# Security & Sensitive Architecture Files
+supabase_rls_policies.sql
+scripts/*.py
+
+# Local Test Scripts, Scratchpads & Output Dumps
+test_*.py
+test_*.js
+test_*.json
+*_out.json
+*_out*.json
+schema_query.py
+schema_out.json
+graphql_out.json
+wavu_player*.json
+wavu_player*.html
+wavu_profile.html
+scratch/
+scratch.json
+Snips/
+temp_ui_designs/
+archives/
+*.log

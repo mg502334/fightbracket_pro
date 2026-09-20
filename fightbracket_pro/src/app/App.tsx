@@ -2,10 +2,12 @@ import React, { useState, useCallback, useEffect, useMemo } from "react";
 import { Toaster, toast } from "sonner";
 import { motion, AnimatePresence } from "motion/react";
 import {
-  Trophy, GitBranch, UserCheck, Monitor, MessageSquare, Smartphone,
-  ExternalLink, RefreshCw, Zap, MapPin, Globe, Moon, Sun, X, Tv, Cloud, Play, LayoutGrid, Trash2
+  Trophy, GitBranch, UserCheck, User, Monitor, MessageSquare, Smartphone,
+  ExternalLink, RefreshCw, Zap, MapPin, Globe, Moon, Sun, X, Tv, Cloud, Play, LayoutGrid, Trash2, Megaphone, Search
 } from "lucide-react";
 import { useTheme } from "next-themes";
+
+const API_URL = import.meta.env.VITE_API_URL || '';
 
 import { GameBanner } from "./components/GameBanner";
 import { AddPlayerModal } from "./components/AddPlayerModal";
@@ -24,15 +26,21 @@ import { PoolsPanel } from "./components/PoolsPanel";
 import { ReportScoreModal } from "./components/ReportScoreModal";
 import { FriendsModal } from "./components/FriendsModal";
 import { UserProfileModal } from "./components/UserProfileModal";
+import { UserDirectoryModal } from "./components/UserDirectoryModal";
 import { StaticPageModal, type StaticPageId } from "./components/StaticPageModal";
+import { OfficialRulesModal } from "./components/OfficialRulesModal";
+import { TermsOfServiceModal } from "./components/TermsOfServiceModal";
+import { NewsPage } from "./components/NewsPage";
+import { PasswordResetModal } from "./components/PasswordResetModal";
+import { SupportModal } from "./components/SupportModal";
 import { Users } from "lucide-react";
 
 import {
   type BracketMatch, type Player, type Station, type SMSLog, type GameTheme, type ExhibitionMatch,
-  generateMockDataForGame, generateDynamicBracket, BracketType
+  GAME_THEMES, PLAYERS, gen16Bracket, generateMockDataForGame, generateDynamicBracket, BracketType
 } from "./data/tournamentData";
 
-type Tab = 'overview' | 'bracket' | 'checkin' | 'stations' | 'streams' | 'vods' | 'pools' | 'account';
+type Tab = 'overview' | 'bracket' | 'checkin' | 'stations' | 'streams' | 'vods' | 'pools' | 'account' | 'news';
 
 const DEFAULT_GAME_ORDER: string[] = ['tekken8', 'sf6', 'fatalFury'];
 const TABS: { id: Tab; label: string; icon: React.ComponentType<{ size?: number }> }[] = [
@@ -43,8 +51,32 @@ const TABS: { id: Tab; label: string; icon: React.ComponentType<{ size?: number 
   { id: 'stations', label: 'STATIONS', icon: Monitor },
   { id: 'streams', label: 'STREAMS', icon: Tv },
   { id: 'vods', label: 'EXHIBITIONS', icon: Play },
-  { id: 'account', label: 'ACCOUNT', icon: UserCheck },
+  { id: 'account', label: 'ACCOUNT', icon: User },
 ];
+
+export function parseStreamUrl(streamName: string, streamSource?: string): string {
+  if (!streamName) return '';
+  if (streamName.startsWith('http')) return streamName;
+
+  // TikTok - handle domain, @username, or bare username
+  if (streamSource === 'TIKTOK' || streamName.includes('tiktok')) {
+    if (streamName.includes('tiktok.com')) return `https://${streamName.replace(/^\/\//, '')}`;
+    const handle = streamName.startsWith('@') ? streamName : `@${streamName}`;
+    return `https://www.tiktok.com/${handle}/live`;
+  }
+  if (streamName.includes('tiktok.com')) return `https://${streamName.replace(/^\/\//, '')}`;
+
+  // YouTube
+  if (streamName.includes('youtube.com') || streamName.includes('youtu.be')) return `https://${streamName.replace(/^\/\//, '')}`;
+  if (streamSource === 'YOUTUBE') return `https://youtube.com/@${streamName}/live`;
+
+  // Facebook
+  if (streamSource === 'FACEBOOK') return `https://facebook.com/${streamName}`;
+
+  // Twitch (default)
+  if (streamName.includes('twitch.tv')) return `https://${streamName.replace(/^\/\//, '')}`;
+  return `https://twitch.tv/${streamName}`;
+}
 
 export default function App() {
   const safeParse = (key: string, defaultVal: any) => {
@@ -52,7 +84,7 @@ export default function App() {
   };
 
   const [activeGame, setActiveGame] = useState<string | null>(() => safeParse('fb_activeGame', null));
-  const [activeTab, setActiveTab] = useState<Tab>('overview');
+  const [activeTab, setActiveTab] = useState<Tab>(() => safeParse('fb_activeTab', 'overview'));
   const [players, setPlayers] = useState<Player[]>(() => safeParse('fb_players', []));
   const [matches, setMatches] = useState<BracketMatch[]>(() => safeParse('fb_matches', []));
   const [selectedPool, setSelectedPool] = useState<string>('ALL');
@@ -71,21 +103,59 @@ export default function App() {
   const [startggUser, setStartggUser] = useState<{ id: string; name: string } | null>(null);
   const [supabaseUser, setSupabaseUser] = useState<any>(null);
   const [supabaseToken, setSupabaseToken] = useState<string | null>(null);
+  const [discordWebhookUrl, setDiscordWebhookUrl] = useState<string | null>(null);
   const [showFriendsModal, setShowFriendsModal] = useState(false);
+  const [showDirectoryModal, setShowDirectoryModal] = useState(false);
+  const [showRulesModal, setShowRulesModal] = useState(false);
   const [targetProfileUserId, setTargetProfileUserId] = useState<string | null>(null);
   const [showStaticPage, setShowStaticPage] = useState<StaticPageId | null>(null);
+  const [showTerms, setShowTerms] = useState(false);
+
+  useEffect(() => {
+    const handleOpenTos = () => setShowStaticPage('terms');
+    const handleOpenPrivacy = () => setShowStaticPage('privacy');
+    const handleOpenSupport = () => setShowSupportModal(true);
+    window.addEventListener('open-tos', handleOpenTos);
+    window.addEventListener('open-privacy', handleOpenPrivacy);
+    window.addEventListener('open-support', handleOpenSupport);
+    return () => {
+      window.removeEventListener('open-tos', handleOpenTos);
+      window.removeEventListener('open-privacy', handleOpenPrivacy);
+      window.removeEventListener('open-support', handleOpenSupport);
+    };
+  }, []);
+
+  const [showPasswordReset, setShowPasswordReset] = useState(false);
+  const [showSupportModal, setShowSupportModal] = useState(false);
 
   const [activeTournament, setActiveTournament] = useState<{ name: string, location: string, slug?: string, numAttendees?: number } | null>(() => safeParse('fb_tournament', null));
   const [autoSyncSlug, setAutoSyncSlug] = useState<string | null>(() => safeParse('fb_autoSyncSlug', null));
   const [exhibitions, setExhibitions] = useState<ExhibitionMatch[]>(() => safeParse('fb_exhibitions', []));
 
-  // Dynamic games state
-  const [gameThemes, setGameThemes] = useState<Record<string, GameTheme>>(() => safeParse('fb_themes', {}));
+  // Dynamic games state with user-specified franchise palettes
+  const [gameThemes, setGameThemes] = useState<Record<string, GameTheme>>(() => {
+    const raw = safeParse<Record<string, GameTheme>>('fb_themes', {});
+    const updated = { ...raw };
+    Object.keys(updated).forEach(id => {
+      const g = updated[id];
+      const name = (g.displayName || '').toLowerCase();
+      if (name.includes('tekken')) {
+        updated[id] = { ...g, primaryColor: '#FF1744', secondaryColor: '#FFD600', bgFrom: '#1A0006', glowColor: 'rgba(255, 23, 68, 0.45)' };
+      } else if (name.includes('street fighter')) {
+        updated[id] = { ...g, primaryColor: '#9D4EDD', secondaryColor: '#00E5FF', bgFrom: '#150524', glowColor: 'rgba(157, 78, 221, 0.45)' };
+      } else if (name.includes('wolves') || name.includes('fatal fury') || name.includes('king of fighters') || name.includes('kof')) {
+        updated[id] = { ...g, primaryColor: '#FFD600', secondaryColor: '#FF6D00', bgFrom: '#1C1500', glowColor: 'rgba(255, 214, 0, 0.45)' };
+      }
+    });
+    return updated;
+  });
   const [gameOrder, setGameOrder] = useState<string[]>(() => safeParse('fb_gameOrder', []));
 
   // Host & editing state
   const [tournamentOwnerId, setTournamentOwnerId] = useState<string | null>(() => safeParse('fb_tournamentOwnerId', null));
   const [pendingReportMatch, setPendingReportMatch] = useState<BracketMatch | null>(null);
+  const [isSyncing, setIsSyncing] = useState<boolean>(false);
+  const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(null);
 
   // Determine if the current user is the host
   const isHost = !tournamentOwnerId || (supabaseUser?.id === tournamentOwnerId) || (startggUser?.id === tournamentOwnerId);
@@ -102,19 +172,72 @@ export default function App() {
     localStorage.setItem('fb_autoSyncSlug', JSON.stringify(autoSyncSlug));
     localStorage.setItem('fb_exhibitions', JSON.stringify(exhibitions));
     localStorage.setItem('fb_tournamentOwnerId', JSON.stringify(tournamentOwnerId));
-  }, [activeGame, players, matches, stations, smsLogs, activeTournament, gameThemes, gameOrder, autoSyncSlug, exhibitions, tournamentOwnerId]);
+    localStorage.setItem('fb_activeTab', JSON.stringify(activeTab));
+  }, [activeGame, players, matches, stations, smsLogs, activeTournament, gameThemes, gameOrder, autoSyncSlug, exhibitions, tournamentOwnerId, activeTab]);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }: any) => {
       setSupabaseUser(session?.user ?? null);
       setSupabaseToken(session?.access_token ?? null);
     });
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: any, session: any) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event: any, session: any) => {
       setSupabaseUser(session?.user ?? null);
       setSupabaseToken(session?.access_token ?? null);
+      if (event === 'PASSWORD_RECOVERY') {
+        setShowPasswordReset(true);
+      }
     });
     return () => subscription.unsubscribe();
   }, []);
+
+  // Sync station names to backend
+  const stationNamesStr = JSON.stringify(stations.map(s => s.name));
+  useEffect(() => {
+    if (!supabaseToken || !stationNamesStr) return;
+    const isDefault = stations.every((s, i) => s.name === `Station ${i + 1}`);
+    if (isDefault) return; // Don't overwrite cloud with defaults on first load
+    const timer = setTimeout(() => {
+      fetch('/api/user/profile', {
+        method: 'PUT',
+        headers: { 'Authorization': `Bearer ${supabaseToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ station_names: stationNamesStr })
+      }).catch(console.error);
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, [stationNamesStr, supabaseToken]);
+
+  // Load station names from backend
+  useEffect(() => {
+    if (!supabaseToken) return;
+    fetch('/api/user/profile', { headers: { 'Authorization': `Bearer ${supabaseToken}` } })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        const profile = data?.profile || data?.user;
+        if (profile?.station_names) {
+          try {
+            const parsedNames = JSON.parse(profile.station_names);
+            if (Array.isArray(parsedNames) && parsedNames.length > 0) {
+              setStations(prev => {
+                const newStations = [...prev];
+                parsedNames.forEach((name, i) => {
+                  if (newStations[i]) {
+                    newStations[i].name = name;
+                  } else {
+                    newStations.push({ id: i + 1, name, active: true, matchId: null, gameId: null });
+                  }
+                });
+                return newStations;
+              });
+            }
+          } catch {}
+        }
+        // Load Discord webhook URL
+        if (profile?.discord_webhook_url) {
+          setDiscordWebhookUrl(profile.discord_webhook_url);
+        }
+      })
+      .catch(console.error);
+  }, [supabaseToken]);
 
   useEffect(() => {
     const path = window.location.pathname;
@@ -145,15 +268,30 @@ export default function App() {
           });
       }
     }
+
+    // Auto-import event bracket if shared permalink ?event=<slug> is present in URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const eventParam = urlParams.get('event');
+    if (eventParam) {
+      handleLiveImport(eventParam).catch(() => {});
+    }
   }, []);
+
+  // Dynamic adaptive live polling for Start.gg bracket updates
+  const hasActiveMatches = matches.some(m => m.state === 'in_progress' || m.state === 'called');
 
   useEffect(() => {
     if (!autoSyncSlug) return;
+
+    // Fast 10s polling during active live matches; 20s otherwise for instant score updates
+    const pollIntervalMs = hasActiveMatches ? 10000 : 20000;
+
     const interval = setInterval(() => {
       handleLiveImport(autoSyncSlug, true).catch(() => { });
-    }, 60000); // Poll every 60 seconds
+    }, pollIntervalMs);
+
     return () => clearInterval(interval);
-  }, [autoSyncSlug]);
+  }, [autoSyncSlug, hasActiveMatches]);
 
   // Create anonymous user ID if not logged in
   const userId = useMemo(() => {
@@ -217,9 +355,19 @@ export default function App() {
       return;
     }
 
-    // Assign random theme colors
+    // Check if preset theme exists in GAME_THEMES
+    const presetThemeKey = Object.keys(GAME_THEMES).find(k => 
+      GAME_THEMES[k].displayName.toLowerCase() === game.name.toLowerCase() ||
+      game.name.toLowerCase().includes(GAME_THEMES[k].displayName.toLowerCase()) ||
+      GAME_THEMES[k].displayName.toLowerCase().includes(game.name.toLowerCase())
+    );
+    const preset = presetThemeKey ? GAME_THEMES[presetThemeKey] : null;
+
     const hue = Math.floor(Math.random() * 360);
-    const newTheme: GameTheme = {
+    const newTheme: GameTheme = preset ? {
+      ...preset,
+      id: newGameId,
+    } : {
       id: newGameId,
       displayName: game.name.toUpperCase(),
       shortName: game.name.substring(0, 3).toUpperCase(),
@@ -251,7 +399,7 @@ export default function App() {
     setMatches(prev => prev.filter(m => m.gameId !== gameIdToRemove));
   };
 
-  const handleAddPlayer = (playerData: { tag: string; realName: string; seed: number; startggId?: string; country?: string }) => {
+  const handleAddPlayer = (playerData: { tag: string; realName: string; seed: number; startggId?: string; country?: string; character?: string; fbUserId?: string }) => {
     if (!activeGame) return;
     const newPlayer: Player = {
       id: `p-${Date.now()}`,
@@ -264,6 +412,8 @@ export default function App() {
       phone: '',
       smsNotified: false,
       gameId: activeGame,
+      character: playerData.character,
+      fbUserId: playerData.fbUserId,
     };
     setPlayers(prev => [...prev, newPlayer]);
   };
@@ -292,22 +442,74 @@ export default function App() {
     }
   });
 
-  // Find the final match to protect the winner from being marked eliminated
-  const maxRoundMatch = gameMatches.reduce((prev, current) =>
-    (prev && prev.round > current.round) ? prev : current, gameMatches[0]);
-  const championId = maxRoundMatch && maxRoundMatch.state === 'completed' ? maxRoundMatch.winnerId : null;
+  // Find the tournament champion
+  // 1. If start.gg provided official placement data, use the player with placement 1
+  const startGgChampion = activeGame ? players.find(p => p.gameId === activeGame && p.placement === 1) : null;
+
+  // 2. Fallback to bracket match calculation (for local tournaments)
+  const grandFinalMatches = gameMatches.filter(m =>
+    m.roundName && (
+      m.roundName.toLowerCase().includes('grand final') ||
+      m.roundName.toLowerCase() === 'grand finals'
+    )
+  );
+  const grandFinalMatch = grandFinalMatches.length > 0 
+    ? grandFinalMatches.reduce((prev, current) => (Math.abs(prev.round) > Math.abs(current.round)) ? prev : current)
+    : null;
+
+  const maxRoundMatch = grandFinalMatch || (gameMatches.length > 0 ?
+    gameMatches.reduce((prev, current) =>
+      (prev && Math.abs(prev.round) > Math.abs(current.round)) ? prev : current, gameMatches[0]) : null);
+      
+  const championId = startGgChampion ? startGgChampion.id : (maxRoundMatch && maxRoundMatch.state === 'completed' ? maxRoundMatch.winnerId : null);
 
   const gamePlayers = activeGame ? players.filter(p => p.gameId === activeGame).map(p => ({
     ...p,
-    status: (championId === p.id || activePlayerIds.has(p.id)) ? 'active' as const : 'eliminated' as const
+    status: (championId === p.id) ? 'winner' as const : (activePlayerIds.has(p.id) ? 'active' as const : 'eliminated' as const)
   })).sort((a, b) => {
-    if (a.status !== b.status) return a.status === 'active' ? -1 : 1;
+    if (a.status !== b.status) {
+      if (a.status === 'winner') return -1;
+      if (b.status === 'winner') return 1;
+      return a.status === 'active' ? -1 : 1;
+    }
     return a.seed - b.seed;
   }) : [];
   const activeMatches = gameMatches.filter(m => m.state === 'in_progress' || m.state === 'called');
   const completedMatches = gameMatches.filter(m => m.state === 'completed');
   const completionPercentage = gameMatches.length > 0 ? Math.round((completedMatches.length / gameMatches.length) * 100) : 0;
   const checkedInCount = gamePlayers.filter(p => p.checkedIn).length;
+
+  // Sync state with standalone venue Display Window via BroadcastChannel & localStorage
+  useEffect(() => {
+    let channel: BroadcastChannel | null = null;
+    try {
+      channel = new BroadcastChannel('fightbracket_display_channel');
+      const payload = {
+        type: 'STATE_UPDATE',
+        matches: gameMatches,
+        players: gamePlayers,
+        theme,
+        announcement,
+      };
+
+      channel.postMessage(payload);
+      try {
+        localStorage.setItem('fightbracket_display_state', JSON.stringify(payload));
+      } catch (e) {}
+
+      channel.onmessage = (event) => {
+        if (event.data?.type === 'REQUEST_INITIAL_STATE') {
+          channel?.postMessage(payload);
+        }
+      };
+    } catch (e) {
+      console.warn('BroadcastChannel not supported');
+    }
+
+    return () => {
+      channel?.close();
+    };
+  }, [gameMatches, gamePlayers, theme, announcement]);
 
   const handleCheckIn = useCallback(async (playerId: string, checked: boolean) => {
     setPlayers(prev => prev.map(p => p.id === playerId ? { ...p, checkedIn: checked } : p));
@@ -341,9 +543,7 @@ export default function App() {
     // Find the station so we can pull its stream name into the match
     const station = stations.find(s => s.id === sid);
     const streamUrl = station?.streamName
-      ? station.streamName.includes('twitch.tv')
-        ? station.streamName
-        : `https://twitch.tv/${station.streamName}`
+      ? parseStreamUrl(station.streamName)
       : match.streamUrl;
 
     setMatches(prev => prev.map(m => m.id === match.id ? { ...m, state: 'called', stationId: sid, calledAt: calledTime, streamUrl: streamUrl || m.streamUrl } : m));
@@ -375,7 +575,28 @@ export default function App() {
         onClick: () => handleUndoCall(match.id),
       },
     });
-  }, [theme?.primaryColor, players, gameThemes, stations]);
+
+    // Fire Discord webhook if configured
+    if (discordWebhookUrl && supabaseToken && activeTournament?.name) {
+      const tId = activeTournament.slug || activeTournament.name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+      const p1 = players.find(p => p.id === match.player1Id);
+      const p2 = players.find(p => p.id === match.player2Id);
+      fetch('/api/discord/announce', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${supabaseToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tournament_id: tId,
+          message_type: 'match_called',
+          match_info: {
+            player1: p1?.tag || 'Player 1',
+            player2: p2?.tag || 'Player 2',
+            round: match.roundName,
+            station: sid,
+          }
+        })
+      }).catch(() => {}); // Fire and forget — don't block the UI
+    }
+  }, [theme?.primaryColor, players, gameThemes, stations, discordWebhookUrl, supabaseToken, activeTournament]);
 
   const handleUndoCall = useCallback((matchId: string) => {
     setMatches(prev => prev.map(m => m.id === matchId ? { ...m, state: 'pending', stationId: null } : m));
@@ -464,15 +685,15 @@ export default function App() {
     }
   }, [theme?.primaryColor, players, userId]);
 
-  async function fetchStartggDirect(slug: string, token?: string | null) {
-    if (!token) {
-      throw new Error('Start.gg API token required. Please log in with Start.gg or enter your Personal Access Token in Account settings.');
-    }
+  async function fetchStartggDirect(slug: string, token?: string | null, eventSlug?: string | null) {
+    const { data: { session } } = await supabase.auth.getSession();
 
     const headers: Record<string, string> = {
-      'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json'
     };
+    if (session) {
+      headers['Authorization'] = `Bearer ${session.access_token}`;
+    }
 
     const queryTourney = `
       query TournamentQuery($slug: String!) {
@@ -489,12 +710,12 @@ export default function App() {
             stream { id streamName streamSource isOnline }
             sets { id fullRoundText }
           }
-          events { id name videogame { id name } }
+          events { id name slug videogame { id name } }
         }
       }
     `;
 
-    const tourneyRes = await fetch('https://api.start.gg/gql/alpha', {
+    const tourneyRes = await fetch(`${API_URL}/api/startgg/proxy`, {
       method: 'POST',
       headers,
       body: JSON.stringify({ query: queryTourney, variables: { slug } })
@@ -505,7 +726,7 @@ export default function App() {
       throw new Error('Start.gg API token is missing or invalid. Please connect your Start.gg account or enter a Personal Access Token in Account settings.');
     }
     if (!tourneyRes.ok || tourneyJson.errors) {
-      const msg = tourneyJson.errors?.[0]?.message || tourneyJson.message || 'Failed to fetch tournament from Start.gg';
+      const msg = tourneyJson.detail || tourneyJson.errors?.[0]?.message || tourneyJson.message || 'Failed to fetch tournament from Start.gg';
       throw new Error(msg);
     }
 
@@ -517,7 +738,7 @@ export default function App() {
         event(id: $eventId) {
           entrants(query: {page: $page, perPage: 100}) {
             pageInfo { totalPages total }
-            nodes { id name participants { gamerTag } seeds { seedNum } standing { placement } }
+            nodes { id name participants { gamerTag user { slug } } seeds { seedNum } standing { placement } }
           }
         }
       }
@@ -529,30 +750,54 @@ export default function App() {
           sets(page: $page, perPage: 50, sortType: STANDARD) {
             pageInfo { totalPages total }
             nodes {
-              id state fullRoundText round winnerId displayScore
+              id identifier state fullRoundText round winnerId displayScore
               stream { streamName streamSource }
-              slots { entrant { id name } standing { stats { score { value } } } }
+              slots {
+                prereqId
+                prereqType
+                entrant { id name }
+                standing { stats { score { value } } }
+              }
+              phaseGroup {
+                displayIdentifier
+                phase { name }
+              }
             }
           }
         }
       }
     `;
 
-    for (const ev of tournament.events || []) {
+    // If a specific event slug was requested, only fetch data for that event.
+    // This is critical for large tournaments (e.g. CEO 2026) that have 10+ events.
+    let eventsToFetch = tournament.events || [];
+    if (eventSlug && eventsToFetch.length > 0) {
+      const filtered = eventsToFetch.filter((ev: any) =>
+        (ev.slug || '').split('/event/').pop() === eventSlug
+      );
+      if (filtered.length > 0) eventsToFetch = filtered;
+    }
+
+    for (const ev of eventsToFetch) {
       // Fetch all entrants (paginated)
       let allEntrants: any[] = [];
       let page = 1;
       while (true) {
-        const entRes = await fetch('https://api.start.gg/gql/alpha', {
+        const entRes = await fetch(`${API_URL}/api/startgg/proxy`, {
           method: 'POST', headers, body: JSON.stringify({ query: queryEntrants, variables: { eventId: ev.id, page } })
         });
         const entJson = await entRes.json().catch(() => ({}));
+        if (entJson.errors) {
+          const msg = entJson.errors[0]?.message || 'Start.gg API error while fetching entrants';
+          throw new Error(`Failed to fetch entrants: ${msg}`);
+        }
         const entrantsObj = entJson.data?.event?.entrants;
         const nodes = entrantsObj?.nodes || [];
         if (nodes.length > 0) allEntrants.push(...nodes);
         const totalPages = entrantsObj?.pageInfo?.totalPages || 1;
         if (page >= totalPages || nodes.length === 0) break;
         page++;
+        await new Promise(r => setTimeout(r, 400)); // Respect rate limits
       }
       ev.entrants = { nodes: allEntrants };
 
@@ -560,16 +805,21 @@ export default function App() {
       let allSets: any[] = [];
       page = 1;
       while (true) {
-        const setRes = await fetch('https://api.start.gg/gql/alpha', {
+        const setRes = await fetch(`${API_URL}/api/startgg/proxy`, {
           method: 'POST', headers, body: JSON.stringify({ query: querySets, variables: { eventId: ev.id, page } })
         });
         const setJson = await setRes.json().catch(() => ({}));
+        if (setJson.errors) {
+          const msg = setJson.errors[0]?.message || 'Start.gg API error while fetching matches';
+          throw new Error(`Failed to fetch matches: ${msg}`);
+        }
         const setsObj = setJson.data?.event?.sets;
         const nodes = setsObj?.nodes || [];
         if (nodes.length > 0) allSets.push(...nodes);
         const totalPages = setsObj?.pageInfo?.totalPages || 1;
         if (page >= totalPages || nodes.length === 0) break;
         page++;
+        await new Promise(r => setTimeout(r, 400)); // Respect rate limits
       }
       ev.sets = { nodes: allSets };
     }
@@ -578,273 +828,503 @@ export default function App() {
   }
 
   async function handleLiveImport(rawSlug: string, isAutoSync = false) {
-    let slug = rawSlug.trim();
-    if (slug.includes('start.gg/tournament/')) {
-      slug = slug.split('start.gg/tournament/')[1];
-    } else if (slug.includes('tournament/')) {
-      slug = slug.split('tournament/')[1];
-    }
-    slug = slug.split('/')[0].split('?')[0].trim();
-
-    const token = localStorage.getItem('startgg_access_token') || localStorage.getItem('fb_startggToken');
-
-    let tournamentData: any = null;
+    setIsSyncing(true);
     try {
-      const url = `/api/bracket/sync?slug=${encodeURIComponent(slug)}${token ? `&token=${token}` : ''}`;
-      const res = await fetch(url);
-      if (res.ok) {
-        const json = await res.json();
-        tournamentData = json.data?.tournament;
-      } else {
-        const err = await res.json().catch(() => ({ detail: null }));
-        if (err.detail) throw new Error(err.detail);
+      let fullPath = rawSlug.trim();
+      // Strip domain prefix if included
+      if (fullPath.includes('start.gg/tournament/')) {
+        fullPath = fullPath.split('start.gg/tournament/')[1];
+      } else if (fullPath.includes('tournament/')) {
+        fullPath = fullPath.split('tournament/')[1];
       }
-    } catch (e: any) {
-      if (e.message && (e.message.includes('token') || e.message.includes('Token') || e.message.includes('Account settings'))) {
-        throw e;
-      }
-    }
+      fullPath = fullPath.split('?')[0].split('#')[0].trim();
 
-    if (!tournamentData) {
-      // Direct client fallback to Start.gg GraphQL API
-      tournamentData = await fetchStartggDirect(slug, token);
-    }
+      // Extract event slug (e.g. "tekken-8" from "ceo-2026/event/tekken-8")
+      let slug = fullPath.split('/')[0].trim();
+      const eventSlug: string | null = fullPath.match(/\/event\/([^\/\?#]+)/i)?.[1] || null;
 
-    if (!tournamentData) throw new Error('Tournament not found or invalid format');
-
-    const tName = tournamentData.name;
-    const events = tournamentData.events || [];
-
-    let newPlayers: Player[] = [];
-    let newMatches: BracketMatch[] = [];
-    let newGameIds: string[] = [];
-    let newThemes: Record<string, GameTheme> = {};
-
-    events.forEach((ev: any) => {
-      if (!ev.videogame) return; // Skip events without a videogame
-      const gameId = `startgg-ev-${ev.id}`;
-      const evName = ev.name || ev.videogame.name;
-      const fullDisplayName = (ev.videogame?.name && !evName.toLowerCase().includes(ev.videogame.name.toLowerCase()))
-        ? `${ev.videogame.name} - ${evName}`.toUpperCase()
-        : evName.toUpperCase();
-
-      if (!gameOrder.includes(gameId) && !newGameIds.includes(gameId)) {
-        newGameIds.push(gameId);
-        let hue = Math.floor(Math.random() * 360);
-        const gameName = (ev.videogame?.name || evName).toLowerCase();
-        if (gameName.includes('tekken 8')) hue = 0;
-        else if (gameName.includes('street fighter 6')) hue = 280;
-        else if (gameName.includes('wolves') || gameName.includes('fatal fury')) hue = 50;
-
-        newThemes[gameId] = {
-          id: gameId,
-          displayName: fullDisplayName,
-          shortName: evName.substring(0, 3).toUpperCase(),
-          primaryColor: `hsl(${hue}, 100%, 60%)`,
-          secondaryColor: `hsl(${(hue + 45) % 360}, 100%, 60%)`,
-          bgFrom: `hsl(${hue}, 80%, 10%)`,
-          glowColor: `hsla(${hue}, 100%, 60%, 0.4)`,
-          description: `${tName} — ${evName}`,
-          publisher: 'Start.gg',
-        };
+      let token = localStorage.getItem('startgg_access_token') || localStorage.getItem('fb_startggToken');
+      if (token === 'SECURE_HIDDEN') {
+        token = null;
       }
 
-      const entrants = ev.entrants?.nodes || [];
-      entrants.forEach((ent: any) => {
-        newPlayers.push({
-          id: String(ent.id),
-          tag: ent.participants?.[0]?.gamerTag || ent.name,
-          realName: ent.name,
-          country: 'US',
-          countryFlag: '🇺🇸',
-          seed: ent.seeds?.[0]?.seedNum || 1,
-          checkedIn: true,
-          phone: '',
-          smsNotified: false,
-          character: 'Unknown',
-          placement: ent.standing?.placement,
-          gameId
+      // Show a loading toast for large events that take time to fetch
+      const loadingToastId = !isAutoSync ? toast.loading(
+        eventSlug ? `Importing ${eventSlug.replace(/-/g, ' ')}...` : 'Importing tournament...',
+        { style: { background: 'var(--card)', border: '1px solid var(--border)', color: 'var(--foreground)' } }
+      ) : undefined;
+
+      let tournamentData: any = null;
+      try {
+        // Quick server-side fetch (works for small/medium events, times out for large ones)
+        const url = `/api/bracket/sync?slug=${encodeURIComponent(slug)}${eventSlug ? `&event_slug=${encodeURIComponent(eventSlug)}` : ''}${token ? `&token=${token}` : ''}`;
+        const res = await fetch(url);
+        if (res.ok) {
+          const json = await res.json();
+          tournamentData = json.data?.tournament;
+        }
+        // Silently fall through to client-side fallback if server times out or errors
+      } catch (_) { /* ignore, try fallback */ }
+
+      if (!tournamentData) {
+        // Client-side fallback: each request goes through the proxy individually so
+        // there is no overall timeout — this handles large events like CEO 2026.
+        tournamentData = await fetchStartggDirect(slug, token, eventSlug);
+      }
+
+      if (!tournamentData) throw new Error('Tournament not found or invalid format');
+
+      const tName = tournamentData.name;
+      const events = tournamentData.events || [];
+
+      let newPlayers: Player[] = [];
+      let newMatches: BracketMatch[] = [];
+      let newGameIds: string[] = [];
+      let newThemes: Record<string, GameTheme> = {};
+
+      events.forEach((ev: any) => {
+        if (!ev.videogame) return; // Skip events without a videogame
+        const gameId = `startgg-ev-${ev.id}`;
+        const evName = ev.name || ev.videogame.name;
+        const fullDisplayName = (ev.videogame?.name && !evName.toLowerCase().includes(ev.videogame.name.toLowerCase()))
+          ? `${ev.videogame.name} - ${evName}`.toUpperCase()
+          : evName.toUpperCase();
+
+        if (!gameOrder.includes(gameId) && !newGameIds.includes(gameId)) {
+          newGameIds.push(gameId);
+          let hue = Math.floor(Math.random() * 360);
+          const gameName = (ev.videogame?.name || evName).toLowerCase();
+          
+          let primaryColor = `hsl(${hue}, 100%, 60%)`;
+          let secondaryColor = `hsl(${(hue + 45) % 360}, 100%, 60%)`;
+          let bgFrom = `hsl(${hue}, 80%, 10%)`;
+          let glowColor = `hsla(${hue}, 100%, 60%, 0.4)`;
+
+          if (gameName.includes('tekken')) {
+            primaryColor = '#FF1744'; // Red
+            secondaryColor = '#FFD600';
+            bgFrom = '#1A0006';
+            glowColor = 'rgba(255, 23, 68, 0.45)';
+          } else if (gameName.includes('street fighter')) {
+            primaryColor = '#9D4EDD'; // Purple
+            secondaryColor = '#00E5FF';
+            bgFrom = '#150524';
+            glowColor = 'rgba(157, 78, 221, 0.45)';
+          } else if (gameName.includes('wolves') || gameName.includes('fatal fury') || gameName.includes('king of fighters') || gameName.includes('kof')) {
+            primaryColor = '#FFD600'; // Mainly yellow
+            secondaryColor = '#FF6D00';
+            bgFrom = '#1C1500';
+            glowColor = 'rgba(255, 214, 0, 0.45)';
+          }
+
+          newThemes[gameId] = {
+            id: gameId,
+            displayName: fullDisplayName,
+            shortName: evName.substring(0, 3).toUpperCase(),
+            primaryColor,
+            secondaryColor,
+            bgFrom,
+            glowColor,
+            description: `${tName} — ${evName}`,
+            publisher: 'Start.gg',
+          };
+        }
+
+        const entrants = ev.entrants?.nodes || [];
+        entrants.forEach((ent: any) => {
+          const userSlug = ent.participants?.[0]?.user?.slug;
+          newPlayers.push({
+            id: String(ent.id),
+            tag: ent.participants?.[0]?.gamerTag || ent.name,
+            realName: ent.name,
+            country: 'US',
+            countryFlag: '🇺🇸',
+            seed: ent.seeds?.[0]?.seedNum || 1,
+            checkedIn: true,
+            phone: '',
+            smsNotified: false,
+            character: 'Unknown',
+            placement: ent.standing?.placement,
+            gameId,
+            ...(userSlug ? { _tempSlug: userSlug } : {})
+          } as any);
         });
-      });
 
-      const sets = ev.sets?.nodes || [];
-      sets.forEach((set: any, idx: number) => {
-        const slots = set.slots || [];
-        const p1 = slots[0]?.entrant?.id;
-        const p2 = slots[1]?.entrant?.id;
+        const sets = ev.sets?.nodes || [];
+        sets.forEach((set: any, idx: number) => {
+          const slots = set.slots || [];
+          const p1 = slots[0]?.entrant?.id;
+          const p2 = slots[1]?.entrant?.id;
 
-        let matchState: BracketMatch['state'] = 'pending';
-        if (set.state === 2) matchState = 'in_progress';
-        else if (set.state === 3) matchState = 'completed';
-        else if (set.state === 6) matchState = 'called';
+          let matchState: BracketMatch['state'] = 'pending';
+          if (set.state === 2) matchState = 'in_progress';
+          else if (set.state === 3) matchState = 'completed';
+          else if (set.state === 6) matchState = 'called';
 
-        let streamUrl: string | undefined = undefined;
-        if (set.stream?.streamSource === 'TWITCH' && set.stream?.streamName) {
-          streamUrl = `https://twitch.tv/${set.stream.streamName}`;
-        }
-        const winnerId = set.winnerId ? String(set.winnerId) : null;
-
-        let p1Score = 0;
-        let p2Score = 0;
-        const s1 = slots[0]?.standing?.stats?.score?.value;
-        const s2 = slots[1]?.standing?.stats?.score?.value;
-        if (s1 != null && s1 >= 0) p1Score = s1;
-        if (s2 != null && s2 >= 0) p2Score = s2;
-
-        let parsedRound = set.round || 1;
-        if (set.fullRoundText && set.fullRoundText.toLowerCase().includes('reset')) {
-          parsedRound += 0.1;
-        }
-
-        if (set.displayScore && set.displayScore !== "DQ") {
-          const parts = set.displayScore.split(" - ");
-          if (parts.length === 2) {
-            const leftScoreStr = parts[0].trim().split(" ").pop();
-            const rightScoreStr = parts[1].trim().split(" ").pop();
-            const ls = parseInt(leftScoreStr as string);
-            const rs = parseInt(rightScoreStr as string);
-            if (!isNaN(ls)) p1Score = ls;
-            if (!isNaN(rs)) p2Score = rs;
+          let streamUrl: string | undefined = undefined;
+          if (set.stream?.streamName) {
+            streamUrl = parseStreamUrl(set.stream.streamName, set.stream.streamSource);
           }
-        } else if (set.displayScore === "DQ" && winnerId) {
-          const loserId = p1 === winnerId ? p2 : p1;
-          if (loserId) {
-            const loserPlayer = newPlayers.find(np => np.id === String(loserId));
-            if (loserPlayer) loserPlayer.checkedIn = false;
-          }
-        }
+          const winnerId = set.winnerId ? String(set.winnerId) : null;
 
-        if (matchState === 'completed') {
-          if (p1) {
+          let p1Score = 0;
+          let p2Score = 0;
+          const s1 = slots[0]?.standing?.stats?.score?.value;
+          const s2 = slots[1]?.standing?.stats?.score?.value;
+          if (s1 != null && s1 >= 0) p1Score = s1;
+          if (s2 != null && s2 >= 0) p2Score = s2;
+
+          let parsedRound = set.round || 1;
+          if (set.fullRoundText && set.fullRoundText.toLowerCase().includes('reset')) {
+            parsedRound += 0.1;
+          }
+
+          if (set.displayScore && set.displayScore !== "DQ") {
+            const parts = set.displayScore.split(" - ");
+            if (parts.length === 2) {
+              const leftScoreStr = parts[0].trim().split(" ").pop();
+              const rightScoreStr = parts[1].trim().split(" ").pop();
+              const ls = parseInt(leftScoreStr as string);
+              const rs = parseInt(rightScoreStr as string);
+              if (!isNaN(ls)) p1Score = ls;
+              if (!isNaN(rs)) p2Score = rs;
+            }
+          }
+
+          const isDQ = set.displayScore === "DQ" && winnerId;
+          const loserId = isDQ ? (p1 === winnerId ? p2 : p1) : null;
+
+          if (matchState === 'completed' && p1 && p2) {
             const p1Player = newPlayers.find(np => np.id === String(p1));
-            if (p1Player) p1Player.checkedIn = true;
-          }
-          if (p2) {
+            if (p1Player && p1 !== loserId) p1Player.checkedIn = true;
+            
             const p2Player = newPlayers.find(np => np.id === String(p2));
-            if (p2Player) p2Player.checkedIn = true;
+            if (p2Player && p2 !== loserId) p2Player.checkedIn = true;
           }
-        }
 
-        const poolIdentifier = set.phaseGroup?.displayIdentifier;
-        const phaseName = set.phaseGroup?.phase?.name;
-        let roundLabel = set.fullRoundText || `Round ${set.round || 1}`;
-        if (poolIdentifier && !roundLabel.toLowerCase().includes('pool')) {
-          roundLabel = `[Pool ${poolIdentifier}] ${roundLabel}`;
-        }
+          const prereqSetIds = slots
+            .filter((s: any) => s.prereqType === 'set' && !!s.prereqId)
+            .map((s: any) => String(s.prereqId));
 
-        newMatches.push({
-          id: String(set.id),
-          gameId,
-          round: parsedRound,
-          roundName: roundLabel,
-          matchNumber: idx + 1,
-          player1Id: p1 ? String(p1) : null,
-          player2Id: p2 ? String(p2) : null,
-          state: matchState,
-          stationId: null,
-          player1Score: p1Score,
-          player2Score: p2Score,
-          winnerId,
-          streamUrl,
-          bestOf: 3,
-          pool: poolIdentifier,
-          phase: phaseName,
+          const poolIdentifier = set.phaseGroup?.displayIdentifier;
+          const phaseName = set.phaseGroup?.phase?.name;
+          let roundLabel = set.fullRoundText || `Round ${set.round || 1}`;
+          if (poolIdentifier && !roundLabel.toLowerCase().includes('pool')) {
+            roundLabel = `[Pool ${poolIdentifier}] ${roundLabel}`;
+          }
+
+          const numericSetId = parseInt(String(set.id), 10) || idx;
+
+          newMatches.push({
+            id: String(set.id),
+            gameId,
+            round: parsedRound,
+            roundName: roundLabel,
+            matchNumber: numericSetId,
+            player1Id: p1 ? String(p1) : null,
+            player2Id: p2 ? String(p2) : null,
+            state: matchState,
+            stationId: null,
+            player1Score: p1Score,
+            player2Score: p2Score,
+            winnerId,
+            streamUrl,
+            bestOf: 3,
+            pool: poolIdentifier,
+            phase: phaseName,
+            identifier: set.identifier || undefined,
+            prereqSetIds: prereqSetIds.length > 0 ? prereqSetIds : undefined,
+          });
         });
       });
-    });
 
-    if (newGameIds.length > 0) {
-      setGameThemes(prev => ({ ...prev, ...newThemes }));
-      setGameOrder(prev => [...prev, ...newGameIds]);
-      setActiveGame(newGameIds[0]);
-    }
-
-    let tLocation = 'Online';
-    if (!tournamentData.isOnline) {
-      if (tournamentData.city && tournamentData.addrState) {
-        tLocation = `${tournamentData.city}, ${tournamentData.addrState}`;
-      } else if (tournamentData.venueAddress) {
-        tLocation = tournamentData.venueAddress;
-      } else {
-        tLocation = 'Offline';
-      }
-    }
-    setActiveTournament({ name: tName, location: tLocation });
-
-    // Merge state for 100% accurate sync
-    setPlayers(prev => {
-      const filteredPrev = prev.filter(p => !p.id.startsWith('tk') && !p.id.startsWith('sf') && !p.id.startsWith('ff'));
-      const merged = [...filteredPrev];
-      newPlayers.forEach(np => {
-        const idx = merged.findIndex(p => p.id === np.id);
-        if (idx >= 0) merged[idx] = { ...merged[idx], ...np };
-        else merged.push(np);
-      });
-      return merged;
-    });
-
-    setMatches(prev => {
-      const merged = [...prev];
-      newMatches.forEach(nm => {
-        const idx = merged.findIndex(m => m.id === nm.id);
-        if (idx >= 0) {
-          // preserve station assignment if already called/in_progress locally
-          merged[idx] = { ...merged[idx], ...nm, stationId: merged[idx].stationId };
-        } else {
-          merged.push(nm);
+      const hasTreeData = newMatches.some(m => m.prereqSetIds && m.prereqSetIds.length > 0);
+      if (!hasTreeData) {
+        for (const m of newMatches) {
+          m.prereqSetIds = m.prereqSetIds || [];
+          
+          if (m.player1Id) {
+            const p1Prereq = newMatches.find(prev => 
+              prev.pool === m.pool && 
+              Math.abs(prev.round) < Math.abs(m.round) && 
+              prev.winnerId === m.player1Id
+            );
+            if (p1Prereq && !m.prereqSetIds.includes(p1Prereq.id)) m.prereqSetIds.push(p1Prereq.id);
+          }
+          
+          if (m.player2Id) {
+            const p2Prereq = newMatches.find(prev => 
+              prev.pool === m.pool && 
+              Math.abs(prev.round) < Math.abs(m.round) && 
+              prev.winnerId === m.player2Id
+            );
+            if (p2Prereq && !m.prereqSetIds.includes(p2Prereq.id)) m.prereqSetIds.push(p2Prereq.id);
+          }
         }
-      });
-      return merged;
-    });
 
-    if (!isAutoSync) {
-      setAutoSyncSlug(slug);
-      setShowImportModal(false);
-      toast.success(`Imported ${tName} successfully!`, {
-        style: { background: 'var(--card)', border: `1px solid var(--border)`, color: '#00FF88' },
+        const phasePools = new Map<string, typeof newMatches>();
+        for (const m of newMatches) {
+          const key = `${m.phase}-${m.pool}`;
+          if (!phasePools.has(key)) phasePools.set(key, []);
+          phasePools.get(key)!.push(m);
+        }
+
+        for (const pMatches of phasePools.values()) {
+          const wMatches = pMatches.filter(m => m.round > 0);
+          const rMap = new Map<number, typeof newMatches>();
+          for (const m of wMatches) {
+            if (!rMap.has(m.round)) rMap.set(m.round, []);
+            rMap.get(m.round)!.push(m);
+          }
+
+          const rounds = Array.from(rMap.keys()).sort((a,b)=>a-b);
+          for (let i = 0; i < rounds.length - 1; i++) {
+            const currRound = rMap.get(rounds[i])!;
+            const nextRound = rMap.get(rounds[i+1])!;
+            
+            const sortByIndentifier = (a: any, b: any) => {
+              const idA = a.identifier;
+              const idB = b.identifier;
+              if (idA && idB) {
+                if (idA.length !== idB.length) return idA.length - idB.length;
+                return idA.localeCompare(idB);
+              }
+              return 0;
+            };
+
+            currRound.sort(sortByIndentifier);
+            nextRound.sort(sortByIndentifier);
+
+            for (let j = 0; j < nextRound.length; j++) {
+              const parent = nextRound[j];
+              if (parent.prereqSetIds && parent.prereqSetIds.length === 2) continue; 
+              
+              const c1 = currRound[j * 2];
+              const c2 = currRound[j * 2 + 1];
+              
+              if (c1 && !parent.prereqSetIds!.includes(c1.id)) parent.prereqSetIds!.push(c1.id);
+              if (c2 && !parent.prereqSetIds!.includes(c2.id)) parent.prereqSetIds!.push(c2.id);
+            }
+          } 
+
+          const lMatches = pMatches.filter(m => m.round < 0);
+          const lMap = new Map<number, typeof newMatches>();
+          for (const m of lMatches) {
+            if (!lMap.has(m.round)) lMap.set(m.round, []);
+            lMap.get(m.round)!.push(m);
+          }
+
+          const lRounds = Array.from(lMap.keys()).sort((a,b)=>Math.abs(a)-Math.abs(b));
+          for (let i = 0; i < lRounds.length - 1; i++) {
+            const currRound = lMap.get(lRounds[i])!;
+            const nextRound = lMap.get(lRounds[i+1])!;
+            
+            const sortByIndentifier = (a: any, b: any) => {
+              const idA = a.identifier;
+              const idB = b.identifier;
+              if (idA && idB) {
+                if (idA.length !== idB.length) return idA.length - idB.length;
+                return idA.localeCompare(idB);
+              }
+              return 0;
+            };
+
+            currRound.sort(sortByIndentifier);
+            nextRound.sort(sortByIndentifier);
+
+            if (currRound.length === nextRound.length) {
+              for (let j = 0; j < nextRound.length; j++) {
+                const parent = nextRound[j];
+                if (parent.prereqSetIds && parent.prereqSetIds.length > 0) continue; 
+                
+                const child = currRound[j];
+                if (child && !parent.prereqSetIds!.includes(child.id)) parent.prereqSetIds!.push(child.id);
+              }
+            } else if (currRound.length === nextRound.length * 2) {
+              for (let j = 0; j < nextRound.length; j++) {
+                const parent = nextRound[j];
+                if (parent.prereqSetIds && parent.prereqSetIds.length === 2) continue; 
+                
+                const c1 = currRound[j * 2];
+                const c2 = currRound[j * 2 + 1];
+                if (c1 && !parent.prereqSetIds!.includes(c1.id)) parent.prereqSetIds!.push(c1.id);
+                if (c2 && !parent.prereqSetIds!.includes(c2.id)) parent.prereqSetIds!.push(c2.id);
+              }
+            }
+          }
+        }
+      }
+
+      const allSlugs = Array.from(new Set(newPlayers.map((p: any) => p._tempSlug).filter(Boolean)));
+      if (allSlugs.length > 0) {
+        try {
+          const mapRes = await fetch(`${API_URL}/api/users/map-startgg`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ slugs: allSlugs })
+          });
+          if (mapRes.ok) {
+            const { mapping } = await mapRes.json();
+            newPlayers.forEach((p: any) => {
+               const sSlug = p._tempSlug;
+               if (sSlug && mapping[sSlug]) {
+                 p.fbUserId = mapping[sSlug].fbUserId;
+                 p.avatarUrl = mapping[sSlug].avatarUrl;
+               }
+               delete p._tempSlug;
+            });
+          }
+        } catch (e) {
+          console.error("Failed to map startgg users", e);
+        }
+      }
+
+      if (newGameIds.length > 0) {
+        setGameThemes(prev => ({ ...prev, ...newThemes }));
+        setGameOrder(prev => [...prev, ...newGameIds]);
+        setActiveGame(newGameIds[0]);
+      }
+
+      let tLocation = 'Online';
+      if (!tournamentData.isOnline) {
+        if (tournamentData.city && tournamentData.addrState) {
+          tLocation = `${tournamentData.city}, ${tournamentData.addrState}`;
+        } else if (tournamentData.venueAddress) {
+          tLocation = tournamentData.venueAddress;
+        } else {
+          tLocation = 'Offline';
+        }
+      }
+      setActiveTournament({ name: tName, location: tLocation, slug });
+
+      setPlayers(prev => {
+        const filteredPrev = prev.filter(p => !p.id.startsWith('tk') && !p.id.startsWith('sf') && !p.id.startsWith('ff'));
+        const merged = [...filteredPrev];
+        newPlayers.forEach(np => {
+          const idx = merged.findIndex(p => p.id === np.id);
+          if (idx >= 0) merged[idx] = { ...merged[idx], ...np };
+          else merged.push(np);
+        });
+        return merged;
       });
+
+      setMatches(prev => {
+        const merged = [...prev];
+        newMatches.forEach(nm => {
+          const idx = merged.findIndex(m => m.id === nm.id);
+          if (idx >= 0) {
+            merged[idx] = { ...merged[idx], ...nm, stationId: merged[idx].stationId };
+          } else {
+            merged.push(nm);
+          }
+        });
+        return merged;
+      });
+
+      if (!isAutoSync) {
+        setAutoSyncSlug(slug);
+        setShowImportModal(false);
+        if (loadingToastId) toast.dismiss(loadingToastId);
+        toast.success(`Imported ${tName} successfully!`, {
+          style: { background: 'var(--card)', border: `1px solid var(--border)`, color: '#00FF88' },
+        });
+
+        // Save event to user's imported events history
+        try {
+          const historyItem = {
+            slug,
+            name: tName,
+            location: tLocation,
+            gameName: newThemes[newGameIds[0]]?.displayName || 'TEKKEN 8',
+            playerCount: newPlayers.length,
+            lastImportedAt: new Date().toISOString(),
+          };
+          const existingHistoryStr = localStorage.getItem('fightbracket_imported_events_history');
+          const historyList = existingHistoryStr ? JSON.parse(existingHistoryStr) : [];
+          const filtered = historyList.filter((h: any) => h.slug !== slug);
+          const updated = [historyItem, ...filtered].slice(0, 20);
+          localStorage.setItem('fightbracket_imported_events_history', JSON.stringify(updated));
+        } catch(e) {}
+      }
+    } finally {
+      setIsSyncing(false);
+      setLastSyncedAt(new Date());
     }
   }
 
   const handleClearTournament = async () => {
-    if (!confirm("Are you sure you want to clear all tournament data? This action cannot be undone.")) return;
+    localStorage.removeItem('fb_tournament');
+    localStorage.removeItem('fb_players');
+    localStorage.removeItem('fb_matches');
+    localStorage.removeItem('fb_themes');
+    localStorage.removeItem('fb_gameOrder');
+    localStorage.removeItem('fb_autoSyncSlug');
+    localStorage.removeItem('fb_activeGame');
 
-    setPlayers([]);
-    setMatches([]);
-    setGameThemes({});
-    setGameOrder([]);
-    setActiveGame(null);
+    const defaultGameIds = ['tekken8', 'sf6', 'fatalFury'];
+    const defaultThemes: Record<string, GameTheme> = {
+      tekken8: GAME_THEMES.tekken8,
+      sf6: GAME_THEMES.sf6,
+      fatalFury: GAME_THEMES.fatalFury,
+    };
+
+    setPlayers(PLAYERS);
+    setGameThemes(defaultThemes);
+    setGameOrder(defaultGameIds);
+    setActiveGame('tekken8');
     setActiveTournament(null);
     setAutoSyncSlug(null);
     setExhibitions([]);
     setSmsLogs([]);
+    setMatches([
+      ...gen16Bracket('tekken8', PLAYERS.filter(p => p.gameId === 'tekken8').map(p => p.id)),
+      ...gen16Bracket('sf6', PLAYERS.filter(p => p.gameId === 'sf6').map(p => p.id)),
+      ...gen16Bracket('fatalFury', PLAYERS.filter(p => p.gameId === 'fatalFury').map(p => p.id)),
+    ]);
     setStations(Array.from({ length: 8 }).map((_, i) => ({ id: i + 1, name: `Station ${i + 1}`, active: true, matchId: null, gameId: null })));
 
     try {
       await fetch(`/api/user/data?user_id=${userId}`, { method: 'DELETE' });
-      toast.success('Tournament data cleared');
-    } catch (e) {
-      toast.error('Failed to clear database records');
-    }
+    } catch (_) {}
+    toast.success('Reset to default tournament mode!');
   };
 
   const handleReportScore = (matchId: string, p1Score: number, p2Score: number, winnerId: string | null) => {
     setMatches(prev => {
+      const match = prev.find(m => m.id === matchId);
+      if (!match) return prev;
+
+      const loserId = winnerId ? (match.player1Id === winnerId ? match.player2Id : match.player1Id) : null;
+
       const updated = prev.map(m => m.id === matchId ? {
         ...m,
         player1Score: p1Score,
         player2Score: p2Score,
         winnerId,
-        state: 'completed'
-      } : m);
+        state: 'completed' as const
+      } : { ...m });
 
-      // Advance winner to the next round if possible
+      // 1. Advance winner to the next round / destination match
       if (winnerId) {
-        const match = updated.find(m => m.id === matchId);
-        if (match && match.round >= 0) {
+        // Priority 1: Match with prereqSetIds containing this match
+        const destMatch = updated.find(m => m.gameId === match.gameId && m.prereqSetIds?.includes(matchId));
+        if (destMatch) {
+          if (destMatch.prereqSetIds && destMatch.prereqSetIds[0] === matchId) {
+            destMatch.player1Id = winnerId;
+          } else if (destMatch.prereqSetIds && destMatch.prereqSetIds[1] === matchId) {
+            destMatch.player2Id = winnerId;
+          } else if (!destMatch.player1Id || destMatch.player1Id === winnerId) {
+            destMatch.player1Id = winnerId;
+          } else {
+            destMatch.player2Id = winnerId;
+          }
+        } else if (match.round >= 0) {
+          // Priority 2: Fallback for sequential single elimination
           const nextRound = match.round + 1;
           const nextMatchNum = Math.floor(match.matchNumber / 2);
-          const nextMatchIdx = updated.findIndex(m => m.round === nextRound && m.matchNumber === nextMatchNum);
+          const nextMatchIdx = updated.findIndex(
+            m => m.gameId === match.gameId && m.round === nextRound && m.matchNumber === nextMatchNum
+          );
           if (nextMatchIdx >= 0) {
             if (match.matchNumber % 2 === 0) {
               updated[nextMatchIdx].player1Id = winnerId;
@@ -854,11 +1334,60 @@ export default function App() {
           }
         }
       }
+
+      // 2. Advance loser in Double Elimination / drop brackets
+      if (loserId) {
+        if (match.loserNextMatchId) {
+          const lDest = updated.find(m => m.id === match.loserNextMatchId);
+          if (lDest) {
+            if (!lDest.player1Id) {
+              lDest.player1Id = loserId;
+            } else if (!lDest.player2Id) {
+              lDest.player2Id = loserId;
+            }
+          }
+        } else {
+          const lDest = updated.find(m => m.gameId === match.gameId && m.loserPrereqSetIds?.includes(matchId));
+          if (lDest) {
+            if (lDest.loserPrereqSetIds && lDest.loserPrereqSetIds[0] === matchId) {
+              lDest.player1Id = loserId;
+            } else {
+              lDest.player2Id = loserId;
+            }
+          }
+        }
+      }
+
       return updated as BracketMatch[];
     });
 
     // Auto-free station
     setStations(prev => prev.map(s => s.matchId === matchId ? { ...s, matchId: null } : s));
+
+    // Fire Discord result webhook if configured
+    if (discordWebhookUrl && supabaseToken && activeTournament?.name && winnerId) {
+      const tId = activeTournament.slug || activeTournament.name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+      const match = matches.find(m => m.id === matchId);
+      if (match) {
+        const winner = players.find(p => p.id === winnerId);
+        const loserId = match.player1Id === winnerId ? match.player2Id : match.player1Id;
+        const loser = loserId ? players.find(p => p.id === loserId) : null;
+        fetch('/api/discord/announce', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${supabaseToken}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            tournament_id: tId,
+            message_type: 'result',
+            match_info: {
+              winner: winner?.tag || 'Winner',
+              loser: loser?.tag || 'Loser',
+              score: `${p1Score}-${p2Score}`,
+              round: match.roundName,
+            }
+          })
+        }).catch(() => {});
+      }
+    }
   };
 
   const handleRemovePlayer = (playerId: string) => {
@@ -873,40 +1402,77 @@ export default function App() {
     }));
   };
 
-  const activeGamePlayersList = activeGame ? players.filter(p => p.gameId === activeGame) : players;
-  const totalPlayers = activeGamePlayersList.length;
-  const totalCheckedIn = activeGamePlayersList.filter(p => p.checkedIn).length;
-  const totalActive = matches.filter(m => (activeGame ? m.gameId === activeGame : true) && (m.state === 'in_progress' || m.state === 'called')).length;
+  const totalPlayers = players.length;
+  const totalCheckedIn = players.filter(p => p.checkedIn).length;
+  const totalActive = matches.filter(m => m.state === 'in_progress' || m.state === 'called').length;
   const totalStationsActive = stations.filter(s => s.active && s.matchId).length;
 
   return (
     <div className="min-h-screen flex flex-col" style={{ background: 'var(--background)', color: 'var(--foreground)', fontFamily: 'Inter, sans-serif' }}>
       {/* Top bar */}
-      <header className="border-b flex items-center justify-between px-6 py-3 shrink-0" style={{ background: 'var(--sidebar)', borderColor: 'var(--border)' }}>
-        <div className="flex items-center gap-4">
+      <header className="border-b flex flex-wrap items-center justify-between gap-3 px-4 py-3 shrink-0" style={{ background: 'var(--sidebar)', borderColor: 'var(--border)' }}>
+        <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #00E5FF, #FF006E)', boxShadow: '0 0 12px rgba(0,229,255,0.4)' }}>
+            <div className="w-7 h-7 rounded flex items-center justify-center shrink-0" style={{ background: 'linear-gradient(135deg, #00E5FF, #FF006E)', boxShadow: '0 0 12px rgba(0,229,255,0.4)' }}>
               <Zap size={14} color="#050A14" />
             </div>
             <div>
-              <div className="text-sm tracking-wider" style={{ fontFamily: 'Rajdhani, sans-serif', fontWeight: 700 }}>FightBracket Pro</div>
-              <div className="text-xs opacity-40" style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9 }}>powered by start.gg</div>
+              <div 
+                className="tracking-widest italic" 
+                style={{ 
+                  fontFamily: 'Rajdhani, sans-serif', 
+                  fontWeight: 800,
+                  fontSize: '1.2rem',
+                  lineHeight: 1.1,
+                  textTransform: 'uppercase',
+                  color: '#fff',
+                }}
+              >
+                <span style={{ 
+                  color: '#FF00FF', 
+                  textShadow: '0 0 8px rgba(255,0,255,0.5)' 
+                }}>FIGHTBRACKET</span>
+                <span className="ml-1" style={{ 
+                  color: '#00FFCC', 
+                  textShadow: '0 0 8px rgba(0,255,204,0.5)',
+                  WebkitTextStroke: '1px #00FFCC'
+                }}>PRO</span>
+              </div>
+              <div className="text-xs opacity-60" style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9, color: '#00FFCC' }}>powered by start.gg</div>
             </div>
           </div>
-          <div className="w-px h-8 opacity-20" style={{ background: '#00E5FF' }} />
-          <div className="min-w-[150px]">
-            <div className="text-sm tracking-wider" style={{ fontFamily: 'Rajdhani, sans-serif', fontWeight: 700 }}>{activeTournament ? activeTournament.name : ''}</div>
+          <div className="hidden sm:block w-px h-8 opacity-20" style={{ background: '#00E5FF' }} />
+          <div className="min-w-0">
+            <div className="text-sm tracking-wider truncate font-bold" style={{ fontFamily: 'Rajdhani, sans-serif' }}>{activeTournament ? activeTournament.name : ''}</div>
             {activeTournament && (
               <div className="flex items-center gap-1.5">
                 <MapPin size={9} className="opacity-40" />
-                <span className="text-xs opacity-40" style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9 }}>
+                <span className="text-xs opacity-40 truncate" style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9 }}>
                   {activeTournament.location}
                 </span>
               </div>
             )}
           </div>
+          {(activeTournament || totalPlayers > 0) && (
+            <>
+              <div className="hidden md:block w-px h-8 opacity-20" style={{ background: '#00E5FF' }} />
+              <div className="hidden md:flex items-center gap-4 opacity-70">
+                {[
+                  { label: 'PLAYERS', value: totalPlayers },
+                  { label: 'CHECKED IN', value: totalCheckedIn },
+                  { label: 'LIVE', value: totalActive },
+                  { label: 'BUSY', value: totalStationsActive },
+                ].map(s => (
+                  <div key={s.label} className="flex flex-col items-center justify-center min-w-[45px]">
+                    <div className="text-xs leading-none mb-0.5" style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 8, opacity: 0.6 }}>{s.label}</div>
+                    <div className="text-sm tabular-nums" style={{ fontFamily: 'Rajdhani, sans-serif', fontWeight: 700 }}>{s.value}</div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2">
           {matches.some(m => m.state === 'in_progress' || m.state === 'called') && (
             <div className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: '#00FF88' }} />
@@ -919,18 +1485,19 @@ export default function App() {
                 navigator.clipboard.writeText(window.location.origin + '/t/' + activeTournament?.slug);
                 toast.success('Share link copied to clipboard!');
               }}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs tracking-wider hover:opacity-80 transition-opacity bg-white/10 text-white font-mono"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded text-[11px] font-bold tracking-widest uppercase hover:opacity-80 transition-opacity bg-white/10 text-white"
+              style={{ fontFamily: 'JetBrains Mono, monospace' }}
             >
               SHARE LINK
             </button>
           )}
           <a href="https://start.gg" target="_blank" rel="noreferrer"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs tracking-wider hover:opacity-80 transition-opacity"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded text-[11px] font-bold tracking-widest uppercase hover:opacity-80 transition-opacity"
             style={{ background: 'var(--border)', border: '1px solid rgba(0,229,255,0.2)', color: '#00E5FF', fontFamily: 'JetBrains Mono, monospace' }}>
-            <Globe size={11} />start.gg<ExternalLink size={9} />
+            <Globe size={11} />START.GG<ExternalLink size={9} />
           </a>
           <button onClick={() => setShowImportModal(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs tracking-wider transition-opacity hover:opacity-100"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded text-[11px] font-bold tracking-widest uppercase hover:opacity-80 transition-opacity"
             style={{
               background: 'var(--border)',
               border: '1px solid rgba(0,229,255,0.2)',
@@ -940,34 +1507,61 @@ export default function App() {
             <GitBranch size={11} />
             IMPORT LIVE
           </button>
-          {activeTournament && (
+          {(activeTournament || players.length > 0 || gameOrder.length > 0) && (
             <button onClick={handleClearTournament}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs tracking-wider hover:bg-red-500/10 transition-colors"
-              style={{ border: '1px solid rgba(255,23,68,0.3)', color: '#FF1744', fontFamily: 'JetBrains Mono, monospace' }}>
-              CLEAR TOURNAMENT
+              className="flex items-center justify-center px-2 py-1 rounded font-bold tracking-widest uppercase transition-all hover:!bg-[#FF1744] hover:!text-white group"
+              style={{ background: 'var(--border)', border: '1px solid rgba(255,23,68,0.3)', color: '#FF1744', fontFamily: 'JetBrains Mono, monospace' }}>
+              <span className="flex flex-col items-center leading-[1.1] text-[9px]">
+                <span>CLEAR</span>
+                <span>TOURNAMENT</span>
+              </span>
             </button>
           )}
           {startggUser && (
-            <div className="flex items-center gap-3 ml-2">
+            <div className="flex items-center gap-3">
               <span className="text-sm" style={{ fontFamily: 'Rajdhani, sans-serif', fontWeight: 700, color: 'var(--foreground)' }}>{startggUser.name}</span>
               <button onClick={() => { localStorage.removeItem('startgg_access_token'); setStartggUser(null); }} className="text-xs opacity-50 hover:opacity-100 transition-opacity" style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10 }}>[DISCONNECT]</button>
             </div>
           )}
           {supabaseUser ? (
             <button onClick={() => setActiveTab('account')}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs tracking-wider hover:opacity-80 transition-opacity ml-2"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded text-[11px] font-bold tracking-widest uppercase hover:opacity-80 transition-opacity"
               style={{ background: '#FF006E15', border: '1px solid rgba(255,0,110,0.3)', color: '#FF006E', fontFamily: 'JetBrains Mono, monospace' }}>
               <UserCheck size={11} />
               {supabaseUser.user_metadata?.displayName || 'ACCOUNT'}
             </button>
           ) : (
             <button onClick={() => setActiveTab('account')}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs tracking-wider hover:opacity-80 transition-opacity ml-2"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded text-[11px] font-bold tracking-widest uppercase hover:opacity-80 transition-opacity"
               style={{ background: '#FF006E15', border: '1px solid rgba(255,0,110,0.3)', color: '#FF006E', fontFamily: 'JetBrains Mono, monospace' }}>
               <UserCheck size={11} />
               LOGIN
             </button>
           )}
+          <button
+            onClick={() => setShowDirectoryModal(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded text-[11px] font-bold tracking-widest uppercase hover:opacity-80 transition-opacity"
+            style={{
+              background: 'var(--border)',
+              border: '1px solid rgba(0,229,255,0.3)',
+              color: '#00E5FF',
+              fontFamily: 'JetBrains Mono, monospace'
+            }}>
+            <Search size={11} />
+            DIRECTORY
+          </button>
+          <button
+            onClick={() => setActiveTab('news')}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded text-[11px] font-bold tracking-widest uppercase hover:opacity-80 transition-opacity"
+            style={{
+              background: activeTab === 'news' ? '#a78bfa18' : 'var(--border)',
+              border: activeTab === 'news' ? '1px solid rgba(167,139,250,0.5)' : '1px solid rgba(167,139,250,0.2)',
+              color: '#a78bfa',
+              fontFamily: 'JetBrains Mono, monospace'
+            }}>
+            <Megaphone size={11} />
+            NEWS
+          </button>
           <ThemeToggleButton />
         </div>
       </header>
@@ -984,7 +1578,7 @@ export default function App() {
               className="relative flex items-center gap-2 px-5 py-3 transition-all"
               style={{
                 background: isActive ? `${gt.primaryColor}10` : 'transparent',
-                borderBottom: isActive ? `2px solid ${gt.primaryColor}` : '2px solid transparent',
+                borderTop: isActive ? `2px solid ${gt.primaryColor}` : '2px solid transparent',
               }}>
               <div className="w-2 h-2 rounded-full" style={{ background: gt.primaryColor, boxShadow: isActive ? `0 0 6px ${gt.primaryColor}` : 'none' }} />
               <span className="text-sm tracking-wider whitespace-nowrap" style={{ fontFamily: 'Rajdhani, sans-serif', fontWeight: 700, color: isActive ? gt.primaryColor : 'var(--muted-foreground)' }}>
@@ -1011,20 +1605,6 @@ export default function App() {
           <span className="text-xl font-light">+</span>
           <span className="text-xs tracking-wider" style={{ fontFamily: 'Rajdhani, sans-serif', fontWeight: 600 }}>ADD GAME</span>
         </button>
-        <div className="flex-1" />
-        <div className="flex items-center gap-5 px-5 opacity-50">
-          {[
-            { label: 'PLAYERS', value: totalPlayers },
-            { label: 'CHECKED IN', value: totalCheckedIn },
-            { label: 'LIVE', value: totalActive },
-            { label: 'BUSY', value: totalStationsActive },
-          ].map(s => (
-            <div key={s.label} className="text-right">
-              <div className="text-xs leading-none mb-0.5" style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 8, opacity: 0.6 }}>{s.label}</div>
-              <div className="text-sm tabular-nums" style={{ fontFamily: 'Rajdhani, sans-serif', fontWeight: 700 }}>{s.value}</div>
-            </div>
-          ))}
-        </div>
       </div>
 
       {/* Game banner */}
@@ -1042,7 +1622,7 @@ export default function App() {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;
               return (
-                <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+                <button key={tab.id} onClick={() => React.startTransition(() => setActiveTab(tab.id))}
                   className="flex items-center gap-1.5 px-4 py-2.5 transition-all text-xs tracking-widest"
                   style={{
                     fontFamily: 'JetBrains Mono, monospace',
@@ -1061,11 +1641,13 @@ export default function App() {
 
       {/* Main content */}
       <main className="flex-1 overflow-auto p-3 md:p-5 relative">
-        {activeTab === 'account' ? (
+        {activeTab === 'news' ? (
+          <NewsPage onNavigateHome={() => setActiveTab('overview')} onSignUp={() => setActiveTab('account')} />
+        ) : activeTab === 'account' ? (
           <div className="h-full">
             <AccountDashboard
               user={supabaseUser}
-              theme={theme}
+              theme={theme || { id: 'default', displayName: 'FightBracket', shortName: 'FB', primaryColor: '#00E5FF', secondaryColor: '#FF006E', bgFrom: '#050A14', glowColor: 'rgba(0,229,255,0.4)', description: '', publisher: '' }}
               currentTournamentData={{
                 players, matches, stations, gameThemes, gameOrder, activeGame, activeTournament, smsLogs, autoSyncSlug, exhibitions
               }}
@@ -1083,6 +1665,8 @@ export default function App() {
               }}
               onStartggImport={(slug) => handleLiveImport(slug)}
               onOpenFriendsModal={() => setShowFriendsModal(true)}
+              onNavigateHome={() => setActiveTab('overview')}
+              onViewOwnProfile={supabaseUser ? () => setTargetProfileUserId(supabaseUser.id) : undefined}
             />
           </div>
         ) : !activeGame || !theme ? (
@@ -1090,7 +1674,7 @@ export default function App() {
             <Trophy size={64} className="mb-6 opacity-20" />
             <h2 className="text-2xl tracking-widest mb-2" style={{ fontFamily: 'Rajdhani, sans-serif', fontWeight: 700 }}>NO TOURNAMENT LOADED</h2>
             <p className="text-sm max-w-md" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
-              {startggUser ? "Import a live tournament from Start.gg or add a game manually to get started." : "Please login with Start.gg to import a tournament."}
+              Import a live tournament from Start.gg or add a game manually to get started.
             </p>
           </div>
         ) : (
@@ -1118,20 +1702,33 @@ export default function App() {
                     players={gamePlayers}
                     theme={theme}
                     onCallMatch={m => {
-                      const availStation = stations.find(s => s.active && !s.matchId);
-                      if (availStation) handleCallMatch(m, availStation.id);
-                      else toast.error('No available stations', { style: { background: 'var(--card)', color: 'var(--foreground)' } });
+                      setPendingCallMatch(m);
                     }}
+                    onViewAnnouncement={m => setAnnouncement(m)}
                     onGenerateBracket={handleGenerateBracket}
                     selectedPool={selectedPool}
                     onSelectPool={setSelectedPool}
+                    isImported={!!activeTournament}
+                    onPlayerClick={(id) => setTargetProfileUserId(id)}
+                    onManualSync={() => autoSyncSlug ? handleLiveImport(autoSyncSlug) : (activeTournament?.slug ? handleLiveImport(activeTournament.slug) : null)}
+                    lastSyncedAt={lastSyncedAt}
+                    isSyncing={isSyncing}
+                    autoSyncSlug={autoSyncSlug || activeTournament?.slug || null}
                   />
                 </div>
               )}
               {activeTab === 'checkin' && (
                 <div>
                   <SectionHeader title="PARTICIPANT CHECK-IN" subtitle={`${checkedInCount} of ${gamePlayers.length} checked in`} theme={theme} />
-                  <CheckInPanel players={gamePlayers} theme={theme} onCheckIn={handleCheckIn} onRemovePlayer={isHost ? handleRemovePlayer : undefined} />
+                  <CheckInPanel 
+                    players={gamePlayers} 
+                    theme={theme} 
+                    onCheckIn={handleCheckIn} 
+                    onRemovePlayer={isHost ? handleRemovePlayer : undefined} 
+                    onAddPlayer={handleAddPlayer}
+                    isCustomTournament={!autoSyncSlug && !activeTournament?.slug}
+                    supabaseToken={supabaseToken}
+                  />
                 </div>
               )}
               {activeTab === 'pools' && (
@@ -1146,6 +1743,7 @@ export default function App() {
                     setActiveTab('bracket');
                   }}
                   isImported={Boolean(autoSyncSlug || activeTournament)}
+                  onPlayerClick={(id) => setTargetProfileUserId(id)}
                 />
               )}
               {activeTab === 'stations' && (
@@ -1197,11 +1795,14 @@ export default function App() {
           id: 'default', displayName: 'FightBracket', shortName: 'FB', primaryColor: '#00E5FF', secondaryColor: '#FF006E', bgFrom: '#050A14', glowColor: 'rgba(0,229,255,0.4)', description: '', publisher: ''
         })}
         onDismiss={() => {
-          if (announcement) {
-            setMatches(prev => prev.map(m => m.id === announcement.id ? { ...m, state: 'in_progress' } : m));
-          }
           setAnnouncement(null);
         }}
+        onStartMatch={(m) => {
+          setMatches(prev => prev.map(match => match.id === m.id ? { ...match, state: 'in_progress' } : match));
+          setAnnouncement(null);
+          toast.success(`Match started at Station ${m.stationId}`);
+        }}
+        onUndoCall={(id) => handleUndoCall(id)}
       />
 
       {pendingCallMatch && theme && (
@@ -1261,6 +1862,7 @@ export default function App() {
         theme={theme || { id: 'default', displayName: 'FightBracket', shortName: 'FB', primaryColor: '#00E5FF', secondaryColor: '#FF006E', bgFrom: '#050A14', glowColor: 'rgba(0,229,255,0.4)', description: '', publisher: '' }}
         currentUserId={supabaseUser?.id ?? null}
         supabaseToken={supabaseToken}
+        onViewProfile={(userId) => setTargetProfileUserId(userId)}
       />
 
       <UserProfileModal
@@ -1269,6 +1871,17 @@ export default function App() {
         targetUserId={targetProfileUserId}
         supabaseToken={supabaseToken}
         theme={theme || { id: 'default', displayName: 'FightBracket', shortName: 'FB', primaryColor: '#00E5FF', secondaryColor: '#FF006E', bgFrom: '#050A14', glowColor: 'rgba(0,229,255,0.4)', description: '', publisher: '' }}
+        onImportBracket={async (slug) => { await handleLiveImport(slug); }}
+      />
+
+      <UserDirectoryModal
+        isOpen={showDirectoryModal}
+        onClose={() => setShowDirectoryModal(false)}
+        supabaseToken={supabaseToken}
+        currentUserId={supabaseUser?.id ?? null}
+        onSelectUser={(userId) => {
+          setTargetProfileUserId(userId);
+        }}
       />
 
       <StaticPageModal
@@ -1277,35 +1890,57 @@ export default function App() {
         theme={theme || { id: 'default', displayName: 'FightBracket', shortName: 'FB', primaryColor: '#00E5FF', secondaryColor: '#FF006E', bgFrom: '#050A14', glowColor: 'rgba(0,229,255,0.4)', description: '', publisher: '' }}
       />
 
+      <OfficialRulesModal
+        isOpen={showRulesModal}
+        onClose={() => setShowRulesModal(false)}
+        theme={theme || { id: 'default', displayName: 'FightBracket', shortName: 'FB', primaryColor: '#00E5FF', secondaryColor: '#FF006E', bgFrom: '#050A14', glowColor: 'rgba(0,229,255,0.4)', description: '', publisher: '' }}
+      />
+
+      <PasswordResetModal
+        isOpen={showPasswordReset}
+        onClose={() => setShowPasswordReset(false)}
+      />
+
+      <SupportModal
+        isOpen={showSupportModal}
+        onClose={() => setShowSupportModal(false)}
+      />
+
       <Toaster position="bottom-right" />
       <footer
-        className="shrink-0 border-t"
-        style={{
-          background: 'var(--sidebar)',
-          borderColor: 'var(--border)',
-        }}
+        className="shrink-0 border-t px-6 py-5"
+        style={{ background: 'var(--sidebar)', borderColor: 'var(--border)', fontFamily: 'JetBrains Mono, monospace' }}
       >
-        <div
-          className="flex items-center justify-between px-6 py-2.5 gap-4"
-          style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '10px', color: 'rgba(255,255,255,0.35)' }}
-        >
-          <span className="whitespace-nowrap">
-            &copy; 2026 Ender Gaming Core Hosting &mdash; All rights reserved.
-          </span>
-          <div className="flex items-center gap-5">
+        <div className="flex flex-col items-center gap-2 text-center">
+          <div 
+            className="tracking-widest italic" 
+            style={{ 
+              fontFamily: 'Rajdhani, sans-serif', 
+              fontWeight: 800,
+              fontSize: '1rem',
+              lineHeight: 1.1,
+              textTransform: 'uppercase',
+              color: '#fff',
+            }}
+          >
+            <span style={{ color: '#FF00FF', textShadow: '0 0 8px rgba(255,0,255,0.5)' }}>FIGHTBRACKET</span>
+            <span className="ml-1" style={{ color: '#00FFCC', textShadow: '0 0 8px rgba(0,255,204,0.5)', WebkitTextStroke: '1px #00FFCC' }}>PRO</span>
+          </div>
+          
+          <div className="flex items-center justify-center gap-8 text-[9px] uppercase tracking-widest text-gray-500 mt-1 flex-wrap">
             {([
               { id: 'help', label: 'Help' },
-              { id: 'privacy', label: 'Privacy Policy' },
-              { id: 'terms', label: 'Terms of Use' },
-              { id: 'disclaimer', label: 'Non-Affiliation' },
+              { id: 'privacy', label: 'Privacy' },
+              { id: 'terms', label: 'Terms' },
+              { id: 'disclaimer', label: 'Disclaimer' },
+              { id: 'resources', label: 'Resources' },
             ] as { id: StaticPageId; label: string }[]).map(link => {
               if (link.id === 'privacy' || link.id === 'terms') {
                 return (
                   <a
                     key={link.id}
                     href={`/${link.id}`}
-                    className="transition-colors hover:text-cyan-400 no-underline"
-                    style={{ color: 'inherit' }}
+                    className="hover:text-[#00E5FF] transition-colors no-underline"
                   >
                     {link.label}
                   </a>
@@ -1315,13 +1950,35 @@ export default function App() {
                 <button
                   key={link.id}
                   onClick={() => setShowStaticPage(link.id)}
-                  className="transition-colors hover:text-cyan-400"
-                  style={{ fontFamily: 'inherit', fontSize: 'inherit', background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'inherit' }}
+                  className="hover:text-[#00E5FF] transition-colors"
                 >
                   {link.label}
                 </button>
               );
             })}
+            <button
+              onClick={() => setShowRulesModal(true)}
+              className="hover:text-[#00E5FF] transition-colors"
+            >
+              Official Rules
+            </button>
+            <button
+              onClick={() => setShowSupportModal(true)}
+              className="hover:text-[#00E5FF] transition-colors"
+            >
+              Contact Support
+            </button>
+          </div>
+
+          <div className="text-[9px] text-gray-600 mt-2 space-y-1">
+            <div>
+              <span>Developed and Hosted by <span className="text-gray-400">Ender Gaming Core Hosting</span></span>
+              <span className="mx-2">&middot;</span>
+              <span>Powered by <span className="text-gray-400">Start.gg</span></span>
+            </div>
+            <div>
+              &copy; 2026 FightBracket Pro &middot; &copy; 2026 Ender Gaming Core Hosting &mdash; All rights reserved.
+            </div>
           </div>
         </div>
       </footer>
@@ -1498,7 +2155,7 @@ function OverviewTab({
             style={{ fontFamily: 'JetBrains Mono, monospace' }}
           />
         </div>
-        <div className="overflow-y-auto" style={{ maxHeight: 300 }}>
+        <div className="overflow-y-auto" style={{ maxHeight: 360 }}>
           {filteredPlayers.length === 0 ? (
             <div className="py-6 text-center text-xs opacity-40" style={{ fontFamily: 'JetBrains Mono, monospace' }}>No players found</div>
           ) : (
@@ -1506,20 +2163,20 @@ function OverviewTab({
               const gt = gameThemes[p.gameId] || { primaryColor: '#aaa', shortName: 'GAME' };
               const isEliminated = p.status === 'eliminated';
               return (
-                <div key={p.id} className="flex items-center gap-3 px-5 py-2.5" style={{ borderBottom: '1px solid rgba(122,158,192,0.05)', opacity: isEliminated ? 0.5 : 1 }}>
-                  <span className="text-sm">{p.countryFlag}</span>
-                  <div className="flex-1">
-                    <div className="text-xs" style={{ fontFamily: 'Rajdhani, sans-serif', fontWeight: 700, color: isEliminated ? '#FF1744' : 'var(--foreground)', textDecoration: isEliminated ? 'line-through' : 'none' }}>
+                <div key={p.id} className="flex items-center gap-3 px-5 py-3" style={{ borderBottom: '1px solid rgba(122,158,192,0.08)' }}>
+                  <span className="text-base shrink-0">{p.countryFlag}</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-base leading-snug truncate" style={{ fontFamily: 'Rajdhani, sans-serif', fontWeight: 800, color: isEliminated ? '#FF4D4D' : 'var(--foreground)', textDecoration: isEliminated ? 'line-through' : 'none', opacity: isEliminated ? 0.75 : 1 }}>
                       {p.tag}
                     </div>
-                    <div className="text-xs opacity-40" style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9 }}>{gt.shortName} · #{p.seed}</div>
+                    <div className="text-xs opacity-60 mt-0.5" style={{ fontFamily: 'JetBrains Mono, monospace' }}>{gt.shortName} · #{p.seed}</div>
                   </div>
-                  <span className="text-xs tabular-nums font-bold" style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 10, color: isEliminated ? '#FF1744' : '#00FF88' }}>
-                    {isEliminated ? 'ELIMINATED' : 'ACTIVE'}
+                  <span className="text-xs tabular-nums font-bold px-2 py-0.5 rounded border" style={{ fontFamily: 'JetBrains Mono, monospace', color: p.status === 'eliminated' ? '#FF4D4D' : p.status === 'winner' ? '#FFD600' : '#00FF88', borderColor: p.status === 'eliminated' ? '#FF4D4D40' : p.status === 'winner' ? '#FFD60040' : '#00FF8840', background: p.status === 'eliminated' ? '#FF4D4D10' : p.status === 'winner' ? '#FFD60010' : '#00FF8810' }}>
+                    {p.status.toUpperCase()}
                   </span>
                   {isHost && (
-                    <button onClick={() => onRemovePlayer(p.id)} className="opacity-50 hover:opacity-100 hover:text-[#FF1744] transition-all ml-2">
-                      <Trash2 size={12} />
+                    <button onClick={() => onRemovePlayer(p.id)} className="opacity-50 hover:opacity-100 hover:text-[#FF1744] transition-all ml-1 p-1">
+                      <Trash2 size={14} />
                     </button>
                   )}
                 </div>
@@ -1548,13 +2205,13 @@ function OverviewTab({
                 const colors: Record<number, string> = { 1: '#FFD700', 2: '#C0C0C0', 3: '#CD7F32' };
                 const color = colors[p.placement!] || 'var(--foreground)';
                 return (
-                  <div key={p.id} className="flex items-center gap-3 px-5 py-2.5" style={{ borderBottom: '1px solid rgba(122,158,192,0.05)' }}>
-                    <div className="w-6 text-center text-xs font-bold" style={{ fontFamily: 'JetBrains Mono, monospace', color }}>
+                  <div key={p.id} className="flex items-center gap-3 px-5 py-3" style={{ borderBottom: '1px solid rgba(122,158,192,0.08)' }}>
+                    <div className="w-6 text-center text-sm font-bold" style={{ fontFamily: 'JetBrains Mono, monospace', color }}>
                       {p.placement}
                     </div>
-                    <span className="text-sm">{p.countryFlag}</span>
-                    <div className="flex-1">
-                      <div className="text-xs" style={{ fontFamily: 'Rajdhani, sans-serif', fontWeight: 700, color: 'var(--foreground)' }}>
+                    <span className="text-base">{p.countryFlag}</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-base leading-snug truncate" style={{ fontFamily: 'Rajdhani, sans-serif', fontWeight: 800, color: 'var(--foreground)' }}>
                         {p.tag}
                       </div>
                     </div>
@@ -1645,10 +2302,11 @@ function OverviewTab({
   );
 }
 
-function SectionHeader({ title, subtitle, theme }: { title: string; subtitle?: string; theme: GameTheme }) {
+function SectionHeader({ title, subtitle, theme }: { title: string; subtitle?: string; theme?: GameTheme | null }) {
+  const primaryColor = theme?.primaryColor || '#00E5FF';
   return (
     <div className="mb-5">
-      <div className="text-xl tracking-wider" style={{ fontFamily: 'Rajdhani, sans-serif', fontWeight: 700, color: theme.primaryColor }}>
+      <div className="text-xl tracking-wider" style={{ fontFamily: 'Rajdhani, sans-serif', fontWeight: 700, color: primaryColor }}>
         {title}
       </div>
       {subtitle && (

@@ -1,19 +1,49 @@
-# Environments
-.env
-.env.*
-!.env.example
-.venv
-venv/
-env/
-
-# Dependencies
+# Node & Build Artifacts
 node_modules/
 dist/
 build/
+.next/
+.cache/
 
-# Python
+# Environments & Sensitive Credentials
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.crt
+*.cert
+
+# Python Virtual Environments & Bytecode
 __pycache__/
 *.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+.pytest_cache/
 
-# Vercel
+# Databases & SQLite files
+*.db
+*.sqlite
+*.sqlite3
+app.db
+local_data.db
+fightbracket.db
+
+# Vercel & Deployment
 .vercel
+
+# Local Test Scripts & Output Dumps
+test_*.py
+test_*.js
+test_*.json
+*_out.json
+*_out*.json
+schema_query.py
+schema_out.json
+graphql_out.json
+wavu_player*.json
+wavu_player*.html
+wavu_profile.html
+*.log

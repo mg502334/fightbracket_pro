@@ -1,0 +1,24 @@
+// Example React integration
+import { useEffect, useState } from 'react';
+
+export default function TekkenDashboard() {
+  const [stats, setStats] = useState(null);
+  const TEKKEN_ID = "YOUR-IN-GAME-ID"; 
+
+  useEffect(() => {
+    getTekkenStats(TEKKEN_ID)
+      .then(data => setStats(data))
+      .catch(err => console.error(err));
+  }, []);
+
+  if (!stats) return <div>Loading Tekken 8 Stats...</div>;
+
+  return (
+    <div className="dashboard-card">
+      <h2>Player: {stats.playerName}</h2>
+      <p>Global Rank: {stats.rankName}</p>
+      <p>Win Rate: {stats.winRate}%</p>
+      <p>Most Played Character: {stats.mainCharacter}</p>
+    </div>
+  );
+}
