@@ -72,24 +72,41 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
     if (!userStartggInput.trim()) return;
     setImportingUserStartgg(true);
     try {
-      const headers = await getHeaders();
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        toast.error('You must be logged in to import a Start.gg profile.');
+        return;
+      }
+      const headers = {
+        'Authorization': `Bearer ${session.access_token}`,
+        'Content-Type': 'application/json'
+      };
       const res = await fetch('/api/user/startgg-import', {
         method: 'POST',
         headers,
         body: JSON.stringify({ startgg_slug_or_url: userStartggInput.trim() })
       });
       if (res.ok) {
-        toast.success('Start.gg career profile imported!');
+        const data = await res.json();
+        toast.success(`Start.gg profile imported! Tag: ${data?.startgg_data?.gamerTag || userStartggInput.trim()}`);
         fetchUserProfile();
       } else {
-        toast.error('Failed to import Start.gg profile');
+        let detail = `Server error ${res.status}`;
+        try {
+          const err = await res.json();
+          detail = err?.detail || detail;
+        } catch {}
+        console.error('Start.gg import failed:', detail);
+        toast.error(`Import failed: ${detail}`);
       }
-    } catch (err) {
-      toast.error('Error connecting to server');
+    } catch (err: any) {
+      console.error('Start.gg import exception:', err);
+      toast.error(`Connection error: ${err?.message || 'Could not reach the server.'}`);
     } finally {
       setImportingUserStartgg(false);
     }
   };
+
 
   const handleTogglePrivacy = async (field: 'is_public' | 'friends_only', value: boolean) => {
     try {

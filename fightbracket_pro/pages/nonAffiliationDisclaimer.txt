@@ -1,0 +1,12 @@
+nonAffiliationDisclaimer
+// Disclaimer
+
+# Non-Affiliation Disclaimer
+
+fightbracketpro.com is an independent software platform built for tournament organization and management. 
+
+We are not affiliated, associated, authorized, endorsed by, or in any way officially connected with:
+* Evolution Championship Series (Evo) or Sony Interactive Entertainment.
+* Any video game publishers, developers, or fighting game franchises (including but not limited to Bandai Namco, Capcom, NetherRealm, or Arc System Works).
+
+All product and company names, logos, and trademarks displayed on this website are the property of their respective owners. Their use does not imply any affiliation with or endorsement by them.

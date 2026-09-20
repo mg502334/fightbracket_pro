@@ -1,0 +1,16 @@
+legal
+// Privacy Policy
+# Privacy Policy & Legal Information
+
+Your privacy is important to us. This policy explains how fightbracketpro.com collects and uses your data.
+
+## 1. Information We Collect
+* **Account Information:** Email addresses and usernames created during registration.
+* **Tournament Data:** Gamertags, match history, and bracket scores.
+* **Contact Data:** Phone numbers, if provided voluntarily to receive station assignment SMS alerts.
+
+## 2. How We Use Your Data
+We use your information solely to facilitate tournament brackets, notify you of upcoming matches, and manage station assignments. We do not sell your personal data to advertisers.
+
+## 3. Third-Party Services
+We use third-party infrastructure (such as Vercel for hosting and SMS gateways for notifications) to run our service. These providers only access your data to perform specific technical tasks on our behalf.

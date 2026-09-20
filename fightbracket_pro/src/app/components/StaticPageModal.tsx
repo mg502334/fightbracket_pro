@@ -10,7 +10,7 @@ interface StaticPageModalProps {
   theme: any;
 }
 
-const STATIC_DOCS: Record<StaticPageId, { title: string; icon: any; content: string }> = {
+export const STATIC_DOCS: Record<StaticPageId, { title: string; icon: any; content: string }> = {
   help: {
     title: "HELP & SUPPORT CENTER",
     icon: HelpCircle,

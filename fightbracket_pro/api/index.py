@@ -834,6 +834,15 @@ def sync_startgg_bracket(slug: str = "clash-of-kings-vii", token: str = None):
             round
             winnerId
             displayScore
+            phaseGroup {
+              id
+              displayIdentifier
+              phase {
+                id
+                name
+                phaseOrder
+              }
+            }
             stream {
               streamName
               streamSource

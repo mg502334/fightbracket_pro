@@ -1,0 +1,20 @@
+termsOfUse
+// Terms & Conditions 
+# Terms of Use
+
+Welcome to fightbracketpro.com (the "Service"). By using our website, you agree to comply with and be bound by the following terms.
+
+## 1. Description of Service
+fightbracketpro.com provides tournament bracket management, station assignment software, and score tracking tools. 
+
+## 2. Limitation of Liability
+The Service is provided on an "as-is" and "as-available" basis. While we strive to prevent disruptions, fightbracketpro.com is not liable for any tournament delays, scoring errors, loss of tournament data, financial losses, or disputes regarding prize pools resulting from the use or failure of our software. Tournament Organizers use this tool at their own risk.
+
+## 3. User Conduct
+Users agree not to:
+* Manipulate tournament scores or match outcomes fraudulently.
+* Harass, threaten, or abuse other players or tournament staff.
+* Deploy bots, scrapers, or automated tools that disrupt the website's infrastructure.
+
+## 4. Account Termination
+We reserve the right to suspend or terminate access to our Service at any time, without prior notice, for conduct that violates these Terms.

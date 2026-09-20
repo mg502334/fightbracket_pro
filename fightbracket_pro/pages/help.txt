@@ -1,0 +1,18 @@
+help
+// Help/FAQ Page
+
+# Help & Support Center
+
+## For Players
+### How do I know when my match is ready?
+When a Tournament Organizer (TO) assigns your match to a setup, you will see your station number update live on your bracket dashboard. If you opted in, you will also receive a text message with your station number.
+
+### How do I report my score?
+Once your match concludes, click the report link on your dashboard or in your SMS notification. Enter the final score and submit. If your opponent submits the same score, the bracket updates automatically.
+
+## For Tournament Organizers
+### A player reported the wrong score. How do I fix it?
+If players enter conflicting scores, a red alert will appear on your TO Dashboard. Click the alert, review the match, and override the score manually.
+
+### How do I add physical stations/setups?
+Go to your Tournament Settings panel, navigate to "Station Management," and add your available tables and setup variants (e.g., Table 1 - Setup A, Table 1 - Setup B).

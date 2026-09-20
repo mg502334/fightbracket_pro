@@ -1279,28 +1279,49 @@ export default function App() {
 
       <Toaster position="bottom-right" />
       <footer
-        className="shrink-0 border-t px-6 py-3"
-        style={{ background: 'var(--sidebar)', borderColor: 'var(--border)', fontFamily: 'JetBrains Mono, monospace' }}
+        className="shrink-0 border-t"
+        style={{
+          background: 'var(--sidebar)',
+          borderColor: 'var(--border)',
+        }}
       >
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-2">
-          <span className="text-[11px] opacity-40">
+        <div
+          className="flex items-center justify-between px-6 py-2.5 gap-4"
+          style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '10px', color: 'rgba(255,255,255,0.35)' }}
+        >
+          <span className="whitespace-nowrap">
             &copy; 2026 Ender Gaming Core Hosting &mdash; All rights reserved.
           </span>
-          <div className="flex items-center gap-4 text-[11px] opacity-50">
+          <div className="flex items-center gap-5">
             {([
               { id: 'help', label: 'Help' },
               { id: 'privacy', label: 'Privacy Policy' },
               { id: 'terms', label: 'Terms of Use' },
               { id: 'disclaimer', label: 'Non-Affiliation' },
-            ] as { id: StaticPageId; label: string }[]).map(link => (
-              <button
-                key={link.id}
-                onClick={() => setShowStaticPage(link.id)}
-                className="hover:opacity-100 hover:text-cyan-400 transition-colors underline-offset-2 hover:underline"
-              >
-                {link.label}
-              </button>
-            ))}
+            ] as { id: StaticPageId; label: string }[]).map(link => {
+              if (link.id === 'privacy' || link.id === 'terms') {
+                return (
+                  <a
+                    key={link.id}
+                    href={`/${link.id}`}
+                    className="transition-colors hover:text-cyan-400 no-underline"
+                    style={{ color: 'inherit' }}
+                  >
+                    {link.label}
+                  </a>
+                );
+              }
+              return (
+                <button
+                  key={link.id}
+                  onClick={() => setShowStaticPage(link.id)}
+                  className="transition-colors hover:text-cyan-400"
+                  style={{ fontFamily: 'inherit', fontSize: 'inherit', background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'inherit' }}
+                >
+                  {link.label}
+                </button>
+              );
+            })}
           </div>
         </div>
       </footer>
