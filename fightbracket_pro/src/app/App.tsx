@@ -1924,7 +1924,7 @@ export default function App() {
               { id: 'disclaimer', label: 'Disclaimer' },
               { id: 'resources', label: 'Resources' },
             ] as { id: StaticPageId; label: string }[]).map(link => {
-              const sharedClasses = "text-[9px] uppercase tracking-widest font-mono text-gray-500 hover:text-[#00E5FF] transition-colors no-underline bg-transparent border-none p-0 cursor-pointer";
+              const sharedClasses = "text-xs uppercase tracking-widest font-mono text-gray-500 hover:text-[#00E5FF] transition-colors no-underline bg-transparent border-none p-0 cursor-pointer";
               if (link.id === 'privacy' || link.id === 'terms') {
                 return (
                   <a
@@ -1948,13 +1948,13 @@ export default function App() {
             })}
             <button
               onClick={() => setShowRulesModal(true)}
-              className="text-[9px] uppercase tracking-widest font-mono text-gray-500 hover:text-[#00E5FF] transition-colors bg-transparent border-none p-0 cursor-pointer"
+              className="text-xs uppercase tracking-widest font-mono text-gray-500 hover:text-[#00E5FF] transition-colors bg-transparent border-none p-0 cursor-pointer"
             >
               Official Rules
             </button>
             <button
               onClick={() => setShowSupportModal(true)}
-              className="text-[9px] uppercase tracking-widest font-mono text-gray-500 hover:text-[#00E5FF] transition-colors bg-transparent border-none p-0 cursor-pointer"
+              className="text-xs uppercase tracking-widest font-mono text-gray-500 hover:text-[#00E5FF] transition-colors bg-transparent border-none p-0 cursor-pointer"
             >
               Contact Support
             </button>
