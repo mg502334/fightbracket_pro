@@ -1268,7 +1268,7 @@ export default function App() {
       fatalFury: GAME_THEMES.fatalFury,
     };
 
-    setPlayers(PLAYERS);
+    setPlayers([]);
     setGameThemes(defaultThemes);
     setGameOrder(defaultGameIds);
     setActiveGame('tekken8');
@@ -1276,17 +1276,13 @@ export default function App() {
     setAutoSyncSlug(null);
     setExhibitions([]);
     setSmsLogs([]);
-    setMatches([
-      ...gen16Bracket('tekken8', PLAYERS.filter(p => p.gameId === 'tekken8').map(p => p.id)),
-      ...gen16Bracket('sf6', PLAYERS.filter(p => p.gameId === 'sf6').map(p => p.id)),
-      ...gen16Bracket('fatalFury', PLAYERS.filter(p => p.gameId === 'fatalFury').map(p => p.id)),
-    ]);
+    setMatches([]);
     setStations(Array.from({ length: 8 }).map((_, i) => ({ id: i + 1, name: `Station ${i + 1}`, active: true, matchId: null, gameId: null })));
 
     try {
       await fetch(`/api/user/data?user_id=${userId}`, { method: 'DELETE' });
     } catch (_) {}
-    toast.success('Reset to default tournament mode!');
+    toast.success('Tournament cleared!');
   };
 
   const handleReportScore = (matchId: string, p1Score: number, p2Score: number, winnerId: string | null) => {
