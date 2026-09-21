@@ -1261,17 +1261,10 @@ export default function App() {
     localStorage.removeItem('fb_autoSyncSlug');
     localStorage.removeItem('fb_activeGame');
 
-    const defaultGameIds = ['tekken8', 'sf6', 'fatalFury'];
-    const defaultThemes: Record<string, GameTheme> = {
-      tekken8: GAME_THEMES.tekken8,
-      sf6: GAME_THEMES.sf6,
-      fatalFury: GAME_THEMES.fatalFury,
-    };
-
     setPlayers([]);
-    setGameThemes(defaultThemes);
-    setGameOrder(defaultGameIds);
-    setActiveGame('tekken8');
+    setGameThemes({});
+    setGameOrder([]);
+    setActiveGame(null);
     setActiveTournament(null);
     setAutoSyncSlug(null);
     setExhibitions([]);
