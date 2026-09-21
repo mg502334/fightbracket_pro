@@ -64,6 +64,13 @@ export function StaticPageRoute({ pageId }: StaticPageRouteProps) {
     <div className="min-h-screen bg-[#050A14] flex flex-col">
       <div className="flex-1 w-full max-w-4xl mx-auto p-6 md:p-12">
         
+        {/* Top Navigation */}
+        <div className="mb-6">
+          <a href="/" className="inline-flex items-center text-[#00E5FF] hover:text-white font-mono text-xs font-bold transition-colors uppercase tracking-widest gap-2">
+            <span>←</span> Return to Home
+          </a>
+        </div>
+
         <div className="mb-8 pb-4 border-b border-white/10 flex items-center gap-4">
           <div className="p-3 rounded-xl bg-cyan-500/10">
             {Icon && <Icon size={32} className="text-cyan-400" />}
@@ -83,8 +90,8 @@ export function StaticPageRoute({ pageId }: StaticPageRouteProps) {
         </div>
         
         <div className="mt-12 text-center pb-8">
-          <a href="/" className="inline-block px-6 py-3 rounded-lg bg-white/5 hover:bg-white/10 text-white font-mono font-bold text-xs transition-colors border border-white/10">
-            ← BACK TO APP
+          <a href="/" className="inline-block px-6 py-3 rounded-lg bg-white/5 hover:bg-white/10 text-white font-mono font-bold text-xs transition-colors border border-white/10 uppercase tracking-widest">
+            ← Return to Home
           </a>
         </div>
       </div>

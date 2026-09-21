@@ -1927,7 +1927,7 @@ export default function App() {
             <span className="ml-1" style={{ color: '#00FFCC', textShadow: '0 0 8px rgba(0,255,204,0.5)', WebkitTextStroke: '1px #00FFCC' }}>PRO</span>
           </div>
           
-          <div className="flex items-center justify-center gap-8 text-[9px] uppercase tracking-widest text-gray-500 mt-1 flex-wrap">
+          <div className="flex items-center justify-center gap-8 mt-1 flex-wrap">
             {([
               { id: 'help', label: 'Help' },
               { id: 'privacy', label: 'Privacy' },
@@ -1935,12 +1935,13 @@ export default function App() {
               { id: 'disclaimer', label: 'Disclaimer' },
               { id: 'resources', label: 'Resources' },
             ] as { id: StaticPageId; label: string }[]).map(link => {
+              const sharedClasses = "text-[9px] uppercase tracking-widest font-mono text-gray-500 hover:text-[#00E5FF] transition-colors no-underline bg-transparent border-none p-0 cursor-pointer";
               if (link.id === 'privacy' || link.id === 'terms') {
                 return (
                   <a
                     key={link.id}
                     href={`/${link.id}`}
-                    className="hover:text-[#00E5FF] transition-colors no-underline"
+                    className={sharedClasses}
                   >
                     {link.label}
                   </a>
@@ -1950,7 +1951,7 @@ export default function App() {
                 <button
                   key={link.id}
                   onClick={() => setShowStaticPage(link.id)}
-                  className="hover:text-[#00E5FF] transition-colors"
+                  className={sharedClasses}
                 >
                   {link.label}
                 </button>
@@ -1958,13 +1959,13 @@ export default function App() {
             })}
             <button
               onClick={() => setShowRulesModal(true)}
-              className="hover:text-[#00E5FF] transition-colors"
+              className="text-[9px] uppercase tracking-widest font-mono text-gray-500 hover:text-[#00E5FF] transition-colors bg-transparent border-none p-0 cursor-pointer"
             >
               Official Rules
             </button>
             <button
               onClick={() => setShowSupportModal(true)}
-              className="hover:text-[#00E5FF] transition-colors"
+              className="text-[9px] uppercase tracking-widest font-mono text-gray-500 hover:text-[#00E5FF] transition-colors bg-transparent border-none p-0 cursor-pointer"
             >
               Contact Support
             </button>
