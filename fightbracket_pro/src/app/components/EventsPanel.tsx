@@ -882,7 +882,10 @@ export function EventsPanel({
                   <div className="text-[10px] text-gray-500 uppercase font-mono">Entry / Prize</div>
                   <div className="text-xs font-bold text-[#00E5FF] mt-0.5 truncate">{selectedDetailEvent.entryFee} {selectedDetailEvent.prizePool ? `· ${selectedDetailEvent.prizePool}` : ''}</div>
                 </div>
-                <div className="bg-black/30 p-3 rounded-xl border border-white/5">
+                <div 
+                  className="bg-black/30 p-3 rounded-xl border border-white/5 cursor-pointer hover:border-[#00E5FF]/40 transition-colors"
+                  onClick={() => document.getElementById('competitors-list')?.scrollIntoView({ behavior: 'smooth' })}
+                >
                   <div className="text-[10px] text-gray-500 uppercase font-mono">Entrants</div>
                   <div className="text-xs font-bold text-white mt-0.5">{selectedDetailEvent.fighters} / {selectedDetailEvent.maxEntrants}</div>
                 </div>
@@ -933,7 +936,7 @@ export function EventsPanel({
               </div>
 
               {/* Registered Participants */}
-              <div className="space-y-2 pt-2 border-t border-white/5">
+              <div id="competitors-list" className="space-y-2 pt-2 border-t border-white/5">
                 <div className="flex items-center justify-between">
                   <h4 className="text-xs font-bold uppercase tracking-widest text-gray-400 font-mono">
                     Registered Competitors ({eventParticipants.length})
