@@ -396,7 +396,7 @@ export function EventsPanel({
 
           <div className="text-[11px] text-gray-400 font-mono flex items-center gap-2 px-3 self-end sm:self-center">
             {source === 'fightbracket' ? (
-              <span className="text-[#00E5FF]">⚔️ Direct In-App Bracket Integration</span>
+              <span className="text-[#00E5FF]">Direct In-App Bracket Integration</span>
             ) : (
               <span className="text-gray-400">🌐 Global Start.gg Live Events</span>
             )}
