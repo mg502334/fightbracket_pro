@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Search, Calendar, MapPin, Users, ExternalLink, ChevronLeft, ChevronRight, 
-  Gamepad2, Map, Plus, Swords, Trophy, Globe, Tv, Shield, Check, Trash2, Info, Eye, Sparkles, Share2
+  Gamepad2, Map, Plus, GitBranch, Trophy, Globe, Tv, Shield, Check, Trash2, Info, Eye, Sparkles, Share2
 } from 'lucide-react';
 import { toast } from 'sonner';
 import startggGames from '../data/startggGames.json';
@@ -375,7 +375,7 @@ export function EventsPanel({
               }`}
               style={{ fontFamily: 'Rajdhani, sans-serif' }}
             >
-              <Swords size={15} /> FIGHTBRACKET EVENTS
+              <Trophy size={15} /> FIGHTBRACKET EVENTS
               <span className="hidden md:inline-block text-[9px] px-1.5 py-0.2 rounded bg-[#00E5FF]/20 text-[#00E5FF] border border-[#00E5FF]/30 font-mono">
                 BUILT-IN BRACKET
               </span>
@@ -708,7 +708,7 @@ export function EventsPanel({
                           className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-[#00E5FF]/10 text-[#00E5FF] border border-[#00E5FF]/40 text-xs font-bold tracking-wider hover:bg-[#00E5FF]/20 transition-all uppercase"
                           style={{ fontFamily: 'Rajdhani, sans-serif' }}
                         >
-                          <Swords size={13} /> OPEN BRACKET
+                          <GitBranch size={13} /> OPEN BRACKET
                         </button>
                       )}
 
@@ -978,7 +978,7 @@ export function EventsPanel({
                   className="flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-gradient-to-r from-[#00E5FF] to-[#00B4D8] text-[#050A14] font-bold text-xs tracking-wider hover:opacity-90 transition-all uppercase shadow-[0_0_15px_rgba(0,229,255,0.3)]"
                   style={{ fontFamily: 'Rajdhani, sans-serif' }}
                 >
-                  <Swords size={15} /> OPEN IN BRACKET MANAGER
+                  <GitBranch size={15} /> OPEN IN BRACKET MANAGER
                 </button>
               ) : (
                 <div />
