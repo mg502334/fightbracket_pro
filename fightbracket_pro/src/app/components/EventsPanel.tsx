@@ -375,7 +375,7 @@ export function EventsPanel({
               }`}
               style={{ fontFamily: 'Rajdhani, sans-serif' }}
             >
-              <Trophy size={15} /> FIGHTBRACKET EVENTS
+              <Trophy size={15} /> FIGHTBRACKET PRO EVENTS
               <span className="hidden md:inline-block text-[9px] px-1.5 py-0.2 rounded bg-[#00E5FF]/20 text-[#00E5FF] border border-[#00E5FF]/30 font-mono">
                 BUILT-IN BRACKET
               </span>
@@ -535,7 +535,7 @@ export function EventsPanel({
                 className="px-5 py-2.5 bg-[#00E5FF] text-[#050A14] font-bold text-xs tracking-wider rounded-xl hover:opacity-90 transition-all uppercase"
                 style={{ fontFamily: 'Rajdhani, sans-serif' }}
               >
-                SWITCH TO FIGHTBRACKET EVENTS
+                SWITCH TO FIGHTBRACKET PRO EVENTS
               </button>
               <button
                 onClick={() => onNavigateHome?.()}
@@ -557,7 +557,7 @@ export function EventsPanel({
               <Trophy size={40} className="mx-auto text-gray-600" />
               <div className="space-y-1">
                 <h3 className="text-lg font-bold text-white" style={{ fontFamily: 'Rajdhani, sans-serif' }}>
-                  NO FIGHTBRACKET EVENTS FOUND
+                  NO FIGHTBRACKET PRO EVENTS FOUND
                 </h3>
                 <p className="text-xs text-gray-400 max-w-sm mx-auto">
                   No community events matched your search filters. Be the first to host an event!
