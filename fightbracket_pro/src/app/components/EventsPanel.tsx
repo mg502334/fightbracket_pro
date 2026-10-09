@@ -104,6 +104,25 @@ export function EventsPanel({
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [registeringId, setRegisteringId] = useState<string | null>(null);
 
+  const formatLocalTime = (isoString?: string, fallbackStr?: string) => {
+    if (!isoString && !fallbackStr) return 'TBA';
+    if (!isoString) return fallbackStr;
+    try {
+      const safeIso = isoString.endsWith('Z') || isoString.includes('+') || isoString.includes('-') && isoString.length > 10 ? isoString : isoString + 'Z';
+      const d = new Date(safeIso);
+      if (isNaN(d.getTime())) return fallbackStr;
+      return new Intl.DateTimeFormat('en-US', {
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        timeZoneName: 'short'
+      }).format(d);
+    } catch {
+      return fallbackStr;
+    }
+  };
+
   useEffect(() => {
     if (source === 'fightbracket') {
       fetchCommunityEvents();
@@ -668,7 +687,7 @@ export function EventsPanel({
                       <div className="space-y-1.5 pt-2 border-t border-white/5 text-xs text-gray-400">
                         <div className="flex items-center gap-2">
                           <Calendar size={13} className="text-[#00E5FF] shrink-0" />
-                          <span className="truncate">{ev.date}</span>
+                          <span className="truncate">{formatLocalTime(ev.startDate, ev.date)}</span>
                         </div>
                         <div className="flex items-center gap-2">
                           <MapPin size={13} className="text-[#00E5FF] shrink-0" />
@@ -875,7 +894,7 @@ export function EventsPanel({
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div className="bg-black/30 p-3 rounded-xl border border-white/5">
                   <div className="text-[10px] text-gray-500 uppercase font-mono">Date</div>
-                  <div className="text-xs font-bold text-white mt-0.5 truncate">{selectedDetailEvent.date}</div>
+                  <div className="text-xs font-bold text-white mt-0.5 truncate">{formatLocalTime(selectedDetailEvent.startDate, selectedDetailEvent.date)}</div>
                 </div>
                 <div className="bg-black/30 p-3 rounded-xl border border-white/5">
                   <div className="text-[10px] text-gray-500 uppercase font-mono">Location</div>

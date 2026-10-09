@@ -9,6 +9,25 @@ export function EventPublicPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const formatLocalTime = (isoString?: string, fallbackStr?: string) => {
+    if (!isoString && !fallbackStr) return 'TBA';
+    if (!isoString) return fallbackStr;
+    try {
+      const safeIso = isoString.endsWith('Z') || isoString.includes('+') || isoString.includes('-') && isoString.length > 10 ? isoString : isoString + 'Z';
+      const d = new Date(safeIso);
+      if (isNaN(d.getTime())) return fallbackStr;
+      return new Intl.DateTimeFormat('en-US', {
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        timeZoneName: 'short'
+      }).format(d);
+    } catch {
+      return fallbackStr;
+    }
+  };
+
   useEffect(() => {
     if (!slug) return;
     fetch(`/api/public/events/${slug}`)
@@ -112,7 +131,7 @@ export function EventPublicPage() {
                 {event.name}
               </h1>
               <div className="flex items-center gap-4 text-sm font-mono text-gray-400">
-                <span className="flex items-center gap-1.5"><Calendar size={14} className="text-cyan-500" /> {event.date}</span>
+                <span className="flex items-center gap-1.5"><Calendar size={14} className="text-cyan-500" /> {formatLocalTime(event.startDate, event.date)}</span>
                 <span className="flex items-center gap-1.5"><MapPin size={14} className="text-cyan-500" /> {event.location}</span>
               </div>
             </div>
