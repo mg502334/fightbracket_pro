@@ -27,20 +27,20 @@ except ImportError:
 
 from typing import TYPE_CHECKING, Optional
 if TYPE_CHECKING:
-    from api.db import get_db, DBPlayer, DBStation, DBSMSLog, DBTournament, DBTournamentParticipant, DBUser, DBFriendship, DBDirectMessage, DBUserIdentifier, DBUserIntegration, DBPost, DBPostLike, DBPostComment, DBPostReaction, DBPostRepost, DBNewsItem, DBSupportTicket, DBProfileLike, DBUserFollow, DBTekkenCache
+    from api.db import get_db, DBPlayer, DBStation, DBSMSLog, DBTournament, DBTournamentParticipant, DBUser, DBFriendship, DBDirectMessage, DBUserIdentifier, DBUserIntegration, DBPost, DBPostLike, DBPostComment, DBPostReaction, DBPostRepost, DBNewsItem, DBSupportTicket, DBProfileLike, DBUserFollow, DBTekkenCache, DBEvent, DBEventRegistration
 
 else:
     try:
         try:
-            from api.db import get_db, DBPlayer, DBStation, DBSMSLog, DBTournament, DBTournamentParticipant, DBUser, DBFriendship, DBDirectMessage, DBUserIdentifier, DBUserIntegration, DBPost, DBPostLike, DBPostComment, DBPostReaction, DBPostRepost, DBNewsItem, DBSupportTicket, DBProfileLike, DBUserFollow, DBTekkenCache
+            from api.db import get_db, DBPlayer, DBStation, DBSMSLog, DBTournament, DBTournamentParticipant, DBUser, DBFriendship, DBDirectMessage, DBUserIdentifier, DBUserIntegration, DBPost, DBPostLike, DBPostComment, DBPostReaction, DBPostRepost, DBNewsItem, DBSupportTicket, DBProfileLike, DBUserFollow, DBTekkenCache, DBEvent, DBEventRegistration
         except Exception:
-            from db import get_db, DBPlayer, DBStation, DBSMSLog, DBTournament, DBTournamentParticipant, DBUser, DBFriendship, DBDirectMessage, DBUserIdentifier, DBUserIntegration, DBPost, DBPostLike, DBPostComment, DBPostReaction, DBPostRepost, DBNewsItem, DBSupportTicket, DBProfileLike, DBUserFollow, DBTekkenCache  # type: ignore
+            from db import get_db, DBPlayer, DBStation, DBSMSLog, DBTournament, DBTournamentParticipant, DBUser, DBFriendship, DBDirectMessage, DBUserIdentifier, DBUserIntegration, DBPost, DBPostLike, DBPostComment, DBPostReaction, DBPostRepost, DBNewsItem, DBSupportTicket, DBProfileLike, DBUserFollow, DBTekkenCache, DBEvent, DBEventRegistration  # type: ignore
     except Exception as _db_err:
         print(f"DB import warning: {_db_err}")
         def get_db():
             yield None
         class _DummyModel: pass
-        DBPlayer = DBStation = DBSMSLog = DBTournament = DBTournamentParticipant = DBFriendship = DBDirectMessage = DBUser = DBUserIdentifier = DBPost = DBPostLike = DBPostComment = DBPostReaction = DBPostRepost = DBNewsItem = DBSupportTicket = DBTekkenCache = _DummyModel # type: ignore
+        DBPlayer = DBStation = DBSMSLog = DBTournament = DBTournamentParticipant = DBFriendship = DBDirectMessage = DBUser = DBUserIdentifier = DBPost = DBPostLike = DBPostComment = DBPostReaction = DBPostRepost = DBNewsItem = DBSupportTicket = DBTekkenCache = DBEvent = DBEventRegistration = _DummyModel # type: ignore
 try:
     import jwt
 except ImportError:
@@ -240,6 +240,7 @@ class CreatePostRequest(BaseModel):
     type: str
     tags: Optional[list[str]] = None
     image: Optional[str] = None
+    attached_event_id: Optional[str] = None
 
 class FriendRequestInput(BaseModel):
     target_identifier: str
@@ -262,6 +263,59 @@ class SupportTicketRequest(BaseModel):
     inquiry_type: str  # bracket | oauth | privacy | api | general
     email: str
     message: str
+
+class CreateEventRequest(BaseModel):
+    name: str
+    game: str
+    game_id: str
+    event_type: Optional[str] = "tournament"
+    format: Optional[str] = "double_elimination"
+    start_date: str
+    end_date: Optional[str] = None
+    is_online: bool = False
+    venue_name: Optional[str] = None
+    address: Optional[str] = None
+    city: Optional[str] = None
+    state: Optional[str] = None
+    country: Optional[str] = "US"
+    description: Optional[str] = None
+    rules: Optional[str] = None
+    stream_url: Optional[str] = None
+    discord_url: Optional[str] = None
+    banner_url: Optional[str] = None
+    entry_fee: Optional[str] = None
+    prize_pool: Optional[str] = None
+    max_entrants: Optional[int] = 64
+    create_bracket: bool = True
+    show_on_profile: Optional[bool] = False
+
+class UpdateEventRequest(BaseModel):
+    name: Optional[str] = None
+    game: Optional[str] = None
+    game_id: Optional[str] = None
+    event_type: Optional[str] = None
+    format: Optional[str] = None
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+    is_online: Optional[bool] = None
+    venue_name: Optional[str] = None
+    address: Optional[str] = None
+    city: Optional[str] = None
+    state: Optional[str] = None
+    country: Optional[str] = None
+    description: Optional[str] = None
+    rules: Optional[str] = None
+    stream_url: Optional[str] = None
+    discord_url: Optional[str] = None
+    banner_url: Optional[str] = None
+    entry_fee: Optional[str] = None
+    prize_pool: Optional[str] = None
+    max_entrants: Optional[int] = None
+    status: Optional[str] = None
+    show_on_profile: Optional[bool] = None
+
+class RegisterEventRequest(BaseModel):
+    gamer_tag: Optional[str] = None
 
 # ─── Discord Webhook Helper ──────────────────────────────────────────────────
 
@@ -1906,6 +1960,11 @@ def get_target_user_profile(target_user_id: str, user_id: str = Depends(get_curr
     is_liked = db.query(DBProfileLike).filter(DBProfileLike.user_id == user_id, DBProfileLike.target_user_id == target_user_id).first() is not None
     is_following = db.query(DBUserFollow).filter(DBUserFollow.follower_id == user_id, DBUserFollow.following_id == target_user_id).first() is not None
 
+    events_query = db.query(DBEvent).filter(DBEvent.user_id == target_user_id)
+    if not is_self:
+        events_query = events_query.filter(DBEvent.show_on_profile == True)
+    community_events = [_serialize_event(e, db, user_id) for e in events_query.order_by(DBEvent.created_at.desc()).limit(10).all()]
+
     uid_str = getattr(target_user, 'unique_id', None) or (target_ui.unique_id if target_ui else "FB-USER")
     return {
         "profile": {
@@ -1935,7 +1994,8 @@ def get_target_user_profile(target_user_id: str, user_id: str = Depends(get_curr
             "followers_count": followers_count,
             "following_count": following_count,
             "is_liked": is_liked,
-            "is_following": is_following
+            "is_following": is_following,
+            "community_events": community_events
         }
     }
 
@@ -2043,6 +2103,17 @@ def get_public_tournament(tournament_id: str, db: Session = Depends(get_db)):
     if not tournament:
         raise HTTPException(status_code=404, detail="Tournament not found")
     return {"tournament": {"id": tournament.id, "user_id": tournament.user_id, "name": tournament.name, "data": tournament.data, "updated_at": tournament.updated_at.isoformat()}}
+
+@app.get("/api/public/events/{slug}")
+def get_public_event(slug: str, db: Session = Depends(get_db)):
+    if not db:
+        raise HTTPException(status_code=404, detail="Database not available")
+    
+    db_evt = db.query(DBEvent).filter(DBEvent.slug == slug).first()
+    if not db_evt:
+        raise HTTPException(status_code=404, detail="Event not found")
+        
+    return {"event": _serialize_event(db_evt, db, None)}
 
 
 @app.post("/api/tournaments")
@@ -3268,6 +3339,15 @@ def get_feed(
         except Exception:
             reactions_map = { "🔥": 4, "🏆": 2, "🥊": 3 }
 
+        attached_event = None
+        if post.attached_event_id:
+            try:
+                db_evt = db.query(DBEvent).filter(DBEvent.id == post.attached_event_id).first()
+                if db_evt:
+                    attached_event = _serialize_event(db_evt, db, user_id)
+            except Exception:
+                pass
+
         results.append({
             "id": post.id,
             "author": {
@@ -3290,7 +3370,8 @@ def get_feed(
             "pinned": post.pinned,
             "reactions": reactions_map,
             "userReactions": user_reactions,
-            "commentsList": comments_list
+            "commentsList": comments_list,
+            "attachedEvent": attached_event
         })
         
     return results
@@ -3308,7 +3389,8 @@ def create_post(req: CreatePostRequest, user_id: str = Depends(get_current_user_
         content=req.content,
         type=req.type,
         tags=json.dumps(req.tags) if req.tags else None,
-        image=req.image
+        image=req.image,
+        attached_event_id=req.attached_event_id
     )
     
     db.add(new_post)
@@ -4370,3 +4452,687 @@ def search_events(req: EventSearchRequest, user_id: str = Depends(get_current_us
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ─── FightBracket Community Events Endpoints ─────────────────────────────────
+
+def _serialize_event(event: DBEvent, db: Session, current_user_id: Optional[str] = None) -> dict:
+    import json as _json
+    organizer = db.query(DBUser).filter(DBUser.id == event.user_id).first() if db else None
+    org_tag = (getattr(organizer, 'gamer_tag', None) or 
+               (f"{organizer.first_name or ''} {organizer.last_name or ''}".strip() if organizer and (organizer.first_name or organizer.last_name) else "Tournament Organizer")) if organizer else "Community Host"
+    org_avatar = getattr(organizer, 'avatar_url', None) if organizer else None
+    org_handle = getattr(organizer, 'unique_id', None) or "FB-COMMUNITY"
+    
+    is_registered = False
+    if current_user_id and db:
+        reg = db.query(DBEventRegistration).filter(
+            DBEventRegistration.event_id == event.id,
+            DBEventRegistration.user_id == current_user_id
+        ).first()
+        is_registered = reg is not None
+
+    loc_str = "Online" if event.is_online else (
+        f"{event.venue_name} ({event.city}, {event.state})" if event.venue_name and event.city and event.state
+        else (f"{event.city}, {event.state}" if event.city and event.state else (event.venue_name or "In-Person"))
+    )
+
+    d = event.start_date
+    date_str = d.strftime("%b %d, %Y · %I:%M %p") if d else "TBD"
+
+    return {
+        "id": event.id,
+        "name": event.name,
+        "slug": event.slug,
+        "game": event.game,
+        "gameId": event.game_id,
+        "eventType": event.event_type or "tournament",
+        "format": event.format or "double_elimination",
+        "startDate": event.start_date.isoformat() if event.start_date else None,
+        "date": date_str,
+        "endDate": event.end_date.isoformat() if event.end_date else None,
+        "isOnline": event.is_online,
+        "showOnProfile": getattr(event, 'show_on_profile', False),
+        "location": loc_str,
+        "venueName": event.venue_name,
+        "address": event.address,
+        "city": event.city,
+        "state": event.state,
+        "country": event.country,
+        "description": event.description,
+        "rules": event.rules,
+        "streamUrl": event.stream_url,
+        "discordUrl": event.discord_url,
+        "bannerUrl": event.banner_url,
+        "entryFee": event.entry_fee or "Free",
+        "prizePool": event.prize_pool,
+        "maxEntrants": event.max_entrants or 64,
+        "fighters": event.entrants_count or 0,
+        "status": event.status or "upcoming",
+        "tournamentId": event.tournament_id,
+        "organizer": {
+            "id": event.user_id,
+            "gamerTag": org_tag,
+            "avatarUrl": org_avatar,
+            "uniqueId": org_handle,
+            "isOwner": current_user_id == event.user_id if current_user_id else False
+        },
+        "isRegistered": is_registered,
+        "isOwner": current_user_id == event.user_id if current_user_id else False
+    }
+
+
+def _seed_community_events_if_empty(db: Session):
+    """Seed initial high-quality community events if database is empty."""
+    if not db:
+        return
+    import json
+    try:
+        count = db.query(DBEvent).count()
+        if count > 0:
+            return
+            
+        bot_user = db.query(DBUser).filter(DBUser.id == "fb-bot-system").first()
+        bot_id = bot_user.id if bot_user else "fb-system"
+        
+        seeds = [
+            {
+                "name": "FightBracket Pro: King of the Iron Fist Trial #1",
+                "game": "Tekken 8",
+                "game_id": "tekken8",
+                "format": "double_elimination",
+                "event_type": "tournament",
+                "days_offset": 3,
+                "is_online": True,
+                "banner_url": "https://cdn.cloudflare.steamstatic.com/steam/apps/1778820/header.jpg",
+                "prize_pool": "$500 Pot Bonus",
+                "entry_fee": "Free",
+                "max_entrants": 64,
+                "description": "Weekly premier Tekken 8 Double Elimination showdown. Full in-app tournament bracket tracking, live stream queue, and automated standings.",
+                "rules": "Double Elimination, FT2 until Top 8 (FT3). Default stages random. Winner locked into character."
+            },
+            {
+                "name": "Drive Rush Showdown: Street Fighter 6 Weekly",
+                "game": "Street Fighter 6",
+                "game_id": "sf6",
+                "format": "double_elimination",
+                "event_type": "weekly",
+                "days_offset": 5,
+                "is_online": False,
+                "venue_name": "Downtown Gaming Arena",
+                "city": "Houston",
+                "state": "TX",
+                "banner_url": "https://cdn.cloudflare.steamstatic.com/steam/apps/1364780/header.jpg",
+                "prize_pool": "$250 Pot",
+                "entry_fee": "$10",
+                "max_entrants": 32,
+                "description": "Houston local offline Street Fighter 6 tournament. Station-managed tournament on PS5 and PC setups.",
+                "rules": "Double Elimination, FT2. Finals FT3. Bring your own controller."
+            },
+            {
+                "name": "City of Wolves: Fatal Fury Debut Exhibition",
+                "game": "Fatal Fury: City of Wolves",
+                "game_id": "fatalFury",
+                "format": "single_elimination",
+                "event_type": "exhibition",
+                "days_offset": 7,
+                "is_online": True,
+                "banner_url": "https://cdn.cloudflare.steamstatic.com/steam/apps/2492040/header.jpg",
+                "prize_pool": "$300 Winner Take All",
+                "entry_fee": "Free",
+                "max_entrants": 16,
+                "description": "Fast-paced exhibition tournament showcasing the new Rev System in Fatal Fury: City of Wolves.",
+                "rules": "Single Elimination 16-player bracket. FT3 all sets."
+            }
+        ]
+        
+        for s in seeds:
+            ev_id = f"fbe-{uuid.uuid4().hex[:8]}"
+            t_id = f"tourney-{uuid.uuid4().hex[:8]}"
+            base_slug = re.sub(r'[^a-z0-9]+', '-', s["name"].lower()).strip('-')
+            slug = f"{base_slug}-{uuid.uuid4().hex[:4]}"
+            s_date = datetime.now(timezone.utc) + timedelta(days=s["days_offset"])
+            
+            initial_data = {
+                "activeGame": s["game_id"],
+                "players": [],
+                "matches": [],
+                "stations": [
+                    {"id": i + 1, "name": f"Station {i + 1}", "active": True, "matchId": None, "gameId": s["game_id"]}
+                    for i in range(8)
+                ],
+                "gameThemes": {
+                    s["game_id"]: {
+                        "id": s["game_id"],
+                        "displayName": s["game"],
+                        "shortName": s["game"][:4].upper(),
+                        "primaryColor": "#00E5FF" if "tekken" in s["game_id"] else ("#FF006E" if "sf" in s["game_id"] else "#FFD600"),
+                        "secondaryColor": "#FFD600",
+                        "bgFrom": "#050A14",
+                        "glowColor": "rgba(0, 229, 255, 0.4)",
+                        "description": f"{s['game']} Tournament",
+                        "publisher": "FGC"
+                    }
+                },
+                "gameOrder": [s["game_id"]],
+                "activeTournament": {
+                    "name": s["name"],
+                    "location": "Online" if s["is_online"] else f"{s.get('city')}, {s.get('state')}",
+                    "slug": slug,
+                    "numAttendees": 0
+                },
+                "tournamentOwnerId": bot_id,
+                "exhibitions": []
+            }
+            
+            db.add(DBTournament(id=t_id, user_id=bot_id, name=s["name"], data=json.dumps(initial_data)))
+            
+            db.add(DBEvent(
+                id=ev_id,
+                user_id=bot_id,
+                tournament_id=t_id,
+                name=s["name"],
+                slug=slug,
+                game=s["game"],
+                game_id=s["game_id"],
+                event_type=s["event_type"],
+                format=s["format"],
+                start_date=s_date,
+                is_online=s["is_online"],
+                venue_name=s.get("venue_name"),
+                city=s.get("city"),
+                state=s.get("state"),
+                country="US",
+                description=s["description"],
+                rules=s["rules"],
+                banner_url=s["banner_url"],
+                entry_fee=s["entry_fee"],
+                prize_pool=s["prize_pool"],
+                max_entrants=s["max_entrants"],
+                entrants_count=0,
+                status="upcoming"
+            ))
+        db.commit()
+    except Exception as e:
+        print(f"[-] Community events seed error: {e}")
+
+
+@app.get("/api/community-events")
+def list_community_events(
+    q: Optional[str] = None,
+    game: Optional[str] = None,
+    location: Optional[str] = None,
+    is_online: Optional[bool] = None,
+    upcoming: Optional[bool] = True,
+    mine: Optional[bool] = False,
+    page: int = 1,
+    per_page: int = 12,
+    authorization: Optional[str] = Header(None),
+    db: Session = Depends(get_db)
+):
+    if not db:
+        return {"events": [], "total": 0, "page": page, "totalPages": 1}
+
+    # Resolve optional user ID if logged in
+    current_user_id = None
+    if authorization and authorization.startswith("Bearer "):
+        try:
+            payload = get_current_user_payload(authorization)
+            current_user_id = payload.get("sub")
+        except Exception:
+            pass
+
+    _seed_community_events_if_empty(db)
+
+    query = db.query(DBEvent)
+
+    # Filter by user's own created events
+    if mine and current_user_id:
+        query = query.filter(DBEvent.user_id == current_user_id)
+
+    # Filter by search string
+    if q and q.strip():
+        term = f"%{q.strip()}%"
+        query = query.filter(
+            DBEvent.name.ilike(term) | 
+            DBEvent.game.ilike(term) | 
+            DBEvent.venue_name.ilike(term) | 
+            DBEvent.city.ilike(term) | 
+            DBEvent.description.ilike(term)
+        )
+
+    # Filter by game
+    if game and game.strip():
+        g_clean = game.strip().lower()
+        query = query.filter(
+            (DBEvent.game_id.ilike(g_clean)) | (DBEvent.game.ilike(f"%{g_clean}%"))
+        )
+
+    # Filter online vs in-person
+    if is_online is not None:
+        query = query.filter(DBEvent.is_online == is_online)
+    elif location and location.strip():
+        loc_term = location.strip().lower()
+        if "online" in loc_term:
+            query = query.filter(DBEvent.is_online == True)
+        else:
+            term = f"%{loc_term}%"
+            query = query.filter(
+                (DBEvent.city.ilike(term)) | 
+                (DBEvent.state.ilike(term)) | 
+                (DBEvent.venue_name.ilike(term))
+            )
+
+    # Filter upcoming vs past
+    threshold = datetime.now(timezone.utc) - timedelta(hours=24)
+    if upcoming is True:
+        query = query.filter(DBEvent.start_date >= threshold).order_by(DBEvent.start_date.asc())
+    elif upcoming is False:
+        query = query.filter(DBEvent.start_date < threshold).order_by(DBEvent.start_date.desc())
+    else:
+        query = query.order_by(DBEvent.start_date.desc())
+
+    total = query.count()
+    offset = max(0, (page - 1) * per_page)
+    events_records = query.offset(offset).limit(per_page).all()
+
+    import math
+    total_pages = max(1, math.ceil(total / per_page))
+
+    serialized = [_serialize_event(ev, db, current_user_id) for ev in events_records]
+
+    return {
+        "events": serialized,
+        "total": total,
+        "page": page,
+        "totalPages": total_pages
+    }
+
+
+@app.post("/api/community-events")
+def create_community_event(
+    req: CreateEventRequest,
+    user_id: str = Depends(get_current_user_id),
+    db: Session = Depends(get_db)
+):
+    if not db:
+        raise HTTPException(status_code=503, detail="Database not available")
+    
+    clean_name = req.name.strip()
+    if not clean_name:
+        raise HTTPException(status_code=400, detail="Event name is required")
+
+    event_id = f"fbe-{uuid.uuid4().hex[:8]}"
+    base_slug = re.sub(r'[^a-z0-9]+', '-', clean_name.lower()).strip('-')
+    if not base_slug:
+        base_slug = "event"
+    slug = f"{base_slug}-{uuid.uuid4().hex[:4]}"
+    
+    # Parse start date
+    try:
+        raw_start = req.start_date.replace("Z", "+00:00")
+        s_date = datetime.fromisoformat(raw_start)
+        if not s_date.tzinfo:
+            s_date = s_date.replace(tzinfo=timezone.utc)
+    except Exception:
+        s_date = datetime.now(timezone.utc) + timedelta(days=7)
+
+    e_date = None
+    if req.end_date:
+        try:
+            raw_end = req.end_date.replace("Z", "+00:00")
+            e_date = datetime.fromisoformat(raw_end)
+            if not e_date.tzinfo:
+                e_date = e_date.replace(tzinfo=timezone.utc)
+        except Exception:
+            pass
+
+    tournament_id = None
+    # Automatically initialize linked in-app bracket tournament
+    if req.create_bracket:
+        tournament_id = f"tourney-{uuid.uuid4().hex[:8]}"
+        loc_label = "Online" if req.is_online else (
+            f"{req.city}, {req.state}" if req.city and req.state else (req.venue_name or "In-Person")
+        )
+        
+        # Look up current user gamer tag for TO
+        current_u = db.query(DBUser).filter(DBUser.id == user_id).first()
+        to_tag = current_u.gamer_tag if current_u and current_u.gamer_tag else "Tournament Organizer"
+
+        initial_data = {
+            "activeGame": req.game_id,
+            "players": [],
+            "matches": [],
+            "stations": [
+                {"id": i + 1, "name": f"Station {i + 1}", "active": True, "matchId": None, "gameId": req.game_id}
+                for i in range(8)
+            ],
+            "gameThemes": {
+                req.game_id: {
+                    "id": req.game_id,
+                    "displayName": req.game,
+                    "shortName": req.game[:4].upper(),
+                    "primaryColor": "#00E5FF" if "tekken" in req.game_id else ("#FF006E" if "sf" in req.game_id else "#FFD600"),
+                    "secondaryColor": "#FF006E",
+                    "bgFrom": "#050A14",
+                    "glowColor": "rgba(0, 229, 255, 0.4)",
+                    "description": f"{req.game} Tournament",
+                    "publisher": "FightBracket Pro"
+                }
+            },
+            "gameOrder": [req.game_id],
+            "activeTournament": {
+                "name": clean_name,
+                "location": loc_label,
+                "slug": slug,
+                "numAttendees": 0
+            },
+            "tournamentOwnerId": user_id,
+            "exhibitions": []
+        }
+        
+        db_tourney = DBTournament(
+            id=tournament_id,
+            user_id=user_id,
+            name=clean_name,
+            data=json.dumps(initial_data)
+        )
+        db.add(db_tourney)
+
+    event = DBEvent(
+        id=event_id,
+        user_id=user_id,
+        tournament_id=tournament_id,
+        name=clean_name,
+        slug=slug,
+        game=req.game.strip(),
+        game_id=req.game_id.strip(),
+        event_type=req.event_type or "tournament",
+        format=req.format or "double_elimination",
+        start_date=s_date,
+        end_date=e_date,
+        is_online=req.is_online,
+        venue_name=req.venue_name.strip() if req.venue_name else None,
+        address=req.address.strip() if req.address else None,
+        city=req.city.strip() if req.city else None,
+        state=req.state.strip() if req.state else None,
+        country=req.country or "US",
+        description=req.description.strip() if req.description else None,
+        rules=req.rules.strip() if req.rules else None,
+        stream_url=req.stream_url.strip() if req.stream_url else None,
+        discord_url=req.discord_url.strip() if req.discord_url else None,
+        banner_url=req.banner_url.strip() if req.banner_url else None,
+        entry_fee=req.entry_fee.strip() if req.entry_fee else "Free",
+        prize_pool=req.prize_pool.strip() if req.prize_pool else None,
+        max_entrants=req.max_entrants or 64,
+        entrants_count=0,
+        status="upcoming",
+        show_on_profile=req.show_on_profile if req.show_on_profile is not None else False
+    )
+    db.add(event)
+    db.commit()
+    db.refresh(event)
+
+    return {"status": "success", "event": _serialize_event(event, db, user_id)}
+
+
+@app.get("/api/community-events/{event_id}")
+def get_community_event(
+    event_id: str,
+    authorization: Optional[str] = Header(None),
+    db: Session = Depends(get_db)
+):
+    if not db:
+        raise HTTPException(status_code=503, detail="Database not available")
+    
+    current_user_id = None
+    if authorization and authorization.startswith("Bearer "):
+        try:
+            payload = get_current_user_payload(authorization)
+            current_user_id = payload.get("sub")
+        except Exception:
+            pass
+
+    event = db.query(DBEvent).filter((DBEvent.id == event_id) | (DBEvent.slug == event_id)).first()
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+        
+    regs = db.query(DBEventRegistration).filter(DBEventRegistration.event_id == event.id).all()
+    participants = []
+    for r in regs:
+        u = db.query(DBUser).filter(DBUser.id == r.user_id).first()
+        participants.append({
+            "id": r.id,
+            "userId": r.user_id,
+            "gamerTag": r.gamer_tag,
+            "avatarUrl": getattr(u, 'avatar_url', None) if u else None,
+            "uniqueId": getattr(u, 'unique_id', None) if u else "FB-PLAYER",
+            "registeredAt": r.registered_at.isoformat() if r.registered_at else None
+        })
+
+    data = _serialize_event(event, db, current_user_id)
+    data["participants"] = participants
+    return {"status": "success", "event": data}
+
+
+@app.put("/api/community-events/{event_id}")
+def update_community_event(
+    event_id: str,
+    req: UpdateEventRequest,
+    user_id: str = Depends(get_current_user_id),
+    db: Session = Depends(get_db)
+):
+    if not db:
+        raise HTTPException(status_code=503, detail="Database not available")
+    event = db.query(DBEvent).filter(DBEvent.id == event_id).first()
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+    if event.user_id != user_id:
+        raise HTTPException(status_code=403, detail="Only the event organizer can update this event")
+
+    if req.name is not None and req.name.strip():
+        event.name = req.name.strip()
+    if req.game is not None:
+        event.game = req.game.strip()
+    if req.game_id is not None:
+        event.game_id = req.game_id.strip()
+    if req.event_type is not None:
+        event.event_type = req.event_type
+    if req.format is not None:
+        event.format = req.format
+    if req.is_online is not None:
+        event.is_online = req.is_online
+    if req.venue_name is not None:
+        event.venue_name = req.venue_name.strip() or None
+    if req.address is not None:
+        event.address = req.address.strip() or None
+    if req.city is not None:
+        event.city = req.city.strip() or None
+    if req.state is not None:
+        event.state = req.state.strip() or None
+    if req.description is not None:
+        event.description = req.description.strip() or None
+    if req.rules is not None:
+        event.rules = req.rules.strip() or None
+    if req.stream_url is not None:
+        event.stream_url = req.stream_url.strip() or None
+    if req.discord_url is not None:
+        event.discord_url = req.discord_url.strip() or None
+    if req.banner_url is not None:
+        event.banner_url = req.banner_url.strip() or None
+    if req.entry_fee is not None:
+        event.entry_fee = req.entry_fee.strip() or "Free"
+    if req.prize_pool is not None:
+        event.prize_pool = req.prize_pool.strip() or None
+    if req.max_entrants is not None:
+        event.max_entrants = req.max_entrants
+    if req.status is not None:
+        event.status = req.status
+    if getattr(req, "show_on_profile", None) is not None:
+        event.show_on_profile = req.show_on_profile
+
+    db.commit()
+    db.refresh(event)
+    return {"status": "success", "event": _serialize_event(event, db, user_id)}
+
+
+@app.delete("/api/community-events/{event_id}")
+def delete_community_event(
+    event_id: str,
+    user_id: str = Depends(get_current_user_id),
+    db: Session = Depends(get_db)
+):
+    if not db:
+        raise HTTPException(status_code=503, detail="Database not available")
+    event = db.query(DBEvent).filter(DBEvent.id == event_id).first()
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+    if event.user_id != user_id:
+        raise HTTPException(status_code=403, detail="Only the organizer can delete this event")
+        
+    db.query(DBEventRegistration).filter(DBEventRegistration.event_id == event.id).delete()
+    if event.tournament_id:
+        db.query(DBTournament).filter(DBTournament.id == event.tournament_id).delete()
+    db.delete(event)
+    db.commit()
+    return {"status": "success", "message": "Event successfully deleted"}
+
+
+@app.post("/api/community-events/{event_id}/register")
+def register_community_event(
+    event_id: str,
+    req: RegisterEventRequest = None,
+    user_id: str = Depends(get_current_user_id),
+    db: Session = Depends(get_db)
+):
+    if not db:
+        raise HTTPException(status_code=503, detail="Database not available")
+    event = db.query(DBEvent).filter((DBEvent.id == event_id) | (DBEvent.slug == event_id)).first()
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+        
+    user = db.query(DBUser).filter(DBUser.id == user_id).first()
+    gamer_tag = (req.gamer_tag.strip() if req and req.gamer_tag and req.gamer_tag.strip() else None) or (user.gamer_tag if user and user.gamer_tag else "Challenger")
+    
+    # Check if already registered
+    existing = db.query(DBEventRegistration).filter(
+        DBEventRegistration.event_id == event.id,
+        DBEventRegistration.user_id == user_id
+    ).first()
+    if existing:
+        return {"status": "already_registered", "message": "You are already registered for this event."}
+        
+    if event.max_entrants and (event.entrants_count or 0) >= event.max_entrants:
+        raise HTTPException(status_code=400, detail="Event registration is full.")
+        
+    reg = DBEventRegistration(
+        id=f"reg-{uuid.uuid4().hex[:8]}",
+        event_id=event.id,
+        user_id=user_id,
+        gamer_tag=gamer_tag
+    )
+    db.add(reg)
+    event.entrants_count = (event.entrants_count or 0) + 1
+    
+    # If tournament bracket is attached, auto-add player to DBTournament.data
+    if event.tournament_id:
+        tourney = db.query(DBTournament).filter(DBTournament.id == event.tournament_id).first()
+        if tourney and tourney.data:
+            try:
+                tdata = json.loads(tourney.data)
+                players_list = tdata.get("players", [])
+                user_uniq = user.unique_id if user else None
+                if not any(p.get("fbUserId") == user_uniq for p in players_list if user_uniq):
+                    new_player = {
+                        "id": f"p-{uuid.uuid4().hex[:6]}",
+                        "tag": gamer_tag,
+                        "realName": f"{user.first_name or ''} {user.last_name or ''}".strip() if user else "",
+                        "country": "US",
+                        "countryFlag": "🇺🇸",
+                        "seed": len(players_list) + 1,
+                        "checkedIn": True,
+                        "phone": "",
+                        "smsNotified": False,
+                        "gameId": event.game_id,
+                        "fbUserId": user_uniq,
+                        "avatarUrl": user.avatar_url if user else None
+                    }
+                    players_list.append(new_player)
+                    tdata["players"] = players_list
+                    if "activeTournament" in tdata and isinstance(tdata["activeTournament"], dict):
+                        tdata["activeTournament"]["numAttendees"] = len(players_list)
+                    tourney.data = json.dumps(tdata)
+            except Exception as te:
+                print(f"[Register] Tourney player append error: {te}")
+                
+    db.commit()
+    return {"status": "success", "message": f"Successfully registered as {gamer_tag}!", "fighters": event.entrants_count}
+
+
+@app.post("/api/community-events/{event_id}/unregister")
+def unregister_community_event(
+    event_id: str,
+    user_id: str = Depends(get_current_user_id),
+    db: Session = Depends(get_db)
+):
+    if not db:
+        raise HTTPException(status_code=503, detail="Database not available")
+    event = db.query(DBEvent).filter((DBEvent.id == event_id) | (DBEvent.slug == event_id)).first()
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+        
+    reg = db.query(DBEventRegistration).filter(
+        DBEventRegistration.event_id == event.id,
+        DBEventRegistration.user_id == user_id
+    ).first()
+    if not reg:
+        return {"status": "not_registered", "message": "You are not registered for this event."}
+        
+    db.delete(reg)
+    event.entrants_count = max(0, (event.entrants_count or 1) - 1)
+    
+    # Remove from tournament bracket if present
+    if event.tournament_id:
+        tourney = db.query(DBTournament).filter(DBTournament.id == event.tournament_id).first()
+        if tourney and tourney.data:
+            try:
+                user = db.query(DBUser).filter(DBUser.id == user_id).first()
+                user_uniq = user.unique_id if user else None
+                tdata = json.loads(tourney.data)
+                players_list = tdata.get("players", [])
+                if user_uniq:
+                    players_list = [p for p in players_list if p.get("fbUserId") != user_uniq]
+                    tdata["players"] = players_list
+                    if "activeTournament" in tdata and isinstance(tdata["activeTournament"], dict):
+                        tdata["activeTournament"]["numAttendees"] = len(players_list)
+                    tourney.data = json.dumps(tdata)
+            except Exception as te:
+                print(f"[Unregister] Tourney player remove error: {te}")
+                
+    db.commit()
+    return {"status": "success", "message": "Registration cancelled.", "fighters": event.entrants_count}
+
+
+@app.get("/api/community-events/{event_id}/bracket")
+def get_community_event_bracket(
+    event_id: str,
+    db: Session = Depends(get_db)
+):
+    if not db:
+        raise HTTPException(status_code=503, detail="Database not available")
+    event = db.query(DBEvent).filter((DBEvent.id == event_id) | (DBEvent.slug == event_id)).first()
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+    if not event.tournament_id:
+        raise HTTPException(status_code=404, detail="No bracket attached to this event")
+        
+    tourney = db.query(DBTournament).filter(DBTournament.id == event.tournament_id).first()
+    if not tourney:
+        raise HTTPException(status_code=404, detail="Tournament record not found")
+        
+    return {
+        "status": "success",
+        "tournamentId": tourney.id,
+        "name": tourney.name,
+        "data": tourney.data
+    }

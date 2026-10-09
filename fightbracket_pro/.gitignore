@@ -34,6 +34,15 @@ fightbracket.db
 # Vercel & Deployment
 .vercel
 
+# Security & Sensitive Policy Files
+Security Policy
+Security Policy.*
+supabase_rls_policies.sql
+db/supabase_rls_policies.sql
+scripts/*.py
+keys/
+*.key
+
 # Local Test Scripts & Output Dumps
 test_*.py
 test_*.js

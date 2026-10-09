@@ -45,6 +45,7 @@ interface UserProfileData {
   following_count?: number;
   is_liked?: boolean;
   is_following?: boolean;
+  community_events?: any[];
 }
 
 interface UserProfileModalProps {
@@ -80,7 +81,7 @@ export function UserProfileModal({ isOpen, onClose, targetUserId, supabaseToken,
   const [reportSuccess, setReportSuccess] = useState(false);
   const [showFbId, setShowFbId] = useState(false);
   
-  const [activeTab, setActiveTab] = useState<'Stats' | 'Feed'>('Stats');
+  const [activeTab, setActiveTab] = useState<'Stats' | 'Feed' | 'Events'>('Stats');
   const [userPosts, setUserPosts] = useState<Post[]>([]);
   const [fetchingPosts, setFetchingPosts] = useState(false);
 
@@ -409,6 +410,12 @@ export function UserProfileModal({ isOpen, onClose, targetUserId, supabaseToken,
                   >
                     Activity Feed
                   </button>
+                  <button
+                    onClick={() => setActiveTab('Events')}
+                    className={`text-sm font-rajdhani font-bold tracking-wider uppercase transition-colors px-2 py-1 ${activeTab === 'Events' ? 'text-cyan-400 border-b-2 border-cyan-400' : 'text-white/40 hover:text-white/80'}`}
+                  >
+                    Events
+                  </button>
                 </div>
 
                 {activeTab === 'Stats' && (
@@ -661,6 +668,38 @@ export function UserProfileModal({ isOpen, onClose, targetUserId, supabaseToken,
                             onLike={() => {}}
                             onBookmark={() => {}}
                           />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {activeTab === 'Events' && (
+                  <div className="space-y-4">
+                    {(!profile?.community_events || profile.community_events.length === 0) ? (
+                      <div className="text-center py-8 opacity-50 font-mono text-sm">
+                        No community events created.
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {profile.community_events.map((evt: any) => (
+                          <div key={evt.id} className="p-4 bg-white/5 border border-white/10 rounded-xl flex flex-col sm:flex-row justify-between sm:items-center gap-3">
+                            <div>
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="text-[10px] uppercase font-bold tracking-widest text-[#00E5FF]">{evt.game}</span>
+                                {evt.isOnline ? (
+                                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-white/10 text-gray-300 font-mono">ONLINE</span>
+                                ) : (
+                                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-white/10 text-gray-300 font-mono">IN-PERSON</span>
+                                )}
+                              </div>
+                              <h4 className="text-white font-bold font-rajdhani text-lg">{evt.name}</h4>
+                              <p className="text-xs text-gray-400 font-mono mt-0.5">{evt.date}</p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <span className="text-xs font-mono text-white/60 bg-black/40 px-2 py-1 rounded">{evt.format.replace('_', ' ').toUpperCase()}</span>
+                            </div>
+                          </div>
                         ))}
                       </div>
                     )}

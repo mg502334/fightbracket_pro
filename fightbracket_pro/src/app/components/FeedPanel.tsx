@@ -71,24 +71,22 @@ const LinkPreview = ({ url }: { url: string }) => {
   if (loading || !data || !data.title) return null;
 
   return (
-    <a href={url} target="_blank" rel="noopener noreferrer" className="block mt-2 bg-[#1A1A24] rounded-md overflow-hidden hover:bg-[#20202A] transition-colors border border-white/5 no-underline group flex flex-col sm:flex-row relative">
+    <a href={url} target="_blank" rel="noopener noreferrer" className="block mt-2 bg-[#1A1A24] rounded-md overflow-hidden hover:bg-[#20202A] transition-colors border border-white/10 no-underline group relative">
       <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#00E5FF]" />
-      <div className="p-4 flex-1 flex flex-col justify-center pl-5">
-        {data.siteName && <div className="text-[11px] font-medium text-white/50 mb-1">{data.siteName}</div>}
-        <div className="text-[14px] font-semibold text-white/90 leading-snug group-hover:text-[#00E5FF] transition-colors line-clamp-2">
-          {data.title}
-        </div>
-        {data.description && (
-          <div className="text-[12px] text-white/60 mt-1.5 line-clamp-2">
-            {data.description}
+      <div className="p-3 pl-4 flex items-center justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          {data.siteName && <div className="text-[10px] font-mono text-cyan-400 font-bold uppercase tracking-wider mb-0.5">{data.siteName}</div>}
+          <div className="text-xs font-bold text-white/90 group-hover:text-[#00E5FF] transition-colors truncate">
+            {data.title}
           </div>
-        )}
-      </div>
-      {data.image && (
-        <div className="w-full sm:w-32 h-32 sm:h-auto flex-shrink-0 bg-[#0F0F14]">
-          <img src={data.image} alt={data.title} className="w-full h-full object-cover" onError={(e) => e.currentTarget.style.display = 'none'} />
+          {data.description && (
+            <div className="text-[11px] text-white/60 mt-0.5 line-clamp-1">
+              {data.description}
+            </div>
+          )}
         </div>
-      )}
+        <ExternalLink size={14} className="text-white/40 group-hover:text-cyan-400 transition-colors shrink-0 mr-1" />
+      </div>
     </a>
   );
 };
@@ -119,6 +117,7 @@ export interface Post {
   commentsList?: PostComment[];
   repostedBy?: { name: string; handle: string };
   originalPostId?: string;
+  attachedEvent?: any;
 }
 
 type FeedFilter = "all" | "results" | "brackets" | "discussions";
@@ -358,6 +357,23 @@ export function PostCard({
         );
       })()}
 
+      {/* Attached Event */}
+      {post.attachedEvent && (
+        <div className="mx-4 mt-3 p-3 bg-[#1e1e24] border border-cyan-500/20 rounded flex items-center gap-3 hover:border-cyan-500/50 transition-colors">
+          <div className="w-10 h-10 flex items-center justify-center bg-black/40 rounded text-cyan-400">
+            <Trophy size={18} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="text-[10px] uppercase font-bold tracking-widest text-[#00E5FF] mb-0.5">{post.attachedEvent.game}</div>
+            <div className="text-sm font-rajdhani font-bold text-white truncate">{post.attachedEvent.name}</div>
+            <div className="text-xs text-gray-400 font-mono mt-0.5">{post.attachedEvent.date}</div>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-mono text-white/60 bg-black/40 px-2 py-1 rounded">{post.attachedEvent.format?.replace('_', ' ').toUpperCase()}</span>
+          </div>
+        </div>
+      )}
+
       {/* Post Image */}
       {post.image && (
         <div className="mx-4 mt-3 overflow-hidden" style={{ borderRadius: "3px", background: "#1e1e24" }}>
@@ -548,6 +564,25 @@ export function FeedPanel({ userProfile, getHeaders }: { userProfile: any, getHe
   const [composerFocused, setComposerFocused] = useState(false);
   const [loading, setLoading] = useState(true);
   const [userLocation, setUserLocation] = useState('');
+  const [attachedEventId, setAttachedEventId] = useState<string | null>(null);
+  const [myEvents, setMyEvents] = useState<any[]>([]);
+  const [showEventPicker, setShowEventPicker] = useState(false);
+
+  const handleOpenEventPicker = async () => {
+    if (showEventPicker) {
+      setShowEventPicker(false);
+      return;
+    }
+    setShowEventPicker(true);
+    try {
+      const headers = await getHeaders();
+      const res = await fetch('/api/community-events', { headers });
+      const data = await res.json();
+      if (data.events) {
+        setMyEvents(data.events);
+      }
+    } catch(e) {}
+  };
 
   useEffect(() => {
     fetchFeed();
@@ -687,14 +722,17 @@ export function FeedPanel({ userProfile, getHeaders }: { userProfile: any, getHe
         headers,
         body: JSON.stringify({
           content: composerText,
-          type: "discussion",
+          type: attachedEventId ? "event" : "discussion",
           tags: [],
+          attached_event_id: attachedEventId
         })
       });
       
       if (res.ok) {
         setComposerText("");
         setComposerFocused(false);
+        setAttachedEventId(null);
+        setShowEventPicker(false);
         fetchFeed();
         toast.success("Post created!");
       } else {
@@ -752,18 +790,19 @@ export function FeedPanel({ userProfile, getHeaders }: { userProfile: any, getHe
                     <div className="flex items-center justify-between mt-3 pt-3" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
                       <div className="flex items-center gap-1">
                         {[
-                          { icon: ImageIcon, label: "Photo" },
-                          { icon: Video, label: "Video" },
-                          { icon: Hash, label: "Tag" },
-                          { icon: Smile, label: "Emoji" },
-                        ].map(({ icon: Icon, label }) => (
-                          <button key={label} title={label} onClick={() => toast.info(`${label} uploads coming soon`)} className="w-8 h-8 flex items-center justify-center transition-colors hover:bg-white/5" style={{ borderRadius: "2px", color: "#8a8a9a" }}>
+                          { icon: ImageIcon, label: "Photo", onClick: () => toast.info("Photo uploads coming soon") },
+                          { icon: Video, label: "Video", onClick: () => toast.info("Video uploads coming soon") },
+                          { icon: Calendar, label: "Attach Event", onClick: handleOpenEventPicker },
+                          { icon: Hash, label: "Tag", onClick: () => toast.info("Tag uploads coming soon") },
+                          { icon: Smile, label: "Emoji", onClick: () => toast.info("Emoji uploads coming soon") },
+                        ].map(({ icon: Icon, label, onClick }) => (
+                          <button key={label} title={label} onClick={onClick} className="w-8 h-8 flex items-center justify-center transition-colors hover:bg-white/5" style={{ borderRadius: "2px", color: "#8a8a9a" }}>
                             <Icon size={15} />
                           </button>
                         ))}
                       </div>
                       <div className="flex items-center gap-2">
-                        <button onClick={() => { setComposerFocused(false); setComposerText(""); }} className="h-8 px-3 text-xs font-medium" style={{ color: "#8a8a9a" }}>
+                        <button onClick={() => { setComposerFocused(false); setComposerText(""); setAttachedEventId(null); setShowEventPicker(false); }} className="h-8 px-3 text-xs font-medium" style={{ color: "#8a8a9a" }}>
                           Cancel
                         </button>
                         <button
@@ -782,6 +821,30 @@ export function FeedPanel({ userProfile, getHeaders }: { userProfile: any, getHe
                           <Send size={12} />Post
                         </button>
                       </div>
+                    </div>
+                  )}
+                  {attachedEventId && (
+                    <div className="mt-2 text-[11px] text-cyan-400 flex items-center gap-2">
+                      <Calendar size={12} /> Event Attached 
+                      <button onClick={() => setAttachedEventId(null)} className="text-red-400 hover:text-red-300 ml-2">Remove</button>
+                    </div>
+                  )}
+                  {showEventPicker && (
+                    <div className="mt-2 bg-[#1A1A24] border border-white/10 rounded p-2 max-h-40 overflow-y-auto custom-scrollbar">
+                      <div className="text-[10px] text-gray-400 uppercase tracking-widest mb-2 px-2">Select an event</div>
+                      {myEvents.map(evt => (
+                        <div 
+                          key={evt.id} 
+                          onClick={() => { setAttachedEventId(evt.id); setShowEventPicker(false); }}
+                          className="px-2 py-1.5 hover:bg-white/5 cursor-pointer flex justify-between items-center rounded"
+                        >
+                          <span className="text-xs text-white truncate">{evt.name}</span>
+                          <span className="text-[9px] text-gray-500 font-mono">{evt.date}</span>
+                        </div>
+                      ))}
+                      {myEvents.length === 0 && (
+                        <div className="text-xs text-gray-500 px-2">No events found.</div>
+                      )}
                     </div>
                   )}
                 </div>

@@ -1665,7 +1665,16 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
           )}
           {activeTab === "Events" && (
             <div className="-m-6 h-full">
-              <EventsPanel getHeaders={getHeaders} onNavigateHome={onNavigateHome} />
+              <EventsPanel
+                getHeaders={getHeaders}
+                onNavigateHome={onNavigateHome}
+                currentUser={user}
+                userProfile={userProfile}
+                onLoadTournament={(tournamentData) => {
+                  onLoad(tournamentData);
+                  onNavigateHome?.();
+                }}
+              />
             </div>
           )}
           <div style={{ display: activeTab === "Dashboard" ? 'block' : 'none' }}>

@@ -392,7 +392,7 @@ export function FriendsModal({ isOpen, onClose, theme, currentUserId, supabaseTo
                 <div className="flex-1 flex flex-col h-full">
                   {/* Chat Header */}
                   <div className="p-3 border-b bg-white/5 flex items-center justify-between" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
-                    <button 
+                    <button
                       onClick={() => onViewProfile?.(activeChatFriend.id)}
                       className="flex items-center gap-2 group text-left hover:bg-white/5 p-1 -m-1 rounded transition-colors"
                     >
@@ -454,11 +454,10 @@ export function FriendsModal({ isOpen, onClose, theme, currentUserId, supabaseTo
                               )}
 
                               <div
-                                className={`px-4 py-2.5 rounded-2xl text-[13px] leading-relaxed break-words whitespace-pre-wrap select-text ${
-                                  isMe
+                                className={`px-4 py-2.5 rounded-2xl text-[13px] leading-relaxed break-words whitespace-pre-wrap select-text ${isMe
                                     ? 'bg-cyan-500 text-black font-medium rounded-tr-sm shadow-sm'
                                     : 'bg-white/10 text-white rounded-tl-sm border border-white/10 shadow-sm'
-                                }`}
+                                  }`}
                                 style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}
                               >
                                 {m.message}
@@ -579,7 +578,7 @@ export function FriendsModal({ isOpen, onClose, theme, currentUserId, supabaseTo
                         key={friend.id}
                         className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5 hover:border-white/15 transition-all"
                       >
-                        <div 
+                        <div
                           className="flex items-center gap-3 cursor-pointer group/profile"
                           onClick={() => onViewProfile?.(friend.id)}
                         >
@@ -717,7 +716,7 @@ export function FriendsModal({ isOpen, onClose, theme, currentUserId, supabaseTo
                       <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" />
                       <input
                         type="text"
-                        placeholder="e.g. ArslanAsh or FB-XXXX-YYYY"
+                        placeholder="e.g. FightBot or FB-XXXX-YYYY"
                         value={addIdentifier}
                         onChange={e => { setAddIdentifier(e.target.value); setStatusMsg(null); }}
                         className="w-full bg-black/50 border border-white/15 rounded-xl pl-10 pr-4 py-3 text-sm outline-none focus:border-cyan-400 font-mono transition-colors"
@@ -796,9 +795,8 @@ export function FriendsModal({ isOpen, onClose, theme, currentUserId, supabaseTo
 
                     {/* Status message */}
                     {statusMsg && (
-                      <div className={`text-xs font-mono p-3 rounded-lg border ${
-                        statusMsg.isError ? 'bg-red-500/10 text-red-400 border-red-500/30' : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
-                      }`}>
+                      <div className={`text-xs font-mono p-3 rounded-lg border ${statusMsg.isError ? 'bg-red-500/10 text-red-400 border-red-500/30' : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
+                        }`}>
                         {statusMsg.text}
                       </div>
                     )}

@@ -41,7 +41,14 @@ fightbracketpro.com.txt
 
 # Security & Sensitive Architecture Files
 supabase_rls_policies.sql
+db/supabase_rls_policies.sql
+Security Policy
+Security Policy.*
+**/Security Policy
+**/Security Policy.*
 scripts/*.py
+keys/
+*.key
 
 # Local Test Scripts, Scratchpads & Output Dumps
 test_*.py

@@ -1,0 +1,10 @@
+{
+  "description": "Organize and manage martial arts tournaments with easy bracket creation, real-time updates, and seamless competitor tracking for event organizers.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}

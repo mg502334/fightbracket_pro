@@ -45,7 +45,7 @@ All production responses must include the following security headers:
 ## 4. Sensitive Data & Git Hygiene
 - **Never Commit Secrets**: Never commit `.env`, `.env.*`, API keys, Service Role Keys, private keys, certificates, or database connection strings to version control.
 - **Excluded Files**: Local test scripts (`test_*.py`), query outputs (`*_out.json`), scratchpad files, and SQLite databases (`*.db`) are strictly ignored via `.gitignore`.
-- **Credential Storage**: Sensitive third-party API keys (e.g. Start.gg tokens) are encrypted at rest using Fernet before database persistence.
+- **Credential Storage**: Sensitive third-party API keys (e.g. Start.gg tokens) are encrypted at rest using **AES-256-GCM** with PBKDF2-derived keys, per-encryption random 96-bit nonces, and multi-key rotation fallback before database persistence.
 
 ---
 

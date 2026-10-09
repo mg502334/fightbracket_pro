@@ -150,6 +150,7 @@ class DBPost(Base):
     likes = Column(Integer, default=0)
     comments = Column(Integer, default=0)
     shares = Column(Integer, default=0)
+    attached_event_id = Column(String, nullable=True)
     pinned = Column(Boolean, default=False)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
@@ -219,6 +220,46 @@ class DBTekkenCache(Base):
     payload = Column(Text, nullable=False)                     # full JSON response as a string
     cached_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
 
+class DBEvent(Base):
+    __tablename__ = "events"
+    id = Column(String, primary_key=True, index=True) # e.g. "fbe-uuid"
+    user_id = Column(String, index=True, nullable=False) # Organizer user ID
+    tournament_id = Column(String, index=True, nullable=True) # Associated DBTournament ID for in-app bracket
+    name = Column(String, nullable=False) # Event title
+    slug = Column(String, unique=True, index=True, nullable=False)
+    game = Column(String, nullable=False) # e.g. "Tekken 8", "Street Fighter 6"
+    game_id = Column(String, nullable=False) # e.g. "tekken8", "sf6"
+    event_type = Column(String, default="tournament") # tournament, weekly, casuals, exhibition
+    format = Column(String, default="double_elimination") # double_elimination, single_elimination, round_robin
+    start_date = Column(DateTime, nullable=False)
+    end_date = Column(DateTime, nullable=True)
+    is_online = Column(Boolean, default=False)
+    venue_name = Column(String, nullable=True)
+    address = Column(String, nullable=True)
+    city = Column(String, nullable=True)
+    state = Column(String, nullable=True)
+    country = Column(String, default="US")
+    description = Column(Text, nullable=True)
+    rules = Column(Text, nullable=True)
+    stream_url = Column(String, nullable=True)
+    discord_url = Column(String, nullable=True)
+    banner_url = Column(String, nullable=True)
+    entry_fee = Column(String, nullable=True)
+    prize_pool = Column(String, nullable=True)
+    max_entrants = Column(Integer, default=64)
+    entrants_count = Column(Integer, default=0)
+    status = Column(String, default="upcoming") # upcoming, live, completed, cancelled
+    show_on_profile = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+class DBEventRegistration(Base):
+    __tablename__ = "event_registrations"
+    id = Column(String, primary_key=True, index=True)
+    event_id = Column(String, index=True, nullable=False)
+    user_id = Column(String, index=True, nullable=False)
+    gamer_tag = Column(String, nullable=False)
+    registered_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
 # Lazy engine — only created when first needed, prevents cold-start crash on Vercel
 _engine = None
 _SessionLocal = None
@@ -226,19 +267,21 @@ _SessionLocal = None
 def _get_engine():
     global _engine, _SessionLocal
     if _engine is None:
-        DATABASE_URL = os.environ.get("POSTGRES_URL", "")
+        DATABASE_URL = os.environ.get("POSTGRES_URL", "") or os.environ.get("DATABASE_URL", "")
         if not DATABASE_URL:
             return None, None
         if DATABASE_URL.startswith("postgres://"):
             DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
         try:
             _engine = create_engine(DATABASE_URL, pool_pre_ping=True, pool_recycle=300)
+            with _engine.connect() as _test_conn:
+                pass
             _SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=_engine)
         except Exception as e:
-            print(f"DB connection failed: {e}")
-            _engine = None
-            _SessionLocal = None
-            return None, None
+            print(f"Remote DB connection failed ({e}), falling back to local SQLite database.")
+            db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fightbracket.db")
+            _engine = create_engine(f"sqlite:///{db_path}", connect_args={"check_same_thread": False})
+            _SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=_engine)
     # Always run create_all so new tables are created even if engine was already cached
     try:
         from sqlalchemy import inspect, text
