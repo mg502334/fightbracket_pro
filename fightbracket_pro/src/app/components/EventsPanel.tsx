@@ -453,6 +453,9 @@ export function EventsPanel({
                       <option value="smash">Super Smash Bros.</option>
                       <option value="sparkingzero">Dragon Ball: Sparking! ZERO</option>
                       <option value="gbfvr">Granblue Fantasy Versus</option>
+                      <option value="kofxv">The King of Fighters XV</option>
+                      <option value="avatarLegends">Avatar Legends: TFG</option>
+                      <option value="custom">Custom Game</option>
                     </>
                   ) : (
                     startggGames.map(game => (

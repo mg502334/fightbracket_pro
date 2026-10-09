@@ -19,7 +19,10 @@ const POPULAR_GAMES = [
   { id: 'mk1', name: 'Mortal Kombat 1', color: '#EF4444', banner: 'https://cdn.cloudflare.steamstatic.com/steam/apps/1792670/header.jpg' },
   { id: 'smash', name: 'Super Smash Bros. Ultimate', color: '#3B82F6', banner: 'https://images.start.gg/images/videogame/1386/image-d24f740623a31f9e1eec2aabc30f4ba2.jpg' },
   { id: 'sparkingzero', name: 'Dragon Ball: Sparking! ZERO', color: '#06B6D4', banner: 'https://cdn.cloudflare.steamstatic.com/steam/apps/1790600/header.jpg' },
-  { id: 'gbfvr', name: 'Granblue Fantasy Versus: Rising', color: '#10B981', banner: 'https://cdn.cloudflare.steamstatic.com/steam/apps/2157560/header.jpg' }
+  { id: 'gbfvr', name: 'Granblue Fantasy Versus: Rising', color: '#10B981', banner: 'https://cdn.cloudflare.steamstatic.com/steam/apps/2157560/header.jpg' },
+  { id: 'kofxv', name: 'The King of Fighters XV', color: '#FF3D00', banner: 'https://cdn.cloudflare.steamstatic.com/steam/apps/1498590/header.jpg' },
+  { id: 'avatarLegends', name: 'Avatar Legends: TFG', color: '#00E5FF', banner: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&q=80' },
+  { id: 'custom', name: 'Custom Game', color: '#888888', banner: 'https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&q=80' }
 ];
 
 export function CreateEventModal({
