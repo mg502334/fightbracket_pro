@@ -11,6 +11,7 @@ import { FeedPanel, PostCard, Post } from './FeedPanel';
 import { RecentsWidget } from './RecentsWidget';
 import { DealsWidget } from './DealsWidget';
 import { EventsPanel } from './EventsPanel';
+import { getBracketSubdomainUrl, getEventSubdomainUrl, generateRandomSubdomain, sanitizeSubdomain } from '../utils/subdomain';
 
 const API_URL = import.meta.env.VITE_API_URL || '';
 
@@ -56,6 +57,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
     setActiveTabRaw(tab);
     try { localStorage.setItem('fb_dashboard_tab', tab); } catch {}
   };
+  const [settingsInitialTab, setSettingsInitialTab] = useState<'profile' | 'events' | 'privacy' | 'integrations' | 'notifications' | 'danger'>('profile');
 
   // Auth state
   const [firstName, setFirstName] = useState('');
@@ -683,17 +685,24 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
   };
 
   const saveToCloud = async () => {
-    if (!currentTournamentData?.activeTournament?.name) {
-      toast.error('No active tournament to save. Setup a tournament first.');
-      return;
-    }
+    const tournamentName = currentTournamentData?.activeTournament?.name || 'Local Event';
     setSaving(true);
     try {
-      const slug = currentTournamentData.activeTournament.slug || currentTournamentData.activeTournament.name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+      const slug = currentTournamentData?.activeTournament?.slug || tournamentName.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+      const subdomain = sanitizeSubdomain(currentTournamentData?.activeTournament?.subdomain) || generateRandomSubdomain('fb');
       const payload = {
         id: slug,
-        name: currentTournamentData.activeTournament.name,
-        data: JSON.stringify(currentTournamentData)
+        name: tournamentName,
+        subdomain,
+        data: JSON.stringify({
+          ...currentTournamentData,
+          activeTournament: {
+            ...(currentTournamentData?.activeTournament || {}),
+            name: tournamentName,
+            slug,
+            subdomain,
+          },
+        }),
       };
       const headers = await getHeaders();
       const res = await fetch('/api/tournaments', {
@@ -1406,12 +1415,35 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
           )}
 
           <button
-            onClick={() => setActiveTab("Settings")}
+            onClick={() => {
+              setSettingsInitialTab("events");
+              setActiveTab("Settings");
+            }}
             className="flex items-center gap-3 px-3 py-2.5 text-sm font-medium transition-all duration-150 text-left w-full group"
             style={{
-              color: activeTab === "Settings" ? "#f0ede8" : "#8a8a9a",
-              background: activeTab === "Settings" ? "rgba(0, 229, 255, 0.1)" : "transparent",
-              borderLeft: activeTab === "Settings" ? "2px solid #00E5FF" : "2px solid transparent",
+              color: activeTab === "Settings" && settingsInitialTab === "events" ? "#f0ede8" : "#8a8a9a",
+              background: activeTab === "Settings" && settingsInitialTab === "events" ? "rgba(0, 229, 255, 0.1)" : "transparent",
+              borderLeft: activeTab === "Settings" && settingsInitialTab === "events" ? "2px solid #00E5FF" : "2px solid transparent",
+              borderRadius: "2px",
+            }}
+          >
+            <Trophy size={15} />
+            Manage Events
+            <span className="ml-auto text-[9px] font-mono px-1.5 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 font-bold uppercase">
+              ADMIN
+            </span>
+          </button>
+
+          <button
+            onClick={() => {
+              setSettingsInitialTab("profile");
+              setActiveTab("Settings");
+            }}
+            className="flex items-center gap-3 px-3 py-2.5 text-sm font-medium transition-all duration-150 text-left w-full group"
+            style={{
+              color: activeTab === "Settings" && settingsInitialTab !== "events" ? "#f0ede8" : "#8a8a9a",
+              background: activeTab === "Settings" && settingsInitialTab !== "events" ? "rgba(0, 229, 255, 0.1)" : "transparent",
+              borderLeft: activeTab === "Settings" && settingsInitialTab !== "events" ? "2px solid #00E5FF" : "2px solid transparent",
               borderRadius: "2px",
             }}
           >
@@ -1571,6 +1603,12 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
               userProfile={userProfile}
               fetchUserProfile={fetchUserProfile}
               getHeaders={getHeaders}
+              initialTab={settingsInitialTab}
+              onLoadTournament={(tournamentData) => {
+                onLoad(tournamentData);
+                onNavigateHome?.();
+              }}
+              onNavigateHome={onNavigateHome}
             />
           )}
           {activeTab === "Feed" && (
@@ -1718,6 +1756,37 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
             </div>
 
             <div className="max-w-6xl space-y-8 animate-in fade-in duration-300">
+
+              {/* Tournament Organizer & Event Admin Callout */}
+              <div className="p-4 rounded-xl bg-gradient-to-r from-cyan-500/10 via-blue-500/5 to-transparent border border-cyan-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-lg">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-400 shrink-0">
+                    <Trophy size={20} />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h4 className="font-bold font-rajdhani text-white text-base tracking-wider uppercase">
+                        TOURNAMENT ORGANIZER & EVENT ADMIN
+                      </h4>
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-bold uppercase">
+                        ADMIN ACCESS
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-400 font-mono mt-0.5">
+                      Host community events, update match rules & stream URLs, manage competitor rosters, and run interactive bracket stations.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    setSettingsInitialTab("events");
+                    setActiveTab("Settings");
+                  }}
+                  className="px-4 py-2 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-400 border border-cyan-500/40 font-rajdhani font-bold text-xs tracking-wider transition-all whitespace-nowrap self-start sm:self-auto"
+                >
+                  MANAGE & EDIT EVENTS →
+                </button>
+              </div>
 
               {/* Full Width Tekken 8 Live Stats Box */}
               <div className="bg-[#050A14] border border-white/10 rounded-2xl shadow-2xl overflow-hidden w-full">
@@ -1990,22 +2059,45 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
                       <div className="text-center py-10 opacity-50 font-mono text-sm">No tournaments saved in the cloud.</div>
                     ) : (
                       <div className="space-y-3">
-                        {tournaments.map(t => (
-                          <div key={t.id} className="flex items-center justify-between p-3 bg-[#111] border border-gray-800 hover:border-[#00E5FF]/50 rounded-lg transition-colors group">
-                            <div>
-                              <div className="font-bold text-white font-rajdhani text-lg">{t.name}</div>
-                              <div className="text-xs text-gray-500 font-mono">ID: {t.id}</div>
+                        {tournaments.map(t => {
+                          const shareSubUrl = getBracketSubdomainUrl({
+                            subdomain: t.subdomain,
+                            tournamentId: t.id,
+                          });
+                          return (
+                            <div key={t.id} className="flex items-center justify-between p-3 bg-[#111] border border-gray-800 hover:border-[#00E5FF]/50 rounded-lg transition-colors group">
+                              <div>
+                                <div className="font-bold text-white font-rajdhani text-lg">{t.name}</div>
+                                <div className="flex items-center gap-2 text-xs text-gray-500 font-mono">
+                                  <span>ID: {t.id}</span>
+                                  {t.subdomain && (
+                                    <span className="text-[#00E5FF] bg-[#00E5FF]/10 border border-[#00E5FF]/30 px-1.5 py-0.5 rounded">
+                                      🌐 {t.subdomain}.fightbracketpro.com
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => {
+                                    navigator.clipboard.writeText(shareSubUrl);
+                                    toast.success('Subdomain bracket link copied to clipboard!');
+                                  }}
+                                  className="flex items-center gap-1 px-2.5 py-1.5 bg-[#00E5FF]/10 text-[#00E5FF] hover:bg-[#00E5FF]/20 border border-[#00E5FF]/30 rounded font-rajdhani font-bold tracking-wider transition-colors text-xs"
+                                  title="Copy shareable subdomain link"
+                                >
+                                  <Globe size={13} /> SHARE
+                                </button>
+                                <button onClick={() => loadTournament(t.id)} className="flex items-center gap-1 px-3 py-1.5 bg-[#00FF88]/10 text-[#00FF88] hover:bg-[#00FF88]/20 border border-[#00FF88]/30 rounded font-rajdhani font-bold tracking-wider transition-colors text-sm">
+                                  <Download size={14} /> LOAD
+                                </button>
+                                <button onClick={() => deleteTournament(t.id)} disabled={deletingId === t.id} className="p-1.5 text-gray-500 hover:text-[#FF006E] hover:bg-[#FF006E]/10 rounded transition-colors">
+                                  <Trash2 size={16} />
+                                </button>
+                              </div>
                             </div>
-                            <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                              <button onClick={() => loadTournament(t.id)} className="flex items-center gap-1 px-3 py-1.5 bg-[#00FF88]/10 text-[#00FF88] hover:bg-[#00FF88]/20 border border-[#00FF88]/30 rounded font-rajdhani font-bold tracking-wider transition-colors text-sm">
-                                <Download size={14} /> LOAD
-                              </button>
-                              <button onClick={() => deleteTournament(t.id)} disabled={deletingId === t.id} className="p-1.5 text-gray-500 hover:text-[#FF006E] hover:bg-[#FF006E]/10 rounded transition-colors">
-                                <Trash2 size={16} />
-                              </button>
-                            </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     )}
                   </div>
@@ -2141,6 +2233,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
                         if (!historyStr) return null;
                         const historyList: Array<{
                           slug: string;
+                          subdomain?: string;
                           name: string;
                           location?: string;
                           gameName?: string;
@@ -2172,7 +2265,11 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
 
                             <div className="space-y-3 max-h-[350px] overflow-y-auto pr-1 custom-scrollbar">
                               {historyList.map((item, idx) => {
-                                const shareLink = `${window.location.origin}/?event=${encodeURIComponent(item.slug)}`;
+                                const sub = sanitizeSubdomain(item.subdomain) || `sgg-${item.slug.replace(/[^a-z0-9]/gi, '').toLowerCase().slice(0, 8)}`;
+                                const shareLink = getBracketSubdomainUrl({
+                                  subdomain: sub,
+                                  eventSlug: item.slug,
+                                });
                                 const isCurrentlyImporting = importingSlug === item.slug;
                                 return (
                                   <div 
@@ -2188,9 +2285,10 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
                                           {item.gameName || 'FGC'}
                                         </span>
                                       </div>
-                                      <div className="flex items-center gap-3 text-xs font-mono text-gray-400">
+                                      <div className="flex items-center gap-3 text-xs font-mono text-gray-400 flex-wrap">
                                         <span>👥 {item.playerCount || 0} players</span>
                                         {item.location && <span>• 📍 {item.location}</span>}
+                                        <span>• 🌐 {sub}.fightbracketpro.com</span>
                                         <span>• {new Date(item.lastImportedAt).toLocaleDateString()}</span>
                                       </div>
                                     </div>
@@ -2199,10 +2297,10 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
                                       <button
                                         onClick={() => {
                                           navigator.clipboard.writeText(shareLink);
-                                          toast.success('Unique event share link copied!');
+                                          toast.success(`Subdomain bracket link copied! (${sub}.fightbracketpro.com)`);
                                         }}
                                         className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/80 text-xs font-mono font-bold border border-white/10 transition-colors flex items-center gap-1.5"
-                                        title="Copy unique permanent share link for this bracket"
+                                        title="Copy unique subdomain share link for this bracket"
                                       >
                                         <ExternalLink size={13} />
                                         <span>COPY LINK</span>

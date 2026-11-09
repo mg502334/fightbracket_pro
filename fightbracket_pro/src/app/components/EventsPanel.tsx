@@ -1,16 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Search, Calendar, MapPin, Users, ExternalLink, ChevronLeft, ChevronRight, 
-  Gamepad2, Map, Plus, GitBranch, Trophy, Globe, Tv, Shield, Check, Trash2, Info, Eye, Sparkles, Share2
+  Gamepad2, Map, Plus, GitBranch, Trophy, Globe, Tv, Shield, Check, Trash2, Info, Eye, Sparkles, Share2,
+  X, Edit3, UserX, AlertTriangle
 } from 'lucide-react';
 import { toast } from 'sonner';
 import startggGames from '../data/startggGames.json';
 import { CreateEventModal } from './CreateEventModal';
+import { getEventSubdomainUrl, getBracketSubdomainUrl, sanitizeSubdomain } from '../utils/subdomain';
 
 interface StartggEvent {
   id: string;
   name: string;
   slug: string;
+  subdomain?: string;
   date: string;
   location: string;
   fighters: number;
@@ -21,6 +24,7 @@ export interface CommunityEvent {
   id: string;
   name: string;
   slug: string;
+  subdomain?: string;
   game: string;
   gameId: string;
   eventType: string;
@@ -51,10 +55,15 @@ export interface CommunityEvent {
     gamerTag: string;
     avatarUrl?: string;
     uniqueId: string;
+    isAdmin?: boolean;
+    isHost?: boolean;
+    role?: string;
     isOwner: boolean;
   };
   isRegistered?: boolean;
   isOwner?: boolean;
+  isAdmin?: boolean;
+  canManage?: boolean;
 }
 
 interface EventsPanelProps {
@@ -99,6 +108,7 @@ export function EventsPanel({
 
   // Modals
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [editingEvent, setEditingEvent] = useState<CommunityEvent | null>(null);
   const [selectedDetailEvent, setSelectedDetailEvent] = useState<CommunityEvent | null>(null);
   const [eventParticipants, setEventParticipants] = useState<any[]>([]);
   const [loadingDetails, setLoadingDetails] = useState(false);
@@ -274,27 +284,27 @@ export function EventsPanel({
   const handleOpenBracket = async (event: CommunityEvent, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
 
-    if (!event.tournamentId) {
-      toast.error('No tournament bracket initialized for this event.');
-      return;
-    }
-
     try {
       toast.info('Loading tournament bracket into FightBracket Pro...');
-      const res = await fetch(`/api/community-events/${event.id}/bracket`);
+      const res = await fetch(`/api/community-events/${event.id || event.slug}/bracket`);
       if (!res.ok) {
         throw new Error('Failed to load event bracket');
       }
       const data = await res.json();
       const parsedData = JSON.parse(data.data);
+      const sub = sanitizeSubdomain(event.subdomain || data.subdomain || parsedData.subdomain, 'ev');
+      parsedData.subdomain = sub;
+      if (parsedData.activeTournament) {
+        parsedData.activeTournament.subdomain = sub;
+      }
 
       if (onLoadTournament) {
         onLoadTournament(parsedData);
         toast.success(`Loaded "${event.name}" bracket!`);
         onNavigateHome?.();
       } else {
-        // Fallback: navigate directly to public tournament permalink
-        window.location.href = `/t/${data.tournamentId}`;
+        // Fallback: navigate directly to public tournament permalink with subdomain
+        window.location.href = getBracketSubdomainUrl({ subdomain: sub, tournamentId: data.tournamentId });
       }
     } catch (err: any) {
       toast.error(err.message || 'Could not open bracket');
@@ -340,6 +350,52 @@ export function EventsPanel({
       if (selectedDetailEvent?.id === eventId) setSelectedDetailEvent(null);
     } catch (err: any) {
       toast.error(err.message || 'Error deleting event');
+    }
+  };
+
+  // Update Event Status (Organizer & Admins)
+  const handleUpdateStatus = async (eventId: string, newStatus: string, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    try {
+      const headers = await getHeaders();
+      const res = await fetch(`/api/community-events/${eventId}/status`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ status: newStatus })
+      });
+      if (!res.ok) throw new Error('Failed to update event status');
+      toast.success(`Event status marked as ${newStatus.toUpperCase()}`);
+      setCommunityEvents(prev => prev.map(ev => ev.id === eventId ? { ...ev, status: newStatus } : ev));
+      if (selectedDetailEvent?.id === eventId) {
+        setSelectedDetailEvent(prev => prev ? { ...prev, status: newStatus } : null);
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Error updating status');
+    }
+  };
+
+  // Remove / Disqualify Participant (Organizer & Admins)
+  const handleRemoveParticipant = async (eventId: string, targetUserId: string, gamerTag: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!window.confirm(`Disqualify / remove ${gamerTag} from this tournament event?`)) return;
+    try {
+      const headers = await getHeaders();
+      const res = await fetch(`/api/community-events/${eventId}/participants/${targetUserId}`, {
+        method: 'DELETE',
+        headers
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ detail: 'Failed to remove competitor' }));
+        throw new Error(err.detail || 'Failed to remove competitor');
+      }
+      toast.success(`Removed ${gamerTag} from tournament roster.`);
+      setEventParticipants(prev => prev.filter(p => p.userId !== targetUserId));
+      setCommunityEvents(prev => prev.map(ev => ev.id === eventId ? { ...ev, fighters: Math.max(0, ev.fighters - 1) } : ev));
+      if (selectedDetailEvent?.id === eventId) {
+        setSelectedDetailEvent(prev => prev ? { ...prev, fighters: Math.max(0, prev.fighters - 1) } : null);
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to remove participant');
     }
   };
 
@@ -653,10 +709,11 @@ export function EventsPanel({
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              navigator.clipboard.writeText(`${window.location.origin}/events/${ev.slug}`);
-                              toast.success("Event link copied! You can share it in the Activity Feed.");
+                              const subUrl = getEventSubdomainUrl(ev.subdomain, ev.slug);
+                              navigator.clipboard.writeText(subUrl);
+                              toast.success(`Event subdomain link copied: ${subUrl}`);
                             }}
-                            title="Copy Event Link"
+                            title="Copy Event Subdomain Link"
                             className="p-1 rounded bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 hover:bg-cyan-500 hover:text-white transition-colors"
                           >
                             <Share2 size={13} />
@@ -664,10 +721,13 @@ export function EventsPanel({
                         </div>
                       </div>
 
-                      {/* Format Badge Bottom Left */}
-                      <div className="absolute bottom-2 left-3">
+                      {/* Format & Subdomain Badge Bottom Left */}
+                      <div className="absolute bottom-2 left-3 right-3 flex items-center justify-between gap-2">
                         <span className="text-[10px] text-gray-300 bg-black/60 px-2 py-0.5 rounded font-mono border border-white/5 uppercase">
                           {ev.format.replace('_', ' ')}
+                        </span>
+                        <span className="text-[10px] text-cyan-300 bg-black/70 px-2 py-0.5 rounded font-mono border border-cyan-500/30 truncate">
+                          {sanitizeSubdomain(ev.subdomain, 'ev')}.fightbracketpro.com
                         </span>
                       </div>
                     </div>
@@ -723,16 +783,14 @@ export function EventsPanel({
                     {/* Card Footer Actions */}
                     <div className="p-3 bg-black/40 border-t border-white/5 flex items-center gap-2 mt-auto">
                       {/* Open Bracket Button */}
-                      {ev.tournamentId && (
-                        <button
-                          onClick={(e) => handleOpenBracket(ev, e)}
-                          title="Open interactive bracket"
-                          className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-[#00E5FF]/10 text-[#00E5FF] border border-[#00E5FF]/40 text-xs font-bold tracking-wider hover:bg-[#00E5FF]/20 transition-all uppercase"
-                          style={{ fontFamily: 'Rajdhani, sans-serif' }}
-                        >
-                          <GitBranch size={13} /> OPEN BRACKET
-                        </button>
-                      )}
+                      <button
+                        onClick={(e) => handleOpenBracket(ev, e)}
+                        title="Open interactive bracket"
+                        className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-[#00E5FF]/10 text-[#00E5FF] border border-[#00E5FF]/40 text-xs font-bold tracking-wider hover:bg-[#00E5FF]/20 transition-all uppercase"
+                        style={{ fontFamily: 'Rajdhani, sans-serif' }}
+                      >
+                        <GitBranch size={13} /> OPEN BRACKET
+                      </button>
 
                       {/* Join / Register Button */}
                       <button
@@ -791,6 +849,27 @@ export function EventsPanel({
                       </div>
                     )}
                     <div className="absolute inset-0 bg-gradient-to-t from-[#0A0A0F] to-transparent opacity-80" />
+                    <div className="absolute top-2.5 right-2.5 flex items-center gap-1.5">
+                      <span className="text-[9px] font-mono px-2 py-0.5 rounded bg-black/75 border border-cyan-500/30 text-cyan-300">
+                        {sanitizeSubdomain(event.subdomain, 'sgg')}.fightbracketpro.com
+                      </span>
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          const shareUrl = getBracketSubdomainUrl({
+                            subdomain: sanitizeSubdomain(event.subdomain, 'sgg'),
+                            eventSlug: event.slug
+                          });
+                          navigator.clipboard.writeText(shareUrl);
+                          toast.success(`Subdomain bracket link copied: ${shareUrl}`);
+                        }}
+                        title="Copy Subdomain Share Link"
+                        className="p-1.5 rounded bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 hover:bg-cyan-500 hover:text-black transition-colors"
+                      >
+                        <Share2 size={12} />
+                      </button>
+                    </div>
                   </div>
                   <div className="p-4 flex flex-col flex-1">
                     <h3 className="text-white font-bold text-lg mb-2 line-clamp-2" style={{ fontFamily: 'Rajdhani, sans-serif', lineHeight: 1.2 }}>
@@ -996,18 +1075,26 @@ export function EventsPanel({
             </div>
 
             {/* Modal Footer */}
-            <div className="p-4 bg-[#12121A] border-t border-white/10 flex items-center justify-between shrink-0 gap-3">
-              {selectedDetailEvent.tournamentId ? (
-                <button
-                  onClick={() => handleOpenBracket(selectedDetailEvent)}
-                  className="flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-gradient-to-r from-[#00E5FF] to-[#00B4D8] text-[#050A14] font-bold text-xs tracking-wider hover:opacity-90 transition-all uppercase shadow-[0_0_15px_rgba(0,229,255,0.3)]"
-                  style={{ fontFamily: 'Rajdhani, sans-serif' }}
-                >
-                  <GitBranch size={15} /> OPEN IN BRACKET MANAGER
-                </button>
-              ) : (
-                <div />
-              )}
+            <div className="p-4 bg-[#12121A] border-t border-white/10 flex flex-wrap items-center justify-between shrink-0 gap-3">
+              <button
+                onClick={() => handleOpenBracket(selectedDetailEvent)}
+                className="flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-gradient-to-r from-[#00E5FF] to-[#00B4D8] text-[#050A14] font-bold text-xs tracking-wider hover:opacity-90 transition-all uppercase shadow-[0_0_15px_rgba(0,229,255,0.3)]"
+                style={{ fontFamily: 'Rajdhani, sans-serif' }}
+              >
+                <GitBranch size={15} /> OPEN & RUN BRACKET
+              </button>
+
+              <button
+                onClick={() => {
+                  const subUrl = getEventSubdomainUrl(selectedDetailEvent.subdomain, selectedDetailEvent.slug);
+                  navigator.clipboard.writeText(subUrl);
+                  toast.success(`Subdomain link copied: ${subUrl}`);
+                }}
+                className="px-4 py-2.5 rounded-xl bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 hover:bg-cyan-500/25 text-xs font-bold tracking-wider transition-all uppercase flex items-center gap-1.5"
+                style={{ fontFamily: 'Rajdhani, sans-serif' }}
+              >
+                <Share2 size={14} /> SHARE SUBDOMAIN
+              </button>
 
               <button
                 onClick={(e) => handleToggleRegistration(selectedDetailEvent, e)}

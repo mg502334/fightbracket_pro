@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { Swords, Clock, CheckCircle2, AlertCircle, ChevronRight, Search, X, Layers, Filter, Sparkles, Tv, RefreshCw, Monitor, Smartphone, Radio } from "lucide-react";
+import { Swords, Clock, CheckCircle2, AlertCircle, ChevronRight, Search, X, Layers, Filter, Sparkles, Tv, RefreshCw, Monitor, Smartphone, Radio, Share2, Globe } from "lucide-react";
 import { BracketType, type BracketMatch, type Player, type GameTheme, getChronologicalRoundName } from "../data/tournamentData";
+import { getBracketSubdomainUrl, sanitizeSubdomain } from "../utils/subdomain";
 
 interface BracketViewProps {
   matches: BracketMatch[];
@@ -17,6 +18,9 @@ interface BracketViewProps {
   lastSyncedAt?: Date | null;
   isSyncing?: boolean;
   autoSyncSlug?: string | null;
+  subdomain?: string | null;
+  tournamentId?: string | null;
+  onShareBracket?: () => Promise<string | null> | void;
 }
 
 const STATE_CONFIG = {
@@ -129,6 +133,9 @@ export function BracketView({
   lastSyncedAt,
   isSyncing,
   autoSyncSlug,
+  subdomain,
+  tournamentId,
+  onShareBracket,
 }: BracketViewProps) {
   const [hoveredMatchId, setHoveredMatchId] = useState<string | null>(null);
   const [selectedFormat, setSelectedFormat] = useState<BracketType>(BracketType.SINGLE_ELIMINATION);
@@ -267,9 +274,24 @@ export function BracketView({
 
     lines.push(``);
     const eventSlugToUse = autoSyncSlug || (window.location.search.includes('event=') ? new URLSearchParams(window.location.search).get('event') : null);
-    const shareUrl = eventSlugToUse 
-      ? `${window.location.origin}/?event=${encodeURIComponent(eventSlugToUse)}` 
-      : window.location.href;
+    let shareUrl = getBracketSubdomainUrl({
+      subdomain: sanitizeSubdomain(subdomain),
+      tournamentId: tournamentId || undefined,
+      eventSlug: eventSlugToUse || undefined,
+    });
+    if (onShareBracket) {
+      Promise.resolve(onShareBracket()).then((resolvedUrl) => {
+        const finalUrl = resolvedUrl || shareUrl;
+        const fullText = [...lines, `🔗 <${finalUrl}>`].join('\n');
+        navigator.clipboard.writeText(fullText).then(() => {
+          setShareTooltip(true);
+          setTimeout(() => setShareTooltip(false), 2500);
+        }).catch(() => {
+          window.prompt('Copy this to Discord:', fullText);
+        });
+      });
+      return;
+    }
     lines.push(`🔗 <${shareUrl}>`);
 
     const text = lines.join('\n');
@@ -514,6 +536,18 @@ export function BracketView({
             <div className="h-10 px-3.5 flex items-center text-xs font-mono font-bold tracking-wider uppercase rounded-lg bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 shrink-0">
               {matchingMatchesCount} {matchingMatchesCount === 1 ? 'match' : 'matches'}
             </div>
+          )}
+
+          {/* Share Subdomain Link button */}
+          {onShareBracket && (
+            <button
+              onClick={() => onShareBracket()}
+              title="Save & copy unique subdomain bracket link so anyone can load or run this bracket"
+              className="flex items-center gap-1.5 h-10 px-3.5 rounded-lg text-xs font-mono font-bold tracking-wider uppercase border transition-all hover:brightness-125 bg-emerald-500/10 text-emerald-400 border-emerald-500/40"
+            >
+              <Globe size={14} />
+              <span>{subdomain ? `${subdomain}.fightbracketpro.com` : 'SHARE LINK'}</span>
+            </button>
           )}
 
           {/* Share on Discord button */}

@@ -166,11 +166,72 @@ if _frontend_env and _frontend_env not in ALLOWED_ORIGINS:
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
-    allow_origin_regex=r"^https://([a-zA-Z0-9-]+\.)?fightbracketpro\.com$",
+    allow_origin_regex=r"^(https://([a-zA-Z0-9-]+\.)?fightbracketpro\.com|http://([a-zA-Z0-9-]+\.)?localhost(:\d+)?)$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+def generate_random_subdomain(prefix: str = "ev", db: Optional[Session] = None) -> str:
+    """Generate a unique DNS-safe random subdomain (e.g. ev-7x9k2m or fb-4k8p2q)."""
+    clean_prefix = re.sub(r'[^a-z0-9]', '', (prefix or "ev").lower())[:6] or "ev"
+    chars = string.ascii_lowercase + string.digits
+    for _ in range(10):
+        rand_part = ''.join(random.choices(chars, k=6))
+        candidate = f"{clean_prefix}-{rand_part}"
+        if not db:
+            return candidate
+        try:
+            exists_ev = db.query(DBEvent).filter(DBEvent.subdomain == candidate).first()
+            exists_t = db.query(DBTournament).filter(DBTournament.subdomain == candidate).first()
+            if not exists_ev and not exists_t:
+                return candidate
+        except Exception:
+            return candidate
+    return f"{clean_prefix}-{uuid.uuid4().hex[:8]}"
+
+def _ensure_tournament_subdomain(tournament: DBTournament, db: Optional[Session]) -> str:
+    sub = getattr(tournament, "subdomain", None)
+    if sub:
+        return sub
+    sub = generate_random_subdomain("fb", db)
+    try:
+        tournament.subdomain = sub
+        if tournament.data:
+            import json as _json
+            tdata = _json.loads(tournament.data)
+            if isinstance(tdata, dict):
+                if "activeTournament" not in tdata or not isinstance(tdata.get("activeTournament"), dict):
+                    tdata["activeTournament"] = {
+                        "name": tournament.name or "Local Event",
+                        "location": "Local / Online",
+                        "slug": tournament.id,
+                    }
+                tdata["activeTournament"]["subdomain"] = sub
+                tdata["subdomain"] = sub
+                tournament.data = _json.dumps(tdata)
+        if db:
+            db.commit()
+    except Exception as e:
+        print(f"Warning: could not persist tournament subdomain: {e}")
+    return sub
+
+def _ensure_event_subdomain(event: DBEvent, db: Optional[Session]) -> str:
+    sub = getattr(event, "subdomain", None)
+    if sub:
+        return sub
+    sub = generate_random_subdomain("ev", db)
+    try:
+        event.subdomain = sub
+        if event.tournament_id and db:
+            tourney = db.query(DBTournament).filter(DBTournament.id == event.tournament_id).first()
+            if tourney and not getattr(tourney, "subdomain", None):
+                tourney.subdomain = sub
+        if db:
+            db.commit()
+    except Exception as e:
+        print(f"Warning: could not persist event subdomain: {e}")
+    return sub
 
 @app.middleware("http")
 async def add_security_headers(request: Request, call_next):
@@ -199,6 +260,20 @@ class TournamentSaveRequest(BaseModel):
     id: str
     name: str
     data: str
+    subdomain: Optional[str] = None
+
+class ShareBracketRequest(BaseModel):
+    id: Optional[str] = None
+    name: str
+    data: str
+    subdomain: Optional[str] = None
+    user_id: Optional[str] = None
+    game: Optional[str] = None
+    game_id: Optional[str] = None
+    format: Optional[str] = "double_elimination"
+    location: Optional[str] = "Online"
+    is_online: Optional[bool] = True
+    create_event: Optional[bool] = True
 
 class VerifyRequest(BaseModel):
     token: str
@@ -241,6 +316,10 @@ class CreatePostRequest(BaseModel):
     tags: Optional[list[str]] = None
     image: Optional[str] = None
     attached_event_id: Optional[str] = None
+    pinned: Optional[bool] = False
+
+class UpdateEventStatusRequest(BaseModel):
+    status: str  # upcoming | live | completed | cancelled
 
 class FriendRequestInput(BaseModel):
     target_identifier: str
@@ -826,6 +905,42 @@ def get_or_create_user(db: Session, user_id: str, meta: dict = None) -> DBUser:
 
     return user
 
+def is_user_admin_or_host(user_id: Optional[str], db: Optional[Session]) -> bool:
+    """Returns True if the user is an admin or has created/hosted tournaments/events."""
+    if not user_id or not db:
+        return False
+    user = db.query(DBUser).filter(DBUser.id == user_id).first()
+    if user and (getattr(user, 'is_admin', False) or getattr(user, 'role', '') in ('admin', 'organizer', 'host')):
+        return True
+    
+    # Check if user has created/hosted any community events
+    has_event = db.query(DBEvent).filter(DBEvent.user_id == user_id).first() is not None
+    if has_event:
+        if user and not getattr(user, 'is_admin', False):
+            user.is_admin = True
+            if getattr(user, 'role', 'player') == 'player':
+                user.role = "organizer"
+            try:
+                db.commit()
+            except Exception:
+                db.rollback()
+        return True
+
+    # Check if user has hosted any tournaments
+    has_tourney = db.query(DBTournament).filter(DBTournament.user_id == user_id).first() is not None
+    if has_tourney:
+        if user and not getattr(user, 'is_admin', False):
+            user.is_admin = True
+            if getattr(user, 'role', 'player') == 'player':
+                user.role = "organizer"
+            try:
+                db.commit()
+            except Exception:
+                db.rollback()
+        return True
+
+    return False
+
 @app.get("/api/user/profile")
 def get_user_profile(payload: dict = Depends(get_current_user_payload), db: Session = Depends(get_db)):
     if not db:
@@ -850,6 +965,13 @@ def get_user_profile(payload: dict = Depends(get_current_user_payload), db: Sess
         followers_count = db.query(DBUserFollow).filter(DBUserFollow.following_id == user_id).count()
         following_count = db.query(DBUserFollow).filter(DBUserFollow.follower_id == user_id).count()
 
+        hosted_events_count = db.query(DBEvent).filter(DBEvent.user_id == user_id).count()
+        hosted_tournaments_count = db.query(DBTournament).filter(DBTournament.user_id == user_id).count()
+        is_admin_user = is_user_admin_or_host(user_id, db)
+        user_role = getattr(user, 'role', 'player') or ('organizer' if is_admin_user else 'player')
+        if is_admin_user and user_role == 'player':
+            user_role = 'organizer'
+
         return {
             "user": {
                 "id": user.id,
@@ -862,7 +984,7 @@ def get_user_profile(payload: dict = Depends(get_current_user_payload), db: Sess
                 "avatar_url": user.avatar_url or "",
                 "profile_color": getattr(user, 'profile_color', '') or "",
                 "startgg_slug": user.startgg_slug or "",
-                            "startgg_token": "SECURE_HIDDEN" if (getattr(user, 'startgg_token', '') or db.query(DBUserIntegration).filter(DBUserIntegration.user_id == user.id, DBUserIntegration.integration_type == 'startgg').first()) else "", 
+                "startgg_token": "SECURE_HIDDEN" if (getattr(user, 'startgg_token', '') or db.query(DBUserIntegration).filter(DBUserIntegration.user_id == user.id, DBUserIntegration.integration_type == 'startgg').first()) else "", 
                 "startgg_data": user.startgg_data or "",
                 "tekken_id": user.tekken_id or "",
                 "steam_id": getattr(user, 'steam_id', '') or "",
@@ -880,6 +1002,11 @@ def get_user_profile(payload: dict = Depends(get_current_user_payload), db: Sess
                 "notify_messages": user.notify_messages if hasattr(user, 'notify_messages') and user.notify_messages is not None else True,
                 "sound_notifications": user.sound_notifications if hasattr(user, 'sound_notifications') and user.sound_notifications is not None else True,
                 "sound_messages": user.sound_messages if hasattr(user, 'sound_messages') and user.sound_messages is not None else True,
+                "is_admin": is_admin_user,
+                "role": user_role,
+                "is_host": is_admin_user or (hosted_events_count > 0),
+                "hosted_events_count": hosted_events_count,
+                "hosted_tournaments_count": hosted_tournaments_count,
                 "created_at": created_at_str,
                 "unread_messages_count": unread_count,
                 "pending_friend_requests_count": pending_friend_requests_count,
@@ -1965,6 +2092,13 @@ def get_target_user_profile(target_user_id: str, user_id: str = Depends(get_curr
         events_query = events_query.filter(DBEvent.show_on_profile == True)
     community_events = [_serialize_event(e, db, user_id) for e in events_query.order_by(DBEvent.created_at.desc()).limit(10).all()]
 
+    target_hosted_count = db.query(DBEvent).filter(DBEvent.user_id == target_user_id).count()
+    target_tourneys_count = db.query(DBTournament).filter(DBTournament.user_id == target_user_id).count()
+    target_is_admin = is_user_admin_or_host(target_user_id, db)
+    target_role = getattr(target_user, 'role', 'player') or ('organizer' if target_is_admin else 'player')
+    if target_is_admin and target_role == 'player':
+        target_role = 'organizer'
+
     uid_str = getattr(target_user, 'unique_id', None) or (target_ui.unique_id if target_ui else "FB-USER")
     return {
         "profile": {
@@ -1990,6 +2124,11 @@ def get_target_user_profile(target_user_id: str, user_id: str = Depends(get_curr
             "friend_status": friend_status,
             "privacy_restricted": public_restricted,
             "is_self": is_self,
+            "is_admin": target_is_admin,
+            "role": target_role,
+            "is_host": target_is_admin or (target_hosted_count > 0),
+            "hosted_events_count": target_hosted_count,
+            "hosted_tournaments_count": target_tourneys_count,
             "likes_count": likes_count,
             "followers_count": followers_count,
             "following_count": following_count,
@@ -2084,36 +2223,346 @@ def get_tournaments(user_id: str = Depends(get_current_user_id), db: Session = D
     if not db:
         return {"tournaments": []}
     tournaments = db.query(DBTournament).filter(DBTournament.user_id == user_id).all()
-    return {"tournaments": [{"id": t.id, "name": t.name, "updated_at": t.updated_at.isoformat()} for t in tournaments]}
+    results = []
+    for t in tournaments:
+        sub = _ensure_tournament_subdomain(t, db)
+        results.append({
+            "id": t.id,
+            "name": t.name,
+            "subdomain": sub,
+            "updated_at": t.updated_at.isoformat() if t.updated_at else datetime.now(timezone.utc).isoformat()
+        })
+    return {"tournaments": results}
 
 @app.get("/api/tournaments/{tournament_id}")
 def get_tournament(tournament_id: str, user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
     if not db:
         raise HTTPException(status_code=404, detail="Database not available")
-    tournament = db.query(DBTournament).filter(DBTournament.id == tournament_id, DBTournament.user_id == user_id).first()
+    tournament = db.query(DBTournament).filter(
+        (DBTournament.id == tournament_id) | (DBTournament.subdomain == tournament_id),
+        DBTournament.user_id == user_id
+    ).first()
     if not tournament:
         raise HTTPException(status_code=404, detail="Tournament not found")
-    return {"tournament": {"id": tournament.id, "name": tournament.name, "data": tournament.data, "updated_at": tournament.updated_at.isoformat()}}
+    sub = _ensure_tournament_subdomain(tournament, db)
+    return {
+        "tournament": {
+            "id": tournament.id,
+            "name": tournament.name,
+            "subdomain": sub,
+            "data": tournament.data,
+            "updated_at": tournament.updated_at.isoformat() if tournament.updated_at else datetime.now(timezone.utc).isoformat()
+        }
+    }
 
 @app.get("/api/public/tournaments/{tournament_id}")
 def get_public_tournament(tournament_id: str, db: Session = Depends(get_db)):
     if not db:
         raise HTTPException(status_code=404, detail="Database not available")
-    tournament = db.query(DBTournament).filter(DBTournament.id == tournament_id).first()
+    tournament = db.query(DBTournament).filter(
+        (DBTournament.id == tournament_id) | (DBTournament.subdomain == tournament_id)
+    ).first()
+    if not tournament:
+        # Also check if tournament_id matches a community event slug, subdomain, or ID
+        db_evt = db.query(DBEvent).filter(
+            (DBEvent.slug == tournament_id) | (DBEvent.subdomain == tournament_id) | (DBEvent.id == tournament_id)
+        ).first()
+        if db_evt and db_evt.tournament_id:
+            tournament = db.query(DBTournament).filter(DBTournament.id == db_evt.tournament_id).first()
     if not tournament:
         raise HTTPException(status_code=404, detail="Tournament not found")
-    return {"tournament": {"id": tournament.id, "user_id": tournament.user_id, "name": tournament.name, "data": tournament.data, "updated_at": tournament.updated_at.isoformat()}}
+    sub = _ensure_tournament_subdomain(tournament, db)
+    return {
+        "tournament": {
+            "id": tournament.id,
+            "user_id": tournament.user_id,
+            "name": tournament.name,
+            "subdomain": sub,
+            "data": tournament.data,
+            "updated_at": tournament.updated_at.isoformat() if tournament.updated_at else datetime.now(timezone.utc).isoformat()
+        }
+    }
 
 @app.get("/api/public/events/{slug}")
 def get_public_event(slug: str, db: Session = Depends(get_db)):
     if not db:
         raise HTTPException(status_code=404, detail="Database not available")
-    
-    db_evt = db.query(DBEvent).filter(DBEvent.slug == slug).first()
-    if not db_evt:
-        raise HTTPException(status_code=404, detail="Event not found")
-        
-    return {"event": _serialize_event(db_evt, db, None)}
+    _seed_community_events_if_empty(db)
+    db_evt = db.query(DBEvent).filter(
+        (DBEvent.slug == slug) | (DBEvent.subdomain == slug) | (DBEvent.id == slug)
+    ).first()
+    if db_evt:
+        evt_dict = _serialize_event(db_evt, db, None)
+        if db_evt.tournament_id:
+            tourney = db.query(DBTournament).filter(DBTournament.id == db_evt.tournament_id).first()
+            if tourney:
+                evt_dict["bracketData"] = tourney.data
+                evt_dict["updatedAt"] = tourney.updated_at.isoformat() if tourney.updated_at else None
+        return {"event": evt_dict}
+
+    # Fallback: check if slug/subdomain corresponds to a shared local DBTournament
+    tourney = db.query(DBTournament).filter(
+        (DBTournament.id == slug) | (DBTournament.subdomain == slug)
+    ).first()
+    if tourney:
+        import json as _json
+        sub = _ensure_tournament_subdomain(tourney, db)
+        tdata = {}
+        try:
+            tdata = _json.loads(tourney.data) if tourney.data else {}
+        except Exception:
+            pass
+        active_game_id = tdata.get("activeGame") or "tekken8"
+        themes = tdata.get("gameThemes") or {}
+        game_name = (themes.get(active_game_id) or {}).get("displayName") or "Fighting Game"
+        players_list = tdata.get("players") or []
+        active_t = tdata.get("activeTournament") or {}
+        loc = active_t.get("location") or "Online / Local"
+        return {
+            "event": {
+                "id": tourney.id,
+                "name": tourney.name or active_t.get("name") or "Shared Local Event",
+                "slug": tourney.id,
+                "subdomain": sub,
+                "game": game_name,
+                "gameId": active_game_id,
+                "eventType": "tournament",
+                "format": active_t.get("format") or "double_elimination",
+                "startDate": tourney.updated_at.isoformat() if tourney.updated_at else datetime.now(timezone.utc).isoformat(),
+                "date": "Live / Shared Bracket",
+                "isOnline": "online" in loc.lower(),
+                "location": loc,
+                "description": f"Shared interactive tournament bracket ({len(players_list)} entrants). Load this event directly into FightBracket Pro to view or run the bracket!",
+                "entryFee": "Free",
+                "maxEntrants": max(64, len(players_list)),
+                "fighters": len(players_list),
+                "status": "live",
+                "tournamentId": tourney.id,
+                "bracketData": tourney.data,
+                "organizer": {
+                    "id": tourney.user_id,
+                    "gamerTag": active_t.get("organizerTag") or "Tournament Host",
+                    "uniqueId": "FB-HOST",
+                    "isHost": True,
+                    "isOwner": False
+                }
+            }
+        }
+
+    raise HTTPException(status_code=404, detail="Event not found")
+
+
+@app.get("/api/public/resolve-subdomain/{subdomain}")
+def resolve_subdomain(subdomain: str, db: Session = Depends(get_db)):
+    """Resolve a random subdomain (or slug/id) to its event and/or runnable bracket data."""
+    if not db:
+        raise HTTPException(status_code=404, detail="Database not available")
+    _seed_community_events_if_empty(db)
+    clean_sub = subdomain.strip().lower()
+
+    # 1. Check DBEvent by subdomain, slug, or id
+    db_evt = db.query(DBEvent).filter(
+        (DBEvent.subdomain == clean_sub) | (DBEvent.slug == clean_sub) | (DBEvent.id == clean_sub)
+    ).first()
+    if db_evt:
+        evt_dict = _serialize_event(db_evt, db, None)
+        tourney_dict = None
+        if db_evt.tournament_id:
+            tourney = db.query(DBTournament).filter(DBTournament.id == db_evt.tournament_id).first()
+            if tourney:
+                t_sub = _ensure_tournament_subdomain(tourney, db)
+                tourney_dict = {
+                    "id": tourney.id,
+                    "user_id": tourney.user_id,
+                    "name": tourney.name,
+                    "subdomain": t_sub,
+                    "data": tourney.data,
+                    "updated_at": tourney.updated_at.isoformat() if tourney.updated_at else None
+                }
+        return {
+            "status": "success",
+            "type": "event",
+            "subdomain": evt_dict.get("subdomain") or clean_sub,
+            "event": evt_dict,
+            "tournament": tourney_dict
+        }
+
+    # 2. Check DBTournament by subdomain or id
+    tourney = db.query(DBTournament).filter(
+        (DBTournament.subdomain == clean_sub) | (DBTournament.id == clean_sub)
+    ).first()
+    if tourney:
+        t_sub = _ensure_tournament_subdomain(tourney, db)
+        # Check if an event points to this tournament
+        linked_evt = db.query(DBEvent).filter(DBEvent.tournament_id == tourney.id).first()
+        evt_dict = _serialize_event(linked_evt, db, None) if linked_evt else None
+        return {
+            "status": "success",
+            "type": "tournament",
+            "subdomain": t_sub,
+            "event": evt_dict,
+            "tournament": {
+                "id": tourney.id,
+                "user_id": tourney.user_id,
+                "name": tourney.name,
+                "subdomain": t_sub,
+                "data": tourney.data,
+                "updated_at": tourney.updated_at.isoformat() if tourney.updated_at else None
+            }
+        }
+
+    raise HTTPException(status_code=404, detail="Subdomain or event not found")
+
+
+@app.post("/api/public/share-bracket")
+def share_local_bracket(
+    req: ShareBracketRequest,
+    authorization: Optional[str] = Header(None),
+    db: Session = Depends(get_db)
+):
+    """Save and share any local event or bracket (authenticated or guest) with a random subdomain."""
+    if not db:
+        raise HTTPException(status_code=503, detail="Database not available")
+
+    import json as _json
+    resolved_user_id = req.user_id or "anon-local"
+    if authorization and authorization.startswith("Bearer "):
+        try:
+            payload = get_current_user_payload(authorization)
+            if payload.get("sub"):
+                resolved_user_id = payload.get("sub")
+        except Exception:
+            pass
+
+    clean_name = (req.name or "Local FightBracket Event").strip()
+    t_id = (req.id or "").strip()
+    req_sub = (req.subdomain or "").strip().lower()
+    if not t_id or t_id == "default":
+        t_id = req_sub or f"tourney-{uuid.uuid4().hex[:8]}"
+
+    if req_sub:
+        tournament = db.query(DBTournament).filter(
+            (DBTournament.id == t_id) | (DBTournament.subdomain == t_id) | (DBTournament.subdomain == req_sub)
+        ).first()
+    else:
+        tournament = db.query(DBTournament).filter(
+            (DBTournament.id == t_id) | (DBTournament.subdomain == t_id)
+        ).first()
+
+    now_utc = datetime.now(timezone.utc)
+    if tournament:
+        sub = tournament.subdomain or req_sub or generate_random_subdomain("fb", db)
+        tournament.subdomain = sub
+        tournament.name = clean_name
+        tournament.updated_at = now_utc
+    else:
+        sub = req_sub or generate_random_subdomain("fb", db)
+        # Ensure uniqueness
+        existing_sub = db.query(DBTournament).filter(DBTournament.subdomain == sub).first()
+        if existing_sub:
+            sub = generate_random_subdomain("fb", db)
+        tournament = DBTournament(
+            id=t_id,
+            user_id=resolved_user_id,
+            name=clean_name,
+            subdomain=sub,
+            data=req.data,
+            updated_at=now_utc
+        )
+        db.add(tournament)
+
+    # Inject subdomain and tournament ID into the JSON payload so receivers have full metadata
+    try:
+        parsed = _json.loads(req.data)
+        if isinstance(parsed, dict):
+            parsed["subdomain"] = sub
+            parsed["sharedTournamentId"] = tournament.id
+            if "activeTournament" not in parsed or not isinstance(parsed.get("activeTournament"), dict):
+                parsed["activeTournament"] = {
+                    "id": tournament.id,
+                    "name": clean_name,
+                    "location": req.location or "Local / Online",
+                    "slug": tournament.id,
+                    "subdomain": sub,
+                    "isLiveShared": True,
+                }
+            else:
+                parsed["activeTournament"]["id"] = parsed["activeTournament"].get("id") or tournament.id
+                parsed["activeTournament"]["name"] = parsed["activeTournament"].get("name") or clean_name
+                parsed["activeTournament"]["slug"] = parsed["activeTournament"].get("slug") or tournament.id
+                parsed["activeTournament"]["subdomain"] = sub
+                parsed["activeTournament"]["isLiveShared"] = True
+            tournament.data = _json.dumps(parsed)
+        else:
+            tournament.data = req.data
+    except Exception:
+        tournament.data = req.data
+
+    # Also create or update a linked DBEvent so the local event appears on its own public event page & subdomain
+    event_slug = tournament.id
+    linked_event = db.query(DBEvent).filter(
+        (DBEvent.tournament_id == tournament.id) | (DBEvent.subdomain == sub)
+    ).first()
+
+    if req.create_event and not linked_event:
+        try:
+            parsed_data = _json.loads(tournament.data) if tournament.data else {}
+            active_game_id = req.game_id or parsed_data.get("activeGame") or "tekken8"
+            themes = parsed_data.get("gameThemes") or {}
+            game_display = req.game or (themes.get(active_game_id) or {}).get("displayName") or "Tekken 8"
+            players_list = parsed_data.get("players") or []
+            matches_list = parsed_data.get("matches") or []
+            all_done = len(matches_list) > 0 and all(m.get("state") == "completed" for m in matches_list)
+            base_slug = re.sub(r'[^a-z0-9]+', '-', clean_name.lower()).strip('-') or "local-event"
+            event_slug = f"{base_slug}-{sub.split('-')[-1]}"
+
+            linked_event = DBEvent(
+                id=f"fbe-{uuid.uuid4().hex[:8]}",
+                user_id=resolved_user_id,
+                tournament_id=tournament.id,
+                name=clean_name,
+                slug=event_slug,
+                subdomain=sub,
+                game=game_display,
+                game_id=active_game_id,
+                event_type="tournament",
+                format=req.format or "double_elimination",
+                start_date=now_utc,
+                is_online=req.is_online if req.is_online is not None else True,
+                venue_name=req.location if not req.is_online else None,
+                country="US",
+                description=f"Shared local event & live interactive bracket ({len(players_list)} competitors).",
+                entry_fee="Free",
+                max_entrants=max(64, len(players_list)),
+                entrants_count=len(players_list),
+                status="completed" if all_done else "live"
+            )
+            db.add(linked_event)
+        except Exception as ev_err:
+            print(f"Warning: could not auto-create DBEvent for shared bracket: {ev_err}")
+    elif linked_event:
+        event_slug = linked_event.slug
+        if not linked_event.subdomain:
+            linked_event.subdomain = sub
+        try:
+            parsed_data = _json.loads(tournament.data) if tournament.data else {}
+            players_list = parsed_data.get("players") or []
+            matches_list = parsed_data.get("matches") or []
+            all_done = len(matches_list) > 0 and all(m.get("state") == "completed" for m in matches_list)
+            linked_event.entrants_count = len(players_list)
+            linked_event.name = clean_name
+            linked_event.status = "completed" if all_done else "live"
+        except Exception:
+            pass
+
+    db.commit()
+    return {
+        "status": "success",
+        "id": tournament.id,
+        "subdomain": sub,
+        "eventSlug": event_slug,
+        "updatedAt": now_utc.isoformat()
+    }
 
 
 @app.post("/api/tournaments")
@@ -2124,9 +2573,14 @@ def save_tournament(req: TournamentSaveRequest, user_id: str = Depends(get_curre
     if tournament:
         tournament.name = req.name  # type: ignore
         tournament.data = req.data  # type: ignore
+        if req.subdomain and not tournament.subdomain:
+            tournament.subdomain = req.subdomain
     else:
-        tournament = DBTournament(id=req.id, user_id=user_id, name=req.name, data=req.data)
+        sub = req.subdomain or generate_random_subdomain("fb", db)
+        tournament = DBTournament(id=req.id, user_id=user_id, name=req.name, subdomain=sub, data=req.data)
         db.add(tournament)
+
+    sub = _ensure_tournament_subdomain(tournament, db)
     
     # Sync participants
     try:
@@ -2159,17 +2613,27 @@ def save_tournament(req: TournamentSaveRequest, user_id: str = Depends(get_curre
     except Exception as e:
         print(f"Failed to sync participants: {e}")
 
+    # Promote tournament host to organizer/admin role
+    u = db.query(DBUser).filter(DBUser.id == user_id).first()
+    if u and not getattr(u, 'is_admin', False):
+        u.is_admin = True
+        if getattr(u, 'role', 'player') == 'player':
+            u.role = "organizer"
+
     db.commit()
-    return {"status": "success"}
+    return {"status": "success", "id": tournament.id, "subdomain": sub}
 
 @app.delete("/api/tournaments/{tournament_id}")
 def delete_tournament(tournament_id: str, user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
     if not db:
         return {"status": "error", "detail": "Database not available"}
-    tournament = db.query(DBTournament).filter(DBTournament.id == tournament_id, DBTournament.user_id == user_id).first()
-    if tournament:
-        db.delete(tournament)
-        db.commit()
+    tournament = db.query(DBTournament).filter(DBTournament.id == tournament_id).first()
+    if not tournament:
+        return {"status": "not_found", "detail": "Tournament not found"}
+    if tournament.user_id != user_id and not is_user_admin_or_host(user_id, db):
+        raise HTTPException(status_code=403, detail="Only the host or an admin can delete this tournament")
+    db.delete(tournament)
+    db.commit()
     return {"status": "success"}
 
 @app.get("/api/state")
@@ -3348,14 +3812,23 @@ def get_feed(
             except Exception:
                 pass
 
+        author_is_admin = is_user_admin_or_host(post.user_id, db)
+        author_role = getattr(author, 'role', 'player') if author else 'player'
+        if author_is_admin and author_role == 'player':
+            author_role = 'organizer'
+
         results.append({
             "id": post.id,
             "author": {
+                "id": post.user_id,
                 "name": name,
                 "handle": getattr(author, 'unique_id', None) or "FB-UNKNOWN",
                 "initials": initials,
                 "color": getattr(author, 'profile_color', None) or "#06b6d4",
-                "avatar": getattr(author, 'avatar_url', None)
+                "avatar": getattr(author, 'avatar_url', None),
+                "isAdmin": author_is_admin,
+                "isHost": author_is_admin,
+                "role": author_role
             },
             "time": post.created_at.isoformat() if post.created_at else "",
             "content": post.content,
@@ -3383,6 +3856,9 @@ def create_post(req: CreatePostRequest, user_id: str = Depends(get_current_user_
         
     import uuid, json
     
+    is_admin = is_user_admin_or_host(user_id, db)
+    pin_flag = bool(req.pinned and is_admin)
+
     new_post = DBPost(
         id=str(uuid.uuid4()),
         user_id=user_id,
@@ -3390,7 +3866,8 @@ def create_post(req: CreatePostRequest, user_id: str = Depends(get_current_user_
         type=req.type,
         tags=json.dumps(req.tags) if req.tags else None,
         image=req.image,
-        attached_event_id=req.attached_event_id
+        attached_event_id=req.attached_event_id,
+        pinned=pin_flag
     )
     
     db.add(new_post)
@@ -3499,6 +3976,35 @@ def repost_post(post_id: str, user_id: str = Depends(get_current_user_id), db: S
     db.add(repost)
     db.commit()
     return {"message": "Post reposted", "repost_id": repost.id}
+
+@app.post("/api/feed/{post_id}/pin")
+def toggle_pin_post(post_id: str, user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    if not db:
+        raise HTTPException(status_code=404, detail="Database not available")
+    post = db.query(DBPost).filter(DBPost.id == post_id).first()
+    if not post:
+        raise HTTPException(status_code=404, detail="Post not found")
+    if not is_user_admin_or_host(user_id, db):
+        raise HTTPException(status_code=403, detail="Only event hosts and admins can pin posts")
+    post.pinned = not bool(post.pinned)
+    db.commit()
+    return {"status": "success", "pinned": post.pinned, "message": "Post pinned to top of feed" if post.pinned else "Post unpinned"}
+
+@app.delete("/api/feed/{post_id}")
+def delete_post(post_id: str, user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    if not db:
+        raise HTTPException(status_code=404, detail="Database not available")
+    post = db.query(DBPost).filter(DBPost.id == post_id).first()
+    if not post:
+        raise HTTPException(status_code=404, detail="Post not found")
+    if post.user_id != user_id and not is_user_admin_or_host(user_id, db):
+        raise HTTPException(status_code=403, detail="You do not have permission to delete this post")
+    db.query(DBPostLike).filter(DBPostLike.post_id == post_id).delete()
+    db.query(DBPostComment).filter(DBPostComment.post_id == post_id).delete()
+    db.query(DBPostReaction).filter(DBPostReaction.post_id == post_id).delete()
+    db.delete(post)
+    db.commit()
+    return {"status": "success", "message": "Post deleted successfully"}
 
 @app.get("/api/recents")
 def get_recents(user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
@@ -4434,10 +4940,13 @@ def search_events(req: EventSearchRequest, user_id: str = Depends(get_current_us
             if not image_url and images:
                 image_url = images[0].get("url")
                 
+            raw_id = str(node.get("id") or node.get("slug") or uuid.uuid4().hex[:6])
+            sgg_sub = f"sgg-{re.sub(r'[^a-z0-9]', '', raw_id.lower())[-6:]}"
             events_results.append({
                 "id": node.get("id"),
                 "name": node.get("name"),
                 "slug": node.get("slug"),
+                "subdomain": sgg_sub,
                 "date": date_str,
                 "location": location or "Online",
                 "fighters": node.get("numAttendees") or 0,
@@ -4479,11 +4988,13 @@ def _serialize_event(event: DBEvent, db: Session, current_user_id: Optional[str]
 
     d = event.start_date
     date_str = d.strftime("%b %d, %Y · %I:%M %p") if d else "TBD"
+    sub = _ensure_event_subdomain(event, db)
 
     return {
         "id": event.id,
         "name": event.name,
         "slug": event.slug,
+        "subdomain": sub,
         "game": event.game,
         "gameId": event.game_id,
         "eventType": event.event_type or "tournament",
@@ -4515,10 +5026,15 @@ def _serialize_event(event: DBEvent, db: Session, current_user_id: Optional[str]
             "gamerTag": org_tag,
             "avatarUrl": org_avatar,
             "uniqueId": org_handle,
+            "isAdmin": is_user_admin_or_host(event.user_id, db) if db else False,
+            "isHost": True,
+            "role": getattr(organizer, 'role', 'organizer') if organizer else "organizer",
             "isOwner": current_user_id == event.user_id if current_user_id else False
         },
         "isRegistered": is_registered,
-        "isOwner": current_user_id == event.user_id if current_user_id else False
+        "isOwner": current_user_id == event.user_id if current_user_id else False,
+        "isAdmin": is_user_admin_or_host(current_user_id, db) if (current_user_id and db) else False,
+        "canManage": (current_user_id == event.user_id or is_user_admin_or_host(current_user_id, db)) if (current_user_id and db) else False
     }
 
 
@@ -4591,10 +5107,13 @@ def _seed_community_events_if_empty(db: Session):
             t_id = f"tourney-{uuid.uuid4().hex[:8]}"
             base_slug = re.sub(r'[^a-z0-9]+', '-', s["name"].lower()).strip('-')
             slug = f"{base_slug}-{uuid.uuid4().hex[:4]}"
+            sub = generate_random_subdomain("ev", db)
             s_date = datetime.now(timezone.utc) + timedelta(days=s["days_offset"])
             
             initial_data = {
                 "activeGame": s["game_id"],
+                "subdomain": sub,
+                "sharedTournamentId": t_id,
                 "players": [],
                 "matches": [],
                 "stations": [
@@ -4619,13 +5138,14 @@ def _seed_community_events_if_empty(db: Session):
                     "name": s["name"],
                     "location": "Online" if s["is_online"] else f"{s.get('city')}, {s.get('state')}",
                     "slug": slug,
+                    "subdomain": sub,
                     "numAttendees": 0
                 },
                 "tournamentOwnerId": bot_id,
                 "exhibitions": []
             }
             
-            db.add(DBTournament(id=t_id, user_id=bot_id, name=s["name"], data=json.dumps(initial_data)))
+            db.add(DBTournament(id=t_id, user_id=bot_id, name=s["name"], subdomain=sub, data=json.dumps(initial_data)))
             
             db.add(DBEvent(
                 id=ev_id,
@@ -4633,6 +5153,7 @@ def _seed_community_events_if_empty(db: Session):
                 tournament_id=t_id,
                 name=s["name"],
                 slug=slug,
+                subdomain=sub,
                 game=s["game"],
                 game_id=s["game_id"],
                 event_type=s["event_type"],
@@ -4725,7 +5246,10 @@ def list_community_events(
 
     # Filter upcoming vs past
     threshold = datetime.now(timezone.utc) - timedelta(hours=24)
-    if upcoming is True:
+    if mine:
+        # Event managers should see all their hosted events (upcoming, live, completed)
+        query = query.order_by(DBEvent.start_date.desc())
+    elif upcoming is True:
         query = query.filter(DBEvent.start_date >= threshold).order_by(DBEvent.start_date.asc())
     elif upcoming is False:
         query = query.filter(DBEvent.start_date < threshold).order_by(DBEvent.start_date.desc())
@@ -4767,6 +5291,7 @@ def create_community_event(
     if not base_slug:
         base_slug = "event"
     slug = f"{base_slug}-{uuid.uuid4().hex[:4]}"
+    sub = generate_random_subdomain("ev", db)
     
     # Parse start date
     try:
@@ -4801,6 +5326,8 @@ def create_community_event(
 
         initial_data = {
             "activeGame": req.game_id,
+            "subdomain": sub,
+            "sharedTournamentId": tournament_id,
             "players": [],
             "matches": [],
             "stations": [
@@ -4825,6 +5352,7 @@ def create_community_event(
                 "name": clean_name,
                 "location": loc_label,
                 "slug": slug,
+                "subdomain": sub,
                 "numAttendees": 0
             },
             "tournamentOwnerId": user_id,
@@ -4835,6 +5363,7 @@ def create_community_event(
             id=tournament_id,
             user_id=user_id,
             name=clean_name,
+            subdomain=sub,
             data=json.dumps(initial_data)
         )
         db.add(db_tourney)
@@ -4845,6 +5374,7 @@ def create_community_event(
         tournament_id=tournament_id,
         name=clean_name,
         slug=slug,
+        subdomain=sub,
         game=req.game.strip(),
         game_id=req.game_id.strip(),
         event_type=req.event_type or "tournament",
@@ -4869,6 +5399,12 @@ def create_community_event(
         status="upcoming",
         show_on_profile=req.show_on_profile if req.show_on_profile is not None else False
     )
+    # Promote host to admin & organizer role immediately
+    current_u = db.query(DBUser).filter(DBUser.id == user_id).first()
+    if current_u:
+        current_u.is_admin = True
+        current_u.role = "organizer"
+
     db.add(event)
     db.commit()
     db.refresh(event)
@@ -4893,7 +5429,9 @@ def get_community_event(
         except Exception:
             pass
 
-    event = db.query(DBEvent).filter((DBEvent.id == event_id) | (DBEvent.slug == event_id)).first()
+    event = db.query(DBEvent).filter(
+        (DBEvent.id == event_id) | (DBEvent.slug == event_id) | (DBEvent.subdomain == event_id)
+    ).first()
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
         
@@ -4927,8 +5465,8 @@ def update_community_event(
     event = db.query(DBEvent).filter(DBEvent.id == event_id).first()
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
-    if event.user_id != user_id:
-        raise HTTPException(status_code=403, detail="Only the event organizer can update this event")
+    if event.user_id != user_id and not is_user_admin_or_host(user_id, db):
+        raise HTTPException(status_code=403, detail="Only the event organizer or an admin can update this event")
 
     if req.name is not None and req.name.strip():
         event.name = req.name.strip()
@@ -4940,6 +5478,24 @@ def update_community_event(
         event.event_type = req.event_type
     if req.format is not None:
         event.format = req.format
+    if req.start_date:
+        try:
+            raw_start = req.start_date.replace("Z", "+00:00")
+            s_date = datetime.fromisoformat(raw_start)
+            if not s_date.tzinfo:
+                s_date = s_date.replace(tzinfo=timezone.utc)
+            event.start_date = s_date
+        except Exception:
+            pass
+    if req.end_date:
+        try:
+            raw_end = req.end_date.replace("Z", "+00:00")
+            e_date = datetime.fromisoformat(raw_end)
+            if not e_date.tzinfo:
+                e_date = e_date.replace(tzinfo=timezone.utc)
+            event.end_date = e_date
+        except Exception:
+            pass
     if req.is_online is not None:
         event.is_online = req.is_online
     if req.venue_name is not None:
@@ -4987,8 +5543,8 @@ def delete_community_event(
     event = db.query(DBEvent).filter(DBEvent.id == event_id).first()
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
-    if event.user_id != user_id:
-        raise HTTPException(status_code=403, detail="Only the organizer can delete this event")
+    if event.user_id != user_id and not is_user_admin_or_host(user_id, db):
+        raise HTTPException(status_code=403, detail="Only the organizer or an admin can delete this event")
         
     db.query(DBEventRegistration).filter(DBEventRegistration.event_id == event.id).delete()
     if event.tournament_id:
@@ -4996,6 +5552,89 @@ def delete_community_event(
     db.delete(event)
     db.commit()
     return {"status": "success", "message": "Event successfully deleted"}
+
+
+@app.delete("/api/community-events/{event_id}/participants/{target_user_id}")
+def remove_event_participant(
+    event_id: str,
+    target_user_id: str,
+    user_id: str = Depends(get_current_user_id),
+    db: Session = Depends(get_db)
+):
+    """Allows event organizers and admins to remove or disqualify a competitor."""
+    if not db:
+        raise HTTPException(status_code=503, detail="Database not available")
+    event = db.query(DBEvent).filter(
+        (DBEvent.id == event_id) | (DBEvent.slug == event_id) | (DBEvent.subdomain == event_id)
+    ).first()
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+        
+    if event.user_id != user_id and not is_user_admin_or_host(user_id, db):
+        raise HTTPException(status_code=403, detail="Only the event organizer or an admin can remove participants")
+
+    reg = db.query(DBEventRegistration).filter(
+        DBEventRegistration.event_id == event.id,
+        DBEventRegistration.user_id == target_user_id
+    ).first()
+    if not reg:
+        raise HTTPException(status_code=404, detail="Participant not registered for this event")
+
+    removed_tag = reg.gamer_tag
+    db.delete(reg)
+    event.entrants_count = max(0, (event.entrants_count or 1) - 1)
+
+    # Also remove from linked tournament bracket if active
+    if event.tournament_id:
+        tourney = db.query(DBTournament).filter(DBTournament.id == event.tournament_id).first()
+        if tourney and tourney.data:
+            try:
+                target_u = db.query(DBUser).filter(DBUser.id == target_user_id).first()
+                user_uniq = target_u.unique_id if target_u else None
+                tdata = json.loads(tourney.data)
+                players_list = tdata.get("players", [])
+                players_list = [p for p in players_list if (user_uniq and p.get("fbUserId") != user_uniq) and p.get("tag") != removed_tag]
+                tdata["players"] = players_list
+                if "activeTournament" in tdata and isinstance(tdata["activeTournament"], dict):
+                    tdata["activeTournament"]["numAttendees"] = len(players_list)
+                tourney.data = json.dumps(tdata)
+            except Exception as te:
+                print(f"[RemoveParticipant] Tourney player remove error: {te}")
+
+    db.commit()
+    return {
+        "status": "success",
+        "message": f"Participant {removed_tag} has been removed by the event administrator.",
+        "fighters": event.entrants_count
+    }
+
+
+@app.post("/api/community-events/{event_id}/status")
+def set_event_status(
+    event_id: str,
+    req: UpdateEventStatusRequest,
+    user_id: str = Depends(get_current_user_id),
+    db: Session = Depends(get_db)
+):
+    """Allows event organizers and admins to update event status (upcoming, live, completed, cancelled)."""
+    if not db:
+        raise HTTPException(status_code=503, detail="Database not available")
+    event = db.query(DBEvent).filter(
+        (DBEvent.id == event_id) | (DBEvent.slug == event_id) | (DBEvent.subdomain == event_id)
+    ).first()
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+        
+    if event.user_id != user_id and not is_user_admin_or_host(user_id, db):
+        raise HTTPException(status_code=403, detail="Only the organizer or an admin can update event status")
+
+    valid_statuses = ["upcoming", "live", "completed", "cancelled"]
+    if req.status not in valid_statuses:
+        raise HTTPException(status_code=400, detail=f"Invalid status. Must be one of: {', '.join(valid_statuses)}")
+
+    event.status = req.status
+    db.commit()
+    return {"status": "success", "event_status": event.status, "message": f"Event status set to {req.status}"}
 
 
 @app.post("/api/community-events/{event_id}/register")
@@ -5007,7 +5646,9 @@ def register_community_event(
 ):
     if not db:
         raise HTTPException(status_code=503, detail="Database not available")
-    event = db.query(DBEvent).filter((DBEvent.id == event_id) | (DBEvent.slug == event_id)).first()
+    event = db.query(DBEvent).filter(
+        (DBEvent.id == event_id) | (DBEvent.slug == event_id) | (DBEvent.subdomain == event_id)
+    ).first()
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
         
@@ -5077,7 +5718,9 @@ def unregister_community_event(
 ):
     if not db:
         raise HTTPException(status_code=503, detail="Database not available")
-    event = db.query(DBEvent).filter((DBEvent.id == event_id) | (DBEvent.slug == event_id)).first()
+    event = db.query(DBEvent).filter(
+        (DBEvent.id == event_id) | (DBEvent.slug == event_id) | (DBEvent.subdomain == event_id)
+    ).first()
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
         
@@ -5120,19 +5763,99 @@ def get_community_event_bracket(
 ):
     if not db:
         raise HTTPException(status_code=503, detail="Database not available")
-    event = db.query(DBEvent).filter((DBEvent.id == event_id) | (DBEvent.slug == event_id)).first()
+    event = db.query(DBEvent).filter(
+        (DBEvent.id == event_id) | (DBEvent.slug == event_id) | (DBEvent.subdomain == event_id)
+    ).first()
     if not event:
+        direct_t = db.query(DBTournament).filter(
+            (DBTournament.id == event_id) | (DBTournament.subdomain == event_id)
+        ).first()
+        if direct_t:
+            sub = _ensure_tournament_subdomain(direct_t, db)
+            return {
+                "status": "success",
+                "tournamentId": direct_t.id,
+                "subdomain": sub,
+                "name": direct_t.name,
+                "data": direct_t.data
+            }
         raise HTTPException(status_code=404, detail="Event not found")
-    if not event.tournament_id:
-        raise HTTPException(status_code=404, detail="No bracket attached to this event")
-        
-    tourney = db.query(DBTournament).filter(DBTournament.id == event.tournament_id).first()
+
+    sub = _ensure_event_subdomain(event, db)
+    tourney = None
+    if event.tournament_id:
+        tourney = db.query(DBTournament).filter(DBTournament.id == event.tournament_id).first()
+
     if not tourney:
-        raise HTTPException(status_code=404, detail="Tournament record not found")
-        
+        import json as _json
+        t_id = event.tournament_id or f"tourney-{uuid.uuid4().hex[:8]}"
+        event.tournament_id = t_id
+        loc_label = "Online" if event.is_online else (
+            f"{event.city}, {event.state}" if event.city and event.state else (event.venue_name or "In-Person")
+        )
+        regs = db.query(DBEventRegistration).filter(DBEventRegistration.event_id == event.id).all()
+        players_list = []
+        for idx, r in enumerate(regs):
+            players_list.append({
+                "id": f"p-{r.id}",
+                "tag": r.gamer_tag,
+                "realName": r.gamer_tag,
+                "country": "US",
+                "countryFlag": "🇺🇸",
+                "seed": idx + 1,
+                "checkedIn": True,
+                "phone": "",
+                "smsNotified": False,
+                "gameId": event.game_id,
+            })
+        initial_data = {
+            "activeGame": event.game_id,
+            "subdomain": sub,
+            "sharedTournamentId": t_id,
+            "players": players_list,
+            "matches": [],
+            "stations": [
+                {"id": i + 1, "name": f"Station {i + 1}", "active": True, "matchId": None, "gameId": event.game_id}
+                for i in range(8)
+            ],
+            "gameThemes": {
+                event.game_id: {
+                    "id": event.game_id,
+                    "displayName": event.game,
+                    "shortName": event.game[:4].upper(),
+                    "primaryColor": "#00E5FF" if "tekken" in event.game_id else ("#FF006E" if "sf" in event.game_id else "#FFD600"),
+                    "secondaryColor": "#FF006E",
+                    "bgFrom": "#050A14",
+                    "glowColor": "rgba(0, 229, 255, 0.4)",
+                    "description": f"{event.game} Tournament",
+                    "publisher": "FightBracket Pro"
+                }
+            },
+            "gameOrder": [event.game_id],
+            "activeTournament": {
+                "name": event.name,
+                "location": loc_label,
+                "slug": event.slug,
+                "subdomain": sub,
+                "numAttendees": len(players_list)
+            },
+            "tournamentOwnerId": event.user_id,
+            "exhibitions": []
+        }
+        tourney = DBTournament(
+            id=t_id,
+            user_id=event.user_id,
+            name=event.name,
+            subdomain=sub,
+            data=_json.dumps(initial_data)
+        )
+        db.add(tourney)
+        db.commit()
+
     return {
         "status": "success",
         "tournamentId": tourney.id,
+        "subdomain": sub,
         "name": tourney.name,
         "data": tourney.data
     }

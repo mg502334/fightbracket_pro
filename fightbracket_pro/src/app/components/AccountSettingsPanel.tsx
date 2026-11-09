@@ -1,21 +1,50 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { toast } from 'sonner';
-import { User, Shield, Link, Bell, AlertTriangle, Globe } from 'lucide-react';
+import { 
+  User, Shield, Link, Bell, AlertTriangle, Globe, Calendar, Trophy, 
+  Edit3, Trash2, Users, ExternalLink, RefreshCw, Plus, Tv, 
+  ChevronDown, ChevronUp, UserX, Share2, Sparkles, Check, AlertCircle, Play
+} from 'lucide-react';
 import { SettingsCard, SettingsInput, SaveButton, Toggle, VisibilitySelect } from './SettingsUI';
+import { CreateEventModal } from './CreateEventModal';
+import { getEventSubdomainUrl, getBracketSubdomainUrl, sanitizeSubdomain } from '../utils/subdomain';
 
-type SettingsTab = "profile" | "privacy" | "integrations" | "notifications" | "danger";
+type SettingsTab = "profile" | "events" | "privacy" | "integrations" | "notifications" | "danger";
 
 const settingsTabs: { id: SettingsTab; icon: React.ElementType; label: string }[] = [
   { id: "profile", icon: User, label: "Profile" },
+  { id: "events", icon: Calendar, label: "Manage Events" },
   { id: "privacy", icon: Shield, label: "Privacy" },
   { id: "integrations", icon: Link, label: "Integrations" },
   { id: "notifications", icon: Bell, label: "Notifications" },
   { id: "danger", icon: AlertTriangle, label: "Danger Zone" },
 ];
 
-export function AccountSettingsPanel({ user, userProfile, fetchUserProfile, getHeaders }: { user: any, userProfile: any, fetchUserProfile: () => void, getHeaders: () => Promise<Record<string, string>> }) {
-  const [activeTab, setActiveTab] = useState<SettingsTab>("profile");
+export function AccountSettingsPanel({ 
+  user, 
+  userProfile, 
+  fetchUserProfile, 
+  getHeaders,
+  initialTab,
+  onLoadTournament,
+  onNavigateHome
+}: { 
+  user: any; 
+  userProfile: any; 
+  fetchUserProfile: () => void; 
+  getHeaders: () => Promise<Record<string, string>>;
+  initialTab?: SettingsTab;
+  onLoadTournament?: (tournamentData: any) => void;
+  onNavigateHome?: () => void;
+}) {
+  const [activeTab, setActiveTab] = useState<SettingsTab>(initialTab || "profile");
+
+  useEffect(() => {
+    if (initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
 
   // Local states
   const [firstName, setFirstName] = useState(userProfile?.first_name || '');
@@ -220,6 +249,158 @@ export function AccountSettingsPanel({ user, userProfile, fetchUserProfile, getH
     if (error) toast.error(error.message);
   };
 
+  // Hosted Events & Event Management State
+  const [hostedEvents, setHostedEvents] = useState<any[]>([]);
+  const [loadingHostedEvents, setLoadingHostedEvents] = useState(false);
+  const [eventSearch, setEventSearch] = useState('');
+  const [eventStatusFilter, setEventStatusFilter] = useState<'all' | 'upcoming' | 'live' | 'completed' | 'cancelled'>('all');
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [eventToEdit, setEventToEdit] = useState<any | null>(null);
+  const [expandedRosterEventId, setExpandedRosterEventId] = useState<string | null>(null);
+  const [rosters, setRosters] = useState<Record<string, any[]>>({});
+  const [loadingRoster, setLoadingRoster] = useState(false);
+  const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null);
+  const [deletingEventId, setDeletingEventId] = useState<string | null>(null);
+
+  const fetchHostedEvents = async () => {
+    setLoadingHostedEvents(true);
+    try {
+      const headers = await getHeaders();
+      const res = await fetch('/api/community-events?mine=true&per_page=50', { headers });
+      if (res.ok) {
+        const data = await res.json();
+        setHostedEvents(data.events || []);
+      }
+    } catch (err) {
+      console.error('Error fetching hosted events:', err);
+    } finally {
+      setLoadingHostedEvents(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'events') {
+      fetchHostedEvents();
+    }
+  }, [activeTab]);
+
+  const handleUpdateStatus = async (eventId: string, newStatus: string) => {
+    setUpdatingStatusId(eventId);
+    try {
+      const headers = await getHeaders();
+      const res = await fetch(`/api/community-events/${eventId}/status`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ status: newStatus })
+      });
+      if (!res.ok) throw new Error('Failed to update event status');
+      toast.success(`Event status set to ${newStatus.toUpperCase()}`);
+      setHostedEvents(prev => prev.map(ev => ev.id === eventId ? { ...ev, status: newStatus } : ev));
+    } catch (err: any) {
+      toast.error(err.message || 'Error updating status');
+    } finally {
+      setUpdatingStatusId(null);
+    }
+  };
+
+  const handleToggleRoster = async (eventId: string) => {
+    if (expandedRosterEventId === eventId) {
+      setExpandedRosterEventId(null);
+      return;
+    }
+    setExpandedRosterEventId(eventId);
+    if (!rosters[eventId]) {
+      setLoadingRoster(true);
+      try {
+        const headers = await getHeaders();
+        const res = await fetch(`/api/community-events/${eventId}`, { headers });
+        if (res.ok) {
+          const data = await res.json();
+          setRosters(prev => ({ ...prev, [eventId]: data.event?.participants || [] }));
+        }
+      } catch (err) {
+        console.error('Error loading roster:', err);
+      } finally {
+        setLoadingRoster(false);
+      }
+    }
+  };
+
+  const handleRemoveParticipant = async (eventId: string, targetUserId: string, gamerTag: string) => {
+    if (!window.confirm(`Disqualify / remove ${gamerTag} from this tournament?`)) return;
+    try {
+      const headers = await getHeaders();
+      const res = await fetch(`/api/community-events/${eventId}/participants/${targetUserId}`, {
+        method: 'DELETE',
+        headers
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ detail: 'Failed to remove competitor' }));
+        throw new Error(err.detail || 'Failed to remove competitor');
+      }
+      toast.success(`Removed ${gamerTag} from tournament.`);
+      setRosters(prev => ({
+        ...prev,
+        [eventId]: (prev[eventId] || []).filter((p: any) => p.userId !== targetUserId)
+      }));
+      setHostedEvents(prev => prev.map(ev => ev.id === eventId ? { ...ev, fighters: Math.max(0, ev.fighters - 1) } : ev));
+    } catch (err: any) {
+      toast.error(err.message || 'Error removing participant');
+    }
+  };
+
+  const handleDeleteHostedEvent = async (eventId: string) => {
+    if (!window.confirm('Are you sure you want to delete this event? This will permanently remove its registrations and tournament bracket.')) return;
+    setDeletingEventId(eventId);
+    try {
+      const headers = await getHeaders();
+      const res = await fetch(`/api/community-events/${eventId}`, {
+        method: 'DELETE',
+        headers
+      });
+      if (!res.ok) throw new Error('Failed to delete event');
+      toast.success('Event deleted successfully');
+      setHostedEvents(prev => prev.filter(ev => ev.id !== eventId));
+    } catch (err: any) {
+      toast.error(err.message || 'Error deleting event');
+    } finally {
+      setDeletingEventId(null);
+    }
+  };
+
+  const handleLaunchBracket = async (event: any) => {
+    try {
+      toast.info('Loading tournament bracket into FightBracket Pro...');
+      const res = await fetch(`/api/community-events/${event.id || event.slug}/bracket`);
+      if (!res.ok) throw new Error('Failed to load bracket data');
+      const data = await res.json();
+      const parsedData = JSON.parse(data.data);
+      const sub = sanitizeSubdomain(event.subdomain || data.subdomain || parsedData.subdomain, 'ev');
+      parsedData.subdomain = sub;
+      if (parsedData.activeTournament) {
+        parsedData.activeTournament.subdomain = sub;
+      }
+      if (onLoadTournament) {
+        onLoadTournament(parsedData);
+        toast.success(`Loaded "${event.name}" bracket!`);
+        onNavigateHome?.();
+      } else {
+        window.location.href = getBracketSubdomainUrl({ subdomain: sub, tournamentId: data.tournamentId });
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Could not open bracket');
+    }
+  };
+
+  const filteredHostedEvents = hostedEvents.filter(ev => {
+    const matchesSearch = !eventSearch.trim() || 
+      ev.name?.toLowerCase().includes(eventSearch.toLowerCase()) ||
+      ev.game?.toLowerCase().includes(eventSearch.toLowerCase()) ||
+      ev.location?.toLowerCase().includes(eventSearch.toLowerCase());
+    const matchesStatus = eventStatusFilter === 'all' || ev.status === eventStatusFilter;
+    return matchesSearch && matchesStatus;
+  });
+
   return (
     <div className="flex flex-col lg:flex-row gap-6 max-w-6xl w-full">
       {/* Settings sidebar */}
@@ -239,12 +420,443 @@ export function AccountSettingsPanel({ user, userProfile, fetchUserProfile, getH
           >
             <Icon size={16} />
             {label}
+            {id === "events" && hostedEvents.length > 0 && (
+              <span className="ml-auto text-[10px] font-mono px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-400 font-bold">
+                {hostedEvents.length}
+              </span>
+            )}
           </button>
         ))}
       </div>
 
       {/* Settings panel */}
       <div className="flex-1 min-w-0">
+        
+        {activeTab === "events" && (
+          <div className="animate-in fade-in duration-300 space-y-6">
+            {/* Header Card */}
+            <div className="p-6 rounded-xl bg-[#141418] border border-white/10 shadow-xl relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-cyan-500/10 via-transparent to-transparent pointer-events-none rounded-full blur-3xl -mr-20 -mt-20" />
+              
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10">
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="p-1.5 rounded-lg bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+                      <Trophy size={18} />
+                    </span>
+                    <h2 className="text-xl font-bold font-rajdhani uppercase tracking-wider text-white">
+                      MANAGE & EDIT EVENTS
+                    </h2>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-bold uppercase">
+                      ORGANIZER ADMIN
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-400 font-mono">
+                    Configure tournament rules, update match streaming links, manage participant rosters, update live status, and run interactive bracket stations.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    onClick={fetchHostedEvents}
+                    disabled={loadingHostedEvents}
+                    className="p-2.5 rounded-lg border border-white/10 hover:border-white/30 text-gray-300 hover:text-white bg-white/5 transition-all"
+                    title="Refresh Events"
+                  >
+                    <RefreshCw size={15} className={loadingHostedEvents ? 'animate-spin' : ''} />
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setEventToEdit(null);
+                      setShowCreateModal(true);
+                    }}
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-black font-rajdhani font-bold text-sm tracking-wider shadow-[0_0_20px_rgba(0,229,255,0.3)] transition-all"
+                  >
+                    <Plus size={16} /> HOST NEW EVENT
+                  </button>
+                </div>
+              </div>
+
+              {/* Filters & Search */}
+              <div className="mt-6 pt-4 border-t border-white/10 flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
+                {/* Search */}
+                <div className="relative flex-1 max-w-md">
+                  <input
+                    type="text"
+                    value={eventSearch}
+                    onChange={(e) => setEventSearch(e.target.value)}
+                    placeholder="Search by tournament name, game, or location..."
+                    className="w-full bg-black/40 border border-white/10 focus:border-cyan-400 rounded-lg px-3.5 py-2 text-xs font-mono text-white placeholder-gray-500 outline-none transition-colors"
+                  />
+                  {eventSearch && (
+                    <button
+                      onClick={() => setEventSearch('')}
+                      className="absolute right-3 top-2.5 text-gray-500 hover:text-white text-xs font-mono"
+                    >
+                      CLEAR
+                    </button>
+                  )}
+                </div>
+
+                {/* Status Tabs */}
+                <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
+                  {(['all', 'upcoming', 'live', 'completed', 'cancelled'] as const).map((st) => (
+                    <button
+                      key={st}
+                      onClick={() => setEventStatusFilter(st)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-mono tracking-wider uppercase transition-all whitespace-nowrap ${
+                        eventStatusFilter === st
+                          ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/40 font-bold'
+                          : 'bg-white/5 text-gray-400 hover:text-white border border-white/5 hover:border-white/20'
+                      }`}
+                    >
+                      {st}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Events List */}
+            {loadingHostedEvents && hostedEvents.length === 0 ? (
+              <div className="p-12 text-center rounded-xl bg-[#141418] border border-white/5 space-y-3 font-mono text-xs text-gray-400">
+                <RefreshCw size={24} className="animate-spin text-cyan-400 mx-auto" />
+                <p>Loading your hosted tournaments & events...</p>
+              </div>
+            ) : filteredHostedEvents.length === 0 ? (
+              <div className="p-10 rounded-xl bg-[#141418] border border-white/10 text-center space-y-4">
+                <div className="w-14 h-14 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 mx-auto">
+                  <Trophy size={28} />
+                </div>
+                {hostedEvents.length === 0 ? (
+                  <>
+                    <h3 className="text-lg font-bold font-rajdhani tracking-wider text-white uppercase">
+                      NO EVENTS HOSTED YET
+                    </h3>
+                    <p className="text-xs text-gray-400 font-mono max-w-md mx-auto leading-relaxed">
+                      You haven't created or hosted any tournaments yet. Become a tournament organizer on FightBracket Pro! Create custom brackets, manage competitor rosters, assign match stations, and stream live.
+                    </p>
+                    <button
+                      onClick={() => {
+                        setEventToEdit(null);
+                        setShowCreateModal(true);
+                      }}
+                      className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-black font-rajdhani font-bold text-sm tracking-wider transition-all"
+                    >
+                      <Plus size={16} /> HOST YOUR FIRST EVENT
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <h3 className="text-base font-bold font-rajdhani tracking-wider text-white uppercase">
+                      NO MATCHING EVENTS
+                    </h3>
+                    <p className="text-xs text-gray-400 font-mono">
+                      No hosted tournaments match "{eventSearch}" with status "{eventStatusFilter}".
+                    </p>
+                    <button
+                      onClick={() => {
+                        setEventSearch('');
+                        setEventStatusFilter('all');
+                      }}
+                      className="text-xs font-mono text-cyan-400 underline hover:text-cyan-300"
+                    >
+                      Reset Filters
+                    </button>
+                  </>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {filteredHostedEvents.map((ev) => {
+                  const isLive = ev.status === 'live';
+                  const isCompleted = ev.status === 'completed';
+                  const isCancelled = ev.status === 'cancelled';
+                  const isRosterExpanded = expandedRosterEventId === ev.id;
+                  const currentRoster = rosters[ev.id] || [];
+
+                  return (
+                    <div
+                      key={ev.id}
+                      className="rounded-xl bg-[#141418] border border-white/10 hover:border-cyan-500/30 transition-all overflow-hidden shadow-lg"
+                    >
+                      {/* Event Main Info Card */}
+                      <div className="p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                        <div className="flex items-start gap-4 min-w-0">
+                          {/* Banner or Icon Thumbnail */}
+                          <div className="w-20 h-20 rounded-lg overflow-hidden bg-black/60 border border-white/10 shrink-0 relative">
+                            {ev.bannerUrl ? (
+                              <img src={ev.bannerUrl} alt={ev.name} className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-cyan-400 bg-gradient-to-br from-cyan-500/20 to-black">
+                                <Trophy size={28} />
+                              </div>
+                            )}
+                            <div className="absolute top-1 left-1">
+                              <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-black/80 text-white font-bold uppercase backdrop-blur-sm border border-white/10">
+                                {ev.gameId || ev.game}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Event Text Info */}
+                          <div className="min-w-0 space-y-1.5">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <h3 className="text-base font-bold font-rajdhani text-white uppercase tracking-wider truncate">
+                                {ev.name}
+                              </h3>
+
+                              {/* Status Badge */}
+                              {isLive && (
+                                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 animate-pulse">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_#10B981]" />
+                                  LIVE NOW
+                                </span>
+                              )}
+                              {ev.status === 'upcoming' && (
+                                <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase bg-cyan-500/10 text-cyan-400 border border-cyan-500/30">
+                                  UPCOMING
+                                </span>
+                              )}
+                              {isCompleted && (
+                                <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase bg-gray-700/40 text-gray-400 border border-gray-600/30">
+                                  COMPLETED
+                                </span>
+                              )}
+                              {isCancelled && (
+                                <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase bg-rose-500/20 text-rose-400 border border-rose-500/40">
+                                  CANCELLED
+                                </span>
+                              )}
+
+                              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-white/5 text-gray-300 border border-white/10 uppercase">
+                                {ev.format?.replace('_', ' ') || 'Double Elimination'}
+                              </span>
+                              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-300 border border-cyan-500/30">
+                                {sanitizeSubdomain(ev.subdomain, 'ev')}.fightbracketpro.com
+                              </span>
+                            </div>
+
+                            {/* Details meta */}
+                            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-400 font-mono">
+                              <span className="flex items-center gap-1 text-gray-300">
+                                <Calendar size={13} className="text-cyan-400" />
+                                {ev.date || 'TBD'}
+                              </span>
+                              <span>•</span>
+                              <span className="flex items-center gap-1">
+                                <Globe size={13} className="text-cyan-400" />
+                                {ev.location || (ev.isOnline ? 'Online' : 'In-Person')}
+                              </span>
+                              <span>•</span>
+                              <span className="flex items-center gap-1 text-white">
+                                <Users size={13} className="text-cyan-400" />
+                                <strong>{ev.fighters || 0}</strong> / {ev.maxEntrants || 64} Fighters
+                              </span>
+                              {ev.prizePool && (
+                                <>
+                                  <span>•</span>
+                                  <span className="text-emerald-400 font-bold">
+                                    {ev.prizePool}
+                                  </span>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Status Switcher & Action Buttons */}
+                        <div className="flex flex-wrap items-center gap-2 pt-3 lg:pt-0 border-t lg:border-t-0 border-white/5">
+                          {/* Live Status Quick Controller */}
+                          <div className="flex items-center gap-1 bg-black/40 p-1 rounded-lg border border-white/10">
+                            <span className="text-[10px] font-mono text-gray-500 uppercase px-1.5 font-bold">
+                              STATUS:
+                            </span>
+                            {(['upcoming', 'live', 'completed', 'cancelled'] as const).map((st) => (
+                              <button
+                                key={st}
+                                onClick={() => handleUpdateStatus(ev.id, st)}
+                                disabled={updatingStatusId === ev.id}
+                                className={`text-[10px] font-mono px-2 py-1 rounded tracking-wider uppercase transition-all ${
+                                  ev.status === st
+                                    ? st === 'live'
+                                      ? 'bg-emerald-500/30 text-emerald-300 font-bold border border-emerald-500/50'
+                                      : st === 'completed'
+                                      ? 'bg-gray-600/50 text-white font-bold border border-gray-500'
+                                      : st === 'cancelled'
+                                      ? 'bg-rose-500/30 text-rose-300 font-bold border border-rose-500/50'
+                                      : 'bg-cyan-500/30 text-cyan-300 font-bold border border-cyan-500/50'
+                                    : 'text-gray-400 hover:text-white hover:bg-white/5'
+                                }`}
+                                title={`Set status to ${st}`}
+                              >
+                                {st === 'live' ? '● LIVE' : st}
+                              </button>
+                            ))}
+                          </div>
+
+                          {/* Edit Event Button */}
+                          <button
+                            onClick={() => {
+                              setEventToEdit(ev);
+                              setShowCreateModal(true);
+                            }}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 font-rajdhani font-bold text-xs tracking-wider transition-all"
+                            title="Edit Event Details, Rules, Stream & Venue"
+                          >
+                            <Edit3 size={13} /> EDIT EVENT
+                          </button>
+
+                          {/* Roster Button */}
+                          <button
+                            onClick={() => handleToggleRoster(ev.id)}
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-rajdhani font-bold text-xs tracking-wider border transition-all ${
+                              isRosterExpanded
+                                ? 'bg-white/20 text-white border-white/30'
+                                : 'bg-white/5 hover:bg-white/10 text-gray-300 border-white/10'
+                            }`}
+                            title="View and manage competitor registrations"
+                          >
+                            <Users size={13} /> ROSTER ({ev.fighters || 0})
+                            {isRosterExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                          </button>
+
+                          {/* Bracket Button */}
+                          <button
+                            onClick={() => handleLaunchBracket(ev)}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 font-rajdhani font-bold text-xs tracking-wider transition-all"
+                            title="Open interactive tournament bracket"
+                          >
+                            <Trophy size={13} /> BRACKET
+                          </button>
+
+                          {/* Copy Subdomain Share Link */}
+                          <button
+                            onClick={() => {
+                              const subUrl = getEventSubdomainUrl(ev.subdomain, ev.slug || ev.id);
+                              navigator.clipboard.writeText(subUrl);
+                              toast.success(`Subdomain link copied: ${subUrl}`);
+                            }}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-rajdhani font-bold text-xs tracking-wider transition-all"
+                            title="Copy Subdomain Share Link"
+                          >
+                            <Share2 size={13} /> SHARE SUBDOMAIN
+                          </button>
+
+                          {/* Public Page Link */}
+                          <a
+                            href={`/events/${ev.slug || ev.id}?sub=${encodeURIComponent(sanitizeSubdomain(ev.subdomain, 'ev'))}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white border border-white/10 transition-all"
+                            title="View Public Event Page"
+                          >
+                            <ExternalLink size={14} />
+                          </a>
+
+                          {/* Delete Button */}
+                          <button
+                            onClick={() => handleDeleteHostedEvent(ev.id)}
+                            disabled={deletingEventId === ev.id}
+                            className="p-2 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 transition-all"
+                            title="Delete Event"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Expandable Competitor Roster Drawer */}
+                      {isRosterExpanded && (
+                        <div className="border-t border-white/10 bg-black/40 p-5 space-y-4 animate-in slide-in-from-top-2 duration-200">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <Users size={15} className="text-cyan-400" />
+                              <h4 className="font-rajdhani font-bold tracking-wider text-sm text-white uppercase">
+                                REGISTERED COMPETITORS ({currentRoster.length})
+                              </h4>
+                            </div>
+                            <span className="text-[11px] font-mono text-gray-400">
+                              As event host / admin, you can remove or disqualify competitors.
+                            </span>
+                          </div>
+
+                          {loadingRoster && currentRoster.length === 0 ? (
+                            <div className="text-center py-6 font-mono text-xs text-gray-400 flex items-center justify-center gap-2">
+                              <RefreshCw size={14} className="animate-spin text-cyan-400" /> Loading tournament roster...
+                            </div>
+                          ) : currentRoster.length === 0 ? (
+                            <div className="p-4 rounded-lg bg-white/5 border border-white/5 text-center text-xs font-mono text-gray-400">
+                              No competitors have registered yet for this tournament.
+                            </div>
+                          ) : (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                              {currentRoster.map((p: any) => (
+                                <div
+                                  key={p.userId || p.id}
+                                  className="p-3 rounded-lg bg-[#0E121E] border border-white/5 flex items-center justify-between gap-3 hover:border-white/20 transition-all"
+                                >
+                                  <div className="flex items-center gap-2.5 min-w-0">
+                                    <div className="w-8 h-8 rounded-full bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-300 font-bold text-xs uppercase shrink-0">
+                                      {p.gamerTag?.[0] || 'F'}
+                                    </div>
+                                    <div className="min-w-0">
+                                      <div className="font-bold text-xs text-white truncate font-rajdhani tracking-wide">
+                                        {p.gamerTag}
+                                      </div>
+                                      <div className="text-[10px] font-mono text-gray-400 truncate">
+                                        ID: {p.userId?.slice(0, 8)}...
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  <button
+                                    onClick={() => handleRemoveParticipant(ev.id, p.userId, p.gamerTag)}
+                                    className="p-1.5 rounded bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 hover:text-rose-300 border border-rose-500/30 transition-all shrink-0"
+                                    title="Disqualify / Remove Competitor"
+                                  >
+                                    <UserX size={13} />
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Create / Edit Event Modal */}
+            {showCreateModal && (
+              <CreateEventModal
+                isOpen={showCreateModal}
+                onClose={() => {
+                  setShowCreateModal(false);
+                  setEventToEdit(null);
+                }}
+                getHeaders={getHeaders as any}
+                currentUser={user}
+                userProfile={userProfile}
+                eventToEdit={eventToEdit}
+                onEventCreated={(newEvent) => {
+                  setHostedEvents((prev) => [newEvent, ...prev]);
+                  setShowCreateModal(false);
+                }}
+                onEventUpdated={(updatedEvent) => {
+                  setHostedEvents((prev) =>
+                    prev.map((ev) => (ev.id === updatedEvent.id ? { ...ev, ...updatedEvent } : ev))
+                  );
+                  setShowCreateModal(false);
+                  setEventToEdit(null);
+                }}
+              />
+            )}
+          </div>
+        )}
         
         {activeTab === "profile" && (
           <div className="animate-in fade-in duration-300">

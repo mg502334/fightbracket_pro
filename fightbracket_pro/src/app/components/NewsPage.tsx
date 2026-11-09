@@ -159,6 +159,48 @@ const GAME_FILTER_OPTIONS = [
 
 const DEFAULT_NEWS_ITEMS: NewsItem[] = [
   {
+    id: 'subdomain_live_brackets_2026',
+    type: 'feature',
+    date: 'Just Now',
+    publishedAt: NOW - (10 * 60 * 1000), // 10 mins ago -> Active
+    title: 'Unique Random Subdomains & Live Active Bracket Sharing',
+    body: 'Every community event, Start.gg import, and locally created event now receives its own unique random subdomain (e.g. ev-xxxxxx.fightbracketpro.com / fb-xxxxxx.fightbracketpro.com). Share any local event or bracket in one click so anyone receiving the link can load, view, and run matches in real time!',
+    badge: 'NEW UPGRADE',
+    bullets: [
+      'Automatic Random Subdomains: Every event and shared bracket gets a dedicated subdomain link that resolves directly to your event or runnable bracket.',
+      'Share, Load & Run Local Events: Create a local tournament, click SHARE SUBDOMAIN LINK, and send it to a co-organizer or player — they can load the full bracket and run matches (call matches, assign stations, report scores, manage check-ins).',
+      'Live Active Bracket Sync: Shared local brackets stay active as you run matches, automatically syncing match calls, station assignments, and live scores every 3.5 seconds across all connected viewers and public event pages.',
+    ],
+  },
+  {
+    id: 'events_hub_public_pages_2026',
+    type: 'update',
+    date: 'Today',
+    publishedAt: NOW - (35 * 60 * 1000), // 35 mins ago -> Active
+    title: 'Public Event Pages, Live Match Feed & Community Events Upgrade',
+    body: 'Public event pages (/events/:slug & /e/:slug) and the Community Events Hub have been upgraded with live bracket progress tracking, instant bracket launching, and feed integration.',
+    badge: 'UPDATED',
+    bullets: [
+      'Live Active Bracket Panel on Event Pages: View real-time match completion progress bars, currently active/called matches with station numbers and live scores, and recent match results.',
+      '1-Click Load & Run Bracket: Open and run any community or shared event bracket directly inside FightBracket Pro.',
+      'Feed & Cloud Saves Subdomain Sharing: Copy subdomain links directly from Community Feed event attachments, Cloud Saves, Recently Imported Brackets, and Account Settings.',
+    ],
+  },
+  {
+    id: 'tekken8_wavu_ewgf_stats_2026',
+    type: 'update',
+    date: 'Recent Update',
+    publishedAt: NOW - (90 * 60 * 1000), // 1.5 hours ago -> Active
+    title: 'Tekken 8 Live Wavu Glicko-2 Ratings, EWGF Stats & Venue Display Modes',
+    body: 'Player profiles and venue displays have been upgraded with deeper competitive stats and multi-screen tournament broadcasting tools.',
+    badge: 'UPGRADE',
+    bullets: [
+      'Tekken 8 Live Stats Proxy: Combines EWGF Tekken Power & Dan Rank data with Wavu Wank real-time per-character Glicko-2 ratings and recent battle replays.',
+      'Dedicated Venue Display & Stream Overlay Modes: Launch 16:9 Widescreen TV, 9:16 Vertical Portrait Monitor, or OBS Stream Overlay windows directly from the Bracket toolbar.',
+      'Smart Franchise Themes & Start.gg Large-Tournament Sync: Automatic color palettes for Tekken 8, Street Fighter 6, and Fatal Fury / KOF, plus paginated Start.gg proxy fallback for major events.',
+    ],
+  },
+  {
     id: 'social_feed_v2',
     type: 'feature',
     date: 'Aug 19, 2026',
@@ -386,9 +428,14 @@ export function NewsPage({ onNavigateHome, onSignUp }: NewsPageProps) {
       .then(res => res.json())
       .then(data => {
         if (data.active || data.archived) {
-          const merged = [...(data.active || []), ...(data.archived || [])];
-          if (merged.length > 0) {
-            setNewsItems(merged);
+          const apiItems: NewsItem[] = [...(data.active || []), ...(data.archived || [])];
+          if (apiItems.length > 0) {
+            const apiIds = new Set(apiItems.map(item => item.id));
+            const combined = [
+              ...DEFAULT_NEWS_ITEMS.filter(item => !apiIds.has(item.id)),
+              ...apiItems,
+            ];
+            setNewsItems(combined);
           }
         }
       })

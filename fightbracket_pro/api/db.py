@@ -36,6 +36,8 @@ class DBUser(Base):
     notify_messages = Column(Boolean, default=True)
     sound_notifications = Column(Boolean, default=True)
     sound_messages = Column(Boolean, default=True)
+    is_admin = Column(Boolean, default=False)
+    role = Column(String, default="player") # player | host | organizer | admin
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
@@ -116,6 +118,7 @@ class DBTournament(Base):
     id = Column(String, primary_key=True, index=True)
     user_id = Column(String, index=True, nullable=False)
     name = Column(String)
+    subdomain = Column(String, unique=True, index=True, nullable=True) # Random subdomain e.g. "fb-x9k2m4"
     data = Column(Text)
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
@@ -227,6 +230,7 @@ class DBEvent(Base):
     tournament_id = Column(String, index=True, nullable=True) # Associated DBTournament ID for in-app bracket
     name = Column(String, nullable=False) # Event title
     slug = Column(String, unique=True, index=True, nullable=False)
+    subdomain = Column(String, unique=True, index=True, nullable=True) # Random subdomain e.g. "ev-x9k2m4"
     game = Column(String, nullable=False) # e.g. "Tekken 8", "Street Fighter 6"
     game_id = Column(String, nullable=False) # e.g. "tekken8", "sf6"
     event_type = Column(String, default="tournament") # tournament, weekly, casuals, exhibition
@@ -299,8 +303,11 @@ def _get_engine():
                             print(f"Safety net: Adding missing column {table_name}.{column.name} ({col_type})")
                             try:
                                 conn.execute(text(f"ALTER TABLE {table_name} ADD COLUMN IF NOT EXISTS {column.name} {col_type};"))
-                            except Exception as add_col_err:
-                                print(f"Warning: Failed to auto-add column {column.name}: {add_col_err}")
+                            except Exception:
+                                try:
+                                    conn.execute(text(f"ALTER TABLE {table_name} ADD COLUMN {column.name} {col_type};"))
+                                except Exception as add_col_err:
+                                    print(f"Warning: Failed to auto-add column {column.name}: {add_col_err}")
     except Exception as e:
         print(f"DB schema sync warning: {e}")
     return _engine, _SessionLocal

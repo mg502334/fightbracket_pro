@@ -18,6 +18,7 @@ createRoot(document.getElementById("root")!).render(
         <Route path="/terms" element={<StaticPageRoute pageId="terms" />} />
         <Route path="/privacy" element={<StaticPageRoute pageId="privacy" />} />
         <Route path="/events/:slug" element={<EventPublicPage />} />
+        <Route path="/e/:slug" element={<EventPublicPage />} />
         <Route path="/*" element={<App />} />
       </Routes>
     </BrowserRouter>

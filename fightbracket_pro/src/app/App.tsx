@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useMemo } from "react";
+import React, { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { Toaster, toast } from "sonner";
 import { motion, AnimatePresence } from "motion/react";
 import {
@@ -39,6 +39,13 @@ import {
   type BracketMatch, type Player, type Station, type SMSLog, type GameTheme, type ExhibitionMatch,
   GAME_THEMES, PLAYERS, gen16Bracket, generateMockDataForGame, generateDynamicBracket, BracketType
 } from "./data/tournamentData";
+import {
+  extractActiveSubdomain,
+  generateRandomSubdomain,
+  getBracketSubdomainUrl,
+  getEventSubdomainUrl,
+  sanitizeSubdomain,
+} from "./utils/subdomain";
 
 type Tab = 'overview' | 'bracket' | 'checkin' | 'stations' | 'streams' | 'vods' | 'pools' | 'account' | 'news';
 
@@ -128,7 +135,17 @@ export default function App() {
   const [showPasswordReset, setShowPasswordReset] = useState(false);
   const [showSupportModal, setShowSupportModal] = useState(false);
 
-  const [activeTournament, setActiveTournament] = useState<{ name: string, location: string, slug?: string, numAttendees?: number } | null>(() => safeParse('fb_tournament', null));
+  const [activeTournament, setActiveTournament] = useState<{ id?: string, name: string, location: string, slug?: string, subdomain?: string, numAttendees?: number, isLiveShared?: boolean } | null>(() => {
+    const saved = safeParse('fb_tournament', null);
+    if (saved && !saved.subdomain) {
+      saved.subdomain = generateRandomSubdomain('fb');
+    }
+    return saved;
+  });
+  const [isSharingBracket, setIsSharingBracket] = useState(false);
+  const lastServerUpdatedAtRef = useRef<string | null>(null);
+  const lastLocalChangeRef = useRef<number>(0);
+  const isApplyingRemoteRef = useRef<boolean>(false);
   const [autoSyncSlug, setAutoSyncSlug] = useState<string | null>(() => safeParse('fb_autoSyncSlug', null));
   const [exhibitions, setExhibitions] = useState<ExhibitionMatch[]>(() => safeParse('fb_exhibitions', []));
 
@@ -157,8 +174,8 @@ export default function App() {
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
   const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(null);
 
-  // Determine if the current user is the host
-  const isHost = !tournamentOwnerId || (supabaseUser?.id === tournamentOwnerId) || (startggUser?.id === tournamentOwnerId);
+  // Determine if the current user is the host (local and loaded shared brackets can be ran by the receiver)
+  const isHost = true;
 
   useEffect(() => {
     localStorage.setItem('fb_activeGame', JSON.stringify(activeGame));
@@ -239,43 +256,137 @@ export default function App() {
       .catch(console.error);
   }, [supabaseToken]);
 
+  const applyLoadedTournamentPayload = useCallback((parsed: any, meta?: { id?: string; name?: string; subdomain?: string; user_id?: string; updated_at?: string }) => {
+    isApplyingRemoteRef.current = true;
+    if (meta?.updated_at) {
+      lastServerUpdatedAtRef.current = meta.updated_at;
+    }
+    const order = Array.isArray(parsed.gameOrder) ? parsed.gameOrder : [];
+    const themes = parsed.gameThemes || {};
+    const firstGame = parsed.activeGame || order[0] || Object.keys(themes)[0] || null;
+    setActiveGame(firstGame);
+    setPlayers(parsed.players || []);
+    setMatches(parsed.matches || []);
+    if (Array.isArray(parsed.stations) && parsed.stations.length > 0) {
+      setStations(parsed.stations);
+    }
+    setGameThemes(themes);
+    setGameOrder(order);
+    setAutoSyncSlug(parsed.autoSyncSlug || null);
+    setExhibitions(parsed.exhibitions || []);
+    const sub = sanitizeSubdomain(meta?.subdomain || parsed.activeTournament?.subdomain) || generateRandomSubdomain('fb');
+    const tournamentObj = parsed.activeTournament
+      ? {
+          ...parsed.activeTournament,
+          id: meta?.id || parsed.activeTournament.id || parsed.activeTournament.slug,
+          slug: parsed.activeTournament.slug || meta?.id || sub,
+          subdomain: sub,
+          isLiveShared: true,
+        }
+      : {
+          id: meta?.id || sub,
+          name: meta?.name || 'Shared Event',
+          location: 'Local / Shared',
+          slug: meta?.id || sub,
+          subdomain: sub,
+          isLiveShared: true,
+        };
+    setActiveTournament(tournamentObj);
+    setTournamentOwnerId(meta?.user_id || null);
+    setLastSyncedAt(new Date());
+    setActiveTab((parsed.matches && parsed.matches.length > 0) ? 'bracket' : 'overview');
+    setTimeout(() => {
+      isApplyingRemoteRef.current = false;
+    }, 300);
+  }, []);
+
   useEffect(() => {
     const path = window.location.pathname;
+    const urlParams = new URLSearchParams(window.location.search);
+    const eventParam = urlParams.get('event');
+    const activeSub = extractActiveSubdomain();
+
     if (path.startsWith('/t/')) {
-      const id = path.split('/t/')[1];
+      const id = path.split('/t/')[1]?.split('/')[0];
       if (id) {
-        fetch(`/api/public/tournaments/${id}`)
+        fetch(`/api/public/tournaments/${encodeURIComponent(id)}`)
           .then(r => {
             if (!r.ok) throw new Error('Not found');
             return r.json();
           })
           .then(data => {
-            const parsed = JSON.parse(data.tournament.data);
-            setActiveGame(parsed.activeGame || null);
-            setPlayers(parsed.players || []);
-            setMatches(parsed.matches || []);
-            setStations(parsed.stations || []);
-            setGameThemes(parsed.gameThemes || {});
-            setGameOrder(parsed.gameOrder || []);
-            setAutoSyncSlug(parsed.autoSyncSlug || null);
-            setExhibitions(parsed.exhibitions || []);
-            setActiveTournament(parsed.activeTournament || null);
-            setTournamentOwnerId(data.tournament.user_id);
-            toast.success("Tournament loaded");
+            const parsed = typeof data.tournament.data === 'string'
+              ? JSON.parse(data.tournament.data)
+              : data.tournament.data;
+            applyLoadedTournamentPayload(parsed, {
+              id: data.tournament.id,
+              name: data.tournament.name,
+              subdomain: data.tournament.subdomain || activeSub || undefined,
+              user_id: data.tournament.user_id,
+              updated_at: data.tournament.updated_at,
+            });
+            toast.success(`Loaded "${data.tournament.name || 'Tournament'}" — ready to run!`);
           })
           .catch(() => {
-            toast.error("Tournament not found");
+            if (activeSub) {
+              fetch(`/api/public/resolve-subdomain/${encodeURIComponent(activeSub)}`)
+                .then(r => r.ok ? r.json() : Promise.reject())
+                .then(resData => {
+                  if (resData.tournament?.data) {
+                    const parsed = typeof resData.tournament.data === 'string'
+                      ? JSON.parse(resData.tournament.data)
+                      : resData.tournament.data;
+                    applyLoadedTournamentPayload(parsed, {
+                      id: resData.tournament.id,
+                      name: resData.tournament.name,
+                      subdomain: resData.subdomain || activeSub,
+                      user_id: resData.tournament.user_id,
+                    });
+                    toast.success(`Loaded "${resData.tournament.name}" — ready to run!`);
+                  }
+                })
+                .catch(() => toast.error("Tournament not found"));
+            } else {
+              toast.error("Tournament not found");
+            }
           });
+        return;
       }
     }
 
     // Auto-import event bracket if shared permalink ?event=<slug> is present in URL
-    const urlParams = new URLSearchParams(window.location.search);
-    const eventParam = urlParams.get('event');
     if (eventParam) {
       handleLiveImport(eventParam).catch(() => {});
+      return;
     }
-  }, []);
+
+    // If accessed via a subdomain (e.g. https://ev-xxxx.fightbracketpro.com or /?sub=ev-xxxx), resolve and load it
+    if (activeSub && !path.startsWith('/events/') && !path.startsWith('/e/')) {
+      fetch(`/api/public/resolve-subdomain/${encodeURIComponent(activeSub)}`)
+        .then(r => {
+          if (!r.ok) throw new Error('Subdomain not found');
+          return r.json();
+        })
+        .then(data => {
+          if (data.tournament?.data) {
+            const parsed = typeof data.tournament.data === 'string'
+              ? JSON.parse(data.tournament.data)
+              : data.tournament.data;
+            applyLoadedTournamentPayload(parsed, {
+              id: data.tournament.id,
+              name: data.tournament.name,
+              subdomain: data.subdomain || activeSub,
+              user_id: data.tournament.user_id,
+              updated_at: data.tournament.updated_at,
+            });
+            toast.success(`Loaded shared event (${activeSub}.fightbracketpro.com) — ready to run!`);
+          } else if (data.event?.startgg_slug) {
+            handleLiveImport(data.event.startgg_slug).catch(() => {});
+          }
+        })
+        .catch(() => {});
+    }
+  }, [applyLoadedTournamentPayload]);
 
   // Dynamic adaptive live polling for Start.gg bracket updates
   const hasActiveMatches = matches.some(m => m.state === 'in_progress' || m.state === 'called');
@@ -382,6 +493,22 @@ export default function App() {
     setGameThemes(prev => ({ ...prev, [newGameId]: newTheme }));
     setGameOrder(prev => [...prev, newGameId]);
     setActiveGame(newGameId);
+    setActiveTournament(prev => {
+      if (prev) {
+        return {
+          ...prev,
+          subdomain: sanitizeSubdomain(prev.subdomain) || generateRandomSubdomain('fb'),
+        };
+      }
+      const sub = generateRandomSubdomain('fb');
+      return {
+        id: sub,
+        name: `${game.name} Local Event`,
+        location: 'Local / Offline',
+        slug: sub,
+        subdomain: sub,
+      };
+    });
     setShowGameModal(false);
     toast.success(`${game.name} added to tournament tabs!`, {
       style: { background: 'var(--card)', border: `1px solid ${newTheme.primaryColor}40`, color: 'var(--foreground)' },
@@ -426,8 +553,184 @@ export default function App() {
       return;
     }
     const newMatches = generateDynamicBracket(activeGame, gamePlayerIds, type);
+    lastLocalChangeRef.current = Date.now();
     setMatches(prev => [...prev.filter(m => m.gameId !== activeGame), ...newMatches]);
+    setActiveTournament(prev => {
+      const sub = sanitizeSubdomain(prev?.subdomain) || generateRandomSubdomain('fb');
+      return {
+        id: prev?.id || prev?.slug || sub,
+        name: prev?.name || `${gameThemes[activeGame]?.displayName || 'Local'} Event`,
+        location: prev?.location || 'Local / Offline',
+        slug: prev?.slug || sub,
+        subdomain: sub,
+        isLiveShared: true,
+      };
+    });
     toast.success(`Generated ${type.replace(/_/g, ' ')} bracket!`);
+  };
+
+  const syncSharedBracketState = useCallback(async (overrideSub?: string) => {
+    const sub = sanitizeSubdomain(overrideSub || activeTournament?.subdomain);
+    if (!sub) return null;
+    const tournamentName = activeTournament?.name || (activeGame && gameThemes[activeGame]?.displayName ? `${gameThemes[activeGame].displayName} Event` : 'Local Event');
+    const tournamentLocation = activeTournament?.location || 'Local / Offline';
+    const tournamentId = activeTournament?.id || activeTournament?.slug || sub;
+    const updatedTournament = {
+      ...(activeTournament || {}),
+      id: tournamentId,
+      name: tournamentName,
+      location: tournamentLocation,
+      slug: activeTournament?.slug || tournamentId,
+      subdomain: sub,
+      isLiveShared: true,
+    };
+
+    const fullPayload = {
+      players,
+      matches,
+      stations,
+      gameThemes,
+      gameOrder,
+      activeGame,
+      activeTournament: updatedTournament,
+      smsLogs,
+      autoSyncSlug,
+      exhibitions,
+    };
+
+    try {
+      const res = await fetch('/api/public/share-bracket', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: tournamentId,
+          name: tournamentName,
+          subdomain: sub,
+          location: tournamentLocation,
+          game_name: (activeGame && gameThemes[activeGame]?.displayName) || 'FGC',
+          data: JSON.stringify(fullPayload),
+        }),
+      });
+      if (res.ok) {
+        const resJson = await res.json();
+        if (resJson.updatedAt) {
+          lastServerUpdatedAtRef.current = resJson.updatedAt;
+        }
+        setLastSyncedAt(new Date());
+        return resJson;
+      }
+    } catch {}
+    return null;
+  }, [activeTournament, activeGame, gameThemes, players, matches, stations, gameOrder, smsLogs, autoSyncSlug, exhibitions]);
+
+  // Automatically keep the shared local bracket active & synced in real time as matches are called/reported
+  useEffect(() => {
+    if (isApplyingRemoteRef.current) return;
+    if (autoSyncSlug) return;
+    const sub = sanitizeSubdomain(activeTournament?.subdomain);
+    if (!sub || (!activeTournament?.isLiveShared && matches.length === 0)) return;
+
+    lastLocalChangeRef.current = Date.now();
+    const timer = setTimeout(() => {
+      syncSharedBracketState(sub);
+    }, 350);
+
+    return () => clearTimeout(timer);
+  }, [matches, players, stations, activeTournament?.isLiveShared, activeTournament?.subdomain, autoSyncSlug, syncSharedBracketState]);
+
+  // Live poll shared local bracket every 3.5s so everyone with the subdomain link sees live match updates as matches run
+  const pullSharedBracketUpdates = useCallback(async () => {
+    const sub = sanitizeSubdomain(activeTournament?.subdomain);
+    const tId = activeTournament?.id || activeTournament?.slug || sub;
+    if (!tId || autoSyncSlug) return;
+    if (Date.now() - lastLocalChangeRef.current < 2500) return;
+
+    try {
+      const res = await fetch(`/api/public/tournaments/${encodeURIComponent(sub || tId)}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      const serverUpdatedAt = data.tournament?.updated_at;
+      if (!serverUpdatedAt || serverUpdatedAt === lastServerUpdatedAtRef.current) return;
+      if (Date.now() - lastLocalChangeRef.current < 2500) return;
+
+      const parsed = typeof data.tournament.data === 'string'
+        ? JSON.parse(data.tournament.data)
+        : data.tournament.data;
+      if (!parsed) return;
+
+      isApplyingRemoteRef.current = true;
+      lastServerUpdatedAtRef.current = serverUpdatedAt;
+      if (Array.isArray(parsed.players)) setPlayers(parsed.players);
+      if (Array.isArray(parsed.matches)) setMatches(parsed.matches);
+      if (Array.isArray(parsed.stations) && parsed.stations.length > 0) setStations(parsed.stations);
+      if (parsed.gameThemes) setGameThemes(parsed.gameThemes);
+      if (Array.isArray(parsed.gameOrder)) setGameOrder(parsed.gameOrder);
+      if (parsed.activeGame) setActiveGame(parsed.activeGame);
+      setLastSyncedAt(new Date());
+      setTimeout(() => {
+        isApplyingRemoteRef.current = false;
+      }, 300);
+    } catch {}
+  }, [activeTournament?.subdomain, activeTournament?.id, activeTournament?.slug, autoSyncSlug]);
+
+  useEffect(() => {
+    const sub = sanitizeSubdomain(activeTournament?.subdomain);
+    if (!sub || (!activeTournament?.isLiveShared && matches.length === 0) || autoSyncSlug) return;
+
+    const interval = setInterval(() => {
+      pullSharedBracketUpdates();
+    }, 3500);
+
+    return () => clearInterval(interval);
+  }, [activeTournament?.subdomain, activeTournament?.isLiveShared, matches.length, autoSyncSlug, pullSharedBracketUpdates]);
+
+  const handleShareBracketOrEvent = async (): Promise<string | null> => {
+    const sub = sanitizeSubdomain(activeTournament?.subdomain) || generateRandomSubdomain('fb');
+    const tournamentName = activeTournament?.name || (activeGame && gameThemes[activeGame]?.displayName ? `${gameThemes[activeGame].displayName} Event` : 'Local Event');
+    const tournamentLocation = activeTournament?.location || 'Local / Offline';
+    const tournamentId = activeTournament?.id || activeTournament?.slug || sub;
+    const updatedTournament = {
+      ...(activeTournament || {}),
+      id: tournamentId,
+      name: tournamentName,
+      location: tournamentLocation,
+      slug: activeTournament?.slug || tournamentId,
+      subdomain: sub,
+      isLiveShared: true,
+    };
+    setActiveTournament(updatedTournament);
+
+    setIsSharingBracket(true);
+    try {
+      const resJson = await syncSharedBracketState(sub);
+      if (resJson) {
+        const finalSub = sanitizeSubdomain(resJson.subdomain) || sub;
+        const finalId = resJson.id || tournamentId;
+        setActiveTournament(prev => prev ? { ...prev, id: finalId, slug: finalId, subdomain: finalSub, isLiveShared: true } : updatedTournament);
+        const shareUrl = getBracketSubdomainUrl({
+          subdomain: finalSub,
+          tournamentId: finalId,
+        });
+        await navigator.clipboard.writeText(shareUrl);
+        toast.success(`Live Subdomain Active (${finalSub}.fightbracketpro.com)! Link copied — bracket updates live as you run matches!`);
+        return shareUrl;
+      }
+    } catch (e) {
+      console.error('Failed to persist shared bracket:', e);
+    } finally {
+      setIsSharingBracket(false);
+    }
+
+    const fallbackUrl = getBracketSubdomainUrl({
+      subdomain: sub,
+      tournamentId,
+      eventSlug: autoSyncSlug || undefined,
+    });
+    try {
+      await navigator.clipboard.writeText(fallbackUrl);
+      toast.success(`Subdomain link copied (${sub}.fightbracketpro.com)!`);
+    } catch {}
+    return fallbackUrl;
   };
 
   const theme: GameTheme | null = activeGame ? gameThemes[activeGame] : null;
@@ -1195,7 +1498,8 @@ export default function App() {
           tLocation = 'Offline';
         }
       }
-      setActiveTournament({ name: tName, location: tLocation, slug });
+      const importedSub = sanitizeSubdomain(activeTournament?.subdomain) || generateRandomSubdomain('sgg');
+      setActiveTournament({ id: slug, name: tName, location: tLocation, slug, subdomain: importedSub });
 
       setPlayers(prev => {
         const filteredPrev = prev.filter(p => !p.id.startsWith('tk') && !p.id.startsWith('sf') && !p.id.startsWith('ff'));
@@ -1233,6 +1537,7 @@ export default function App() {
         try {
           const historyItem = {
             slug,
+            subdomain: importedSub,
             name: tName,
             location: tLocation,
             gameName: newThemes[newGameIds[0]]?.displayName || 'TEKKEN 8',
@@ -1434,11 +1739,24 @@ export default function App() {
           <div className="min-w-0">
             <div className="text-sm tracking-wider truncate font-bold" style={{ fontFamily: 'Rajdhani, sans-serif' }}>{activeTournament ? activeTournament.name : ''}</div>
             {activeTournament && (
-              <div className="flex items-center gap-1.5">
-                <MapPin size={9} className="opacity-40" />
-                <span className="text-xs opacity-40 truncate" style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9 }}>
-                  {activeTournament.location}
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="flex items-center gap-1">
+                  <MapPin size={9} className="opacity-40" />
+                  <span className="text-xs opacity-40 truncate" style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9 }}>
+                    {activeTournament.location}
+                  </span>
                 </span>
+                {activeTournament.subdomain && (
+                  <span className="inline-flex items-center gap-1.5 text-[9px] font-mono px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/30">
+                    {(activeTournament.isLiveShared || matches.length > 0) && (
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    )}
+                    <span>🌐 {activeTournament.subdomain}.fightbracketpro.com</span>
+                    {(activeTournament.isLiveShared || matches.length > 0) && (
+                      <span className="text-emerald-400 font-bold">• ACTIVE</span>
+                    )}
+                  </span>
+                )}
               </div>
             )}
           </div>
@@ -1468,16 +1786,16 @@ export default function App() {
               <span className="text-xs font-bold tracking-widest" style={{ fontFamily: 'JetBrains Mono, monospace', color: '#00FF88' }}>LIVE</span>
             </div>
           )}
-          {tournamentOwnerId && isHost && (
+          {(activeTournament || activeGame || players.length > 0) && (
             <button
-              onClick={() => {
-                navigator.clipboard.writeText(window.location.origin + '/t/' + activeTournament?.slug);
-                toast.success('Share link copied to clipboard!');
-              }}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded text-[11px] font-bold tracking-widest uppercase hover:opacity-80 transition-opacity bg-white/10 text-white"
+              onClick={() => handleShareBracketOrEvent()}
+              disabled={isSharingBracket}
+              title="Save and copy unique subdomain link so anyone can load and run this event/bracket"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded text-[11px] font-bold tracking-widest uppercase hover:opacity-80 transition-opacity bg-emerald-500/15 text-emerald-400 border border-emerald-500/40 disabled:opacity-50"
               style={{ fontFamily: 'JetBrains Mono, monospace' }}
             >
-              SHARE LINK
+              <Globe size={11} />
+              {isSharingBracket ? 'SHARING...' : 'SHARE SUBDOMAIN LINK'}
             </button>
           )}
           <a href="https://start.gg" target="_blank" rel="noreferrer"
@@ -1697,12 +2015,15 @@ export default function App() {
                     onGenerateBracket={handleGenerateBracket}
                     selectedPool={selectedPool}
                     onSelectPool={setSelectedPool}
-                    isImported={!!activeTournament}
+                    isImported={Boolean(autoSyncSlug)}
                     onPlayerClick={(id) => setTargetProfileUserId(id)}
-                    onManualSync={() => autoSyncSlug ? handleLiveImport(autoSyncSlug) : (activeTournament?.slug ? handleLiveImport(activeTournament.slug) : null)}
+                    onManualSync={autoSyncSlug ? () => handleLiveImport(autoSyncSlug) : () => { syncSharedBracketState(); pullSharedBracketUpdates(); }}
                     lastSyncedAt={lastSyncedAt}
                     isSyncing={isSyncing}
-                    autoSyncSlug={autoSyncSlug || activeTournament?.slug || null}
+                    autoSyncSlug={autoSyncSlug || (activeTournament?.subdomain ? activeTournament.subdomain : null)}
+                    subdomain={activeTournament?.subdomain || null}
+                    tournamentId={activeTournament?.id || activeTournament?.slug || null}
+                    onShareBracket={handleShareBracketOrEvent}
                   />
                 </div>
               )}
@@ -1715,7 +2036,7 @@ export default function App() {
                     onCheckIn={handleCheckIn} 
                     onRemovePlayer={isHost ? handleRemovePlayer : undefined} 
                     onAddPlayer={handleAddPlayer}
-                    isCustomTournament={!autoSyncSlug && !activeTournament?.slug}
+                    isCustomTournament={!autoSyncSlug}
                     supabaseToken={supabaseToken}
                   />
                 </div>
@@ -1731,7 +2052,7 @@ export default function App() {
                     setSelectedPool(p);
                     setActiveTab('bracket');
                   }}
-                  isImported={Boolean(autoSyncSlug || activeTournament)}
+                  isImported={Boolean(autoSyncSlug)}
                   onPlayerClick={(id) => setTargetProfileUserId(id)}
                 />
               )}

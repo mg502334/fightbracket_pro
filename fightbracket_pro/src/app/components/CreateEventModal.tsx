@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Calendar, MapPin, Gamepad2, Trophy, Globe, Shield, Tv, Users, DollarSign, Sparkles, Check, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -6,7 +6,9 @@ interface CreateEventModalProps {
   isOpen: boolean;
   onClose: () => void;
   getHeaders: () => Promise<HeadersInit>;
-  onEventCreated: (newEvent: any) => void;
+  onEventCreated?: (newEvent: any) => void;
+  onEventUpdated?: (updatedEvent: any) => void;
+  eventToEdit?: any;
   currentUser?: any;
   userProfile?: any;
 }
@@ -30,6 +32,8 @@ export function CreateEventModal({
   onClose,
   getHeaders,
   onEventCreated,
+  onEventUpdated,
+  eventToEdit,
   currentUser,
   userProfile
 }: CreateEventModalProps) {
@@ -62,6 +66,56 @@ export function CreateEventModal({
   const [showOnProfile, setShowOnProfile] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
+  useEffect(() => {
+    if (eventToEdit) {
+      setName(eventToEdit.name || '');
+      setSelectedGameId(eventToEdit.gameId || 'tekken8');
+      setEventType(eventToEdit.eventType || 'tournament');
+      setFormat(eventToEdit.format || 'double_elimination');
+      if (eventToEdit.startDate) {
+        try {
+          const d = new Date(eventToEdit.startDate);
+          setStartDate(d.toISOString().slice(0, 16));
+        } catch {}
+      }
+      setIsOnline(eventToEdit.isOnline ?? true);
+      setVenueName(eventToEdit.venueName || '');
+      setCity(eventToEdit.city || '');
+      setState(eventToEdit.state || '');
+      setAddress(eventToEdit.address || '');
+      setStreamUrl(eventToEdit.streamUrl || '');
+      setDiscordUrl(eventToEdit.discordUrl || '');
+      setEntryFee(eventToEdit.entryFee || 'Free');
+      setPrizePool(eventToEdit.prizePool || '');
+      setMaxEntrants(eventToEdit.maxEntrants || 64);
+      setDescription(eventToEdit.description || '');
+      setRules(eventToEdit.rules || '');
+      setCustomBannerUrl(eventToEdit.bannerUrl || '');
+      setShowOnProfile(eventToEdit.showOnProfile ?? true);
+    } else {
+      setName('');
+      setSelectedGameId('tekken8');
+      setCustomGameName('');
+      setEventType('tournament');
+      setFormat('double_elimination');
+      setStartDate(defaultDateStr);
+      setIsOnline(true);
+      setVenueName('');
+      setCity('');
+      setState('');
+      setAddress('');
+      setStreamUrl('');
+      setDiscordUrl('');
+      setEntryFee('Free');
+      setPrizePool('');
+      setMaxEntrants(64);
+      setDescription('');
+      setRules('Double Elimination. Best of 3 sets until Finals. Winner character locked, loser may switch.');
+      setCustomBannerUrl('');
+      setShowOnProfile(true);
+    }
+  }, [eventToEdit, isOpen]);
+
   if (!isOpen) return null;
 
   const selectedGameObj = POPULAR_GAMES.find(g => g.id === selectedGameId);
@@ -78,7 +132,7 @@ export function CreateEventModal({
     setSubmitting(true);
     try {
       const headers = await getHeaders();
-      const payload = {
+      const payload: any = {
         name: name.trim(),
         game: gameDisplayName,
         game_id: selectedGameId === 'custom' ? 'custom' : selectedGameId,
@@ -102,23 +156,46 @@ export function CreateEventModal({
         show_on_profile: showOnProfile
       };
 
-      const res = await fetch('/api/community-events', {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(payload)
-      });
+      if (eventToEdit) {
+        const res = await fetch(`/api/community-events/${eventToEdit.id}`, {
+          method: 'PUT',
+          headers,
+          body: JSON.stringify(payload)
+        });
 
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ detail: 'Failed to create event' }));
-        throw new Error(err.detail || 'Failed to create event');
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({ detail: 'Failed to update event' }));
+          throw new Error(err.detail || 'Failed to update event');
+        }
+
+        const data = await res.json();
+        toast.success('Event settings updated successfully!');
+        onEventUpdated?.(data.event);
+        onClose();
+      } else {
+        const res = await fetch('/api/community-events', {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(payload)
+        });
+
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({ detail: 'Failed to create event' }));
+          throw new Error(err.detail || 'Failed to create event');
+        }
+
+        const data = await res.json();
+        toast.success('FightBracket event created! Admin & Tournament Organizer privileges activated.');
+        if (userProfile) {
+          userProfile.is_admin = true;
+          userProfile.is_host = true;
+          userProfile.role = 'organizer';
+        }
+        onEventCreated?.(data.event);
+        onClose();
       }
-
-      const data = await res.json();
-      toast.success('FightBracket event created successfully! Bracket ready.');
-      onEventCreated(data.event);
-      onClose();
     } catch (err: any) {
-      toast.error(err.message || 'Error creating event');
+      toast.error(err.message || 'Error saving event');
     } finally {
       setSubmitting(false);
     }
@@ -134,14 +211,23 @@ export function CreateEventModal({
         <div className="flex items-center justify-between px-6 py-4 border-b border-white/10 bg-[#12121A] shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#00E5FF]/20 to-[#FF006E]/20 border border-[#00E5FF]/40 flex items-center justify-center text-[#00E5FF]">
-              <Trophy size={20} />
+              {eventToEdit ? <Shield size={20} /> : <Trophy size={20} />}
             </div>
             <div>
-              <h2 className="text-xl font-bold tracking-wider text-white uppercase" style={{ fontFamily: 'Rajdhani, sans-serif' }}>
-                HOST FIGHTBRACKET EVENT
-              </h2>
+              <div className="flex items-center gap-2">
+                <h2 className="text-xl font-bold tracking-wider text-white uppercase" style={{ fontFamily: 'Rajdhani, sans-serif' }}>
+                  {eventToEdit ? 'ADMIN: EDIT FIGHTBRACKET EVENT' : 'HOST FIGHTBRACKET EVENT'}
+                </h2>
+                {eventToEdit && (
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-400 border border-cyan-500/40 font-bold uppercase">
+                    ORGANIZER ADMIN
+                  </span>
+                )}
+              </div>
               <p className="text-xs text-gray-400">
-                Create a community tournament with seamless in-app bracket management
+                {eventToEdit 
+                  ? 'Update tournament configuration, match rules, streaming link, or venue details'
+                  : 'Create a community tournament with seamless in-app bracket management and host privileges'}
               </p>
             </div>
           </div>
@@ -435,21 +521,23 @@ export function CreateEventModal({
           </div>
 
           {/* Bracket Integration Feature Highlight */}
-          <div className="p-4 rounded-xl bg-gradient-to-r from-[#00E5FF]/10 via-[#FF006E]/10 to-transparent border border-[#00E5FF]/30 flex items-start gap-3">
-            <input
-              type="checkbox"
-              id="createBracketCheck"
-              checked={createBracket}
-              onChange={(e) => setCreateBracket(e.target.checked)}
-              className="mt-1 h-4 w-4 rounded border-gray-700 text-[#00E5FF] focus:ring-[#00E5FF]"
-            />
-            <label htmlFor="createBracketCheck" className="text-xs text-gray-300 cursor-pointer">
-              <span className="font-bold text-white block mb-0.5">
-                Initialize Built-In Bracket Manager
-              </span>
-              Automatically generates a ready-to-run interactive tournament bracket in FightBracket Pro with station queues, match calls, and live score reporting.
-            </label>
-          </div>
+          {!eventToEdit && (
+            <div className="p-4 rounded-xl bg-gradient-to-r from-[#00E5FF]/10 via-[#FF006E]/10 to-transparent border border-[#00E5FF]/30 flex items-start gap-3">
+              <input
+                type="checkbox"
+                id="createBracketCheck"
+                checked={createBracket}
+                onChange={(e) => setCreateBracket(e.target.checked)}
+                className="mt-1 h-4 w-4 rounded border-gray-700 text-[#00E5FF] focus:ring-[#00E5FF]"
+              />
+              <label htmlFor="createBracketCheck" className="text-xs text-gray-300 cursor-pointer">
+                <span className="font-bold text-white block mb-0.5">
+                  Initialize Built-In Bracket Manager
+                </span>
+                Automatically generates a ready-to-run interactive tournament bracket in FightBracket Pro with station queues, match calls, and live score reporting.
+              </label>
+            </div>
+          )}
 
           <div className="p-4 rounded-xl bg-white/5 border border-white/10 flex items-start gap-3">
             <input
@@ -485,10 +573,10 @@ export function CreateEventModal({
             style={{ fontFamily: 'Rajdhani, sans-serif', letterSpacing: '0.08em' }}
           >
             {submitting ? (
-              <>CREATING EVENT...</>
+              <>{eventToEdit ? 'SAVING CHANGES...' : 'CREATING EVENT...'}</>
             ) : (
               <>
-                <Check size={14} /> CREATE & INITIALIZE BRACKET
+                <Check size={14} /> {eventToEdit ? 'SAVE EVENT CHANGES' : 'CREATE & INITIALIZE BRACKET'}
               </>
             )}
           </button>

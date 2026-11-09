@@ -8,6 +8,7 @@ import {
 import { toast } from 'sonner';
 import { RecentsWidget, RecentTournamentItem } from './RecentsWidget';
 import { DealsWidget } from './DealsWidget';
+import { getEventSubdomainUrl, sanitizeSubdomain } from '../utils/subdomain';
 
 const parseContentWithLinks = (text: string) => {
   const regex = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)|(https?:\/\/[^\s]+)/g;
@@ -359,17 +360,41 @@ export function PostCard({
 
       {/* Attached Event */}
       {post.attachedEvent && (
-        <div className="mx-4 mt-3 p-3 bg-[#1e1e24] border border-cyan-500/20 rounded flex items-center gap-3 hover:border-cyan-500/50 transition-colors">
-          <div className="w-10 h-10 flex items-center justify-center bg-black/40 rounded text-cyan-400">
+        <div className="mx-4 mt-3 p-3 bg-[#1e1e24] border border-cyan-500/20 rounded flex flex-wrap items-center gap-3 hover:border-cyan-500/50 transition-colors">
+          <div className="w-10 h-10 flex items-center justify-center bg-black/40 rounded text-cyan-400 shrink-0">
             <Trophy size={18} />
           </div>
           <div className="flex-1 min-w-0">
-            <div className="text-[10px] uppercase font-bold tracking-widest text-[#00E5FF] mb-0.5">{post.attachedEvent.game}</div>
+            <div className="flex items-center gap-2 flex-wrap mb-0.5">
+              <span className="text-[10px] uppercase font-bold tracking-widest text-[#00E5FF]">{post.attachedEvent.game}</span>
+              <span className="text-[9px] font-mono text-cyan-300 bg-cyan-500/10 border border-cyan-500/30 px-1.5 py-0.2 rounded">
+                {sanitizeSubdomain(post.attachedEvent.subdomain, 'ev')}.fightbracketpro.com
+              </span>
+            </div>
             <div className="text-sm font-rajdhani font-bold text-white truncate">{post.attachedEvent.name}</div>
             <div className="text-xs text-gray-400 font-mono mt-0.5">{post.attachedEvent.date}</div>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] font-mono text-white/60 bg-black/40 px-2 py-1 rounded">{post.attachedEvent.format?.replace('_', ' ').toUpperCase()}</span>
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="text-[10px] font-mono text-white/60 bg-black/40 px-2 py-1 rounded hidden sm:inline-block">
+              {post.attachedEvent.format?.replace('_', ' ').toUpperCase()}
+            </span>
+            <button
+              onClick={() => {
+                const subUrl = getEventSubdomainUrl(post.attachedEvent.subdomain, post.attachedEvent.slug || post.attachedEvent.id);
+                navigator.clipboard.writeText(subUrl);
+                toast.success(`Event subdomain link copied: ${subUrl}`);
+              }}
+              className="p-1.5 rounded bg-cyan-500/15 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/30 transition-colors"
+              title="Copy Event Subdomain Link"
+            >
+              <Share2 size={13} />
+            </button>
+            <a
+              href={`/events/${post.attachedEvent.slug || post.attachedEvent.id}?sub=${encodeURIComponent(sanitizeSubdomain(post.attachedEvent.subdomain, 'ev'))}`}
+              className="px-2.5 py-1 rounded bg-[#00E5FF] text-black font-bold font-mono text-[10px] uppercase tracking-wider hover:brightness-110 transition-all no-underline"
+            >
+              OPEN EVENT
+            </a>
           </div>
         </div>
       )}

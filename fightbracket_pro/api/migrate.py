@@ -15,6 +15,18 @@ def migrate():
     except Exception as e:
         print("Error altering events:", e)
 
+    try:
+        cursor.execute("ALTER TABLE users ADD COLUMN is_admin BOOLEAN DEFAULT 0;")
+        print("Added is_admin to users")
+    except Exception as e:
+        print("Note on is_admin:", e)
+
+    try:
+        cursor.execute("ALTER TABLE users ADD COLUMN role VARCHAR DEFAULT 'player';")
+        print("Added role to users")
+    except Exception as e:
+        print("Note on role:", e)
+
     conn.commit()
     conn.close()
 
