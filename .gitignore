@@ -1,61 +1,127 @@
-# Node & Build Artifacts
-node_modules/
-dist/
-build/
-.next/
-.cache/
+# ==============================================================================
+# FIGHTBRACKET PRO - COMPREHENSIVE SECURITY & BUILD GITIGNORE
+# ==============================================================================
 
-# Environments & Sensitive Credentials
+# ------------------------------------------------------------------------------
+# 1. Environments, Secrets & Sensitive Credentials
+# ------------------------------------------------------------------------------
 .env
 .env.*
+*.env
 !.env.example
-*.exe
-ffmpeg.exe
 *.key
 *.pem
 *.crt
 *.cert
+*.cer
+*.p8
+*.p12
+*.pfx
+*.pkcs12
+*.kdbx
+*.jks
+*.keystore
 keys/
+**/keys/
+tokens/
+**/tokens/
+secrets/
+**/secrets/
+credentials*.json
+service_account*.json
+client_secret*.json
 
-# Python Virtual Environments & Bytecode
+# ------------------------------------------------------------------------------
+# 2. Databases, Dumps & Operational Storage
+# ------------------------------------------------------------------------------
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+*.dump
+*.rdb
+*.sql.gz
+app.db
+local_data.db
+fightbracket.db
+**/fightbracket.db
+api/*.db
+**/app.db
+**/local_data.db
+
+# ------------------------------------------------------------------------------
+# 3. Archives, Backups & Compressed Packages
+# ------------------------------------------------------------------------------
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.rar
+*.7z
+*.bak
+*.backup
+archives/
+**/archives/
+
+# ------------------------------------------------------------------------------
+# 4. Binaries, Executables & Build Output
+# ------------------------------------------------------------------------------
+*.exe
+*.dll
+*.dylib
+*.so
+ffmpeg.exe
+**/ffmpeg.exe
+build/
+**/build/
+dist/
+**/dist/
+.next/
+.cache/
+.turbo/
+out/
+*.pkg
+*.pyz
+*.toc
+
+# ------------------------------------------------------------------------------
+# 5. Node.js & Dependencies
+# ------------------------------------------------------------------------------
+node_modules/
+**/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ------------------------------------------------------------------------------
+# 6. Python Virtual Environments, Bytecode & Caches
+# ------------------------------------------------------------------------------
 __pycache__/
+**/__pycache__/
 *.py[cod]
 *$py.class
 .venv/
+**/.venv/
 venv/
+**/venv/
 env/
+**/env/
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
 
-# Databases & SQLite files
-*.db
-*.sqlite
-*.sqlite3
-**/*.db
-app.db
-local_data.db
-fightbracket_pro/*.db
-fightbracket_pro/app.db
-fightbracket_pro/local_data.db
-
-# Vercel & Deployment
-.vercel
-fightbracketpro.com.txt
-
-# Security & Sensitive Architecture Files
-supabase_rls_policies.sql
-db/supabase_rls_policies.sql
-Security Policy
-Security Policy.*
-**/Security Policy
-**/Security Policy.*
-scripts/*.py
-keys/
-*.key
-
-# Local Test Scripts, Scratchpads & Output Dumps
+# ------------------------------------------------------------------------------
+# 7. Local Test Scripts, Scratchpads & Scraped Data Dumps
+# ------------------------------------------------------------------------------
 test_*.py
+**/test_*.py
 test_*.js
+**/test_*.js
 test_*.json
+**/test_*.json
 *_out.json
 *_out*.json
 schema_query.py
@@ -64,9 +130,41 @@ graphql_out.json
 wavu_player*.json
 wavu_player*.html
 wavu_profile.html
+**/wavu_profile.html
 scratch/
+**/scratch/
 scratch.json
 Snips/
+**/Snips/
 temp_ui_designs/
-archives/
+**/temp_ui_designs/
+
+# ------------------------------------------------------------------------------
+# 8. Server, DNS, Security Policies & Internal Configs
+# ------------------------------------------------------------------------------
+.vercel
+**/.vercel
+*.zone
+*.dns
+fightbracketpro.com.txt
+**/fightbracketpro.com.txt
+Security Policy
+Security Policy.*
+**/Security Policy
+**/Security Policy.*
+supabase_rls_policies.sql
+**/supabase_rls_policies.sql
+scripts/
+**/scripts/
+
+# ------------------------------------------------------------------------------
+# 9. Logs, OS & Editor Artifacts
+# ------------------------------------------------------------------------------
 *.log
+**/*.log
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/
+*.sublime-*

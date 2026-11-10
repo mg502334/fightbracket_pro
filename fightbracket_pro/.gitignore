@@ -1,20 +1,74 @@
-# Node & Build Artifacts
-node_modules/
-dist/
-build/
-.next/
-.cache/
+# ==============================================================================
+# FIGHTBRACKET PRO (SUBFOLDER) - SECURITY & BUILD GITIGNORE
+# ==============================================================================
 
 # Environments & Sensitive Credentials
 .env
 .env.*
+*.env
 !.env.example
 *.key
 *.pem
 *.crt
 *.cert
+*.cer
+*.p8
+*.p12
+*.pfx
+*.pkcs12
+*.kdbx
+*.jks
+*.keystore
+keys/
+tokens/
+secrets/
+credentials*.json
+service_account*.json
+client_secret*.json
 
-# Python Virtual Environments & Bytecode
+# Databases & Operational Storage
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+*.dump
+*.rdb
+*.sql.gz
+app.db
+local_data.db
+fightbracket.db
+api/*.db
+
+# Archives & Backups
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.rar
+*.7z
+*.bak
+*.backup
+
+# Build & Dependencies
+node_modules/
+dist/
+build/
+.next/
+.cache/
+.turbo/
+out/
+*.pkg
+*.pyz
+*.toc
+*.exe
+*.dll
+*.dylib
+*.so
+ffmpeg.exe
+
+# Python
 __pycache__/
 *.py[cod]
 *$py.class
@@ -22,28 +76,10 @@ __pycache__/
 venv/
 env/
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
 
-# Databases & SQLite files
-*.db
-*.sqlite
-*.sqlite3
-app.db
-local_data.db
-fightbracket.db
-
-# Vercel & Deployment
-.vercel
-
-# Security & Sensitive Policy Files
-Security Policy
-Security Policy.*
-supabase_rls_policies.sql
-db/supabase_rls_policies.sql
-scripts/*.py
-keys/
-*.key
-
-# Local Test Scripts & Output Dumps
+# Local Test Scripts, Scratchpads & Scraped Data Dumps
 test_*.py
 test_*.js
 test_*.json
@@ -55,4 +91,23 @@ graphql_out.json
 wavu_player*.json
 wavu_player*.html
 wavu_profile.html
+scratch/
+scratch.json
+
+# Server, DNS & Security Policies
+.vercel
+*.zone
+*.dns
+Security Policy
+Security Policy.*
+supabase_rls_policies.sql
+db/supabase_rls_policies.sql
+scripts/
+
+# Logs & OS Artifacts
 *.log
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/
