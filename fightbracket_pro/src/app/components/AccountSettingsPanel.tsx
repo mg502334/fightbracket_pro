@@ -66,8 +66,10 @@ export function AccountSettingsPanel({
   const [userTiktokUrl, setUserTiktokUrl] = useState(userProfile?.tiktok_url || '');
   const [userSpotifyUrl, setUserSpotifyUrl] = useState(userProfile?.spotify_url || '');
   const [discordWebhookUrl, setDiscordWebhookUrl] = useState(userProfile?.discord_webhook_url || '');
+  const [discordVoiceWebhookUrl, setDiscordVoiceWebhookUrl] = useState(userProfile?.discord_voice_webhook_url || '');
   const [discordServerId, setDiscordServerId] = useState(userProfile?.discord_server_id || '');
   const [testingWebhook, setTestingWebhook] = useState(false);
+  const [testingVoiceWebhook, setTestingVoiceWebhook] = useState(false);
   
   // Toggles State
   const [toggles, setToggles] = useState({
@@ -104,6 +106,7 @@ export function AccountSettingsPanel({
       setUserTiktokUrl(userProfile.tiktok_url || '');
       setUserSpotifyUrl(userProfile.spotify_url || '');
       setDiscordWebhookUrl(userProfile.discord_webhook_url || '');
+      setDiscordVoiceWebhookUrl(userProfile.discord_voice_webhook_url || '');
       setDiscordServerId(userProfile.discord_server_id || '');
       
       setToggles({
@@ -235,6 +238,34 @@ export function AccountSettingsPanel({
       toast.error('Network error sending test webhook.');
     }
     setTestingWebhook(false);
+  };
+
+  const handleTestVoiceWebhook = async () => {
+    if (!discordVoiceWebhookUrl) {
+      toast.error('Enter a voice channel webhook URL first.');
+      return;
+    }
+    setTestingVoiceWebhook(true);
+    try {
+      const headers = await getHeaders();
+      const res = await fetch('/api/discord/test-webhook', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ 
+          webhook_url: discordVoiceWebhookUrl,
+          tournament_name: 'Tekken 8 Voice Channel'
+        })
+      });
+      if (res.ok) {
+        toast.success('✅ Test embed sent to Voice Channel!');
+      } else {
+        const err = await res.json().catch(() => ({}));
+        toast.error(err.detail || 'Failed to send test webhook.');
+      }
+    } catch {
+      toast.error('Network error sending test webhook.');
+    }
+    setTestingVoiceWebhook(false);
   };
 
   const copyId = () => {
@@ -1055,11 +1086,13 @@ export function AccountSettingsPanel({
             </SettingsCard>
 
             <SettingsCard title="Discord Integration" description="Connect your Discord server for automated match callouts, results, and announcements.">
-              {/* Webhook Section */}
-              <div className="mb-5">
-                <label className="block text-xs font-rajdhani font-bold text-gray-400 uppercase tracking-wider mb-1">Webhook URL</label>
+              {/* Match Text Channel Webhook */}
+              <div className="mb-6">
+                <label className="block text-xs font-rajdhani font-bold text-gray-400 uppercase tracking-wider mb-1">
+                  Text Channel Webhook (Match Cards & Updates)
+                </label>
                 <p className="text-[11px] font-mono text-gray-600 mb-2">
-                  Discord Server → Channel Settings → Integrations → Webhooks → New Webhook → Copy URL
+                  Paste your Discord Text Channel Webhook (e.g. #tekken-matches or #general)
                 </p>
                 <div className="flex gap-2 items-end">
                   <div className="flex-1">
@@ -1076,14 +1109,48 @@ export function AccountSettingsPanel({
                   <button
                     onClick={handleTestWebhook}
                     disabled={testingWebhook || !discordWebhookUrl}
-                    className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-mono font-bold border transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-                    style={{ borderColor: 'rgba(88,101,242,0.5)', color: '#5865F2', background: 'rgba(88,101,242,0.1)' }}
+                    className="flex items-center gap-2 h-10 px-6 text-sm font-rajdhani font-bold tracking-wider transition-all duration-150 rounded-lg border bg-[#00E5FF]/10 text-[#00E5FF] border-[#00E5FF]/50 hover:bg-[#00E5FF]/20 disabled:opacity-40 disabled:cursor-not-allowed"
                   >
-                    {testingWebhook ? 'SENDING...' : 'TEST WEBHOOK'}
+                    {testingWebhook ? 'SENDING...' : 'TEST TEXT WEBHOOK'}
                   </button>
                   <SaveButton
-                    label="SAVE WEBHOOK"
+                    label="SAVE TEXT WEBHOOK"
                     onClick={() => saveIntegrationData({ discord_webhook_url: discordWebhookUrl })}
+                    loading={savingIntegration}
+                  />
+                </div>
+              </div>
+
+              {/* Voice Channel Webhook */}
+              <div className="mb-6 pt-5 border-t border-white/5">
+                <label className="block text-xs font-rajdhani font-bold text-gray-400 uppercase tracking-wider mb-1">
+                  Voice Channel Webhook (Voice Chat Callouts)
+                </label>
+                <p className="text-[11px] font-mono text-gray-600 mb-2">
+                  Paste your Discord Voice Channel Webhook (for voice channel in-chat callouts & score alerts)
+                </p>
+                <div className="flex gap-2 items-end">
+                  <div className="flex-1">
+                    <SettingsInput
+                      label=""
+                      value={discordVoiceWebhookUrl}
+                      onChange={e => setDiscordVoiceWebhookUrl(e.target.value)}
+                      placeholder="https://discord.com/api/webhooks/..."
+                      type="password"
+                    />
+                  </div>
+                </div>
+                <div className="flex items-center justify-end gap-2 mt-2">
+                  <button
+                    onClick={handleTestVoiceWebhook}
+                    disabled={testingVoiceWebhook || !discordVoiceWebhookUrl}
+                    className="flex items-center gap-2 h-10 px-6 text-sm font-rajdhani font-bold tracking-wider transition-all duration-150 rounded-lg border bg-[#00E5FF]/10 text-[#00E5FF] border-[#00E5FF]/50 hover:bg-[#00E5FF]/20 disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    {testingVoiceWebhook ? 'SENDING...' : 'TEST VOICE WEBHOOK'}
+                  </button>
+                  <SaveButton
+                    label="SAVE VOICE WEBHOOK"
+                    onClick={() => saveIntegrationData({ discord_voice_webhook_url: discordVoiceWebhookUrl })}
                     loading={savingIntegration}
                   />
                 </div>

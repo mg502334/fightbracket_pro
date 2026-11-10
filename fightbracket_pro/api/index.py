@@ -296,6 +296,7 @@ class ProfileUpdateRequest(BaseModel):
     tiktok_url: Optional[str] = None
     spotify_url: Optional[str] = None
     discord_webhook_url: Optional[str] = None
+    discord_voice_webhook_url: Optional[str] = None
     discord_server_id: Optional[str] = None
     games_data: Optional[str] = None
     station_names: Optional[str] = None
@@ -398,13 +399,42 @@ class RegisterEventRequest(BaseModel):
 
 # ─── Discord Webhook Helper ──────────────────────────────────────────────────
 
+DISCORD_WEBHOOK_REGEX = re.compile(
+    r"^https:\/\/(canary\.|ptb\.)?(discord\.com|discordapp\.com)\/api\/webhooks\/\d+\/[A-Za-z0-9_-]+$"
+)
+LOCAL_BOT_WEBHOOK_REGEX = re.compile(
+    r"^http:\/\/(localhost|127\.0\.0\.1):5050\/(announce|webhook)$"
+)
+
+def is_valid_discord_webhook(webhook_url: str) -> bool:
+    """Validate that a URL is a legitimate Discord webhook endpoint or local Tekken 8 Bot bridge."""
+    if not webhook_url or not isinstance(webhook_url, str):
+        return False
+    clean_url = webhook_url.strip()
+    if DISCORD_WEBHOOK_REGEX.match(clean_url):
+        return True
+    if LOCAL_BOT_WEBHOOK_REGEX.match(clean_url):
+        return True
+    return False
+
 def send_discord_webhook(webhook_url: str, payload: dict) -> bool:
-    """Send a payload to a Discord webhook URL. Returns True on success."""
-    if not webhook_url or not webhook_url.startswith("https://discord.com/api/webhooks/"):
+    """Send a payload to a verified Discord webhook URL. Returns True on success."""
+    if not is_valid_discord_webhook(webhook_url):
+        print(f"[Discord] Blocked invalid or unverified webhook URL: {webhook_url}")
         return False
     try:
-        resp = requests.post(webhook_url, json=payload, timeout=8)
-        return resp.status_code in (200, 204)
+        clean_url = webhook_url.strip()
+        # Canonicalize PTB/Canary Discord URLs to standard discord.com to prevent redirect drops
+        target_url = re.sub(r"^https:\/\/(canary\.|ptb\.)discord\.com\/", "https://discord.com/", clean_url)
+        headers = {
+            "Content-Type": "application/json",
+            "User-Agent": "FightBracketPro-WebhookBot/1.0"
+        }
+        resp = requests.post(target_url, json=payload, headers=headers, timeout=10, allow_redirects=True)
+        if resp.status_code not in (200, 204):
+            print(f"[Discord] Webhook returned HTTP {resp.status_code}: {resp.text}")
+            return False
+        return True
     except Exception as e:
         print(f"[Discord] Webhook send failed: {e}")
         return False
@@ -708,6 +738,11 @@ def verify_auth_turnstile(req: VerifyRequest, request: Request):
 @app.post("/api/discord/test-webhook")
 def test_discord_webhook(req: DiscordWebhookTestRequest, user_id: str = Depends(get_current_user_id)):
     """Test a Discord webhook URL by sending a sample embed."""
+    if not is_valid_discord_webhook(req.webhook_url):
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid Discord webhook URL. URL must match https://discord.com/api/webhooks/{id}/{token}"
+        )
     payload = _discord_tournament_embed(
         tournament_name=req.tournament_name or "Your Tournament",
         description="✅ Your Discord webhook is connected to **FightBracket Pro**!\nMatch callouts, results, and announcements will appear here automatically.",
@@ -719,7 +754,7 @@ def test_discord_webhook(req: DiscordWebhookTestRequest, user_id: str = Depends(
     )
     success = send_discord_webhook(req.webhook_url, payload)
     if not success:
-        raise HTTPException(status_code=400, detail="Failed to send to webhook. Make sure the URL is a valid Discord webhook (starts with https://discord.com/api/webhooks/).")
+        raise HTTPException(status_code=400, detail="Failed to deliver test message to Discord webhook.")
     return {"status": "success", "message": "Test embed sent to Discord!"}
 
 
@@ -730,14 +765,14 @@ def discord_announce(req: DiscordAnnounceRequest, user_id: str = Depends(get_cur
         raise HTTPException(status_code=503, detail="Database unavailable")
     
     user = db.query(DBUser).filter(DBUser.id == user_id).first()
-    if not user or not getattr(user, 'discord_webhook_url', None):
+    text_webhook = getattr(user, 'discord_webhook_url', None)
+    voice_webhook = getattr(user, 'discord_voice_webhook_url', None)
+    if not user or (not text_webhook and not voice_webhook):
         raise HTTPException(status_code=400, detail="No Discord webhook configured. Add one in Settings → Integrations → Discord.")
     
     tournament = db.query(DBTournament).filter(DBTournament.id == req.tournament_id, DBTournament.user_id == user_id).first()
     if not tournament:
         raise HTTPException(status_code=404, detail="Tournament not found")
-    
-    webhook_url = user.discord_webhook_url
     
     if req.message_type == "start":
         payload = _discord_tournament_embed(
@@ -781,7 +816,11 @@ def discord_announce(req: DiscordAnnounceRequest, user_id: str = Depends(get_cur
     else:
         raise HTTPException(status_code=400, detail="Invalid message_type or missing match_info/custom_message")
     
-    success = send_discord_webhook(webhook_url, payload)
+    success = False
+    if text_webhook:
+        success = send_discord_webhook(text_webhook, payload) or success
+    if voice_webhook:
+        success = send_discord_webhook(voice_webhook, payload) or success
     if not success:
         raise HTTPException(status_code=502, detail="Failed to deliver webhook to Discord.")
     return {"status": "success"}
@@ -933,41 +972,41 @@ def get_or_create_user(db: Session, user_id: str, meta: dict = None) -> DBUser:
 
     return user
 
-def is_user_admin_or_host(user_id: Optional[str], db: Optional[Session]) -> bool:
-    """Returns True if the user is an admin or has created/hosted tournaments/events."""
+def is_platform_admin(user_id: Optional[str], db: Optional[Session]) -> bool:
+    """Returns True if the user is a platform superadministrator."""
+    if not user_id:
+        return False
+    # 1. Environment variable superadmin whitelist
+    superadmins = [s.strip() for s in os.environ.get("SUPERADMIN_USER_IDS", "").split(",") if s.strip()]
+    if user_id in superadmins:
+        return True
+    # 2. Explicit admin role in database (set manually, not auto-escalated)
+    if db:
+        user = db.query(DBUser).filter(DBUser.id == user_id).first()
+        if user and (getattr(user, 'is_admin', False) or getattr(user, 'role', '') == 'admin'):
+            return True
+    return False
+
+def is_user_organizer_or_host(user_id: Optional[str], db: Optional[Session]) -> bool:
+    """Returns True if the user is an event/tournament organizer or host (for profile badge display)."""
     if not user_id or not db:
         return False
-    user = db.query(DBUser).filter(DBUser.id == user_id).first()
-    if user and (getattr(user, 'is_admin', False) or getattr(user, 'role', '') in ('admin', 'organizer', 'host')):
+    if is_platform_admin(user_id, db):
         return True
-    
-    # Check if user has created/hosted any community events
+    user = db.query(DBUser).filter(DBUser.id == user_id).first()
+    if user and getattr(user, 'role', '') in ('admin', 'organizer', 'host'):
+        return True
     has_event = db.query(DBEvent).filter(DBEvent.user_id == user_id).first() is not None
     if has_event:
-        if user and not getattr(user, 'is_admin', False):
-            user.is_admin = True
-            if getattr(user, 'role', 'player') == 'player':
-                user.role = "organizer"
-            try:
-                db.commit()
-            except Exception:
-                db.rollback()
         return True
-
-    # Check if user has hosted any tournaments
     has_tourney = db.query(DBTournament).filter(DBTournament.user_id == user_id).first() is not None
     if has_tourney:
-        if user and not getattr(user, 'is_admin', False):
-            user.is_admin = True
-            if getattr(user, 'role', 'player') == 'player':
-                user.role = "organizer"
-            try:
-                db.commit()
-            except Exception:
-                db.rollback()
         return True
-
     return False
+
+def is_user_admin_or_host(user_id: Optional[str], db: Optional[Session]) -> bool:
+    """Legacy helper: returns True if user is an organizer or platform admin."""
+    return is_user_organizer_or_host(user_id, db)
 
 @app.get("/api/user/profile")
 def get_user_profile(payload: dict = Depends(get_current_user_payload), db: Session = Depends(get_db)):
@@ -995,10 +1034,11 @@ def get_user_profile(payload: dict = Depends(get_current_user_payload), db: Sess
 
         hosted_events_count = db.query(DBEvent).filter(DBEvent.user_id == user_id).count()
         hosted_tournaments_count = db.query(DBTournament).filter(DBTournament.user_id == user_id).count()
-        is_admin_user = is_user_admin_or_host(user_id, db)
-        user_role = getattr(user, 'role', 'player') or ('organizer' if is_admin_user else 'player')
-        if is_admin_user and user_role == 'player':
-            user_role = 'organizer'
+        is_admin_user = is_platform_admin(user_id, db)
+        is_organizer = is_user_organizer_or_host(user_id, db)
+        user_role = getattr(user, 'role', 'player')
+        if user_role not in ('admin', 'organizer', 'host'):
+            user_role = 'admin' if is_admin_user else ('organizer' if is_organizer else 'player')
 
         return {
             "user": {
@@ -1022,6 +1062,8 @@ def get_user_profile(payload: dict = Depends(get_current_user_payload), db: Sess
                 "tiktok_url": getattr(user, 'tiktok_url', '') or "",
                 "spotify_url": getattr(user, 'spotify_url', '') or "",
                 "discord_webhook_url": getattr(user, 'discord_webhook_url', '') or "",
+            "discord_voice_webhook_url": getattr(user, 'discord_voice_webhook_url', '') or "",
+                "discord_voice_webhook_url": getattr(user, 'discord_voice_webhook_url', '') or "",
                 "discord_server_id": getattr(user, 'discord_server_id', '') or "",
                 "games_data": getattr(user, 'games_data', '') or "",
                 "is_public": user.is_public if user.is_public is not None else True,
@@ -1032,7 +1074,7 @@ def get_user_profile(payload: dict = Depends(get_current_user_payload), db: Sess
                 "sound_messages": user.sound_messages if hasattr(user, 'sound_messages') and user.sound_messages is not None else True,
                 "is_admin": is_admin_user,
                 "role": user_role,
-                "is_host": is_admin_user or (hosted_events_count > 0),
+                "is_host": is_admin_user or is_organizer or (hosted_events_count > 0),
                 "hosted_events_count": hosted_events_count,
                 "hosted_tournaments_count": hosted_tournaments_count,
                 "created_at": created_at_str,
@@ -1110,6 +1152,8 @@ def update_user_profile(req: ProfileUpdateRequest, user_id: str = Depends(get_cu
         user.spotify_url = req.spotify_url.strip() # type: ignore
     if req.discord_webhook_url is not None:
         user.discord_webhook_url = req.discord_webhook_url.strip() # type: ignore
+    if req.discord_voice_webhook_url is not None:
+        user.discord_voice_webhook_url = req.discord_voice_webhook_url.strip() # type: ignore
     if req.discord_server_id is not None:
         user.discord_server_id = req.discord_server_id.strip() # type: ignore
     if req.games_data is not None:
@@ -1148,6 +1192,7 @@ def update_user_profile(req: ProfileUpdateRequest, user_id: str = Depends(get_cu
             "twitch_id": getattr(user, 'twitch_id', '') or "",
             "twitch_url": getattr(user, 'twitch_url', '') or "",
             "discord_webhook_url": getattr(user, 'discord_webhook_url', '') or "",
+            "discord_voice_webhook_url": getattr(user, 'discord_voice_webhook_url', '') or "",
             "discord_server_id": getattr(user, 'discord_server_id', '') or "",
             "games_data": getattr(user, 'games_data', '') or "",
             "is_public": user.is_public,
@@ -2122,10 +2167,11 @@ def get_target_user_profile(target_user_id: str, user_id: str = Depends(get_curr
 
     target_hosted_count = db.query(DBEvent).filter(DBEvent.user_id == target_user_id).count()
     target_tourneys_count = db.query(DBTournament).filter(DBTournament.user_id == target_user_id).count()
-    target_is_admin = is_user_admin_or_host(target_user_id, db)
-    target_role = getattr(target_user, 'role', 'player') or ('organizer' if target_is_admin else 'player')
-    if target_is_admin and target_role == 'player':
-        target_role = 'organizer'
+    target_is_admin = is_platform_admin(target_user_id, db)
+    target_is_organizer = is_user_organizer_or_host(target_user_id, db)
+    target_role = getattr(target_user, 'role', 'player')
+    if target_role not in ('admin', 'organizer', 'host'):
+        target_role = 'admin' if target_is_admin else ('organizer' if target_is_organizer else 'player')
 
     uid_str = getattr(target_user, 'unique_id', None) or (target_ui.unique_id if target_ui else "FB-USER")
     return {
@@ -2154,7 +2200,7 @@ def get_target_user_profile(target_user_id: str, user_id: str = Depends(get_curr
             "is_self": is_self,
             "is_admin": target_is_admin,
             "role": target_role,
-            "is_host": target_is_admin or (target_hosted_count > 0),
+            "is_host": target_is_admin or target_is_organizer or (target_hosted_count > 0),
             "hosted_events_count": target_hosted_count,
             "hosted_tournaments_count": target_tourneys_count,
             "likes_count": likes_count,
@@ -2479,6 +2525,16 @@ def share_local_bracket(
 
     now_utc = datetime.now(timezone.utc)
     if tournament:
+        # Prevent hijacking private cloud saves of other registered users
+        if (
+            tournament.user_id
+            and tournament.user_id != "anon-local"
+            and tournament.user_id != resolved_user_id
+            and not tournament.subdomain
+            and not is_platform_admin(resolved_user_id, db)
+        ):
+            raise HTTPException(status_code=403, detail="Cannot overwrite a private tournament belonging to another account.")
+
         sub = tournament.subdomain or req_sub or generate_random_subdomain("fb", db)
         tournament.subdomain = sub
         tournament.name = clean_name
@@ -2658,8 +2714,8 @@ def delete_tournament(tournament_id: str, user_id: str = Depends(get_current_use
     tournament = db.query(DBTournament).filter(DBTournament.id == tournament_id).first()
     if not tournament:
         return {"status": "not_found", "detail": "Tournament not found"}
-    if tournament.user_id != user_id and not is_user_admin_or_host(user_id, db):
-        raise HTTPException(status_code=403, detail="Only the host or an admin can delete this tournament")
+    if tournament.user_id != user_id and not is_platform_admin(user_id, db):
+        raise HTTPException(status_code=403, detail="Only the tournament owner or an admin can delete this tournament")
     db.delete(tournament)
     db.commit()
     return {"status": "success"}
@@ -3003,7 +3059,7 @@ def oauth_callback(code: str):
         
     access_token = data["access_token"]
     frontend_url = os.environ.get("FRONTEND_URL", "https://fightbracketpro.com")
-    return RedirectResponse(f"{frontend_url.rstrip('/')}/oauth/callback?token={urllib.parse.quote_plus(access_token)}")
+    return RedirectResponse(f"{frontend_url.rstrip('/')}/oauth/callback#token={urllib.parse.quote_plus(access_token)}")
 
 @app.get("/api/startgg/user")
 def get_startgg_user(slug: str, token: str = None):  # type: ignore
@@ -3135,7 +3191,9 @@ def get_tekken_stats(
     # ─────────────────────────────────────────────────────────────────────────
 
     EWGF_BASE = "https://api.ewgf.gg"
-    raw_token = os.environ.get("EWGF_API_TOKEN", "ewgf_e146ff104fd149409abc02db98e24202")
+    raw_token = os.environ.get("EWGF_API_TOKEN", "")
+    if not raw_token:
+        print("[EWGF] Warning: EWGF_API_TOKEN not configured in environment")
     if raw_token.lower().startswith("bearer "):
         raw_token = raw_token[7:]
     EWGF_TOKEN = raw_token.strip()
@@ -3561,7 +3619,9 @@ def get_steam_profile(steam_id: str):
         raise HTTPException(status_code=400, detail="steam_id is required")
 
     steam_id_clean = steam_id.strip()
-    STEAM_API_KEY = os.environ.get("STEAM_API_KEY", "EE768F7D0B03FF6C84FFE2203B4712F2")
+    STEAM_API_KEY = os.environ.get("STEAM_API_KEY", "")
+    if not STEAM_API_KEY:
+        raise HTTPException(status_code=503, detail="Steam integration not configured on server (STEAM_API_KEY missing)")
 
     actual_steam_id = steam_id_clean
     if not steam_id_clean.isdigit():
@@ -3639,18 +3699,9 @@ class StartggProxyRequest(BaseModel):
     variables: dict = {}
 
 @app.post("/api/startgg/proxy")
-def proxy_startgg(req: StartggProxyRequest, req_obj: Request, db: Session = Depends(get_db)):
-    auth_header = req_obj.headers.get("Authorization")
-    user_id = None
-    if auth_header and auth_header.startswith("Bearer "):
-        token_str = auth_header.split(" ")[1]
-        try:
-            from jose import jwt
-            from auth import SECRET_KEY, ALGORITHM
-            payload = jwt.decode(token_str, SECRET_KEY, algorithms=[ALGORITHM])
-            user_id = payload.get("sub")
-        except:
-            pass
+def proxy_startgg(req: StartggProxyRequest, user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    if not db:
+        raise HTTPException(status_code=503, detail="Database not available")
 
     token = None
     if user_id:
@@ -3669,7 +3720,7 @@ def proxy_startgg(req: StartggProxyRequest, req_obj: Request, db: Session = Depe
         token = os.environ.get("STARTGG_API_TOKEN")
             
     if not token:
-        raise HTTPException(status_code=404, detail="Start.gg integration not found. Please set your token in settings or provide a system token.")
+        raise HTTPException(status_code=404, detail="Start.gg integration token not found. Please connect your Start.gg account in Settings.")
 
     import requests
     headers = {
@@ -3840,10 +3891,11 @@ def get_feed(
             except Exception:
                 pass
 
-        author_is_admin = is_user_admin_or_host(post.user_id, db)
+        author_is_admin = is_platform_admin(post.user_id, db)
+        author_is_organizer = is_user_organizer_or_host(post.user_id, db)
         author_role = getattr(author, 'role', 'player') if author else 'player'
-        if author_is_admin and author_role == 'player':
-            author_role = 'organizer'
+        if author_role not in ('admin', 'organizer', 'host'):
+            author_role = 'admin' if author_is_admin else ('organizer' if author_is_organizer else 'player')
 
         results.append({
             "id": post.id,
@@ -3855,7 +3907,7 @@ def get_feed(
                 "color": getattr(author, 'profile_color', None) or "#06b6d4",
                 "avatar": getattr(author, 'avatar_url', None),
                 "isAdmin": author_is_admin,
-                "isHost": author_is_admin,
+                "isHost": author_is_admin or author_is_organizer,
                 "role": author_role
             },
             "time": post.created_at.isoformat() if post.created_at else "",
@@ -3884,8 +3936,12 @@ def create_post(req: CreatePostRequest, user_id: str = Depends(get_current_user_
         
     import uuid, json
     
-    is_admin = is_user_admin_or_host(user_id, db)
-    pin_flag = bool(req.pinned and is_admin)
+    can_pin = is_platform_admin(user_id, db)
+    if not can_pin and req.attached_event_id:
+        attached_ev = db.query(DBEvent).filter(DBEvent.id == req.attached_event_id).first()
+        if attached_ev and attached_ev.user_id == user_id:
+            can_pin = True
+    pin_flag = bool(req.pinned and can_pin)
 
     new_post = DBPost(
         id=str(uuid.uuid4()),
@@ -4012,8 +4068,13 @@ def toggle_pin_post(post_id: str, user_id: str = Depends(get_current_user_id), d
     post = db.query(DBPost).filter(DBPost.id == post_id).first()
     if not post:
         raise HTTPException(status_code=404, detail="Post not found")
-    if not is_user_admin_or_host(user_id, db):
-        raise HTTPException(status_code=403, detail="Only event hosts and admins can pin posts")
+    can_pin = is_platform_admin(user_id, db)
+    if not can_pin and getattr(post, 'attached_event_id', None):
+        attached_ev = db.query(DBEvent).filter(DBEvent.id == post.attached_event_id).first()
+        if attached_ev and attached_ev.user_id == user_id:
+            can_pin = True
+    if not can_pin:
+        raise HTTPException(status_code=403, detail="Only platform admins or event organizers for attached events can pin posts")
     post.pinned = not bool(post.pinned)
     db.commit()
     return {"status": "success", "pinned": post.pinned, "message": "Post pinned to top of feed" if post.pinned else "Post unpinned"}
@@ -4025,7 +4086,7 @@ def delete_post(post_id: str, user_id: str = Depends(get_current_user_id), db: S
     post = db.query(DBPost).filter(DBPost.id == post_id).first()
     if not post:
         raise HTTPException(status_code=404, detail="Post not found")
-    if post.user_id != user_id and not is_user_admin_or_host(user_id, db):
+    if post.user_id != user_id and not is_platform_admin(user_id, db):
         raise HTTPException(status_code=403, detail="You do not have permission to delete this post")
     db.query(DBPostLike).filter(DBPostLike.post_id == post_id).delete()
     db.query(DBPostComment).filter(DBPostComment.post_id == post_id).delete()
@@ -5054,15 +5115,15 @@ def _serialize_event(event: DBEvent, db: Session, current_user_id: Optional[str]
             "gamerTag": org_tag,
             "avatarUrl": org_avatar,
             "uniqueId": org_handle,
-            "isAdmin": is_user_admin_or_host(event.user_id, db) if db else False,
+            "isAdmin": is_platform_admin(event.user_id, db) if db else False,
             "isHost": True,
             "role": getattr(organizer, 'role', 'organizer') if organizer else "organizer",
             "isOwner": current_user_id == event.user_id if current_user_id else False
         },
         "isRegistered": is_registered,
         "isOwner": current_user_id == event.user_id if current_user_id else False,
-        "isAdmin": is_user_admin_or_host(current_user_id, db) if (current_user_id and db) else False,
-        "canManage": (current_user_id == event.user_id or is_user_admin_or_host(current_user_id, db)) if (current_user_id and db) else False
+        "isAdmin": is_platform_admin(current_user_id, db) if (current_user_id and db) else False,
+        "canManage": (current_user_id == event.user_id or is_platform_admin(current_user_id, db)) if (current_user_id and db) else False
     }
 
 
@@ -5427,10 +5488,9 @@ def create_community_event(
         status="upcoming",
         show_on_profile=req.show_on_profile if req.show_on_profile is not None else False
     )
-    # Promote host to admin & organizer role immediately
+    # Update host role to organizer if currently player
     current_u = db.query(DBUser).filter(DBUser.id == user_id).first()
-    if current_u:
-        current_u.is_admin = True
+    if current_u and getattr(current_u, 'role', 'player') == 'player':
         current_u.role = "organizer"
 
     db.add(event)
@@ -5493,7 +5553,7 @@ def update_community_event(
     event = db.query(DBEvent).filter(DBEvent.id == event_id).first()
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
-    if event.user_id != user_id and not is_user_admin_or_host(user_id, db):
+    if event.user_id != user_id and not is_platform_admin(user_id, db):
         raise HTTPException(status_code=403, detail="Only the event organizer or an admin can update this event")
 
     if req.name is not None and req.name.strip():
@@ -5571,7 +5631,7 @@ def delete_community_event(
     event = db.query(DBEvent).filter(DBEvent.id == event_id).first()
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
-    if event.user_id != user_id and not is_user_admin_or_host(user_id, db):
+    if event.user_id != user_id and not is_platform_admin(user_id, db):
         raise HTTPException(status_code=403, detail="Only the organizer or an admin can delete this event")
         
     db.query(DBEventRegistration).filter(DBEventRegistration.event_id == event.id).delete()
@@ -5598,7 +5658,7 @@ def remove_event_participant(
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
         
-    if event.user_id != user_id and not is_user_admin_or_host(user_id, db):
+    if event.user_id != user_id and not is_platform_admin(user_id, db):
         raise HTTPException(status_code=403, detail="Only the event organizer or an admin can remove participants")
 
     reg = db.query(DBEventRegistration).filter(
@@ -5653,7 +5713,7 @@ def set_event_status(
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
         
-    if event.user_id != user_id and not is_user_admin_or_host(user_id, db):
+    if event.user_id != user_id and not is_platform_admin(user_id, db):
         raise HTTPException(status_code=403, detail="Only the organizer or an admin can update event status")
 
     valid_statuses = ["upcoming", "live", "completed", "cancelled"]

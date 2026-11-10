@@ -289,8 +289,8 @@ export default function App() {
           } catch {}
         }
         // Load Discord webhook URL
-        if (profile?.discord_webhook_url) {
-          setDiscordWebhookUrl(profile.discord_webhook_url);
+        if (profile?.discord_webhook_url || profile?.discord_voice_webhook_url) {
+          setDiscordWebhookUrl(profile.discord_webhook_url || profile.discord_voice_webhook_url);
         }
       })
       .catch(console.error);

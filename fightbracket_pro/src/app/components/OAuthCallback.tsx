@@ -6,18 +6,23 @@ export function OAuthCallback() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const token = searchParams.get('token');
+    const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+    const token = searchParams.get('token') || hashParams.get('token');
     
     if (token) {
       // Store the token in localStorage
-      localStorage.setItem('startgg_access_token', token);
+      try {
+        localStorage.setItem('startgg_access_token', token);
+      } catch {}
       
-      // Redirect to the home dashboard (or a previous route)
-      navigate('/');
+      // Clean up URL parameters immediately to prevent leakage
+      window.history.replaceState({}, document.title, '/');
+      
+      // Redirect to the home dashboard
+      navigate('/', { replace: true });
     } else {
       console.error('No token found in OAuth callback URL.');
-      // Still redirect to home if no token was found
-      navigate('/');
+      navigate('/', { replace: true });
     }
   }, [searchParams, navigate]);
 

@@ -27,6 +27,7 @@ class DBUser(Base):
     tiktok_url = Column(String, nullable=True) # TikTok handle or URL
     spotify_url = Column(String, nullable=True) # Spotify playlist / track URL
     discord_webhook_url = Column(String, nullable=True) # Discord webhook for TO announcements
+    discord_voice_webhook_url = Column(String, nullable=True) # Discord voice channel webhook
     discord_server_id = Column(String, nullable=True) # Discord server ID for widget embed
     games_data = Column(Text, nullable=True) # Stored JSON string of main games & characters
     station_names = Column(Text, nullable=True) # Stored JSON list of custom station names
