@@ -103,6 +103,16 @@ def get_current_user_payload(authorization: str = Header(None)):
 def get_current_user_id(payload: dict = Depends(get_current_user_payload)):
     return payload.get("sub")
 
+def get_optional_user_id(authorization: Optional[str] = Header(None)) -> Optional[str]:
+    if authorization and authorization.startswith("Bearer "):
+        try:
+            token = authorization.split(" ", 1)[1].strip()
+            payload = get_current_user_payload(token)
+            return payload.get("sub")
+        except Exception:
+            return None
+    return None
+
 def is_safe_url(url_str: str) -> bool:
     """Validate that a URL is safe to fetch and does not target internal/private resources."""
     try:
@@ -460,10 +470,13 @@ class DiscordWebhookTestRequest(BaseModel):
 
 
 class DiscordAnnounceRequest(BaseModel):
-    tournament_id: str
+    tournament_id: Optional[str] = "tournament"
+    tournament_name: Optional[str] = None
     message_type: str  # 'start' | 'match_called' | 'result' | 'custom'
     custom_message: Optional[str] = None
     match_info: Optional[dict] = None  # {player1, player2, round, station}
+    webhook_url: Optional[str] = None
+    voice_webhook_url: Optional[str] = None
 
 
 def _send_support_autoresponse(user_email: str, inquiry_type: str, ticket_id: str):
@@ -759,25 +772,31 @@ def test_discord_webhook(req: DiscordWebhookTestRequest, user_id: str = Depends(
 
 
 @app.post("/api/discord/announce")
-def discord_announce(req: DiscordAnnounceRequest, user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
+def discord_announce(req: DiscordAnnounceRequest, user_id: Optional[str] = Depends(get_optional_user_id), db: Session = Depends(get_db)):
     """Send a Discord announcement for a tournament event."""
-    if not db:
-        raise HTTPException(status_code=503, detail="Database unavailable")
-    
-    user = db.query(DBUser).filter(DBUser.id == user_id).first()
-    text_webhook = getattr(user, 'discord_webhook_url', None)
-    voice_webhook = getattr(user, 'discord_voice_webhook_url', None)
-    if not user or (not text_webhook and not voice_webhook):
+    user = db.query(DBUser).filter(DBUser.id == user_id).first() if (user_id and db) else None
+    text_webhook = req.webhook_url or (getattr(user, 'discord_webhook_url', None) if user else None)
+    voice_webhook = req.voice_webhook_url or (getattr(user, 'discord_voice_webhook_url', None) if user else None)
+    if not text_webhook and not voice_webhook:
         raise HTTPException(status_code=400, detail="No Discord webhook configured. Add one in Settings → Integrations → Discord.")
     
-    tournament = db.query(DBTournament).filter(DBTournament.id == req.tournament_id, DBTournament.user_id == user_id).first()
-    if not tournament:
-        raise HTTPException(status_code=404, detail="Tournament not found")
-    
+    # Resolve tournament name: from DB if exists, otherwise fallback to request or default
+    t_name = req.tournament_name
+    if not t_name and req.tournament_id:
+        tournament = db.query(DBTournament).filter(DBTournament.id == req.tournament_id, DBTournament.user_id == user_id).first()
+        if not tournament:
+            tournament = db.query(DBTournament).filter(DBTournament.subdomain == req.tournament_id, DBTournament.user_id == user_id).first()
+        if tournament and tournament.name:
+            t_name = tournament.name
+        else:
+            t_name = req.tournament_id.replace('-', ' ').title()
+    if not t_name:
+        t_name = "Tekken 8 Tournament"
+
     if req.message_type == "start":
         payload = _discord_tournament_embed(
-            tournament_name=tournament.name,
-            description=f"🏆 **{tournament.name}** is now underway!\nCheck in, confirm your bracket placement, and get ready to compete.",
+            tournament_name=t_name,
+            description=f"🏆 **{t_name}** is now underway!\nCheck in, confirm your bracket placement, and get ready to compete.",
             color=5765120,
         )
     elif req.message_type == "match_called" and req.match_info:
@@ -788,7 +807,7 @@ def discord_announce(req: DiscordAnnounceRequest, user_id: str = Depends(get_cur
         station = mi.get("station", "")
         station_text = f" — **Station {station}**" if station else ""
         payload = _discord_tournament_embed(
-            tournament_name=tournament.name,
+            tournament_name=t_name,
             description=f"🎮 **{player1}** vs **{player2}**{station_text}\n`{round_name}` — Please report to your station now.",
             color=16766720,  # amber
         )
@@ -803,13 +822,13 @@ def discord_announce(req: DiscordAnnounceRequest, user_id: str = Depends(get_cur
         emoji = "🏆" if is_grand_finals else "✅"
         color = 16750848 if is_grand_finals else 3329330  # gold vs green
         payload = _discord_tournament_embed(
-            tournament_name=tournament.name,
+            tournament_name=t_name,
             description=f"{emoji} **{winner}** defeats **{loser}**{score_text}\n`{round_name}` result confirmed.",
             color=color,
         )
     elif req.message_type == "custom" and req.custom_message:
         payload = _discord_tournament_embed(
-            tournament_name=tournament.name,
+            tournament_name=t_name,
             description=req.custom_message,
             color=5765120,
         )

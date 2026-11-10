@@ -920,26 +920,32 @@ export default function App() {
     });
 
     // Fire Discord webhook if configured
-    if (discordWebhookUrl && supabaseToken && activeTournament?.name) {
-      const tId = activeTournament.slug || activeTournament.name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    if (discordWebhookUrl) {
+      const tournamentTitle = activeTournament?.name || (activeGame ? gameThemes[activeGame]?.displayName : '') || 'Tekken 8 Tournament';
+      const tId = activeTournament?.slug || (activeTournament?.name ? activeTournament.name.toLowerCase().replace(/[^a-z0-9]+/g, '-') : 'tournament');
       const p1 = players.find(p => p.id === match.player1Id);
       const p2 = players.find(p => p.id === match.player2Id);
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (supabaseToken) headers['Authorization'] = `Bearer ${supabaseToken}`;
+
       fetch('/api/discord/announce', {
         method: 'POST',
-        headers: { 'Authorization': `Bearer ${supabaseToken}`, 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           tournament_id: tId,
+          tournament_name: tournamentTitle,
+          webhook_url: discordWebhookUrl,
           message_type: 'match_called',
           match_info: {
             player1: p1?.tag || 'Player 1',
             player2: p2?.tag || 'Player 2',
-            round: match.roundName,
-            station: sid,
+            round: match.roundName || 'Match',
+            station: String(sid),
           }
         })
-      }).catch(() => {}); // Fire and forget — don't block the UI
+      }).catch(err => console.error('[Discord] match_called error:', err));
     }
-  }, [theme?.primaryColor, players, gameThemes, stations, discordWebhookUrl, supabaseToken, activeTournament]);
+  }, [theme?.primaryColor, players, gameThemes, stations, discordWebhookUrl, supabaseToken, activeTournament, activeGame]);
 
   const handleUndoCall = useCallback((matchId: string) => {
     setMatches(prev => prev.map(m => m.id === matchId ? { ...m, state: 'pending', stationId: null } : m));
@@ -962,7 +968,35 @@ export default function App() {
     } catch (e) {
       toast.error('Failed to sync station assignment to database');
     }
-  }, [theme?.primaryColor, userId]);
+
+    // Also announce to Discord on station assignment
+    const match = matches.find(m => m.id === matchId);
+    if (match && discordWebhookUrl) {
+      const tournamentTitle = activeTournament?.name || (activeGame ? gameThemes[activeGame]?.displayName : '') || 'Tekken 8 Tournament';
+      const tId = activeTournament?.slug || (activeTournament?.name ? activeTournament.name.toLowerCase().replace(/[^a-z0-9]+/g, '-') : 'tournament');
+      const p1 = players.find(p => p.id === match.player1Id);
+      const p2 = players.find(p => p.id === match.player2Id);
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (supabaseToken) headers['Authorization'] = `Bearer ${supabaseToken}`;
+
+      fetch('/api/discord/announce', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          tournament_id: tId,
+          tournament_name: tournamentTitle,
+          webhook_url: discordWebhookUrl,
+          message_type: 'match_called',
+          match_info: {
+            player1: p1?.tag || 'Player 1',
+            player2: p2?.tag || 'Player 2',
+            round: match.roundName || 'Tournament Match',
+            station: String(stationId),
+          }
+        })
+      }).catch(err => console.error('[Discord] assign match announce error:', err));
+    }
+  }, [theme?.primaryColor, userId, matches, discordWebhookUrl, activeTournament, activeGame, gameThemes, players, supabaseToken]);
 
   const handleClearStation = useCallback(async (stationId: number) => {
     setStations(prev => {
@@ -1699,27 +1733,33 @@ export default function App() {
     setStations(prev => prev.map(s => s.matchId === matchId ? { ...s, matchId: null } : s));
 
     // Fire Discord result webhook if configured
-    if (discordWebhookUrl && supabaseToken && activeTournament?.name && winnerId) {
-      const tId = activeTournament.slug || activeTournament.name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    if (discordWebhookUrl && winnerId) {
+      const tournamentTitle = activeTournament?.name || (activeGame ? gameThemes[activeGame]?.displayName : '') || 'Tekken 8 Tournament';
+      const tId = activeTournament?.slug || (activeTournament?.name ? activeTournament.name.toLowerCase().replace(/[^a-z0-9]+/g, '-') : 'tournament');
       const match = matches.find(m => m.id === matchId);
       if (match) {
         const winner = players.find(p => p.id === winnerId);
         const loserId = match.player1Id === winnerId ? match.player2Id : match.player1Id;
         const loser = loserId ? players.find(p => p.id === loserId) : null;
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+        if (supabaseToken) headers['Authorization'] = `Bearer ${supabaseToken}`;
+
         fetch('/api/discord/announce', {
           method: 'POST',
-          headers: { 'Authorization': `Bearer ${supabaseToken}`, 'Content-Type': 'application/json' },
+          headers,
           body: JSON.stringify({
             tournament_id: tId,
+            tournament_name: tournamentTitle,
+            webhook_url: discordWebhookUrl,
             message_type: 'result',
             match_info: {
               winner: winner?.tag || 'Winner',
               loser: loser?.tag || 'Loser',
               score: `${p1Score}-${p2Score}`,
-              round: match.roundName,
+              round: match.roundName || 'Match',
             }
           })
-        }).catch(() => {});
+        }).catch(err => console.error('[Discord] result announce error:', err));
       }
     }
   };
