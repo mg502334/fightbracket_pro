@@ -43,6 +43,8 @@ class TekkenTournamentBot(commands.Bot):
         self.active_text_channel: Optional[discord.TextChannel] = None
         self.active_voice_channel: Optional[discord.VoiceChannel] = None
         self.webhook_runner: Optional[web.AppRunner] = None
+        self.live_stream_messages: Dict[int, discord.Message] = {}
+        self.latest_bracket_state: Dict[str, Any] = {}
 
     async def setup_hook(self):
         self.voice_manager = VoiceQueueManager(self)
@@ -235,6 +237,95 @@ async def announce_match_score(
         if bot.voice_manager:
             await bot.voice_manager.enqueue(spoken_score, vc)
 
+def build_live_bracket_embed(data: dict) -> discord.Embed:
+    """Builds a comprehensive live streaming bracket embed card."""
+    t_name = data.get("tournament_name") or config.TOURNAMENT_NAME
+    subdomain = data.get("subdomain")
+    web_url = f"https://{subdomain}.fightbracketpro.com" if subdomain else "https://fightbracketpro.com"
+
+    embed = discord.Embed(
+        title=f"⚡ LIVE BRACKET STREAM — {t_name.upper()}",
+        url=web_url,
+        description=f"🌐 **Interactive Live Bracket**: [{web_url}]({web_url})\n*Streaming active stations, next up, and live scores in real time.*",
+        color=0x00E5FF,  # FightBracket Pro Cyan
+        timestamp=datetime.now(timezone.utc)
+    )
+
+    # Active matches on stations
+    active_matches = data.get("active_matches", [])
+    if active_matches:
+        lines = []
+        for m in active_matches:
+            st = m.get("station", "Station")
+            p1 = m.get("player1", "TBD")
+            p2 = m.get("player2", "TBD")
+            rnd = m.get("round", "Match")
+            lines.append(f"• **Station {st}**: 🎮 **{p1}** vs **{p2}** (`{rnd}`)")
+        embed.add_field(name="🏟️ Live On Stations", value="\n".join(lines), inline=False)
+    else:
+        embed.add_field(name="🏟️ Live On Stations", value="*No matches currently running.*", inline=False)
+
+    # On Deck matches
+    on_deck = data.get("on_deck", [])
+    if on_deck:
+        lines = []
+        for m in on_deck[:3]:
+            p1 = m.get("player1", "TBD")
+            p2 = m.get("player2", "TBD")
+            rnd = m.get("round", "Next Round")
+            lines.append(f"• **{p1}** vs **{p2}** (`{rnd}`)")
+        embed.add_field(name="⏳ Next Up / On Deck", value="\n".join(lines), inline=False)
+
+    # Recent Results
+    recent = data.get("recent_results", [])
+    if recent:
+        lines = []
+        for r in recent[:4]:
+            w = r.get("winner", "Winner")
+            l = r.get("loser", "Loser")
+            sc = r.get("score", "")
+            sc_str = f" `{sc}`" if sc else ""
+            rnd = r.get("round", "")
+            lines.append(f"• 🏆 **{w}** def. {l}{sc_str} (`{rnd}`)")
+        embed.add_field(name="✅ Recent Results", value="\n".join(lines), inline=False)
+
+    # Progress stats
+    total_matches = data.get("total_matches", 0)
+    completed = data.get("completed_matches", 0)
+    total_players = data.get("total_players", 0)
+    if total_matches > 0:
+        pct = int((completed / total_matches) * 100)
+        embed.add_field(name="📊 Progress", value=f"**{completed}/{total_matches}** matches completed ({pct}%)\n👥 **{total_players}** competitors", inline=False)
+
+    embed.set_footer(text="FightBracket Pro • Live Bracket Stream", icon_url="https://raw.githubusercontent.com/FortAwesome/Font-Awesome/master/svgs/solid/gamepad.svg")
+    return embed
+
+
+async def update_live_bracket_stream(guild: discord.Guild, data: dict):
+    """Edits the active live stream message or posts a new one if not existing."""
+    embed = build_live_bracket_embed(data)
+    stream_msg = bot.live_stream_messages.get(guild.id)
+    
+    if stream_msg:
+        try:
+            await stream_msg.edit(embed=embed)
+            return stream_msg
+        except Exception:
+            pass  # Message was deleted or channel moved, post new
+
+    target_channel = bot.active_text_channel or find_channel_by_name_or_id(guild, config.DEFAULT_TEXT_CHANNEL)
+    if not target_channel and guild.text_channels:
+        target_channel = guild.text_channels[0]
+        
+    if target_channel:
+        try:
+            new_msg = await target_channel.send(embed=embed)
+            bot.live_stream_messages[guild.id] = new_msg
+            return new_msg
+        except Exception as e:
+            print(f"[Stream] Failed to send live bracket stream: {e}")
+    return None
+
 # ─── Webhook Endpoints (FightBracket Pro Bridge) ───────────────────────────────
 
 async def handle_webhook_announce(request: web.Request) -> web.Response:
@@ -324,6 +415,12 @@ async def handle_webhook_announce(request: web.Request) -> web.Response:
         if bot.voice_manager and config.ENABLE_VOICE_TTS:
             await bot.voice_manager.enqueue(custom_text, vc)
         return web.json_response({"status": "success", "event": msg_type})
+
+    elif msg_type == "bracket_update":
+        bracket_data = data.get("bracket_data", {})
+        bot.latest_bracket_state = bracket_data
+        await update_live_bracket_stream(guild, bracket_data)
+        return web.json_response({"status": "success", "event": "bracket_stream_updated"})
 
     return web.json_response({"error": "Unsupported message_type"}, status=400)
 
@@ -480,6 +577,33 @@ async def slash_voiceannounce(interaction: discord.Interaction, message: str):
         await interaction.followup.send(f"📢 Voice broadcast dispatched: *'{message}'*")
     else:
         await interaction.followup.send("Voice TTS is disabled or unavailable.")
+
+
+@bot.tree.command(name="stream", description="Stream the live tournament bracket into this channel.")
+@app_commands.describe(subdomain="Subdomain of the tournament (optional, e.g. 'fb-abc123')")
+async def slash_stream(interaction: discord.Interaction, subdomain: Optional[str] = None):
+    await interaction.response.defer(ephemeral=False)
+    
+    state = dict(bot.latest_bracket_state)
+    if subdomain:
+        state["subdomain"] = subdomain
+    if not state.get("tournament_name"):
+        state["tournament_name"] = config.TOURNAMENT_NAME
+
+    bot.active_text_channel = interaction.channel
+    msg = await update_live_bracket_stream(interaction.guild, state)
+    bot.live_stream_messages[interaction.guild.id] = msg
+    
+    await interaction.followup.send("🔴 **Live Bracket Stream Active!** This card will update automatically as matches conclude.")
+
+
+@bot.tree.command(name="bracket", description="Show the active tournament bracket and live station status.")
+async def slash_bracket(interaction: discord.Interaction):
+    state = dict(bot.latest_bracket_state)
+    if not state.get("tournament_name"):
+        state["tournament_name"] = config.TOURNAMENT_NAME
+    embed = build_live_bracket_embed(state)
+    await interaction.response.send_message(embed=embed)
 
 
 @bot.tree.command(name="test", description="Run an instant demo match call and score reporting.")

@@ -472,9 +472,10 @@ class DiscordWebhookTestRequest(BaseModel):
 class DiscordAnnounceRequest(BaseModel):
     tournament_id: Optional[str] = "tournament"
     tournament_name: Optional[str] = None
-    message_type: str  # 'start' | 'match_called' | 'result' | 'custom'
+    message_type: str  # 'start' | 'match_called' | 'result' | 'custom' | 'bracket_update'
     custom_message: Optional[str] = None
     match_info: Optional[dict] = None  # {player1, player2, round, station}
+    bracket_data: Optional[dict] = None
     webhook_url: Optional[str] = None
     voice_webhook_url: Optional[str] = None
 
@@ -825,6 +826,45 @@ def discord_announce(req: DiscordAnnounceRequest, user_id: Optional[str] = Depen
             tournament_name=t_name,
             description=f"{emoji} **{winner}** defeats **{loser}**{score_text}\n`{round_name}` result confirmed.",
             color=color,
+        )
+    elif req.message_type == "bracket_update" and req.bracket_data:
+        bd = req.bracket_data
+        subdomain = bd.get("subdomain")
+        web_url = f"https://{subdomain}.fightbracketpro.com" if subdomain else "https://fightbracketpro.com"
+        fields = []
+        
+        active = bd.get("active_matches", [])
+        if active:
+            st_lines = [f"• **Station {m.get('station')}**: **{m.get('player1')}** vs **{m.get('player2')}** (`{m.get('round')}`)" for m in active]
+            fields.append({"name": "🏟️ Live on Stations", "value": "\n".join(st_lines), "inline": False})
+        
+        ondeck = bd.get("on_deck", [])
+        if ondeck:
+            od_lines = [f"• **{m.get('player1')}** vs **{m.get('player2')}** (`{m.get('round')}`)" for m in ondeck]
+            fields.append({"name": "⏳ Next Up / On Deck", "value": "\n".join(od_lines), "inline": False})
+            
+        recent = bd.get("recent_results", [])
+        if recent:
+            rc_lines = []
+            for r in recent:
+                sc = r.get("score")
+                sc_txt = f" ({sc})" if sc else ""
+                rc_lines.append(f"• ✅ **{r.get('winner')}** def. {r.get('loser')}{sc_txt}")
+            fields.append({"name": "🏆 Recent Results", "value": "\n".join(rc_lines), "inline": False})
+            
+        total_p = bd.get("total_players", 0)
+        done_m = bd.get("completed_matches", 0)
+        tot_m = bd.get("total_matches", 0)
+        if tot_m > 0:
+            pct = int((done_m / tot_m) * 100)
+            fields.append({"name": "📊 Tournament Progress", "value": f"**{done_m}/{tot_m}** matches completed ({pct}%)\n👥 **{total_p}** Competitors", "inline": False})
+
+        fields.append({"name": "🌐 Live Web Bracket", "value": f"[{web_url}]({web_url})", "inline": False})
+        payload = _discord_tournament_embed(
+            tournament_name=f"{t_name} — Live Bracket Stream",
+            description=f"⚡ Real-time tournament stream for **{t_name}**.",
+            color=65535, # Cyan
+            fields=fields
         )
     elif req.message_type == "custom" and req.custom_message:
         payload = _discord_tournament_embed(

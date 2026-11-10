@@ -663,6 +663,79 @@ export default function App() {
     return null;
   }, [activeTournament, activeGame, gameThemes, players, matches, stations, gameOrder, smsLogs, autoSyncSlug, exhibitions]);
 
+  const dispatchBracketStreamUpdate = useCallback(() => {
+    if (!discordWebhookUrl) return;
+    const tournamentTitle = activeTournament?.name || (activeGame ? gameThemes[activeGame]?.displayName : '') || 'Tekken 8 Tournament';
+    const tId = activeTournament?.slug || (activeTournament?.name ? activeTournament.name.toLowerCase().replace(/[^a-z0-9]+/g, '-') : 'tournament');
+
+    const activeMatchesOnStations = stations
+      .filter(s => s.active && s.matchId)
+      .map(s => {
+        const m = matches.find(match => match.id === s.matchId);
+        const p1 = players.find(p => p.id === m?.player1Id);
+        const p2 = players.find(p => p.id === m?.player2Id);
+        return {
+          station: String(s.id),
+          player1: p1?.tag || 'Player 1',
+          player2: p2?.tag || 'Player 2',
+          round: m?.roundName || 'Match',
+        };
+      });
+
+    const onDeck = matches
+      .filter(m => m.state === 'pending' && m.player1Id && m.player2Id && !m.stationId)
+      .slice(0, 3)
+      .map(m => {
+        const p1 = players.find(p => p.id === m.player1Id);
+        const p2 = players.find(p => p.id === m.player2Id);
+        return {
+          player1: p1?.tag || 'Player 1',
+          player2: p2?.tag || 'Player 2',
+          round: m.roundName || 'Next Round',
+        };
+      });
+
+    const recentResults = matches
+      .filter(m => m.state === 'completed' && m.winnerId)
+      .slice(-4)
+      .reverse()
+      .map(m => {
+        const winner = players.find(p => p.id === m.winnerId);
+        const loserId = m.player1Id === m.winnerId ? m.player2Id : m.player1Id;
+        const loser = players.find(p => p.id === loserId);
+        return {
+          winner: winner?.tag || 'Winner',
+          loser: loser?.tag || 'Loser',
+          score: m.score || '',
+          round: m.roundName || '',
+        };
+      });
+
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (supabaseToken) headers['Authorization'] = `Bearer ${supabaseToken}`;
+
+    fetch('/api/discord/announce', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        tournament_id: tId,
+        tournament_name: tournamentTitle,
+        webhook_url: discordWebhookUrl,
+        message_type: 'bracket_update',
+        bracket_data: {
+          tournament_name: tournamentTitle,
+          subdomain: activeTournament?.subdomain,
+          total_players: players.length,
+          total_matches: matches.length,
+          completed_matches: matches.filter(m => m.state === 'completed').length,
+          active_matches: activeMatchesOnStations,
+          on_deck: onDeck,
+          recent_results: recentResults,
+        }
+      })
+    }).catch(err => console.error('[Discord] bracket stream update error:', err));
+  }, [discordWebhookUrl, activeTournament, activeGame, gameThemes, stations, matches, players, supabaseToken]);
+
   // Automatically keep the shared local bracket active & synced in real time as matches are called/reported
   useEffect(() => {
     if (isApplyingRemoteRef.current) return;
@@ -673,6 +746,7 @@ export default function App() {
     lastLocalChangeRef.current = Date.now();
     const timer = setTimeout(() => {
       syncSharedBracketState(sub);
+      dispatchBracketStreamUpdate();
     }, 350);
 
     return () => clearTimeout(timer);
@@ -1876,6 +1950,20 @@ export default function App() {
             >
               <Globe size={11} />
               {isSharingBracket ? 'SHARING...' : 'SHARE SUBDOMAIN LINK'}
+            </button>
+          )}
+          {discordWebhookUrl && (activeTournament || matches.length > 0) && (
+            <button
+              onClick={() => {
+                dispatchBracketStreamUpdate();
+                toast.success('🔴 Live Bracket Stream dispatched to Discord!');
+              }}
+              title="Stream the active tournament bracket board live to Discord"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded text-[11px] font-bold tracking-widest uppercase hover:opacity-80 transition-opacity bg-cyan-500/15 text-cyan-400 border border-cyan-500/40"
+              style={{ fontFamily: 'JetBrains Mono, monospace' }}
+            >
+              <Zap size={11} />
+              STREAM TO DISCORD
             </button>
           )}
           <a href="https://start.gg" target="_blank" rel="noreferrer"
