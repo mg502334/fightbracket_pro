@@ -829,8 +829,10 @@ def discord_announce(req: DiscordAnnounceRequest, user_id: Optional[str] = Depen
         )
     elif req.message_type == "bracket_update" and req.bracket_data:
         bd = req.bracket_data
-        subdomain = bd.get("subdomain")
-        web_url = f"https://{subdomain}.fightbracketpro.com" if subdomain else "https://fightbracketpro.com"
+        web_url = bd.get("bracket_url")
+        if not web_url:
+            subdomain = bd.get("subdomain")
+            web_url = f"https://fightbracketpro.com/?sub={subdomain}" if subdomain else "https://fightbracketpro.com"
         fields = []
         
         active = bd.get("active_matches", [])
