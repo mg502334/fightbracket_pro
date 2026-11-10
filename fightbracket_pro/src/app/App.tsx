@@ -2042,7 +2042,7 @@ export default function App() {
               {/* Share Dropdown Menu */}
               {showShareMenu && (
                 <div
-                  className="absolute left-0 sm:right-0 sm:left-auto top-full pt-1.5 z-50 min-w-[240px]"
+                  className="absolute left-0 top-full pt-1.5 z-50 min-w-[240px] max-w-[calc(100vw-2rem)]"
                 >
                   <div
                     className="rounded-lg shadow-2xl overflow-hidden py-1.5 backdrop-blur-xl animate-in fade-in zoom-in-95 duration-150"
