@@ -14,8 +14,21 @@ try:
 except (ImportError, ValueError):
     import config
 
-# Check for ffmpeg in PATH or standard directories
-FFMPEG_EXE = shutil.which("ffmpeg") or os.getenv("FFMPEG_PATH", "ffmpeg")
+# Locate ffmpeg: check local folder, imageio_ffmpeg, PATH, or environment
+def get_ffmpeg_binary() -> str:
+    local_bot_ffmpeg = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ffmpeg.exe")
+    if os.path.exists(local_bot_ffmpeg):
+        return local_bot_ffmpeg
+    try:
+        import imageio_ffmpeg
+        exe = imageio_ffmpeg.get_ffmpeg_exe()
+        if os.path.exists(exe):
+            return exe
+    except Exception:
+        pass
+    return shutil.which("ffmpeg") or os.getenv("FFMPEG_PATH", "ffmpeg")
+
+FFMPEG_EXE = get_ffmpeg_binary()
 
 class VoiceQueueManager:
     """

@@ -9,6 +9,8 @@ build/
 .env
 .env.*
 !.env.example
+*.exe
+ffmpeg.exe
 *.key
 *.pem
 *.crt
