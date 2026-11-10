@@ -154,10 +154,11 @@ export function CallMatchModal({
                     style={{ color: isSelected ? theme.primaryColor : '#94A3B8' }}
                   />
                   <span
-                    className="text-sm font-bold font-mono"
+                    className="text-sm font-bold font-mono text-center truncate max-w-full px-1"
                     style={{ color: isSelected ? '#FFFFFF' : '#E2E8F0' }}
+                    title={s.name}
                   >
-                    STATION {s.id}
+                    {s.name || `STATION ${s.id}`}
                   </span>
                   {s.streamName && (
                     <span className="text-[9px] font-mono text-cyan-400 uppercase tracking-tighter truncate max-w-full">

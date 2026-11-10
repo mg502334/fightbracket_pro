@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Monitor, Swords, Plus, X, ChevronRight, Circle } from "lucide-react";
+import { Monitor, Swords, Plus, X, ChevronRight, Circle, Pencil, Check } from "lucide-react";
 import type { Station, BracketMatch, Player, GameTheme } from "../data/tournamentData";
 import { GAME_THEMES } from "../data/tournamentData";
 
@@ -75,33 +75,68 @@ export function StationsPanel({ stations, matches, players, theme, onAssignMatch
               <div className="flex items-center gap-2">
                 <Monitor size={13} style={{ color: isLive ? (gameTheme?.primaryColor ?? theme.primaryColor) : 'var(--muted-foreground)' }} />
                 {editingStation === station.id ? (
-                  <input
-                    type="text"
-                    value={editName}
-                    autoFocus
-                    onBlur={() => {
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
                       if (editName.trim()) onRenameStation(station.id, editName.trim());
                       setEditingStation(null);
                     }}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
+                    className="flex items-center gap-1"
+                  >
+                    <input
+                      type="text"
+                      value={editName}
+                      autoFocus
+                      onChange={(e) => setEditName(e.target.value)}
+                      onFocus={(e) => e.target.select()}
+                      onBlur={() => {
                         if (editName.trim()) onRenameStation(station.id, editName.trim());
                         setEditingStation(null);
-                      }
-                      if (e.key === 'Escape') setEditingStation(null);
-                    }}
-                    className="bg-transparent border-b border-white/20 text-sm tracking-wider focus:outline-none focus:border-white/50 w-24"
-                    style={{ fontFamily: 'Rajdhani, sans-serif', fontWeight: 700, color: 'var(--foreground)' }}
-                  />
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Escape') {
+                          e.stopPropagation();
+                          setEditingStation(null);
+                        }
+                      }}
+                      className="bg-black/60 border border-white/30 rounded px-1.5 py-0.5 text-sm tracking-wider focus:outline-none focus:border-cyan-400 w-32 sm:w-36"
+                      style={{ fontFamily: 'Rajdhani, sans-serif', fontWeight: 700, color: 'var(--foreground)' }}
+                    />
+                    <button
+                      type="submit"
+                      onMouseDown={(e) => e.preventDefault()}
+                      className="p-1 hover:text-emerald-400 text-slate-400 transition-colors"
+                      title="Save name"
+                    >
+                      <Check size={13} />
+                    </button>
+                    <button
+                      type="button"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        setEditingStation(null);
+                      }}
+                      className="p-1 hover:text-rose-400 text-slate-400 transition-colors"
+                      title="Cancel"
+                    >
+                      <X size={13} />
+                    </button>
+                  </form>
                 ) : (
-                  <span
-                    className="text-sm tracking-wider cursor-pointer hover:opacity-80"
+                  <button
+                    type="button"
                     onClick={() => { setEditingStation(station.id); setEditName(station.name); }}
-                    style={{ fontFamily: 'Rajdhani, sans-serif', fontWeight: 700, color: isLive ? (gameTheme?.primaryColor ?? theme.primaryColor) : 'var(--foreground)' }}
-                    title="Click to rename"
+                    className="group/name flex items-center gap-1.5 text-left hover:opacity-90 focus:outline-none"
+                    title="Click to rename station"
                   >
-                    {station.name}
-                  </span>
+                    <span
+                      className="text-sm tracking-wider group-hover/name:underline underline-offset-2"
+                      style={{ fontFamily: 'Rajdhani, sans-serif', fontWeight: 700, color: isLive ? (gameTheme?.primaryColor ?? theme.primaryColor) : 'var(--foreground)' }}
+                    >
+                      {station.name}
+                    </span>
+                    <Pencil size={11} className="opacity-40 group-hover/name:opacity-100 transition-opacity text-slate-400" />
+                  </button>
                 )}
                 {gameTheme && (
                   <span

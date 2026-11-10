@@ -35,10 +35,15 @@ except (ImportError, ValueError):
 intents = discord.Intents.default()
 intents.guilds = True
 intents.voice_states = True
+intents.message_content = True
 
 class TekkenTournamentBot(commands.Bot):
     def __init__(self):
-        super().__init__(command_prefix="!t8 ", intents=intents)
+        super().__init__(
+            command_prefix=commands.when_mentioned_or("!t8 ", "!", "?"),
+            intents=intents,
+            help_command=None
+        )
         self.voice_manager: Optional[VoiceQueueManager] = None
         self.active_text_channel: Optional[discord.TextChannel] = None
         self.active_voice_channel: Optional[discord.VoiceChannel] = None
@@ -102,14 +107,20 @@ def find_channel_by_name_or_id(guild: discord.Guild, target: str, is_voice: bool
             return ch
     return None
 
-async def ensure_voice_connection(guild: discord.Guild) -> Optional[discord.VoiceClient]:
+async def ensure_voice_connection(guild: discord.Guild, target_channel: Optional[discord.VoiceChannel] = None) -> Optional[discord.VoiceClient]:
     """Ensures the bot is connected to the desired voice channel in the guild."""
     # Check if already connected in this guild
     for vc in bot.voice_clients:
         if vc.guild.id == guild.id and vc.is_connected():
+            if target_channel and vc.channel.id != target_channel.id:
+                try:
+                    await vc.move_to(target_channel)
+                    bot.active_voice_channel = target_channel
+                except Exception as e:
+                    print(f"[Voice] Failed to move to '{target_channel.name}': {e}")
             return vc
 
-    channel = bot.active_voice_channel
+    channel = target_channel or bot.active_voice_channel
     if not channel and config.DEFAULT_VOICE_CHANNEL:
         channel = find_channel_by_name_or_id(guild, config.DEFAULT_VOICE_CHANNEL, is_voice=True)
 
@@ -444,8 +455,17 @@ async def handle_webhook_health(request: web.Request) -> web.Response:
 async def on_ready():
     print(f"==================================================")
     print(f"🥊 Tekken 8 Discord Tournament Bot Online: {bot.user}")
-    print(f"Connected Guilds: {[g.name for g in bot.guilds]}")
+    print(f"Connected Guilds: {[f'{g.name} ({g.id})' for g in bot.guilds]}")
     print(f"==================================================")
+
+    # Instantly register slash commands to every connected Discord server
+    for g in bot.guilds:
+        try:
+            bot.tree.copy_global_to(guild=g)
+            synced = await bot.tree.sync(guild=g)
+            print(f"[Slash] Instantly registered {len(synced)} slash commands in '{g.name}' ({g.id})")
+        except Exception as sync_err:
+            print(f"[Slash] Warning: Failed to sync commands to '{g.name}': {sync_err}")
 
     # Auto join default voice channel if enabled
     if config.AUTO_JOIN_VOICE and bot.guilds:
@@ -456,6 +476,17 @@ async def on_ready():
                 if bot.voice_manager and config.ENABLE_VOICE_TTS:
                     await bot.voice_manager.enqueue("Tekken 8 Tournament Match Caller is now online in voice.", vc)
                 break
+
+@bot.event
+async def on_guild_join(guild: discord.Guild):
+    """When the bot joins a new server, register slash commands immediately."""
+    print(f"[Guild Join] Joined server: {guild.name} ({guild.id})")
+    try:
+        bot.tree.copy_global_to(guild=guild)
+        synced = await bot.tree.sync(guild=guild)
+        print(f"[Slash] Synced {len(synced)} slash commands to newly joined guild '{guild.name}'")
+    except Exception as e:
+        print(f"[Slash] Guild join sync error on '{guild.name}': {e}")
 
 # ─── Slash Commands ────────────────────────────────────────────────────────────
 
@@ -657,6 +688,166 @@ async def slash_status(interaction: discord.Interaction):
     embed.set_footer(text="FightBracket Pro Integration Active")
 
     await interaction.response.send_message(embed=embed)
+
+@bot.tree.command(name="sync", description="Force an instant sync of all bot slash commands to this server.")
+async def slash_sync(interaction: discord.Interaction):
+    """Force an instant re-registration of all slash commands to this server."""
+    await interaction.response.defer(ephemeral=True)
+    try:
+        bot.tree.copy_global_to(guild=interaction.guild)
+        synced = await bot.tree.sync(guild=interaction.guild)
+        await interaction.followup.send(
+            f"✅ **Slash Commands Registered!** Synced {len(synced)} commands (`/stream`, `/call`, `/score`, `/bracket`, `/join`, etc.) to **{interaction.guild.name}**."
+        )
+    except Exception as e:
+        await interaction.followup.send(f"❌ Failed to sync slash commands: {e}")
+
+# ─── Prefix Text Commands (!stream, !bracket, !call, etc.) ──────────────────────
+
+@bot.command(name="stream", aliases=["livestream", "bracketstream"])
+async def cmd_stream(ctx: commands.Context, subdomain: Optional[str] = None):
+    """Stream the live tournament bracket into this channel. Usage: !stream or !stream <subdomain>"""
+    state = dict(bot.latest_bracket_state)
+    if subdomain:
+        state["subdomain"] = subdomain
+    if not state.get("tournament_name"):
+        state["tournament_name"] = config.TOURNAMENT_NAME
+
+    bot.active_text_channel = ctx.channel
+    msg = await update_live_bracket_stream(ctx.guild, state)
+    bot.live_stream_messages[ctx.guild.id] = msg
+    await ctx.send("🔴 **Live Bracket Stream Active!** This card updates automatically as matches are called and reported in FightBracket Pro.")
+
+@bot.command(name="bracket")
+async def cmd_bracket(ctx: commands.Context):
+    """Show the active tournament bracket and live station status."""
+    state = dict(bot.latest_bracket_state)
+    if not state.get("tournament_name"):
+        state["tournament_name"] = config.TOURNAMENT_NAME
+    embed = build_live_bracket_embed(state)
+    await ctx.send(embed=embed)
+
+@bot.command(name="sync")
+async def cmd_sync(ctx: commands.Context):
+    """Force an instant sync of all slash commands to this server."""
+    msg = await ctx.send("🔄 Syncing slash commands to this Discord server...")
+    try:
+        bot.tree.copy_global_to(guild=ctx.guild)
+        synced = await bot.tree.sync(guild=ctx.guild)
+        await msg.edit(content=f"✅ **Registered {len(synced)} slash commands** (`/stream`, `/call`, `/score`, `/bracket`, `/join`, etc.)! Type `/stream` in chat now.")
+    except Exception as e:
+        await msg.edit(content=f"❌ Failed to sync slash commands: {e}")
+
+@bot.command(name="call")
+async def cmd_call(ctx: commands.Context, player1: str, player2: str, station: str = "1", *, round_name: str = "Round 1"):
+    """Call a match: !call <player1> <player2> [station] [round]"""
+    await announce_match_call(
+        guild=ctx.guild,
+        player1=player1,
+        player2=player2,
+        station=station,
+        round_name=round_name
+    )
+    await ctx.send(f"✅ Called **{player1}** vs **{player2}** on Station {station}!")
+
+@bot.command(name="score")
+async def cmd_score(ctx: commands.Context, winner: str, loser: str, score: str, *, round_name: str = "Match"):
+    """Report match score: !score <winner> <loser> <score> [round]"""
+    await announce_match_score(
+        guild=ctx.guild,
+        winner=winner,
+        loser=loser,
+        score=score,
+        round_name=round_name
+    )
+    await ctx.send(f"🏆 Reported result: **{winner}** defeated **{loser}** ({score})!")
+
+@bot.command(name="join")
+async def cmd_join(ctx: commands.Context):
+    """Join your voice channel."""
+    if ctx.author and hasattr(ctx.author, "voice") and ctx.author.voice:
+        vc = await ensure_voice_connection(ctx.guild, target_channel=ctx.author.voice.channel)
+        if vc:
+            await ctx.send(f"🔊 Connected to voice channel '{ctx.author.voice.channel.name}'.")
+    else:
+        vc = await ensure_voice_connection(ctx.guild)
+        if vc:
+            await ctx.send(f"🔊 Connected to voice channel '{vc.channel.name}'.")
+        else:
+            await ctx.send("❌ Please join a voice channel first or configure DEFAULT_VOICE_CHANNEL.")
+
+@bot.command(name="leave")
+async def cmd_leave(ctx: commands.Context):
+    """Disconnect from voice."""
+    for vc in bot.voice_clients:
+        if vc.guild.id == ctx.guild.id:
+            await vc.disconnect()
+            bot.active_voice_channel = None
+            await ctx.send("👋 Disconnected from voice channel.")
+            return
+    await ctx.send("Bot is not currently connected to voice.")
+
+@bot.command(name="test")
+async def cmd_test(ctx: commands.Context):
+    """Run an instant demo match call and score report in voice & chat."""
+    await ctx.send("⚡ Running Tekken 8 match call and score test...")
+    await announce_match_call(
+        guild=ctx.guild,
+        player1="Arslan Ash",
+        player2="Knee",
+        station="1 (Main Stream)",
+        round_name="Winners Finals",
+        p1_char="Nina",
+        p2_char="Feng"
+    )
+    await asyncio.sleep(2)
+    await announce_match_score(
+        guild=ctx.guild,
+        winner="Arslan Ash",
+        loser="Knee",
+        score="3 - 2",
+        round_name="Winners Finals",
+        station="1 (Main Stream)",
+        winner_char="Nina",
+        loser_char="Feng"
+    )
+
+@bot.command(name="status")
+async def cmd_status(ctx: commands.Context):
+    """Show bot status."""
+    connected_vcs = [vc.channel.name for vc in bot.voice_clients if vc.is_connected() and vc.guild.id == ctx.guild.id]
+    chat_ch = bot.active_text_channel.name if bot.active_text_channel else config.DEFAULT_TEXT_CHANNEL
+    q_size = bot.voice_manager.queue.qsize() if bot.voice_manager else 0
+
+    embed = discord.Embed(
+        title="🎮 Tekken 8 Tournament Bot Status",
+        color=config.EMBED_COLOR,
+        timestamp=datetime.now(timezone.utc)
+    )
+    embed.add_field(name="🔊 Voice Channel", value=", ".join(connected_vcs) if connected_vcs else "Not Connected", inline=True)
+    embed.add_field(name="📝 Chat Channel", value=f"#{chat_ch}", inline=True)
+    embed.add_field(name="🎙️ TTS Engine", value="Active (Edge-TTS)" if config.ENABLE_VOICE_TTS else "Disabled", inline=True)
+    embed.add_field(name="📬 Voice Queue Size", value=f"{q_size} call(s) waiting", inline=True)
+    embed.add_field(name="🔗 Webhook Port", value=f"{config.WEBHOOK_PORT} (/announce)", inline=True)
+    embed.set_footer(text="FightBracket Pro Integration Active")
+    await ctx.send(embed=embed)
+
+@bot.command(name="help", aliases=["commands"])
+async def cmd_help(ctx: commands.Context):
+    """Show list of tournament commands."""
+    embed = discord.Embed(
+        title="🥊 Tekken 8 Tournament Bot Commands",
+        description="Commands can be used as Slash Commands (`/stream`, `/call`) or chat prefix commands (`!stream`, `!call`).",
+        color=config.EMBED_COLOR
+    )
+    embed.add_field(name="🔴 Live Bracket Stream", value="`/stream` or `!stream` — Stream the live updating bracket card into this channel.", inline=False)
+    embed.add_field(name="⚔️ Match Callout", value="`/call` or `!call <p1> <p2> [station] [round]` — Call a match in voice & chat.", inline=False)
+    embed.add_field(name="🏆 Score Reporting", value="`/score` or `!score <winner> <loser> <score>` — Report match result in voice & chat.", inline=False)
+    embed.add_field(name="📊 Bracket View", value="`/bracket` or `!bracket` — Display the tournament bracket overview.", inline=False)
+    embed.add_field(name="🔄 Sync Slash Commands", value="`/sync` or `!sync` — Force an instant sync of all slash commands to this server.", inline=False)
+    embed.add_field(name="🔊 Voice Controls", value="`/join` / `!join` — Join voice channel\n`/leave` / `!leave` — Disconnect voice", inline=False)
+    embed.add_field(name="⚡ Demo Test", value="`/test` or `!test` — Run an audio & chat demonstration.", inline=False)
+    await ctx.send(embed=embed)
 
 # ─── Main Entry Point ──────────────────────────────────────────────────────────
 

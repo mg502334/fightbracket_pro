@@ -128,6 +128,24 @@ export default function App() {
     );
   }, [supabaseUser]);
   const [discordWebhookUrl, setDiscordWebhookUrl] = useState<string | null>(null);
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!showUserMenu) return;
+    const handleClickOutside = (event: MouseEvent | TouchEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
+        setShowUserMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, [showUserMenu]);
+
   const [showFriendsModal, setShowFriendsModal] = useState(false);
   const [showDirectoryModal, setShowDirectoryModal] = useState(false);
   const [showRulesModal, setShowRulesModal] = useState(false);
@@ -2017,10 +2035,13 @@ export default function App() {
             </div>
           )}
           {supabaseUser ? (
-            <div className="relative group">
+            <div className="relative group" ref={userMenuRef}>
               <button
-                onClick={() => setActiveTab('account')}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded text-[11px] font-bold tracking-widest uppercase hover:opacity-90 transition-all"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowUserMenu(prev => !prev);
+                }}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded text-[11px] font-bold tracking-widest uppercase hover:opacity-90 transition-all cursor-pointer"
                 style={{
                   background: '#FF006E15',
                   border: '1px solid rgba(255,0,110,0.4)',
@@ -2029,11 +2050,20 @@ export default function App() {
                 }}>
                 <UserCheck size={11} />
                 <span>{authDisplayName || 'ACCOUNT'}</span>
-                <ChevronDown size={11} className="opacity-70 group-hover:rotate-180 transition-transform duration-200" />
+                <ChevronDown
+                  size={11}
+                  className={`opacity-70 transition-transform duration-200 ${
+                    showUserMenu ? 'rotate-180' : 'group-hover:rotate-180'
+                  }`}
+                />
               </button>
 
-              {/* Hover Dropdown Menu */}
-              <div className="absolute right-0 top-full pt-1.5 hidden group-hover:block z-50 min-w-[200px]">
+              {/* Dropdown Menu (Hover on Desktop, Click/Tap Toggle on Mobile & Desktop) */}
+              <div
+                className={`absolute right-0 top-full pt-1.5 z-50 min-w-[200px] ${
+                  showUserMenu ? 'block' : 'hidden md:group-hover:block'
+                }`}
+              >
                 <div
                   className="rounded-lg shadow-2xl overflow-hidden py-1.5 backdrop-blur-xl animate-in fade-in zoom-in-95 duration-150"
                   style={{
@@ -2041,7 +2071,13 @@ export default function App() {
                     border: '1px solid rgba(255, 0, 110, 0.35)',
                     boxShadow: '0 10px 30px rgba(0,0,0,0.85), 0 0 15px rgba(255,0,110,0.2)'
                   }}>
-                  <div className="px-3 py-1.5 border-b border-white/10 mb-1">
+                  <div
+                    onClick={() => {
+                      setShowUserMenu(false);
+                      setActiveTab('account');
+                    }}
+                    className="px-3 py-1.5 border-b border-white/10 mb-1 cursor-pointer hover:bg-white/5 transition-colors"
+                  >
                     <div className="text-[10px] uppercase tracking-wider text-gray-400 font-mono">Logged in as</div>
                     <div className="text-xs font-bold text-white truncate font-mono" style={{ color: '#00E5FF' }}>
                       {authDisplayName}
@@ -2050,6 +2086,7 @@ export default function App() {
 
                   <button
                     onClick={() => {
+                      setShowUserMenu(false);
                       setActiveTab('account');
                       window.dispatchEvent(new CustomEvent('fb-open-dashboard-tab', { detail: { tab: 'Dashboard' } }));
                     }}
@@ -2061,6 +2098,7 @@ export default function App() {
 
                   <button
                     onClick={() => {
+                      setShowUserMenu(false);
                       setActiveTab('account');
                       window.dispatchEvent(new CustomEvent('fb-open-dashboard-tab', { detail: { tab: 'Settings', settingsTab: 'profile' } }));
                     }}
@@ -2072,6 +2110,7 @@ export default function App() {
 
                   <button
                     onClick={() => {
+                      setShowUserMenu(false);
                       setActiveTab('account');
                       window.dispatchEvent(new CustomEvent('fb-open-dashboard-tab', { detail: { tab: 'Settings', settingsTab: 'events' } }));
                     }}
@@ -2085,6 +2124,7 @@ export default function App() {
 
                   <button
                     onClick={async () => {
+                      setShowUserMenu(false);
                       await supabase.auth.signOut();
                       setSupabaseUser(null);
                       setSupabaseToken(null);

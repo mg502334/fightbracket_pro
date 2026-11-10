@@ -16,7 +16,7 @@ import {
   Shield,
   Radio
 } from "lucide-react";
-import type { BracketMatch, Player, GameTheme } from "../data/tournamentData";
+import type { BracketMatch, Player, GameTheme, Station } from "../data/tournamentData";
 import { FistBumpIcon } from "./FistBumpIcon";
 import { playTournamentChime, speakMatchCall } from "../utils/audioAnnouncer";
 
@@ -24,6 +24,7 @@ interface AnnouncementOverlayProps {
   match: BracketMatch | null;
   players: Player[];
   theme: GameTheme;
+  stations?: Station[];
   onDismiss: () => void;
   onStartMatch?: (match: BracketMatch) => void;
   onUndoCall?: (matchId: string) => void;
@@ -33,6 +34,7 @@ export function AnnouncementOverlay({
   match,
   players,
   theme,
+  stations,
   onDismiss,
   onStartMatch,
   onUndoCall,
@@ -93,20 +95,23 @@ export function AnnouncementOverlay({
   const p1 = match?.player1Id ? playerMap[match.player1Id] : null;
   const p2 = match?.player2Id ? playerMap[match.player2Id] : null;
 
+  const stationObj = stations?.find(s => s.id === match?.stationId);
+  const stationDisplayName = stationObj?.name || (match?.stationId ? `Station ${match.stationId}` : 'TBD');
+
   const handleReplayVoice = () => {
     if (!match) return;
     playTournamentChime(0.4);
     speakMatchCall(
       p1?.tag || 'Player 1',
       p2?.tag || 'Player 2',
-      match.stationId || 1,
+      stationObj?.name || match.stationId || 1,
       theme.displayName
     );
   };
 
   const handleCopyCallout = () => {
     if (!match) return;
-    const text = `📢 [${theme.displayName}] ${p1?.tag || 'TBD'} vs ${p2?.tag || 'TBD'} called to STATION ${match.stationId || 'TBD'} (${match.roundName}) — 10 min to report!`;
+    const text = `📢 [${theme.displayName}] ${p1?.tag || 'TBD'} vs ${p2?.tag || 'TBD'} called to ${stationDisplayName.toUpperCase()} (${match.roundName}) — 10 min to report!`;
     navigator.clipboard.writeText(text).catch(() => {});
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -413,7 +418,7 @@ export function AnnouncementOverlay({
                         textShadow: `0 0 20px ${theme.primaryColor}`,
                       }}
                     >
-                      STATION {match.stationId ?? 'TBD'}
+                      {stationDisplayName.toUpperCase()}
                       {match.streamUrl && (
                         <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-red-500/20 text-red-400 border border-red-500/30">
                           LIVE STREAM SETUP
@@ -421,7 +426,7 @@ export function AnnouncementOverlay({
                       )}
                     </div>
                     <div className="text-xs text-slate-400 font-sans mt-0.5">
-                      Tournament Arena Setup #{match.stationId ?? 1} · Referees on standby
+                      {stationObj?.name ? `Tournament Arena: ${stationObj.name}` : `Tournament Arena Setup #${match.stationId ?? 1}`} · Referees on standby
                     </div>
                   </div>
                 </div>

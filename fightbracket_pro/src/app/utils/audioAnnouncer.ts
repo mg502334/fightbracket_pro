@@ -74,7 +74,13 @@ export function speakMatchCall(player1: string, player2: string, stationId: numb
     const p2Clean = player2.replace(/\[.*?\]|\(.*?\)/g, '').trim() || 'Player 2';
     const gameContext = gameName ? `${gameName}. ` : '';
 
-    const text = `Attention! ${gameContext}${p1Clean}, versus ${p2Clean}. Please report to Station ${stationId}.`;
+    const stationText = typeof stationId === 'string' && stationId.toLowerCase().startsWith('station')
+      ? stationId
+      : typeof stationId === 'number'
+        ? `Station ${stationId}`
+        : `${stationId}`;
+
+    const text = `Attention! ${gameContext}${p1Clean}, versus ${p2Clean}. Please report to ${stationText}.`;
 
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.rate = 1.02;
