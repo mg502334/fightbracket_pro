@@ -240,8 +240,10 @@ async def announce_match_score(
 def build_live_bracket_embed(data: dict) -> discord.Embed:
     """Builds a comprehensive live streaming bracket embed card."""
     t_name = data.get("tournament_name") or config.TOURNAMENT_NAME
-    subdomain = data.get("subdomain")
-    web_url = f"https://{subdomain}.fightbracketpro.com" if subdomain else "https://fightbracketpro.com"
+    web_url = data.get("bracket_url")
+    if not web_url:
+        subdomain = data.get("subdomain")
+        web_url = f"https://fightbracketpro.com/?sub={subdomain}" if subdomain else "https://fightbracketpro.com"
 
     embed = discord.Embed(
         title=f"⚡ LIVE BRACKET STREAM — {t_name.upper()}",

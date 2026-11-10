@@ -450,7 +450,7 @@ def send_discord_webhook(webhook_url: str, payload: dict) -> bool:
         return False
 
 
-def _discord_tournament_embed(tournament_name: str, description: str, color: int = 5765120, fields: list = None) -> dict:
+def _discord_tournament_embed(tournament_name: str, description: str, color: int = 5765120, fields: list = None, url: Optional[str] = None) -> dict:
     """Build a Discord embed dict for tournament events."""
     embed: dict = {
         "title": f"⚔️ {tournament_name}",
@@ -459,6 +459,8 @@ def _discord_tournament_embed(tournament_name: str, description: str, color: int
         "footer": {"text": "FightBracket Pro"},
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }
+    if url:
+        embed["url"] = url
     if fields:
         embed["fields"] = fields
     return {"embeds": [embed]}
@@ -861,12 +863,13 @@ def discord_announce(req: DiscordAnnounceRequest, user_id: Optional[str] = Depen
             pct = int((done_m / tot_m) * 100)
             fields.append({"name": "📊 Tournament Progress", "value": f"**{done_m}/{tot_m}** matches completed ({pct}%)\n👥 **{total_p}** Competitors", "inline": False})
 
-        fields.append({"name": "🌐 Live Web Bracket", "value": f"[{web_url}]({web_url})", "inline": False})
+        fields.append({"name": "🌐 Live Web Bracket", "value": f"[Open Live Tournament Bracket]({web_url})\n`{web_url}`", "inline": False})
         payload = _discord_tournament_embed(
             tournament_name=f"{t_name} — Live Bracket Stream",
             description=f"⚡ Real-time tournament stream for **{t_name}**.",
             color=65535, # Cyan
-            fields=fields
+            fields=fields,
+            url=web_url
         )
     elif req.message_type == "custom" and req.custom_message:
         payload = _discord_tournament_embed(

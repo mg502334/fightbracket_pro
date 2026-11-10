@@ -714,6 +714,10 @@ export default function App() {
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     if (supabaseToken) headers['Authorization'] = `Bearer ${supabaseToken}`;
 
+    const currentOrigin = typeof window !== 'undefined' ? window.location.origin : 'https://fightbracketpro.com';
+    const sub = sanitizeSubdomain(activeTournament?.subdomain, 'fb');
+    const liveBracketUrl = `${currentOrigin}/?sub=${encodeURIComponent(sub)}`;
+
     fetch('/api/discord/announce', {
       method: 'POST',
       headers,
@@ -724,7 +728,8 @@ export default function App() {
         message_type: 'bracket_update',
         bracket_data: {
           tournament_name: tournamentTitle,
-          subdomain: activeTournament?.subdomain,
+          subdomain: sub,
+          bracket_url: liveBracketUrl,
           total_players: players.length,
           total_matches: matches.length,
           completed_matches: matches.filter(m => m.state === 'completed').length,
@@ -735,6 +740,17 @@ export default function App() {
       })
     }).catch(err => console.error('[Discord] bracket stream update error:', err));
   }, [discordWebhookUrl, activeTournament, activeGame, gameThemes, stations, matches, players, supabaseToken]);
+
+  const handleStreamToDiscord = useCallback(async () => {
+    if (!discordWebhookUrl) {
+      toast.error('Add your Discord Webhook URL in Settings → Integrations first!');
+      return;
+    }
+    const sub = sanitizeSubdomain(activeTournament?.subdomain, 'fb');
+    await syncSharedBracketState(sub);
+    dispatchBracketStreamUpdate();
+    toast.success('🔴 Live Bracket Stream updated in Discord!');
+  }, [discordWebhookUrl, activeTournament?.subdomain, syncSharedBracketState, dispatchBracketStreamUpdate]);
 
   // Automatically keep the shared local bracket active & synced in real time as matches are called/reported
   useEffect(() => {
@@ -971,13 +987,15 @@ export default function App() {
     const playerIds = [match.player1Id, match.player2Id].filter(Boolean) as string[];
     const gameThemeName = gameThemes[match.gameId]?.displayName || 'GAME';
 
+    const stationLabel = station?.name || `Station ${sid}`;
+
     playerIds.forEach((pid, idx) => {
       const player = players.find(p => p.id === pid);
       if (!player) return;
       setSmsLogs(prev => [...prev, {
         id: `sms-${Date.now()}-${idx}`,
         playerId: pid,
-        message: `[${gameThemeName}] ${player.tag}, your ${match.roundName} match has been called! Report to Station ${sid} immediately. — CLASH OF KINGS VII`,
+        message: `[${gameThemeName}] ${player.tag}, your ${match.roundName} match has been called! Report to ${stationLabel} immediately. — CLASH OF KINGS VII`,
         sentAt: new Date(),
         status: Math.random() > 0.1 ? 'delivered' : 'sent',
         matchId: match.id,
@@ -985,7 +1003,7 @@ export default function App() {
     });
 
     setPlayers(prev => prev.map(p => playerIds.includes(p.id) ? { ...p, smsNotified: true } : p));
-    toast.success(`Match called — Station ${sid}`, {
+    toast.success(`Match called — ${stationLabel}`, {
       style: { background: 'var(--card)', border: `1px solid ${theme?.primaryColor || '#00FF88'}40`, color: 'var(--foreground)' },
       action: {
         label: 'Undo',
@@ -1106,7 +1124,10 @@ export default function App() {
 
   const handleRenameStation = useCallback((stationId: number, name: string) => {
     setStations(prev => prev.map(s => s.id === stationId ? { ...s, name } : s));
-  }, []);
+    toast.success(`Station renamed to "${name}"`, {
+      style: { background: 'var(--card)', border: `1px solid ${theme?.primaryColor || '#00FF88'}40`, color: 'var(--foreground)' },
+    });
+  }, [theme?.primaryColor]);
 
   const handleSendSMS = useCallback(async (playerIds: string[], message: string, matchId?: string) => {
     const phoneNumbers = playerIds.map(pid => players.find(p => p.id === pid)?.phone).filter(Boolean) as string[];
@@ -1954,10 +1975,7 @@ export default function App() {
           )}
           {discordWebhookUrl && (activeTournament || matches.length > 0) && (
             <button
-              onClick={() => {
-                dispatchBracketStreamUpdate();
-                toast.success('🔴 Live Bracket Stream dispatched to Discord!');
-              }}
+              onClick={handleStreamToDiscord}
               title="Stream the active tournament bracket board live to Discord"
               className="flex items-center gap-1.5 px-3 py-1.5 rounded text-[11px] font-bold tracking-widest uppercase hover:opacity-80 transition-opacity bg-cyan-500/15 text-cyan-400 border border-cyan-500/40"
               style={{ fontFamily: 'JetBrains Mono, monospace' }}
@@ -2344,6 +2362,7 @@ export default function App() {
       <AnnouncementOverlay
         match={announcement}
         players={players}
+        stations={stations}
         theme={announcement && gameThemes[announcement.gameId] ? gameThemes[announcement.gameId] : (theme || {
           id: 'default', displayName: 'FightBracket', shortName: 'FB', primaryColor: '#00E5FF', secondaryColor: '#FF006E', bgFrom: '#050A14', glowColor: 'rgba(0,229,255,0.4)', description: '', publisher: ''
         })}
@@ -2353,7 +2372,8 @@ export default function App() {
         onStartMatch={(m) => {
           setMatches(prev => prev.map(match => match.id === m.id ? { ...match, state: 'in_progress' } : match));
           setAnnouncement(null);
-          toast.success(`Match started at Station ${m.stationId}`);
+          const stName = stations.find(s => s.id === m.stationId)?.name || `Station ${m.stationId}`;
+          toast.success(`Match started at ${stName}`);
         }}
         onUndoCall={(id) => handleUndoCall(id)}
       />

@@ -62,25 +62,12 @@ export function extractActiveSubdomain(): string | null {
  * - On localhost -> http://<sub>.localhost:<port>
  * - Elsewhere -> https://<sub>.fightbracketpro.com
  */
-export function getSubdomainOrigin(subdomain: string): string {
-  const cleanSub = sanitizeSubdomain(subdomain);
+export function getSubdomainOrigin(subdomain?: string): string {
   if (typeof window === 'undefined') {
-    return `https://${cleanSub}.fightbracketpro.com`;
+    return 'https://fightbracketpro.com';
   }
-  const { protocol, hostname, port } = window.location;
-  const host = hostname.toLowerCase();
-
-  if (host === 'localhost' || host.endsWith('.localhost')) {
-    const portSuffix = port ? `:${port}` : '';
-    return `${protocol}//${cleanSub}.localhost${portSuffix}`;
-  }
-
-  if (host === 'fightbracketpro.com' || host.endsWith('.fightbracketpro.com')) {
-    return `https://${cleanSub}.fightbracketpro.com`;
-  }
-
-  // Fallback for preview deployments or IP addresses while still preserving the subdomain
-  return `https://${cleanSub}.fightbracketpro.com`;
+  const { protocol, host } = window.location;
+  return `${protocol}//${host}`;
 }
 
 /**
@@ -104,12 +91,12 @@ export function getBracketSubdomainUrl(options: {
   const cleanSub = sanitizeSubdomain(options.subdomain, 'fb');
   const origin = getSubdomainOrigin(cleanSub);
 
-  if (options.tournamentId) {
+  if (options.tournamentId && options.tournamentId !== cleanSub) {
     return `${origin}/t/${encodeURIComponent(options.tournamentId)}?sub=${encodeURIComponent(cleanSub)}`;
   }
   if (options.eventSlug) {
     return `${origin}/?event=${encodeURIComponent(options.eventSlug)}&sub=${encodeURIComponent(cleanSub)}`;
   }
-  return `${origin}/t/${encodeURIComponent(cleanSub)}?sub=${encodeURIComponent(cleanSub)}`;
+  return `${origin}/?sub=${encodeURIComponent(cleanSub)}`;
 }
 
