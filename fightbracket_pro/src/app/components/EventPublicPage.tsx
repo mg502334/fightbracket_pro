@@ -189,7 +189,7 @@ export function EventPublicPage() {
               className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/40 text-cyan-300 font-mono text-xs font-bold transition-all"
             >
               {copiedLink ? <Check size={13} /> : <Share2 size={13} />}
-              {copiedLink ? 'COPIED!' : 'SHARE SUBDOMAIN LINK'}
+              {copiedLink ? 'COPIED!' : 'SHARE'}
             </button>
           </div>
         </div>

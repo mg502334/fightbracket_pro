@@ -14,9 +14,30 @@ interface StationsPanelProps {
   onAddStation: () => void;
   onRemoveStation: (stationId: number) => void;
   onRenameStation: (stationId: number, name: string) => void;
+  discordTextCallouts?: boolean;
+  discordVoiceCallouts?: boolean;
+  onToggleDiscordText?: () => void;
+  onToggleDiscordVoice?: () => void;
+  onOpenDiscordSettings?: () => void;
 }
 
-export function StationsPanel({ stations, matches, players, theme, onAssignMatch, onCallMatch, onClearStation, onAddStation, onRemoveStation, onRenameStation }: StationsPanelProps) {
+export function StationsPanel({
+  stations,
+  matches,
+  players,
+  theme,
+  onAssignMatch,
+  onCallMatch,
+  onClearStation,
+  onAddStation,
+  onRemoveStation,
+  onRenameStation,
+  discordTextCallouts = true,
+  discordVoiceCallouts = true,
+  onToggleDiscordText,
+  onToggleDiscordVoice,
+  onOpenDiscordSettings
+}: StationsPanelProps) {
   const [selectedStation, setSelectedStation] = useState<number | null>(null);
   const [editingStation, setEditingStation] = useState<number | null>(null);
   const [editName, setEditName] = useState('');
@@ -43,7 +64,75 @@ export function StationsPanel({ stations, matches, players, theme, onAssignMatch
   }
 
   return (
-    <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))' }}>
+    <div className="space-y-4">
+      {/* Discord Match Callout Switches */}
+      <div
+        className="flex flex-wrap items-center justify-between gap-3 px-4 py-2.5 rounded-lg border backdrop-blur-sm"
+        style={{
+          background: 'rgba(88,101,242,0.06)',
+          borderColor: 'rgba(88,101,242,0.25)',
+        }}
+      >
+        <div className="flex items-center gap-2">
+          <svg width="18" height="18" viewBox="0 0 127.14 96.36" fill="#5865F2" aria-hidden="true" className="shrink-0">
+            <path d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36,77.7,77.7,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.66,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1A105.25,105.25,0,0,0,126.6,80.22h0C129.24,52.84,122.09,29.11,107.7,8.07ZM42.45,65.69C36.18,65.69,31,60,31,53s5-12.74,11.43-12.74S54,46,53.89,53,48.84,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.25,60,73.25,53s5-12.74,11.44-12.74S96.23,46,96.12,53,91.08,65.69,84.69,65.69Z"/>
+          </svg>
+          <div className="flex flex-col">
+            <span className="text-xs font-mono font-bold uppercase tracking-wider text-white">
+              Discord Match Callouts
+            </span>
+            <span className="text-[10px] font-mono text-gray-400">
+              Live broadcast controls for match announcements
+            </span>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+          {/* Text Callouts Switch */}
+          <button
+            onClick={onToggleDiscordText}
+            title={discordTextCallouts ? 'Click to turn OFF Discord text channel callouts' : 'Click to turn ON Discord text channel callouts'}
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-mono font-bold transition-all cursor-pointer ${
+              discordTextCallouts
+                ? 'bg-[#5865F2]/20 border-[#5865F2]/60 text-white shadow-[0_0_12px_rgba(88,101,242,0.3)]'
+                : 'bg-black/40 border-white/10 text-gray-400 hover:text-gray-200'
+            }`}
+          >
+            <span>💬 TEXT CALLS</span>
+            <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${discordTextCallouts ? 'bg-[#5865F2] text-white' : 'bg-white/10 text-gray-400'}`}>
+              {discordTextCallouts ? 'ON' : 'OFF'}
+            </span>
+          </button>
+
+          {/* Voice Callouts Switch */}
+          <button
+            onClick={onToggleDiscordVoice}
+            title={discordVoiceCallouts ? 'Click to turn OFF Discord voice channel TTS callouts' : 'Click to turn ON Discord voice channel TTS callouts'}
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-mono font-bold transition-all cursor-pointer ${
+              discordVoiceCallouts
+                ? 'bg-cyan-500/20 border-cyan-500/60 text-white shadow-[0_0_12px_rgba(0,229,255,0.3)]'
+                : 'bg-black/40 border-white/10 text-gray-400 hover:text-gray-200'
+            }`}
+          >
+            <span>🎙️ VOICE CALLS</span>
+            <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${discordVoiceCallouts ? 'bg-cyan-500 text-black' : 'bg-white/10 text-gray-400'}`}>
+              {discordVoiceCallouts ? 'ON' : 'OFF'}
+            </span>
+          </button>
+
+          {onOpenDiscordSettings && (
+            <button
+              onClick={onOpenDiscordSettings}
+              title="Open Discord Webhook Settings"
+              className="text-[11px] font-mono text-gray-400 hover:text-cyan-400 underline underline-offset-2 ml-1"
+            >
+              [Settings]
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))' }}>
       {stations.map(station => {
         const match = station.matchId ? matches.find(m => m.id === station.matchId) : null;
         const p1 = match?.player1Id ? playerMap[match.player1Id] : null;
@@ -305,6 +394,7 @@ export function StationsPanel({ stations, matches, players, theme, onAssignMatch
           ADD STATION
         </span>
       </button>
+    </div>
     </div>
   );
 }

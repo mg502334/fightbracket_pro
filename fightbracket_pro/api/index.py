@@ -308,6 +308,8 @@ class ProfileUpdateRequest(BaseModel):
     discord_webhook_url: Optional[str] = None
     discord_voice_webhook_url: Optional[str] = None
     discord_server_id: Optional[str] = None
+    discord_text_callouts_enabled: Optional[bool] = None
+    discord_voice_callouts_enabled: Optional[bool] = None
     games_data: Optional[str] = None
     station_names: Optional[str] = None
     is_public: Optional[bool] = None
@@ -480,6 +482,8 @@ class DiscordAnnounceRequest(BaseModel):
     bracket_data: Optional[dict] = None
     webhook_url: Optional[str] = None
     voice_webhook_url: Optional[str] = None
+    enable_text: Optional[bool] = None
+    enable_voice: Optional[bool] = None
 
 
 def _send_support_autoresponse(user_email: str, inquiry_type: str, ticket_id: str):
@@ -778,10 +782,26 @@ def test_discord_webhook(req: DiscordWebhookTestRequest, user_id: str = Depends(
 def discord_announce(req: DiscordAnnounceRequest, user_id: Optional[str] = Depends(get_optional_user_id), db: Session = Depends(get_db)):
     """Send a Discord announcement for a tournament event."""
     user = db.query(DBUser).filter(DBUser.id == user_id).first() if (user_id and db) else None
+    
+    # Check on/off switches for Discord match text and voice callouts
+    user_text_enabled = getattr(user, 'discord_text_callouts_enabled', True) if user else True
+    user_voice_enabled = getattr(user, 'discord_voice_callouts_enabled', True) if user else True
+    text_enabled = req.enable_text if req.enable_text is not None else user_text_enabled
+    voice_enabled = req.enable_voice if req.enable_voice is not None else user_voice_enabled
+
     text_webhook = req.webhook_url or (getattr(user, 'discord_webhook_url', None) if user else None)
     voice_webhook = req.voice_webhook_url or (getattr(user, 'discord_voice_webhook_url', None) if user else None)
+
+    if req.message_type in ("match_called", "result"):
+        if not text_enabled:
+            text_webhook = None
+        if not voice_enabled:
+            voice_webhook = None
+        if not text_webhook and not voice_webhook:
+            return {"status": "skipped", "message": "Discord match text and voice callouts are switched off."}
+
     if not text_webhook and not voice_webhook:
-        raise HTTPException(status_code=400, detail="No Discord webhook configured. Add one in Settings → Integrations → Discord.")
+        raise HTTPException(status_code=400, detail="No Discord webhook configured or active. Add one in Settings → Integrations → Discord.")
     
     # Resolve tournament name: from DB if exists, otherwise fallback to request or default
     t_name = req.tournament_name
@@ -1126,9 +1146,10 @@ def get_user_profile(payload: dict = Depends(get_current_user_payload), db: Sess
                 "tiktok_url": getattr(user, 'tiktok_url', '') or "",
                 "spotify_url": getattr(user, 'spotify_url', '') or "",
                 "discord_webhook_url": getattr(user, 'discord_webhook_url', '') or "",
-            "discord_voice_webhook_url": getattr(user, 'discord_voice_webhook_url', '') or "",
                 "discord_voice_webhook_url": getattr(user, 'discord_voice_webhook_url', '') or "",
                 "discord_server_id": getattr(user, 'discord_server_id', '') or "",
+                "discord_text_callouts_enabled": user.discord_text_callouts_enabled if getattr(user, 'discord_text_callouts_enabled', None) is not None else True,
+                "discord_voice_callouts_enabled": user.discord_voice_callouts_enabled if getattr(user, 'discord_voice_callouts_enabled', None) is not None else True,
                 "games_data": getattr(user, 'games_data', '') or "",
                 "is_public": user.is_public if user.is_public is not None else True,
                 "friends_only": user.friends_only if user.friends_only is not None else False,
@@ -1220,6 +1241,10 @@ def update_user_profile(req: ProfileUpdateRequest, user_id: str = Depends(get_cu
         user.discord_voice_webhook_url = req.discord_voice_webhook_url.strip() # type: ignore
     if req.discord_server_id is not None:
         user.discord_server_id = req.discord_server_id.strip() # type: ignore
+    if req.discord_text_callouts_enabled is not None:
+        user.discord_text_callouts_enabled = req.discord_text_callouts_enabled # type: ignore
+    if req.discord_voice_callouts_enabled is not None:
+        user.discord_voice_callouts_enabled = req.discord_voice_callouts_enabled # type: ignore
     if req.games_data is not None:
         user.games_data = req.games_data # type: ignore
     if req.station_names is not None:
@@ -1258,6 +1283,8 @@ def update_user_profile(req: ProfileUpdateRequest, user_id: str = Depends(get_cu
             "discord_webhook_url": getattr(user, 'discord_webhook_url', '') or "",
             "discord_voice_webhook_url": getattr(user, 'discord_voice_webhook_url', '') or "",
             "discord_server_id": getattr(user, 'discord_server_id', '') or "",
+            "discord_text_callouts_enabled": getattr(user, 'discord_text_callouts_enabled', True),
+            "discord_voice_callouts_enabled": getattr(user, 'discord_voice_callouts_enabled', True),
             "games_data": getattr(user, 'games_data', '') or "",
             "is_public": user.is_public,
             "friends_only": user.friends_only,

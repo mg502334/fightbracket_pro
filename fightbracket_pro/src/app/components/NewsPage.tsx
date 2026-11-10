@@ -168,7 +168,7 @@ const DEFAULT_NEWS_ITEMS: NewsItem[] = [
     badge: 'NEW UPGRADE',
     bullets: [
       'Automatic Random Subdomains: Every event and shared bracket gets a dedicated subdomain link that resolves directly to your event or runnable bracket.',
-      'Share, Load & Run Local Events: Create a local tournament, click SHARE SUBDOMAIN LINK, and send it to a co-organizer or player — they can load the full bracket and run matches (call matches, assign stations, report scores, manage check-ins).',
+      'Share, Load & Run Local Events: Create a local tournament, click SHARE, and send it to a co-organizer or player — they can load the full bracket and run matches (call matches, assign stations, report scores, manage check-ins).',
       'Live Active Bracket Sync: Shared local brackets stay active as you run matches, automatically syncing match calls, station assignments, and live scores every 3.5 seconds across all connected viewers and public event pages.',
     ],
   },

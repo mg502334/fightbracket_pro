@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "motion/react";
 import {
   Trophy, GitBranch, UserCheck, User, Monitor, MessageSquare, Smartphone,
   ExternalLink, RefreshCw, Zap, MapPin, Globe, Moon, Sun, X, Tv, Cloud, Play, LayoutGrid, Trash2, Megaphone, Search,
-  Settings, LogOut, ChevronDown, LayoutDashboard
+  Settings, LogOut, ChevronDown, LayoutDashboard, Share2, Copy
 } from "lucide-react";
 import { useTheme } from "next-themes";
 
@@ -128,14 +128,41 @@ export default function App() {
     );
   }, [supabaseUser]);
   const [discordWebhookUrl, setDiscordWebhookUrl] = useState<string | null>(null);
+  const [discordVoiceWebhookUrl, setDiscordVoiceWebhookUrl] = useState<string | null>(null);
+  const [discordTextCallouts, setDiscordTextCallouts] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return true;
+    return localStorage.getItem('fb_discord_text_callouts') !== 'false';
+  });
+  const [discordVoiceCallouts, setDiscordVoiceCallouts] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return true;
+    return localStorage.getItem('fb_discord_voice_callouts') !== 'false';
+  });
   const [showUserMenu, setShowUserMenu] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
+  const [showShareMenu, setShowShareMenu] = useState(false);
+  const shareMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!showUserMenu) return;
+    const onCalloutToggled = (e: Event) => {
+      const customEvent = e as CustomEvent<{ field: string; value: boolean }>;
+      if (customEvent.detail?.field === 'discord_text_callouts_enabled') {
+        setDiscordTextCallouts(customEvent.detail.value);
+      } else if (customEvent.detail?.field === 'discord_voice_callouts_enabled') {
+        setDiscordVoiceCallouts(customEvent.detail.value);
+      }
+    };
+    window.addEventListener('fb-discord-callout-toggled', onCalloutToggled);
+    return () => window.removeEventListener('fb-discord-callout-toggled', onCalloutToggled);
+  }, []);
+
+  useEffect(() => {
+    if (!showUserMenu && !showShareMenu) return;
     const handleClickOutside = (event: MouseEvent | TouchEvent) => {
       if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
         setShowUserMenu(false);
+      }
+      if (shareMenuRef.current && !shareMenuRef.current.contains(event.target as Node)) {
+        setShowShareMenu(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -144,7 +171,7 @@ export default function App() {
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('touchstart', handleClickOutside);
     };
-  }, [showUserMenu]);
+  }, [showUserMenu, showShareMenu]);
 
   const [showFriendsModal, setShowFriendsModal] = useState(false);
   const [showDirectoryModal, setShowDirectoryModal] = useState(false);
@@ -306,9 +333,20 @@ export default function App() {
             }
           } catch {}
         }
-        // Load Discord webhook URL
-        if (profile?.discord_webhook_url || profile?.discord_voice_webhook_url) {
-          setDiscordWebhookUrl(profile.discord_webhook_url || profile.discord_voice_webhook_url);
+        // Load Discord webhook URLs & callout switches
+        if (profile?.discord_webhook_url) {
+          setDiscordWebhookUrl(profile.discord_webhook_url);
+        }
+        if (profile?.discord_voice_webhook_url) {
+          setDiscordVoiceWebhookUrl(profile.discord_voice_webhook_url);
+        }
+        if (profile?.discord_text_callouts_enabled !== undefined) {
+          setDiscordTextCallouts(profile.discord_text_callouts_enabled);
+          localStorage.setItem('fb_discord_text_callouts', String(profile.discord_text_callouts_enabled));
+        }
+        if (profile?.discord_voice_callouts_enabled !== undefined) {
+          setDiscordVoiceCallouts(profile.discord_voice_callouts_enabled);
+          localStorage.setItem('fb_discord_voice_callouts', String(profile.discord_voice_callouts_enabled));
         }
       })
       .catch(console.error);
@@ -681,95 +719,6 @@ export default function App() {
     return null;
   }, [activeTournament, activeGame, gameThemes, players, matches, stations, gameOrder, smsLogs, autoSyncSlug, exhibitions]);
 
-  const dispatchBracketStreamUpdate = useCallback(() => {
-    if (!discordWebhookUrl) return;
-    const tournamentTitle = activeTournament?.name || (activeGame ? gameThemes[activeGame]?.displayName : '') || 'Tekken 8 Tournament';
-    const tId = activeTournament?.slug || (activeTournament?.name ? activeTournament.name.toLowerCase().replace(/[^a-z0-9]+/g, '-') : 'tournament');
-
-    const activeMatchesOnStations = stations
-      .filter(s => s.active && s.matchId)
-      .map(s => {
-        const m = matches.find(match => match.id === s.matchId);
-        const p1 = players.find(p => p.id === m?.player1Id);
-        const p2 = players.find(p => p.id === m?.player2Id);
-        return {
-          station: String(s.id),
-          player1: p1?.tag || 'Player 1',
-          player2: p2?.tag || 'Player 2',
-          round: m?.roundName || 'Match',
-        };
-      });
-
-    const onDeck = matches
-      .filter(m => m.state === 'pending' && m.player1Id && m.player2Id && !m.stationId)
-      .slice(0, 3)
-      .map(m => {
-        const p1 = players.find(p => p.id === m.player1Id);
-        const p2 = players.find(p => p.id === m.player2Id);
-        return {
-          player1: p1?.tag || 'Player 1',
-          player2: p2?.tag || 'Player 2',
-          round: m.roundName || 'Next Round',
-        };
-      });
-
-    const recentResults = matches
-      .filter(m => m.state === 'completed' && m.winnerId)
-      .slice(-4)
-      .reverse()
-      .map(m => {
-        const winner = players.find(p => p.id === m.winnerId);
-        const loserId = m.player1Id === m.winnerId ? m.player2Id : m.player1Id;
-        const loser = players.find(p => p.id === loserId);
-        return {
-          winner: winner?.tag || 'Winner',
-          loser: loser?.tag || 'Loser',
-          score: m.score || '',
-          round: m.roundName || '',
-        };
-      });
-
-    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-    if (supabaseToken) headers['Authorization'] = `Bearer ${supabaseToken}`;
-
-    const currentOrigin = typeof window !== 'undefined' ? window.location.origin : 'https://fightbracketpro.com';
-    const sub = sanitizeSubdomain(activeTournament?.subdomain, 'fb');
-    const liveBracketUrl = `${currentOrigin}/?sub=${encodeURIComponent(sub)}`;
-
-    fetch('/api/discord/announce', {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({
-        tournament_id: tId,
-        tournament_name: tournamentTitle,
-        webhook_url: discordWebhookUrl,
-        message_type: 'bracket_update',
-        bracket_data: {
-          tournament_name: tournamentTitle,
-          subdomain: sub,
-          bracket_url: liveBracketUrl,
-          total_players: players.length,
-          total_matches: matches.length,
-          completed_matches: matches.filter(m => m.state === 'completed').length,
-          active_matches: activeMatchesOnStations,
-          on_deck: onDeck,
-          recent_results: recentResults,
-        }
-      })
-    }).catch(err => console.error('[Discord] bracket stream update error:', err));
-  }, [discordWebhookUrl, activeTournament, activeGame, gameThemes, stations, matches, players, supabaseToken]);
-
-  const handleStreamToDiscord = useCallback(async () => {
-    if (!discordWebhookUrl) {
-      toast.error('Add your Discord Webhook URL in Settings → Integrations first!');
-      return;
-    }
-    const sub = sanitizeSubdomain(activeTournament?.subdomain, 'fb');
-    await syncSharedBracketState(sub);
-    dispatchBracketStreamUpdate();
-    toast.success('🔴 Live Bracket Stream updated in Discord!');
-  }, [discordWebhookUrl, activeTournament?.subdomain, syncSharedBracketState, dispatchBracketStreamUpdate]);
-
   // Automatically keep the shared local bracket active & synced in real time as matches are called/reported
   useEffect(() => {
     if (isApplyingRemoteRef.current) return;
@@ -780,7 +729,7 @@ export default function App() {
     lastLocalChangeRef.current = Date.now();
     const timer = setTimeout(() => {
       syncSharedBracketState(sub);
-      dispatchBracketStreamUpdate();
+      // Bracket updates sync to public live view; stats are not auto-sent to Discord
     }, 350);
 
     return () => clearTimeout(timer);
@@ -832,7 +781,7 @@ export default function App() {
     return () => clearInterval(interval);
   }, [activeTournament?.subdomain, activeTournament?.isLiveShared, matches.length, autoSyncSlug, pullSharedBracketUpdates]);
 
-  const handleShareBracketOrEvent = async (): Promise<string | null> => {
+  const handleShareBracketOrEvent = async (options: { notify?: boolean } = { notify: true }): Promise<string | null> => {
     const sub = sanitizeSubdomain(activeTournament?.subdomain) || generateRandomSubdomain('fb');
     const tournamentName = activeTournament?.name || (activeGame && gameThemes[activeGame]?.displayName ? `${gameThemes[activeGame].displayName} Event` : 'Local Event');
     const tournamentLocation = activeTournament?.location || 'Local / Offline';
@@ -849,36 +798,85 @@ export default function App() {
     setActiveTournament(updatedTournament);
 
     setIsSharingBracket(true);
+    let shareUrl = getBracketSubdomainUrl({
+      subdomain: sub,
+      tournamentId,
+      eventSlug: autoSyncSlug || undefined,
+    });
+
     try {
       const resJson = await syncSharedBracketState(sub);
       if (resJson) {
         const finalSub = sanitizeSubdomain(resJson.subdomain) || sub;
         const finalId = resJson.id || tournamentId;
         setActiveTournament(prev => prev ? { ...prev, id: finalId, slug: finalId, subdomain: finalSub, isLiveShared: true } : updatedTournament);
-        const shareUrl = getBracketSubdomainUrl({
+        shareUrl = getBracketSubdomainUrl({
           subdomain: finalSub,
           tournamentId: finalId,
         });
-        await navigator.clipboard.writeText(shareUrl);
-        toast.success(`Live Subdomain Active (${finalSub}.fightbracketpro.com)! Link copied — bracket updates live as you run matches!`);
-        return shareUrl;
       }
+      if (options.notify) {
+        await navigator.clipboard.writeText(shareUrl);
+        toast.success(`Live Subdomain Active (${activeTournament?.subdomain || sub}.fightbracketpro.com)! Link copied!`);
+      }
+      return shareUrl;
     } catch (e) {
       console.error('Failed to persist shared bracket:', e);
+      if (options.notify) {
+        try {
+          await navigator.clipboard.writeText(shareUrl);
+          toast.success(`Subdomain link copied (${sub}.fightbracketpro.com)!`);
+        } catch {}
+      }
+      return shareUrl;
     } finally {
       setIsSharingBracket(false);
     }
+  };
 
-    const fallbackUrl = getBracketSubdomainUrl({
-      subdomain: sub,
-      tournamentId,
-      eventSlug: autoSyncSlug || undefined,
-    });
+  const handleCopyShareLink = async () => {
+    setShowShareMenu(false);
+    await handleShareBracketOrEvent({ notify: true });
+  };
+
+  const handleShareToDiscordFriends = async () => {
+    setShowShareMenu(false);
+    const url = await handleShareBracketOrEvent({ notify: false });
+    if (!url) return;
+    const tournamentTitle = activeTournament?.name || (activeGame && gameThemes[activeGame]?.displayName ? `${gameThemes[activeGame].displayName} Tournament` : 'Tournament Bracket');
+    // Forwards bracket share link to Discord friends without auto-sending stats
+    const inviteMessage = `🏆 Follow the tournament bracket for **${tournamentTitle}**:\n<${url}>`;
     try {
-      await navigator.clipboard.writeText(fallbackUrl);
-      toast.success(`Subdomain link copied (${sub}.fightbracketpro.com)!`);
-    } catch {}
-    return fallbackUrl;
+      await navigator.clipboard.writeText(inviteMessage);
+      toast.success('Bracket link copied! Opening Discord to share with friends...');
+    } catch {
+      toast.success('Opening Discord to share with friends...');
+    }
+    window.open('https://discord.com/channels/@me', '_blank', 'noopener,noreferrer');
+  };
+
+  const handleNativeShare = async () => {
+    setShowShareMenu(false);
+    const url = await handleShareBracketOrEvent({ notify: false });
+    if (!url) return;
+    const tournamentTitle = activeTournament?.name || (activeGame && gameThemes[activeGame]?.displayName ? `${gameThemes[activeGame].displayName} Tournament` : 'Tournament Bracket');
+    if (typeof navigator !== 'undefined' && navigator.share) {
+      try {
+        await navigator.share({
+          title: tournamentTitle,
+          text: `Check out the bracket for ${tournamentTitle}:`,
+          url: url,
+        });
+      } catch (err: any) {
+        if (err.name !== 'AbortError') {
+          await navigator.clipboard.writeText(url);
+          toast.success('Bracket share link copied!');
+        }
+      }
+    } else {
+      await navigator.clipboard.writeText(url);
+      toast.success('Bracket share link copied!');
+    }
   };
 
   const theme: GameTheme | null = activeGame ? gameThemes[activeGame] : null;
@@ -982,6 +980,34 @@ export default function App() {
     }
   }, []);
 
+  const handleToggleDiscordText = useCallback(async () => {
+    const nextVal = !discordTextCallouts;
+    setDiscordTextCallouts(nextVal);
+    localStorage.setItem('fb_discord_text_callouts', String(nextVal));
+    toast.success(nextVal ? '💬 Discord Text Callouts: ON' : '💬 Discord Text Callouts: OFF');
+    if (supabaseToken) {
+      fetch('/api/user/profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${supabaseToken}` },
+        body: JSON.stringify({ discord_text_callouts_enabled: nextVal })
+      }).catch(() => {});
+    }
+  }, [discordTextCallouts, supabaseToken]);
+
+  const handleToggleDiscordVoice = useCallback(async () => {
+    const nextVal = !discordVoiceCallouts;
+    setDiscordVoiceCallouts(nextVal);
+    localStorage.setItem('fb_discord_voice_callouts', String(nextVal));
+    toast.success(nextVal ? '🎙️ Discord Voice Callouts: ON' : '🎙️ Discord Voice Callouts: OFF');
+    if (supabaseToken) {
+      fetch('/api/user/profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${supabaseToken}` },
+        body: JSON.stringify({ discord_voice_callouts_enabled: nextVal })
+      }).catch(() => {});
+    }
+  }, [discordVoiceCallouts, supabaseToken]);
+
   const handleCallMatch = useCallback((match: BracketMatch, stationId?: number) => {
     if (!stationId) {
       setPendingCallMatch(match);
@@ -1029,8 +1055,9 @@ export default function App() {
       },
     });
 
-    // Fire Discord webhook if configured
-    if (discordWebhookUrl) {
+    // Fire Discord webhook if configured and enabled by on/off switches
+    const canAnnounceDiscord = (discordWebhookUrl || discordVoiceWebhookUrl) && (discordTextCallouts || discordVoiceCallouts);
+    if (canAnnounceDiscord) {
       const tournamentTitle = activeTournament?.name || (activeGame ? gameThemes[activeGame]?.displayName : '') || 'Tekken 8 Tournament';
       const tId = activeTournament?.slug || (activeTournament?.name ? activeTournament.name.toLowerCase().replace(/[^a-z0-9]+/g, '-') : 'tournament');
       const p1 = players.find(p => p.id === match.player1Id);
@@ -1044,7 +1071,10 @@ export default function App() {
         body: JSON.stringify({
           tournament_id: tId,
           tournament_name: tournamentTitle,
-          webhook_url: discordWebhookUrl,
+          webhook_url: discordTextCallouts ? (discordWebhookUrl || undefined) : undefined,
+          voice_webhook_url: discordVoiceCallouts ? (discordVoiceWebhookUrl || undefined) : undefined,
+          enable_text: discordTextCallouts,
+          enable_voice: discordVoiceCallouts,
           message_type: 'match_called',
           match_info: {
             player1: p1?.tag || 'Player 1',
@@ -1055,7 +1085,7 @@ export default function App() {
         })
       }).catch(err => console.error('[Discord] match_called error:', err));
     }
-  }, [theme?.primaryColor, players, gameThemes, stations, discordWebhookUrl, supabaseToken, activeTournament, activeGame]);
+  }, [theme?.primaryColor, players, gameThemes, stations, discordWebhookUrl, discordVoiceWebhookUrl, discordTextCallouts, discordVoiceCallouts, supabaseToken, activeTournament, activeGame]);
 
   const handleUndoCall = useCallback((matchId: string) => {
     setMatches(prev => prev.map(m => m.id === matchId ? { ...m, state: 'pending', stationId: null } : m));
@@ -1079,9 +1109,10 @@ export default function App() {
       toast.error('Failed to sync station assignment to database');
     }
 
-    // Also announce to Discord on station assignment
+    // Also announce to Discord on station assignment if enabled by switches
     const match = matches.find(m => m.id === matchId);
-    if (match && discordWebhookUrl) {
+    const canAnnounceAssign = match && (discordWebhookUrl || discordVoiceWebhookUrl) && (discordTextCallouts || discordVoiceCallouts);
+    if (canAnnounceAssign) {
       const tournamentTitle = activeTournament?.name || (activeGame ? gameThemes[activeGame]?.displayName : '') || 'Tekken 8 Tournament';
       const tId = activeTournament?.slug || (activeTournament?.name ? activeTournament.name.toLowerCase().replace(/[^a-z0-9]+/g, '-') : 'tournament');
       const p1 = players.find(p => p.id === match.player1Id);
@@ -1095,7 +1126,10 @@ export default function App() {
         body: JSON.stringify({
           tournament_id: tId,
           tournament_name: tournamentTitle,
-          webhook_url: discordWebhookUrl,
+          webhook_url: discordTextCallouts ? (discordWebhookUrl || undefined) : undefined,
+          voice_webhook_url: discordVoiceCallouts ? (discordVoiceWebhookUrl || undefined) : undefined,
+          enable_text: discordTextCallouts,
+          enable_voice: discordVoiceCallouts,
           message_type: 'match_called',
           match_info: {
             player1: p1?.tag || 'Player 1',
@@ -1106,7 +1140,7 @@ export default function App() {
         })
       }).catch(err => console.error('[Discord] assign match announce error:', err));
     }
-  }, [theme?.primaryColor, userId, matches, discordWebhookUrl, activeTournament, activeGame, gameThemes, players, supabaseToken]);
+  }, [theme?.primaryColor, userId, matches, discordWebhookUrl, discordVoiceWebhookUrl, discordTextCallouts, discordVoiceCallouts, activeTournament, activeGame, gameThemes, players, supabaseToken]);
 
   const handleClearStation = useCallback(async (stationId: number) => {
     setStations(prev => {
@@ -1845,8 +1879,9 @@ export default function App() {
     // Auto-free station
     setStations(prev => prev.map(s => s.matchId === matchId ? { ...s, matchId: null } : s));
 
-    // Fire Discord result webhook if configured
-    if (discordWebhookUrl && winnerId) {
+    // Fire Discord result webhook if configured and enabled by switches
+    const canAnnounceResult = winnerId && (discordWebhookUrl || discordVoiceWebhookUrl) && (discordTextCallouts || discordVoiceCallouts);
+    if (canAnnounceResult) {
       const tournamentTitle = activeTournament?.name || (activeGame ? gameThemes[activeGame]?.displayName : '') || 'Tekken 8 Tournament';
       const tId = activeTournament?.slug || (activeTournament?.name ? activeTournament.name.toLowerCase().replace(/[^a-z0-9]+/g, '-') : 'tournament');
       const match = matches.find(m => m.id === matchId);
@@ -1863,7 +1898,10 @@ export default function App() {
           body: JSON.stringify({
             tournament_id: tId,
             tournament_name: tournamentTitle,
-            webhook_url: discordWebhookUrl,
+            webhook_url: discordTextCallouts ? (discordWebhookUrl || undefined) : undefined,
+            voice_webhook_url: discordVoiceCallouts ? (discordVoiceWebhookUrl || undefined) : undefined,
+            enable_text: discordTextCallouts,
+            enable_voice: discordVoiceCallouts,
             message_type: 'result',
             match_info: {
               winner: winner?.tag || 'Winner',
@@ -1980,27 +2018,87 @@ export default function App() {
             </div>
           )}
           {(activeTournament || activeGame || players.length > 0) && (
-            <button
-              onClick={() => handleShareBracketOrEvent()}
-              disabled={isSharingBracket}
-              title="Save and copy unique subdomain link so anyone can load and run this event/bracket"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded text-[11px] font-bold tracking-widest uppercase hover:opacity-80 transition-opacity bg-emerald-500/15 text-emerald-400 border border-emerald-500/40 disabled:opacity-50"
-              style={{ fontFamily: 'JetBrains Mono, monospace' }}
-            >
-              <Globe size={11} />
-              {isSharingBracket ? 'SHARING...' : 'SHARE SUBDOMAIN LINK'}
-            </button>
-          )}
-          {discordWebhookUrl && (activeTournament || matches.length > 0) && (
-            <button
-              onClick={handleStreamToDiscord}
-              title="Stream the active tournament bracket board live to Discord"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded text-[11px] font-bold tracking-widest uppercase hover:opacity-80 transition-opacity bg-cyan-500/15 text-cyan-400 border border-cyan-500/40"
-              style={{ fontFamily: 'JetBrains Mono, monospace' }}
-            >
-              <Zap size={11} />
-              STREAM TO DISCORD
-            </button>
+            <div className="relative" ref={shareMenuRef}>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowShareMenu(prev => !prev);
+                }}
+                disabled={isSharingBracket}
+                title="Share bracket link or forward to Discord friends"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded text-[11px] font-bold tracking-widest uppercase hover:opacity-90 transition-all cursor-pointer bg-emerald-500/15 text-emerald-400 border border-emerald-500/40 disabled:opacity-50"
+                style={{ fontFamily: 'JetBrains Mono, monospace' }}
+              >
+                <Share2 size={11} />
+                <span>{isSharingBracket ? 'SHARING...' : 'SHARE'}</span>
+                <ChevronDown
+                  size={11}
+                  className={`opacity-70 transition-transform duration-200 ${
+                    showShareMenu ? 'rotate-180' : ''
+                  }`}
+                />
+              </button>
+
+              {/* Share Dropdown Menu */}
+              {showShareMenu && (
+                <div
+                  className="absolute left-0 sm:right-0 sm:left-auto top-full pt-1.5 z-50 min-w-[240px]"
+                >
+                  <div
+                    className="rounded-lg shadow-2xl overflow-hidden py-1.5 backdrop-blur-xl animate-in fade-in zoom-in-95 duration-150"
+                    style={{
+                      background: '#0B0F19',
+                      border: '1px solid rgba(0, 255, 136, 0.35)',
+                      boxShadow: '0 10px 30px rgba(0,0,0,0.85), 0 0 15px rgba(0,255,136,0.15)'
+                    }}
+                  >
+                    <div className="px-3 py-1.5 border-b border-white/10 mb-1">
+                      <div className="text-[10px] uppercase tracking-wider text-gray-400 font-mono">Share Tournament Bracket</div>
+                      <div className="text-xs font-bold truncate font-mono text-emerald-400">
+                        {activeTournament?.subdomain ? `${activeTournament.subdomain}.fightbracketpro.com` : 'Live Bracket Link'}
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={handleCopyShareLink}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 text-left text-xs font-mono font-medium text-gray-200 hover:text-white hover:bg-white/10 transition-colors"
+                    >
+                      <Copy size={13} className="text-emerald-400 shrink-0" />
+                      <div className="flex flex-col">
+                        <span className="font-bold">Copy Share Link</span>
+                        <span className="text-[10px] text-gray-400">Copy public link to view & follow</span>
+                      </div>
+                    </button>
+
+                    <button
+                      onClick={handleShareToDiscordFriends}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 text-left text-xs font-mono font-medium text-gray-200 hover:text-white hover:bg-white/10 transition-colors"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 127.14 96.36" fill="#5865F2" className="shrink-0" aria-hidden="true">
+                        <path d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36,77.7,77.7,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.66,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1A105.25,105.25,0,0,0,126.6,80.22h0C129.24,52.84,122.09,29.11,107.7,8.07ZM42.45,65.69C36.18,65.69,31,60,31,53s5-12.74,11.43-12.74S54,46,53.89,53,48.84,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.25,60,73.25,53s5-12.74,11.44-12.74S96.23,46,96.12,53,91.08,65.69,84.69,65.69Z"/>
+                      </svg>
+                      <div className="flex flex-col">
+                        <span className="font-bold text-[#8A96F8]">Discord Friends</span>
+                        <span className="text-[10px] text-gray-400">Copy link & open Discord DMs</span>
+                      </div>
+                    </button>
+
+                    {typeof navigator !== 'undefined' && typeof navigator.share === 'function' && (
+                      <button
+                        onClick={handleNativeShare}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 text-left text-xs font-mono font-medium text-gray-200 hover:text-white hover:bg-white/10 transition-colors"
+                      >
+                        <Share2 size={13} className="text-cyan-400 shrink-0" />
+                        <div className="flex flex-col">
+                          <span className="font-bold">More Options...</span>
+                          <span className="text-[10px] text-gray-400">Share via system apps</span>
+                        </div>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
           )}
           <a href="https://start.gg" target="_blank" rel="noreferrer"
             className="flex items-center gap-1.5 px-3 py-1.5 rounded text-[11px] font-bold tracking-widest uppercase hover:opacity-80 transition-opacity"
@@ -2371,6 +2469,14 @@ export default function App() {
                     onAddStation={handleAddStation}
                     onRemoveStation={handleRemoveStation}
                     onRenameStation={handleRenameStation}
+                    discordTextCallouts={discordTextCallouts}
+                    discordVoiceCallouts={discordVoiceCallouts}
+                    onToggleDiscordText={handleToggleDiscordText}
+                    onToggleDiscordVoice={handleToggleDiscordVoice}
+                    onOpenDiscordSettings={() => {
+                      setActiveTab('account');
+                      window.dispatchEvent(new CustomEvent('fb-open-dashboard-tab', { detail: { tab: 'Settings', settingsTab: 'integrations' } }));
+                    }}
                   />
                 </div>
               )}

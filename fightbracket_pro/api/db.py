@@ -29,6 +29,8 @@ class DBUser(Base):
     discord_webhook_url = Column(String, nullable=True) # Discord webhook for TO announcements
     discord_voice_webhook_url = Column(String, nullable=True) # Discord voice channel webhook
     discord_server_id = Column(String, nullable=True) # Discord server ID for widget embed
+    discord_text_callouts_enabled = Column(Boolean, default=True) # Switch for match text callouts
+    discord_voice_callouts_enabled = Column(Boolean, default=True) # Switch for match voice callouts
     games_data = Column(Text, nullable=True) # Stored JSON string of main games & characters
     station_names = Column(Text, nullable=True) # Stored JSON list of custom station names
     is_public = Column(Boolean, default=True) # Publicly viewable vs hidden

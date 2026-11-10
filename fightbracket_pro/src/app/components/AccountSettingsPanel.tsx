@@ -78,7 +78,9 @@ export function AccountSettingsPanel({
     sound_notifications: userProfile?.sound_notifications ?? true,
     sound_messages: userProfile?.sound_messages ?? true,
     is_public: userProfile?.is_public ?? true,
-    friends_only: userProfile?.friends_only ?? false
+    friends_only: userProfile?.friends_only ?? false,
+    discord_text_callouts_enabled: userProfile?.discord_text_callouts_enabled ?? (typeof window !== 'undefined' ? localStorage.getItem('fb_discord_text_callouts') !== 'false' : true),
+    discord_voice_callouts_enabled: userProfile?.discord_voice_callouts_enabled ?? (typeof window !== 'undefined' ? localStorage.getItem('fb_discord_voice_callouts') !== 'false' : true),
   });
 
   // Updating States
@@ -115,7 +117,9 @@ export function AccountSettingsPanel({
         sound_notifications: userProfile.sound_notifications ?? true,
         sound_messages: userProfile.sound_messages ?? true,
         is_public: userProfile.is_public ?? true,
-        friends_only: userProfile.friends_only ?? false
+        friends_only: userProfile.friends_only ?? false,
+        discord_text_callouts_enabled: userProfile.discord_text_callouts_enabled ?? (typeof window !== 'undefined' ? localStorage.getItem('fb_discord_text_callouts') !== 'false' : true),
+        discord_voice_callouts_enabled: userProfile.discord_voice_callouts_enabled ?? (typeof window !== 'undefined' ? localStorage.getItem('fb_discord_voice_callouts') !== 'false' : true),
       });
     }
   }, [userProfile, user]);
@@ -180,9 +184,22 @@ export function AccountSettingsPanel({
     setUpdatingPassword(false);
   };
 
-  const handleToggleSetting = async (field: 'is_public' | 'friends_only' | 'notify_announcements' | 'notify_messages' | 'sound_notifications' | 'sound_messages', currentValue: boolean) => {
+  const handleToggleSetting = async (
+    field: 'is_public' | 'friends_only' | 'notify_announcements' | 'notify_messages' | 'sound_notifications' | 'sound_messages' | 'discord_text_callouts_enabled' | 'discord_voice_callouts_enabled',
+    currentValue: boolean
+  ) => {
     const newValue = !currentValue;
     setToggles(prev => ({ ...prev, [field]: newValue }));
+
+    if (field === 'discord_text_callouts_enabled') {
+      localStorage.setItem('fb_discord_text_callouts', String(newValue));
+      window.dispatchEvent(new CustomEvent('fb-discord-callout-toggled', { detail: { field, value: newValue } }));
+      toast.success(newValue ? 'Discord Text Callouts enabled' : 'Discord Text Callouts muted');
+    } else if (field === 'discord_voice_callouts_enabled') {
+      localStorage.setItem('fb_discord_voice_callouts', String(newValue));
+      window.dispatchEvent(new CustomEvent('fb-discord-callout-toggled', { detail: { field, value: newValue } }));
+      toast.success(newValue ? 'Discord Voice Callouts enabled' : 'Discord Voice Callouts muted');
+    }
     
     try {
       const headers = await getHeaders();
@@ -1086,6 +1103,30 @@ export function AccountSettingsPanel({
             </SettingsCard>
 
             <SettingsCard title="Discord Integration" description="Connect your Discord server for automated match callouts, results, and announcements.">
+              {/* Match Callout On/Off Switches */}
+              <div className="mb-6 p-4 rounded-lg bg-white/[0.02] border border-white/10">
+                <div className="flex items-center gap-2 mb-2">
+                  <svg width="16" height="16" viewBox="0 0 127.14 96.36" fill="#5865F2" aria-hidden="true">
+                    <path d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36,77.7,77.7,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.66,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1A105.25,105.25,0,0,0,126.6,80.22h0C129.24,52.84,122.09,29.11,107.7,8.07ZM42.45,65.69C36.18,65.69,31,60,31,53s5-12.74,11.43-12.74S54,46,53.89,53,48.84,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.25,60,73.25,53s5-12.74,11.44-12.74S96.23,46,96.12,53,91.08,65.69,84.69,65.69Z"/>
+                  </svg>
+                  <span className="text-xs font-rajdhani font-bold text-white uppercase tracking-wider">
+                    Discord Match Callout Switches
+                  </span>
+                </div>
+                <Toggle
+                  label="Match Text Callouts"
+                  description="Post match callouts and station assignments automatically to your Discord text channel."
+                  checked={toggles.discord_text_callouts_enabled}
+                  onChange={() => handleToggleSetting('discord_text_callouts_enabled', toggles.discord_text_callouts_enabled)}
+                />
+                <Toggle
+                  label="Match Voice Channel Callouts (TTS)"
+                  description="Announce match callouts and reported scores automatically into your Discord voice channel with voice TTS."
+                  checked={toggles.discord_voice_callouts_enabled}
+                  onChange={() => handleToggleSetting('discord_voice_callouts_enabled', toggles.discord_voice_callouts_enabled)}
+                />
+              </div>
+
               {/* Match Text Channel Webhook */}
               <div className="mb-6">
                 <label className="block text-xs font-rajdhani font-bold text-gray-400 uppercase tracking-wider mb-1">
@@ -1186,6 +1227,22 @@ export function AccountSettingsPanel({
               <Toggle label="Platform announcements" description="New features and platform updates." checked={toggles.notify_announcements} onChange={() => handleToggleSetting('notify_announcements', toggles.notify_announcements)} />
               <Toggle label="Direct Messages" description="When you receive a new message from a friend." checked={toggles.notify_messages} onChange={() => handleToggleSetting('notify_messages', toggles.notify_messages)} />
             </SettingsCard>
+            <div className="mt-4">
+              <SettingsCard title="Discord Match Callouts" description="Manage automated broadcast callouts sent to your connected Discord channels.">
+                <Toggle
+                  label="Match Text Callouts"
+                  description="Post match callouts and station assignments to your Discord text channel."
+                  checked={toggles.discord_text_callouts_enabled}
+                  onChange={() => handleToggleSetting('discord_text_callouts_enabled', toggles.discord_text_callouts_enabled)}
+                />
+                <Toggle
+                  label="Match Voice Channel Callouts (TTS)"
+                  description="Announce match callouts and scores into your Discord voice channel."
+                  checked={toggles.discord_voice_callouts_enabled}
+                  onChange={() => handleToggleSetting('discord_voice_callouts_enabled', toggles.discord_voice_callouts_enabled)}
+                />
+              </SettingsCard>
+            </div>
             <div className="mt-4">
               <SettingsCard title="In-App Sounds">
                 <Toggle label="Sound on Notification" description="Play a subtle ping when you receive a new platform notification." checked={toggles.sound_notifications} onChange={() => handleToggleSetting('sound_notifications', toggles.sound_notifications)} />

@@ -221,86 +221,38 @@ export function BracketView({
   };
 
   const handleShareToDiscord = () => {
-    // Build a nicely formatted Discord message
-    const totalMatches = matches.length;
-    const completedMatches = matches.filter(m => m.state === 'completed').length;
-    const calledMatches = matches.filter(m => m.state === 'called' || m.state === 'in_progress').length;
-    const progressPct = totalMatches > 0 ? Math.round((completedMatches / totalMatches) * 100) : 0;
-    const isCompleted = totalMatches > 0 && completedMatches === totalMatches;
-
-    const lines: string[] = [
-      isCompleted ? `**TOURNAMENT RESULTS**` : `**LIVE BRACKET UPDATE**`,
-      ``,
-      `📊 **Progress:** **${completedMatches}/${totalMatches}** matches complete (${progressPct}%)`,
-    ];
-
-    if (calledMatches > 0 && !isCompleted) {
-      lines.push(`🎮 **Active:** **${calledMatches}** match${calledMatches === 1 ? '' : 'es'} in progress`);
-    }
-
-    const top8 = getTop8Standings(matches, players);
-
-    // When completed (or if top 8 results exist), show Top 8 Standings from 1st place to 8th player
-    if (top8.length > 0 && (isCompleted || top8.length >= 8)) {
-      lines.push(``);
-      lines.push(`🏆 **Top 8 Standings:**`);
-      top8.forEach(({ placement, player }) => {
-        const medal = placement === 1 ? '🥇 ' : placement === 2 ? '🥈 ' : placement === 3 ? '🥉 ' : '';
-        const flag = player.countryFlag ? `${player.countryFlag} ` : '';
-        const suffix = placement === 1 ? 'st' : placement === 2 ? 'nd' : placement === 3 ? 'rd' : 'th';
-        lines.push(`> ${medal}**${placement}${suffix}**: ${flag}**${player.tag}**`);
-      });
-    }
-
-    // Top 3 completed matches with results for live updates
-    const recent = matches
-      .filter(m => m.state === 'completed' && m.winnerId)
-      .slice(-3)
-      .reverse();
-
-    if (recent.length > 0 && (!isCompleted || top8.length === 0)) {
-      lines.push(``);
-      lines.push(`📋 **Recent Results:**`);
-      recent.forEach(m => {
-        const winnerPlayer = players.find(p => p.id === m.winnerId);
-        const p1 = players.find(p => p.id === m.player1Id);
-        const p2 = players.find(p => p.id === m.player2Id);
-        if (winnerPlayer && p1 && p2) {
-          const loser = winnerPlayer.id === p1.id ? p2 : p1;
-          lines.push(`> ✅ **${winnerPlayer.tag}** def. ${loser.tag} — ${m.roundName}`);
-        }
-      });
-    }
-
-    lines.push(``);
     const eventSlugToUse = autoSyncSlug || (window.location.search.includes('event=') ? new URLSearchParams(window.location.search).get('event') : null);
     let shareUrl = getBracketSubdomainUrl({
       subdomain: sanitizeSubdomain(subdomain),
       tournamentId: tournamentId || undefined,
       eventSlug: eventSlugToUse || undefined,
     });
+    const tournamentTitle = tournamentName || 'Tournament Bracket';
+
+    // Forwards the clean bracket link for Discord friends without auto sending any stats
+    const cleanShareText = `🏆 Follow the tournament bracket for **${tournamentTitle}**:\n<${shareUrl}>`;
+
     if (onShareBracket) {
       Promise.resolve(onShareBracket()).then((resolvedUrl) => {
         const finalUrl = resolvedUrl || shareUrl;
-        const fullText = [...lines, `🔗 <${finalUrl}>`].join('\n');
+        const fullText = `🏆 Follow the tournament bracket for **${tournamentTitle}**:\n<${finalUrl}>`;
         navigator.clipboard.writeText(fullText).then(() => {
           setShareTooltip(true);
           setTimeout(() => setShareTooltip(false), 2500);
+          window.open('https://discord.com/channels/@me', '_blank', 'noopener,noreferrer');
         }).catch(() => {
-          window.prompt('Copy this to Discord:', fullText);
+          window.prompt('Copy this for Discord friends:', fullText);
         });
       });
       return;
     }
-    lines.push(`🔗 <${shareUrl}>`);
 
-    const text = lines.join('\n');
-    navigator.clipboard.writeText(text).then(() => {
+    navigator.clipboard.writeText(cleanShareText).then(() => {
       setShareTooltip(true);
       setTimeout(() => setShareTooltip(false), 2500);
+      window.open('https://discord.com/channels/@me', '_blank', 'noopener,noreferrer');
     }).catch(() => {
-      // fallback: show the text in a prompt
-      window.prompt('Copy this to Discord:', text);
+      window.prompt('Copy this for Discord friends:', cleanShareText);
     });
   };
 
@@ -538,24 +490,24 @@ export function BracketView({
             </div>
           )}
 
-          {/* Share Subdomain Link button */}
+          {/* Share Bracket Link button */}
           {onShareBracket && (
             <button
               onClick={() => onShareBracket()}
               title="Save & copy unique subdomain bracket link so anyone can load or run this bracket"
               className="flex items-center gap-1.5 h-10 px-3.5 rounded-lg text-xs font-mono font-bold tracking-wider uppercase border transition-all hover:brightness-125 bg-emerald-500/10 text-emerald-400 border-emerald-500/40"
             >
-              <Globe size={14} />
+              <Share2 size={14} />
               <span>{subdomain ? `${subdomain}.fightbracketpro.com` : 'SHARE LINK'}</span>
             </button>
           )}
 
-          {/* Share on Discord button */}
+          {/* Forward to Discord Friends button */}
           <div className="relative">
             <button
               id="bracket-share-discord"
               onClick={handleShareToDiscord}
-              title="Copy bracket summary to clipboard for Discord"
+              title="Copy bracket link and open Discord to share with friends"
               className="flex items-center gap-1.5 h-10 px-3.5 rounded-lg text-xs font-mono font-bold tracking-wider uppercase border transition-all hover:brightness-125"
               style={{
                 borderColor: 'rgba(88,101,242,0.45)',
@@ -566,14 +518,14 @@ export function BracketView({
               <svg width="14" height="14" viewBox="0 0 127.14 96.36" fill="#5865F2" aria-hidden="true">
                 <path d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36,77.7,77.7,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.66,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1A105.25,105.25,0,0,0,126.6,80.22h0C129.24,52.84,122.09,29.11,107.7,8.07ZM42.45,65.69C36.18,65.69,31,60,31,53s5-12.74,11.43-12.74S54,46,53.89,53,48.84,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.25,60,73.25,53s5-12.74,11.44-12.74S96.23,46,96.12,53,91.08,65.69,84.69,65.69Z"/>
               </svg>
-              SHARE
+              DISCORD
             </button>
             {shareTooltip && (
               <div
                 className="absolute bottom-full mb-2 right-0 px-3 py-1.5 rounded-lg text-xs font-mono font-bold whitespace-nowrap pointer-events-none animate-in fade-in duration-150"
                 style={{ background: '#5865F2', color: 'white' }}
               >
-                Copied to clipboard!
+                Link copied! Opening Discord...
               </div>
             )}
           </div>
