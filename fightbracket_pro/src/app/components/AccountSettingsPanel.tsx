@@ -245,8 +245,27 @@ export function AccountSettingsPanel({
   };
 
   const handleLinkIdentity = async (provider: 'discord' | 'twitch' | 'google') => {
-    const { error } = await supabase.auth.linkIdentity({ provider, options: { redirectTo: window.location.origin } });
-    if (error) toast.error(error.message);
+    const redirectUrl = `${window.location.origin}/?auth_callback=1`;
+    const { error } = await supabase.auth.linkIdentity({
+      provider,
+      options: {
+        redirectTo: redirectUrl,
+        scopes: provider === 'discord' ? 'identify email' : undefined,
+      },
+    });
+    if (error) {
+      // Fallback to signInWithOAuth if manual linking is disabled in Supabase Auth settings
+      const { error: oauthErr } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: {
+          redirectTo: redirectUrl,
+          scopes: provider === 'discord' ? 'identify email' : undefined,
+        },
+      });
+      if (oauthErr) {
+        toast.error(oauthErr.message || error.message);
+      }
+    }
   };
 
   // Hosted Events & Event Management State
@@ -979,13 +998,13 @@ export function AccountSettingsPanel({
             <SettingsCard title="Linked Authentication" description="Link external accounts to sign in with one click.">
               <div className="flex flex-wrap gap-3">
                 <button onClick={() => handleLinkIdentity('discord')} className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg bg-[#5865F2]/20 hover:bg-[#5865F2]/30 border border-[#5865F2]/50 text-[#5865F2] font-bold text-xs transition-all font-mono">
-                  LINK DISCORD
+                  {user?.identities?.some((id: any) => id.provider === 'discord') ? '✓ DISCORD LINKED (RECONNECT)' : 'LINK DISCORD'}
                 </button>
                 <button onClick={() => handleLinkIdentity('twitch')} className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg bg-[#9146FF]/20 hover:bg-[#9146FF]/30 border border-[#9146FF]/50 text-[#9146FF] font-bold text-xs transition-all font-mono">
-                  LINK TWITCH
+                  {user?.identities?.some((id: any) => id.provider === 'twitch') ? '✓ TWITCH LINKED (RECONNECT)' : 'LINK TWITCH'}
                 </button>
                 <button onClick={() => handleLinkIdentity('google')} className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold text-xs transition-all font-mono">
-                  LINK GOOGLE
+                  {user?.identities?.some((id: any) => id.provider === 'google') ? '✓ GOOGLE LINKED (RECONNECT)' : 'LINK GOOGLE'}
                 </button>
               </div>
             </SettingsCard>

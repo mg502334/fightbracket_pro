@@ -3,7 +3,8 @@ import { Toaster, toast } from "sonner";
 import { motion, AnimatePresence } from "motion/react";
 import {
   Trophy, GitBranch, UserCheck, User, Monitor, MessageSquare, Smartphone,
-  ExternalLink, RefreshCw, Zap, MapPin, Globe, Moon, Sun, X, Tv, Cloud, Play, LayoutGrid, Trash2, Megaphone, Search
+  ExternalLink, RefreshCw, Zap, MapPin, Globe, Moon, Sun, X, Tv, Cloud, Play, LayoutGrid, Trash2, Megaphone, Search,
+  Settings, LogOut, ChevronDown, LayoutDashboard
 } from "lucide-react";
 import { useTheme } from "next-themes";
 
@@ -110,6 +111,22 @@ export default function App() {
   const [startggUser, setStartggUser] = useState<{ id: string; name: string } | null>(null);
   const [supabaseUser, setSupabaseUser] = useState<any>(null);
   const [supabaseToken, setSupabaseToken] = useState<string | null>(null);
+
+  const authDisplayName = useMemo(() => {
+    if (!supabaseUser) return '';
+    const meta = supabaseUser.user_metadata || {};
+    const customClaims = (meta.custom_claims && typeof meta.custom_claims === 'object') ? meta.custom_claims : {};
+    return (
+      meta.displayName ||
+      meta.gamer_tag ||
+      customClaims.global_name ||
+      meta.full_name ||
+      meta.name ||
+      meta.preferred_username ||
+      meta.user_name ||
+      (supabaseUser.email ? supabaseUser.email.split('@')[0] : 'ACCOUNT')
+    );
+  }, [supabaseUser]);
   const [discordWebhookUrl, setDiscordWebhookUrl] = useState<string | null>(null);
   const [showFriendsModal, setShowFriendsModal] = useState(false);
   const [showDirectoryModal, setShowDirectoryModal] = useState(false);
@@ -193,6 +210,24 @@ export default function App() {
   }, [activeGame, players, matches, stations, smsLogs, activeTournament, gameThemes, gameOrder, autoSyncSlug, exhibitions, tournamentOwnerId, activeTab]);
 
   useEffect(() => {
+    // Check for OAuth error or success in URL query or hash
+    try {
+      const searchParams = new URLSearchParams(window.location.search);
+      const hashParams = new URLSearchParams(window.location.hash.startsWith('#') ? window.location.hash.substring(1) : window.location.hash);
+      
+      const error = searchParams.get('error') || hashParams.get('error');
+      const errorDesc = searchParams.get('error_description') || hashParams.get('error_description');
+      if (error || errorDesc) {
+        toast.error(`Authentication error: ${decodeURIComponent(errorDesc || error || 'Unknown error')}`);
+        const cleanUrl = window.location.pathname;
+        window.history.replaceState({}, document.title, cleanUrl);
+      } else if (searchParams.get('auth_callback') || hashParams.get('access_token')) {
+        setActiveTab('account');
+        const cleanUrl = window.location.pathname;
+        window.history.replaceState({}, document.title, cleanUrl);
+      }
+    } catch {}
+
     supabase.auth.getSession().then(({ data: { session } }: any) => {
       setSupabaseUser(session?.user ?? null);
       setSupabaseToken(session?.access_token ?? null);
@@ -200,6 +235,11 @@ export default function App() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event: any, session: any) => {
       setSupabaseUser(session?.user ?? null);
       setSupabaseToken(session?.access_token ?? null);
+      if (event === 'SIGNED_IN' && session?.user) {
+        if (window.location.search.includes('auth_callback') || window.location.hash.includes('access_token')) {
+          setActiveTab('account');
+        }
+      }
       if (event === 'PASSWORD_RECOVERY') {
         setShowPasswordReset(true);
       }
@@ -1831,12 +1871,87 @@ export default function App() {
             </div>
           )}
           {supabaseUser ? (
-            <button onClick={() => setActiveTab('account')}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded text-[11px] font-bold tracking-widest uppercase hover:opacity-80 transition-opacity"
-              style={{ background: '#FF006E15', border: '1px solid rgba(255,0,110,0.3)', color: '#FF006E', fontFamily: 'JetBrains Mono, monospace' }}>
-              <UserCheck size={11} />
-              {supabaseUser.user_metadata?.displayName || 'ACCOUNT'}
-            </button>
+            <div className="relative group">
+              <button
+                onClick={() => setActiveTab('account')}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded text-[11px] font-bold tracking-widest uppercase hover:opacity-90 transition-all"
+                style={{
+                  background: '#FF006E15',
+                  border: '1px solid rgba(255,0,110,0.4)',
+                  color: '#FF006E',
+                  fontFamily: 'JetBrains Mono, monospace'
+                }}>
+                <UserCheck size={11} />
+                <span>{authDisplayName || 'ACCOUNT'}</span>
+                <ChevronDown size={11} className="opacity-70 group-hover:rotate-180 transition-transform duration-200" />
+              </button>
+
+              {/* Hover Dropdown Menu */}
+              <div className="absolute right-0 top-full pt-1.5 hidden group-hover:block z-50 min-w-[200px]">
+                <div
+                  className="rounded-lg shadow-2xl overflow-hidden py-1.5 backdrop-blur-xl animate-in fade-in zoom-in-95 duration-150"
+                  style={{
+                    background: '#0B0F19',
+                    border: '1px solid rgba(255, 0, 110, 0.35)',
+                    boxShadow: '0 10px 30px rgba(0,0,0,0.85), 0 0 15px rgba(255,0,110,0.2)'
+                  }}>
+                  <div className="px-3 py-1.5 border-b border-white/10 mb-1">
+                    <div className="text-[10px] uppercase tracking-wider text-gray-400 font-mono">Logged in as</div>
+                    <div className="text-xs font-bold text-white truncate font-mono" style={{ color: '#00E5FF' }}>
+                      {authDisplayName}
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      setActiveTab('account');
+                      window.dispatchEvent(new CustomEvent('fb-open-dashboard-tab', { detail: { tab: 'Dashboard' } }));
+                    }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-left text-xs font-mono font-medium text-gray-200 hover:text-white hover:bg-white/10 transition-colors"
+                  >
+                    <LayoutDashboard size={13} className="text-[#00E5FF]" />
+                    <span>Dashboard</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setActiveTab('account');
+                      window.dispatchEvent(new CustomEvent('fb-open-dashboard-tab', { detail: { tab: 'Settings', settingsTab: 'profile' } }));
+                    }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-left text-xs font-mono font-medium text-gray-200 hover:text-white hover:bg-white/10 transition-colors"
+                  >
+                    <Settings size={13} className="text-amber-400" />
+                    <span>Settings</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setActiveTab('account');
+                      window.dispatchEvent(new CustomEvent('fb-open-dashboard-tab', { detail: { tab: 'Settings', settingsTab: 'events' } }));
+                    }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-left text-xs font-mono font-medium text-gray-200 hover:text-white hover:bg-white/10 transition-colors"
+                  >
+                    <Trophy size={13} className="text-yellow-400" />
+                    <span>Manage Events</span>
+                  </button>
+
+                  <div className="border-t border-white/10 my-1" />
+
+                  <button
+                    onClick={async () => {
+                      await supabase.auth.signOut();
+                      setSupabaseUser(null);
+                      setSupabaseToken(null);
+                      toast.success('Signed out successfully');
+                    }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-left text-xs font-mono font-semibold text-rose-400 hover:text-rose-300 hover:bg-rose-500/15 transition-colors"
+                  >
+                    <LogOut size={13} />
+                    <span>Logout</span>
+                  </button>
+                </div>
+              </div>
+            </div>
           ) : (
             <button onClick={() => setActiveTab('account')}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded text-[11px] font-bold tracking-widest uppercase hover:opacity-80 transition-opacity"

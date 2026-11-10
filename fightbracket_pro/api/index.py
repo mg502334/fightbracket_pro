@@ -52,7 +52,7 @@ import traceback
 
 SUPABASE_JWT_SECRET = os.environ.get("SUPABASE_JWT_SECRET")
 SUPABASE_URL = os.environ.get("VITE_SUPABASE_URL") or os.environ.get("SUPABASE_URL") or "https://dagmdetirrbvcaggzmdh.supabase.co"
-SUPABASE_ANON_KEY = os.environ.get("VITE_SUPABASE_ANON_KEY") or os.environ.get("SUPABASE_ANON_KEY") or ""
+SUPABASE_ANON_KEY = os.environ.get("VITE_SUPABASE_ANON_KEY") or os.environ.get("SUPABASE_ANON_KEY") or "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRhZ21kZXRpcnJidmNhZ2d6bWRoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ3Njg2MDcsImV4cCI6MjEwMDM0NDYwN30.twSlCY0DfVNBfzleiYjhsWn7K5DhVG2TuNUJvJC4b0g"
 
 def get_current_user_payload(authorization: str = Header(None)):
     if not authorization or not authorization.startswith("Bearer "):
@@ -796,6 +796,20 @@ def get_or_create_user(db: Session, user_id: str, meta: dict = None) -> DBUser:
     import string
     import uuid
 
+    meta = meta or {}
+    custom_claims = meta.get("custom_claims") if isinstance(meta.get("custom_claims"), dict) else {}
+    resolved_tag = (
+        meta.get("gamer_tag")
+        or meta.get("displayName")
+        or custom_claims.get("global_name")
+        or meta.get("full_name")
+        or meta.get("name")
+        or meta.get("preferred_username")
+        or meta.get("user_name")
+        or ""
+    )
+    resolved_avatar = meta.get("avatar_url") or meta.get("picture") or ""
+
     user = db.query(DBUser).filter(DBUser.id == user_id).first()
     if not user:
         # Generate unique ID first since it's NOT NULL in DB
@@ -806,13 +820,13 @@ def get_or_create_user(db: Session, user_id: str, meta: dict = None) -> DBUser:
             if not db.query(DBUser).filter(DBUser.unique_id == unique_id).first():
                 break
 
-        meta = meta or {}
         user = DBUser(
             id=user_id, 
             unique_id=unique_id,
             first_name=meta.get("first_name", ""),
             last_name=meta.get("last_name", ""),
-            gamer_tag=meta.get("gamer_tag", "")
+            gamer_tag=resolved_tag,
+            avatar_url=resolved_avatar if resolved_avatar else None
         )
         db.add(user)
         
@@ -845,6 +859,20 @@ def get_or_create_user(db: Session, user_id: str, meta: dict = None) -> DBUser:
         db.add(welcome_msg)
         db.commit()
         db.refresh(user)
+    else:
+        updated_meta = False
+        if not getattr(user, 'gamer_tag', None) and resolved_tag:
+            user.gamer_tag = resolved_tag
+            updated_meta = True
+        if not getattr(user, 'avatar_url', None) and resolved_avatar:
+            user.avatar_url = resolved_avatar
+            updated_meta = True
+        if updated_meta:
+            try:
+                db.commit()
+                db.refresh(user)
+            except Exception:
+                db.rollback()
 
     # Ensure existing account has a valid unique_id populated (repair if null/empty)
     if not getattr(user, 'unique_id', None):

@@ -59,6 +59,20 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
   };
   const [settingsInitialTab, setSettingsInitialTab] = useState<'profile' | 'events' | 'privacy' | 'integrations' | 'notifications' | 'danger'>('profile');
 
+  useEffect(() => {
+    const handleOpenDashboardTab = (e: Event) => {
+      const detail = (e as CustomEvent)?.detail;
+      if (detail?.tab) {
+        if (detail.settingsTab) {
+          setSettingsInitialTab(detail.settingsTab);
+        }
+        setActiveTab(detail.tab);
+      }
+    };
+    window.addEventListener('fb-open-dashboard-tab', handleOpenDashboardTab);
+    return () => window.removeEventListener('fb-open-dashboard-tab', handleOpenDashboardTab);
+  }, []);
+
   // Auth state
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -957,33 +971,46 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
     }
 
     const handleDiscordLogin = async () => {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'discord',
-        options: {
-          redirectTo: window.location.origin,
-        }
-      });
-      if (error) toast.error(error.message);
+      try {
+        const { error } = await supabase.auth.signInWithOAuth({
+          provider: 'discord',
+          options: {
+            redirectTo: `${window.location.origin}/?auth_callback=1`,
+            scopes: 'identify email',
+          }
+        });
+        if (error) toast.error(error.message);
+      } catch (err: any) {
+        toast.error(err?.message || 'Failed to start Discord login');
+      }
     };
 
     const handleTwitchLogin = async () => {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'twitch',
-        options: {
-          redirectTo: window.location.origin,
-        }
-      });
-      if (error) toast.error(error.message);
+      try {
+        const { error } = await supabase.auth.signInWithOAuth({
+          provider: 'twitch',
+          options: {
+            redirectTo: `${window.location.origin}/?auth_callback=1`,
+          }
+        });
+        if (error) toast.error(error.message);
+      } catch (err: any) {
+        toast.error(err?.message || 'Failed to start Twitch login');
+      }
     };
 
     const handleGoogleLogin = async () => {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: window.location.origin,
-        }
-      });
-      if (error) toast.error(error.message);
+      try {
+        const { error } = await supabase.auth.signInWithOAuth({
+          provider: 'google',
+          options: {
+            redirectTo: `${window.location.origin}/?auth_callback=1`,
+          }
+        });
+        if (error) toast.error(error.message);
+      } catch (err: any) {
+        toast.error(err?.message || 'Failed to start Google login');
+      }
     };
 
     return (
@@ -1208,71 +1235,66 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
               </button>
             </form>
 
-            {isLogin && (
-              <>
-                {/* OR Divider */}
-                <div className="relative flex items-center justify-center my-4">
-                  <div className="w-full border-t border-white/10"></div>
-                  <span className="bg-[#0A0E1A] px-3 text-xs font-mono text-gray-500 tracking-widest uppercase absolute">
-                    OR
-                  </span>
-                </div>
+            {/* OR Divider */}
+            <div className="relative flex items-center justify-center my-4">
+              <div className="w-full border-t border-white/10"></div>
+              <span className="bg-[#0A0E1A] px-3 text-xs font-mono text-gray-500 tracking-widest uppercase absolute">
+                OR
+              </span>
+            </div>
 
+            {/* Social Logins */}
+            <div className="space-y-2.5">
+              <button
+                type="button"
+                onClick={handleGoogleLogin}
+                className="w-full flex items-center justify-center gap-3 py-3 px-4 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 text-white font-semibold text-sm transition-all hover:shadow-md font-mono"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24">
+                  <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z" />
+                  <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.26v3.15C3.25 21.3 7.31 24 12 24z" />
+                  <path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.26C.46 8.18 0 9.99 0 12s.46 3.82 1.26 5.42l4.02-3.15z" />
+                  <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.31 0 3.25 2.7 1.26 6.58l4.02 3.15c.95-2.83 3.6-4.98 6.72-4.98z" />
+                </svg>
+                Continue with Google
+              </button>
 
-                {/* Social Logins */}
-                <div className="space-y-2.5">
-                  <button
-                    type="button"
-                    onClick={handleGoogleLogin}
-                    className="w-full flex items-center justify-center gap-3 py-3 px-4 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 text-white font-semibold text-sm transition-all hover:shadow-md font-mono"
-                  >
-                    <svg width="18" height="18" viewBox="0 0 24 24">
-                      <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z" />
-                      <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.26v3.15C3.25 21.3 7.31 24 12 24z" />
-                      <path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.26C.46 8.18 0 9.99 0 12s.46 3.82 1.26 5.42l4.02-3.15z" />
-                      <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.31 0 3.25 2.7 1.26 6.58l4.02 3.15c.95-2.83 3.6-4.98 6.72-4.98z" />
-                    </svg>
-                    Continue with Google
-                  </button>
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  onClick={handleDiscordLogin}
+                  className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg bg-[#5865F2]/20 hover:bg-[#5865F2]/30 border border-[#5865F2]/40 text-white font-medium text-xs transition-all font-mono"
+                  title="Sign in with Discord"
+                >
+                  <svg width="16" height="16" viewBox="0 0 127.14 96.36" fill="currentColor">
+                    <path d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36,77.7,77.7,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.66,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1A105.25,105.25,0,0,0,126.6,80.22h0C129.24,52.84,122.09,29.11,107.7,8.07ZM42.45,65.69C36.18,65.69,31,60,31,53s5-12.74,11.43-12.74S54,46,53.89,53,48.84,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.31,60,73.31,53s5-12.74,11.43-12.74S96.33,46,96.22,53,91.08,65.69,84.69,65.69Z" />
+                  </svg>
+                  <span>Discord</span>
+                </button>
 
-                  <div className="grid grid-cols-3 gap-2">
-                    <button
-                      type="button"
-                      onClick={handleDiscordLogin}
-                      className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg bg-[#5865F2]/20 hover:bg-[#5865F2]/30 border border-[#5865F2]/40 text-white font-medium text-xs transition-all font-mono"
-                      title="Sign in with Discord"
-                    >
-                      <svg width="16" height="16" viewBox="0 0 127.14 96.36" fill="currentColor">
-                        <path d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36,77.7,77.7,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.66,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1A105.25,105.25,0,0,0,126.6,80.22h0C129.24,52.84,122.09,29.11,107.7,8.07ZM42.45,65.69C36.18,65.69,31,60,31,53s5-12.74,11.43-12.74S54,46,53.89,53,48.84,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.31,60,73.31,53s5-12.74,11.43-12.74S96.33,46,96.22,53,91.08,65.69,84.69,65.69Z" />
-                      </svg>
-                      <span>Discord</span>
-                    </button>
+                <button
+                  type="button"
+                  onClick={handleTwitchLogin}
+                  className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg bg-[#9146FF]/20 hover:bg-[#9146FF]/30 border border-[#9146FF]/40 text-white font-medium text-xs transition-all font-mono"
+                  title="Sign in with Twitch"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714Z" />
+                  </svg>
+                  <span>Twitch</span>
+                </button>
 
-                    <button
-                      type="button"
-                      onClick={handleTwitchLogin}
-                      className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg bg-[#9146FF]/20 hover:bg-[#9146FF]/30 border border-[#9146FF]/40 text-white font-medium text-xs transition-all font-mono"
-                      title="Sign in with Twitch"
-                    >
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714Z" />
-                      </svg>
-                      <span>Twitch</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={handlePasskeySignIn}
-                      className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg bg-[#00FF88]/15 hover:bg-[#00FF88]/25 border border-[#00FF88]/30 text-[#00FF88] font-medium text-xs transition-all font-mono"
-                      title="Sign in with Passkey"
-                    >
-                      <Key size={14} />
-                      <span>Passkey</span>
-                    </button>
-                  </div>
-                </div>
-              </>
-            )}
+                <button
+                  type="button"
+                  onClick={handlePasskeySignIn}
+                  className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg bg-[#00FF88]/15 hover:bg-[#00FF88]/25 border border-[#00FF88]/30 text-[#00FF88] font-medium text-xs transition-all font-mono"
+                  title="Sign in with Passkey"
+                >
+                  <Key size={14} />
+                  <span>Passkey</span>
+                </button>
+              </div>
+            </div>
 
 
 
@@ -1465,13 +1487,37 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
 
         {/* User */}
         <div
-          className="p-4"
+          className="p-4 relative group cursor-pointer"
           style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}
         >
+          {/* Hover Popup Menu */}
+          <div className="absolute left-3 right-3 bottom-full pb-1.5 hidden group-hover:block z-50">
+            <div className="bg-[#141418] border border-white/15 rounded-lg shadow-2xl overflow-hidden py-1 font-mono text-xs">
+              <button
+                onClick={() => {
+                  setSettingsInitialTab("profile");
+                  setActiveTab("Settings");
+                }}
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-left text-gray-200 hover:text-[#00E5FF] hover:bg-white/5 transition-colors"
+              >
+                <Settings size={13} />
+                <span>Settings</span>
+              </button>
+              <div className="border-t border-white/10 my-0.5" />
+              <button
+                onClick={() => supabase.auth.signOut()}
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-left text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 transition-colors"
+              >
+                <LogOut size={13} />
+                <span>Logout</span>
+              </button>
+            </div>
+          </div>
+
           <div className="flex items-center gap-3">
-            {(userProfile as any)?.avatar_url ? (
+            {((userProfile as any)?.avatar_url || user.user_metadata?.avatar_url || user.user_metadata?.picture) ? (
               <img 
-                src={(userProfile as any).avatar_url} 
+                src={(userProfile as any)?.avatar_url || user.user_metadata?.avatar_url || user.user_metadata?.picture} 
                 alt="Avatar" 
                 className="w-8 h-8 object-cover flex-shrink-0"
                 style={{ borderRadius: "2px", border: "1px solid #00E5FF" }}
@@ -1481,12 +1527,12 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
                 className="w-8 h-8 flex items-center justify-center text-xs font-bold text-[#050A14] flex-shrink-0"
                 style={{ background: "#00E5FF", borderRadius: "2px" }}
               >
-                {(userProfile?.gamer_tag || user.user_metadata?.displayName || 'U').substring(0, 2).toUpperCase()}
+                {(userProfile?.gamer_tag || user.user_metadata?.displayName || user.user_metadata?.custom_claims?.global_name || user.user_metadata?.full_name || user.user_metadata?.name || 'U').substring(0, 2).toUpperCase()}
               </div>
             )}
             <div className="min-w-0 flex-1">
               <div className="text-xs font-medium text-white truncate">
-                {userProfile?.gamer_tag || user.user_metadata?.displayName || 'User'}
+                {userProfile?.gamer_tag || user.user_metadata?.displayName || user.user_metadata?.custom_claims?.global_name || user.user_metadata?.full_name || user.user_metadata?.name || 'User'}
               </div>
               <div className="text-[10px]" style={{ color: "#00E5FF" }}>
                 {userProfile?.unique_id || 'PRO USER'}
