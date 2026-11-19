@@ -2839,7 +2839,7 @@ export default function App() {
 
       <Toaster position="bottom-right" />
       <footer
-        className="shrink-0 border-t px-6 py-5"
+        className="shrink-0 border-t px-4 py-3.5 pb-6 sm:pb-8"
         style={{ background: 'var(--sidebar)', borderColor: 'var(--border)', fontFamily: 'JetBrains Mono, monospace' }}
       >
         <div className="flex flex-col items-center gap-2 text-center">
@@ -2858,7 +2858,7 @@ export default function App() {
             <span className="ml-1" style={{ color: '#00FFCC', textShadow: '0 0 8px rgba(0,255,204,0.5)', WebkitTextStroke: '1px #00FFCC' }}>PRO</span>
           </div>
           
-          <div className="flex items-center justify-center gap-8 mt-1 flex-wrap">
+          <div className="flex items-center justify-center gap-4 sm:gap-6 mt-1 flex-wrap">
             {([
               { id: 'help', label: 'Help' },
               { id: 'privacy', label: 'Privacy' },
@@ -2867,17 +2867,6 @@ export default function App() {
               { id: 'resources', label: 'Resources' },
             ] as { id: StaticPageId; label: string }[]).map(link => {
               const sharedClasses = "text-xs uppercase tracking-widest font-mono text-gray-500 hover:text-[#00E5FF] transition-colors no-underline bg-transparent border-none p-0 cursor-pointer";
-              if (link.id === 'privacy' || link.id === 'terms') {
-                return (
-                  <a
-                    key={link.id}
-                    href={`/${link.id}`}
-                    className={sharedClasses}
-                  >
-                    {link.label}
-                  </a>
-                );
-              }
               return (
                 <button
                   key={link.id}
@@ -2902,7 +2891,7 @@ export default function App() {
             </button>
           </div>
 
-          <div className="text-[9px] text-gray-600 mt-2 space-y-1">
+          <div className="text-[9px] text-gray-600 mt-2 space-y-1 pb-1">
             <div>
               <span>Developed and Hosted by <span className="text-gray-400">Ender Gaming Core Hosting</span></span>
               <span className="mx-2">&middot;</span>
