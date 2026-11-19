@@ -35,8 +35,9 @@ export function ImportModal({ isOpen, onClose, onImport, theme, onOpenCreateEven
   const [searching, setSearching] = useState(false);
 
   useEffect(() => {
-    if (isOpen) {
-      setSearching(true);
+    if (!isOpen) return;
+    setSearching(true);
+    const timer = setTimeout(() => {
       fetch(`/api/search-events?q=${encodeURIComponent(searchQuery)}`)
         .then(res => res.json())
         .then(data => {
@@ -46,7 +47,9 @@ export function ImportModal({ isOpen, onClose, onImport, theme, onOpenCreateEven
         })
         .catch(() => {})
         .finally(() => setSearching(false));
-    }
+    }, searchQuery ? 250 : 0);
+
+    return () => clearTimeout(timer);
   }, [isOpen, searchQuery]);
 
   if (!isOpen) return null;
@@ -153,6 +156,23 @@ export function ImportModal({ isOpen, onClose, onImport, theme, onOpenCreateEven
                 )}
               </div>
             </div>
+
+            {/* Error Message Banner */}
+            {error && (
+              <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs flex items-center justify-between gap-2 font-mono">
+                <div className="flex items-center gap-2">
+                  <span className="font-bold uppercase tracking-wider text-[10px] px-1.5 py-0.5 rounded bg-red-500/20 text-red-300">Error</span>
+                  <span>{error}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setError(null)}
+                  className="text-red-400 hover:text-white px-1 text-sm font-bold"
+                >
+                  ✕
+                </button>
+              </div>
+            )}
 
             {/* Popular / Search Event Results List */}
             <div className="space-y-2">

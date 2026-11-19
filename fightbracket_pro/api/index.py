@@ -2897,6 +2897,43 @@ def send_sms_endpoint(req: SMSRequest, user_id: str = Depends(get_current_user_i
 def clear_user_data(user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
     return {"status": "success"}
 
+def query_startgg_graphql(query: str, variables: Optional[dict] = None, token: Optional[str] = None) -> dict:
+    """
+    Executes a GraphQL query against Start.gg.
+    First attempts the official API with token if provided.
+    Falls back to public web GraphQL endpoint if token is missing or invalid.
+    """
+    import requests
+    if token:
+        try:
+            resp = requests.post(
+                "https://api.start.gg/gql/alpha",
+                json={"query": query, "variables": variables or {}},
+                headers={
+                    "Authorization": f"Bearer {token}",
+                    "Content-Type": "application/json"
+                },
+                timeout=10
+            )
+            data = resp.json()
+            if resp.status_code == 200 and not (data.get("message") or "").startswith("Invalid authentication token"):
+                return data
+        except Exception:
+            pass
+
+    public_headers = {
+        "Content-Type": "application/json",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "client-version": "20"
+    }
+    resp = requests.post(
+        "https://www.start.gg/api/-/gql",
+        json={"query": query, "variables": variables or {}},
+        headers=public_headers,
+        timeout=10
+    )
+    return resp.json()
+
 @app.get("/api/bracket/sync")
 def sync_startgg_bracket(slug: str = "clash-of-kings-vii", token: str = None, event_slug: str = None):  # type: ignore
     if slug:
@@ -3046,24 +3083,11 @@ def sync_startgg_bracket(slug: str = "clash-of-kings-vii", token: str = None, ev
     """
     
     try:
-        resp = requests.post(
-            "https://api.start.gg/gql/alpha",
-            json={"query": query_tourney, "variables": {"slug": slug}},
-            headers=headers
-        )
-        data = resp.json()
+        data = query_startgg_graphql(query_tourney, {"slug": slug}, STARTGG_TOKEN)
         
-        if resp.status_code != 200:
-            err_msg = data.get("message", f"Start.gg returned HTTP {resp.status_code}")
-            if "Invalid authentication token" in err_msg or "authentication" in err_msg.lower():
-                err_msg = "Start.gg API token is missing or invalid. Please connect your Start.gg account or enter a Personal Access Token in Account settings."
-            raise HTTPException(status_code=400, detail=err_msg)
-
         if "errors" in data and not data.get("data", {}).get("tournament"):
             errs = data.get("errors", [])
-            err_msg = errs[0].get("message", "Error querying Start.gg API") if isinstance(errs, list) and errs else "Tournament not found"
-            if "Invalid authentication token" in err_msg or "authentication" in err_msg.lower():
-                err_msg = "Start.gg API token is missing or invalid. Please connect your Start.gg account or enter a Personal Access Token in Account settings."
+            err_msg = errs[0].get("message", "Tournament not found") if isinstance(errs, list) and errs else "Tournament not found"
             raise HTTPException(status_code=400, detail=err_msg)
             
         tournament_data = data.get("data", {}).get("tournament")
@@ -3089,14 +3113,7 @@ def sync_startgg_bracket(slug: str = "clash-of-kings-vii", token: str = None, ev
                 all_entrants = []
                 page = 1
                 while True:
-                    ev_resp = requests.post(
-                        "https://api.start.gg/gql/alpha",
-                        json={"query": query_entrants, "variables": {"eventId": event_id, "page": page}},
-                        headers=headers
-                    )
-                    if ev_resp.status_code != 200:
-                        break
-                    ev_data = ev_resp.json()
+                    ev_data = query_startgg_graphql(query_entrants, {"eventId": event_id, "page": page}, STARTGG_TOKEN)
                     if "errors" in ev_data or not ev_data.get("data", {}).get("event"):
                         break
                     entrants_obj = ev_data.get("data", {}).get("event", {}).get("entrants") or {}
@@ -3112,14 +3129,7 @@ def sync_startgg_bracket(slug: str = "clash-of-kings-vii", token: str = None, ev
                 all_sets = []
                 page = 1
                 while True:
-                    ev_resp = requests.post(
-                        "https://api.start.gg/gql/alpha",
-                        json={"query": query_sets, "variables": {"eventId": event_id, "page": page}},
-                        headers=headers
-                    )
-                    if ev_resp.status_code != 200:
-                        break
-                    ev_data = ev_resp.json()
+                    ev_data = query_startgg_graphql(query_sets, {"eventId": event_id, "page": page}, STARTGG_TOKEN)
                     if "errors" in ev_data:
                         print("StartGG Error in sets:", ev_data["errors"])
                         break
@@ -3822,11 +3832,8 @@ class StartggProxyRequest(BaseModel):
 
 @app.post("/api/startgg/proxy")
 def proxy_startgg(req: StartggProxyRequest, user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
-    if not db:
-        raise HTTPException(status_code=503, detail="Database not available")
-
     token = None
-    if user_id:
+    if db and user_id:
         integration = db.query(DBUserIntegration).filter(
             DBUserIntegration.user_id == user_id, 
             DBUserIntegration.integration_type == "startgg"
@@ -3839,27 +3846,12 @@ def proxy_startgg(req: StartggProxyRequest, user_id: str = Depends(get_current_u
                 token = getattr(user, 'startgg_token')
                 
     if not token:
-        token = os.environ.get("STARTGG_API_TOKEN")
-            
-    if not token:
-        raise HTTPException(status_code=404, detail="Start.gg integration token not found. Please connect your Start.gg account in Settings.")
+        token = os.environ.get("STARTGG_API_TOKEN") or os.environ.get("STARTGG_KEY") or os.environ.get("STARTGG_API_KEY")
 
-    import requests
-    headers = {
-        "Authorization": f"Bearer {token}",
-        "Content-Type": "application/json"
-    }
-    
     try:
-        response = requests.post(
-            "https://api.start.gg/gql/alpha", 
-            json={"query": req.query, "variables": req.variables},
-            headers=headers,
-            timeout=10
-        )
-        return response.json()
+        return query_startgg_graphql(req.query, req.variables, token)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=f"Failed to query Start.gg: {e}")
 
 # ---------------------------------------------------------------------------
 # LOCAL TOURNAMENT HISTORY
@@ -4742,8 +4734,6 @@ def search_events(q: Optional[str] = None):
     """
     import os
     import re
-    import urllib.request
-    import json
 
     query_raw = (q or "").strip()
     query_str = query_raw.lower()
@@ -4767,7 +4757,7 @@ def search_events(q: Optional[str] = None):
         query TournamentsByName($name: String!) {
           tournaments(query: {
             page: 1,
-            perPage: 10,
+            perPage: 12,
             filter: { name: $name }
           }) {
             nodes {
@@ -4788,90 +4778,82 @@ def search_events(q: Optional[str] = None):
           }
         }
         """
-        payload = json.dumps({
-            "query": gql_query,
-            "variables": {"name": query_raw}
-        }).encode('utf-8')
+        startgg_key = (
+            os.environ.get('STARTGG_API_TOKEN')
+            or os.environ.get('STARTGG_KEY')
+            or os.environ.get('STARTGG_API_KEY')
+            or os.environ.get('VITE_STARTGG_TOKEN')
+        )
         
-        headers = {
-            'Content-Type': 'application/json',
-            'User-Agent': 'FightBracketPro/1.0'
-        }
-        
-        startgg_key = os.environ.get('STARTGG_KEY') or os.environ.get('VITE_STARTGG_TOKEN')
-        if startgg_key:
-            headers['Authorization'] = f"Bearer {startgg_key}"
+        GENERIC_WORDS = {"cup", "tournament", "event", "open", "series", "invitational", "championship", "finals", "league", "weekly", "monthly", "the", "a", "an", "2024", "2025", "2026"}
+        raw_terms = [query_raw]
+        words = [w for w in query_str.split() if len(w) > 2]
+        specific_words = [w for w in words if w not in GENERIC_WORDS]
+        if specific_words and specific_words[0] != query_str:
+            raw_terms.append(specific_words[0])
+
+        all_nodes = {}
+        for term in raw_terms:
+            data = query_startgg_graphql(gql_query, {"name": term}, startgg_key)
+            for node in data.get("data", {}).get("tournaments", {}).get("nodes", []):
+                all_nodes[node["id"]] = node
+
+        query_tokens = set(words)
+        def score_node(n):
+            name = (n.get("name") or "").lower()
+            slug = (n.get("slug") or "").lower()
+            if query_str in name or query_str in slug:
+                return 100
+            return sum(20 for t in query_tokens if t in name or t in slug)
+
+        sorted_nodes = sorted(all_nodes.values(), key=score_node, reverse=True)
+
+        for node in sorted_nodes:
+            t_name = node.get("name", "")
+            t_slug = node.get("slug", "")
+            if t_slug.startswith("tournament/"):
+                t_slug = t_slug[11:]
             
-        req = urllib.request.Request("https://api.start.gg/gql/alpha", data=payload, headers=headers)
-        with urllib.request.urlopen(req, timeout=3.5) as resp:
-            data = json.loads(resp.read().decode('utf-8'))
-            nodes = data.get("data", {}).get("tournaments", {}).get("nodes", [])
-            for node in nodes:
-                t_name = node.get("name", "")
-                t_slug = node.get("slug", "")
-                if t_slug.startswith("tournament/"):
-                    t_slug = t_slug[11:]
-                
-                events = node.get("events", [])
-                if events:
-                    for ev in events:
-                        ev_name = ev.get("name", "")
-                        ev_slug = ev.get("slug", t_slug)
-                        if ev_slug.startswith("tournament/"):
-                            ev_slug = ev_slug[11:]
-                        game_name = ev.get("videogame", {}).get("name", "Tekken 8 / FGC")
-                        
-                        if not any(r["slug"] == ev_slug for r in results):
-                            results.append({
-                                "id": f"startgg-{ev.get('id', ev_slug)}",
-                                "name": f"{t_name} — {ev_name}",
-                                "tournamentName": t_name,
-                                "eventName": ev_name,
-                                "slug": ev_slug,
-                                "game": game_name,
-                                "gameColor": "#00E5FF",
-                                "entrants": ev.get("numEntrants", node.get("numAttendees", 0)),
-                                "date": "Live Start.gg Event",
-                                "location": node.get("city", "Start.gg")
-                            })
-                else:
-                    if not any(r["slug"] == t_slug for r in results):
+            events = node.get("events", [])
+            if events:
+                for ev in events:
+                    ev_name = ev.get("name", "")
+                    ev_slug = ev.get("slug", t_slug)
+                    if ev_slug.startswith("tournament/"):
+                        ev_slug = ev_slug[11:]
+                    game_name = ev.get("videogame", {}).get("name", "Tekken 8 / FGC") if ev.get("videogame") else "Tekken 8 / FGC"
+                    
+                    if not any(r["slug"] == ev_slug for r in results):
                         results.append({
-                            "id": f"startgg-{node.get('id', t_slug)}",
-                            "name": t_name,
+                            "id": f"startgg-{ev.get('id', ev_slug)}",
+                            "name": f"{t_name} — {ev_name}",
                             "tournamentName": t_name,
-                            "eventName": "Main Bracket",
-                            "slug": t_slug,
-                            "game": "Tekken 8 / FGC",
-                            "gameColor": "#00E5FF",
-                            "entrants": node.get("numAttendees", 0),
+                            "eventName": ev_name,
+                            "slug": ev_slug,
+                            "game": game_name,
+                            "gameColor": "#FF1744" if "tekken" in game_name.lower() else "#00E5FF",
+                            "entrants": ev.get("numEntrants", node.get("numAttendees", 0)),
                             "date": "Live Start.gg Event",
                             "location": node.get("city", "Start.gg")
                         })
+            else:
+                if not any(r["slug"] == t_slug for r in results):
+                    results.append({
+                        "id": f"startgg-{node.get('id', t_slug)}",
+                        "name": t_name,
+                        "tournamentName": t_name,
+                        "eventName": "Main Bracket",
+                        "slug": t_slug,
+                        "game": "Tekken 8 / FGC",
+                        "gameColor": "#00E5FF",
+                        "entrants": node.get("numAttendees", 0),
+                        "date": "Live Start.gg Event",
+                        "location": node.get("city", "Start.gg")
+                    })
     except Exception as e:
         print(f"[-] Start.gg live event search error: {e}")
 
-    # 3. Dynamic slug fallback generator for specific user queries (e.g. "wavu cup", "wavu cup #6")
-    clean_slug = re.sub(r'[^a-z0-9]+', '-', query_str).strip('-')
-    if clean_slug and not any(clean_slug in r["slug"] for r in results):
-        formatted_title = query_raw.title()
-        # Handle cases like "wavu cup #6" -> "Wavu Cup #6" -> slug "wavu-cup-6"
-        results.insert(0, {
-            "id": f"custom-slug-{clean_slug}",
-            "name": f"{formatted_title} (Start.gg Live Bracket)",
-            "tournamentName": formatted_title,
-            "eventName": "Tournament Bracket",
-            "slug": clean_slug,
-            "game": "Tekken 8 / FGC",
-            "gameColor": "#00E5FF",
-            "entrants": 128,
-            "date": "Live Event",
-            "location": "Start.gg Import"
-        })
-
     return {"events": results}
-
-
 
 @app.get("/api/feed/sidebar")
 def get_feed_sidebar(user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):

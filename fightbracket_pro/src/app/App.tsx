@@ -1602,7 +1602,9 @@ export default function App() {
       let newThemes: Record<string, GameTheme> = {};
 
       events.forEach((ev: any) => {
-        if (!ev.videogame) return; // Skip events without a videogame
+        if (!ev.videogame) {
+          ev.videogame = { id: ev.id || 0, name: ev.name || 'Fighting Game' };
+        }
         const gameId = `startgg-ev-${ev.id}`;
         const evName = ev.name || ev.videogame.name;
         const fullDisplayName = (ev.videogame?.name && !evName.toLowerCase().includes(ev.videogame.name.toLowerCase()))
