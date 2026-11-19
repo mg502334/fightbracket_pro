@@ -3,7 +3,7 @@ import {
   Trophy, GitBranch, Flame, MessageCircle, Calendar,
   Heart, Share2, Bookmark, Send, Image as ImageIcon, Video, Hash, Smile,
   ChevronUp, MoreHorizontal, UserPlus, ExternalLink, Swords, Repeat2,
-  ThumbsUp, Sparkles, Check, Copy, Radio, Tag, MapPin
+  ThumbsUp, Sparkles, Check, Copy, Radio, Tag, MapPin, Clock
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { RecentsWidget, RecentTournamentItem } from './RecentsWidget';
@@ -101,6 +101,7 @@ export interface PostComment {
 
 export interface Post {
   id: string;
+  title?: string;
   author: { name: string; handle: string; initials: string; color: string; badge?: string; avatar?: string };
   time: string;
   content: string;
@@ -219,7 +220,9 @@ export function PostCard({
     if (!isoDate) return "Just now";
     const d = new Date(isoDate);
     if (isNaN(d.getTime())) return isoDate;
-    return d.toLocaleDateString() + " " + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    const timeStr = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    return `${dateStr} · ${timeStr}`;
   };
 
   const handleToggleReaction = (emoji: string) => {
@@ -327,7 +330,8 @@ export function PostCard({
             )}
           </div>
           <div className="flex items-center gap-2 mt-0.5">
-            <span className="text-[10px]" style={{ color: "#8a8a9a" }}>{handleDate(post.time)}</span>
+            <Clock size={11} className="text-cyan-400/70 flex-shrink-0" />
+            <span className="text-[10px] font-mono" style={{ color: "#8a8a9a" }}>{handleDate(post.time)}</span>
             <span className="w-1 h-1 rounded-full bg-white/20" />
             <span className="flex items-center gap-1 text-[10px]" style={{ color: tc.color }}>
               <TypeIcon size={10} />{tc.label}
@@ -338,6 +342,19 @@ export function PostCard({
           <MoreHorizontal size={16} />
         </button>
       </div>
+
+      {/* Post Title & Timestamp */}
+      {post.title && (
+        <div className="px-4 pt-3 pb-1">
+          <h3 className="text-base font-bold text-white mb-1" style={{ fontFamily: 'Rajdhani, sans-serif' }}>
+            {post.title}
+          </h3>
+          <div className="flex items-center gap-1.5 text-[10px] text-gray-400 font-mono mb-1">
+            <Clock size={11} className="text-cyan-400/70 flex-shrink-0" />
+            <span>{handleDate(post.time)}</span>
+          </div>
+        </div>
+      )}
 
       {/* Post Content */}
       {(() => {

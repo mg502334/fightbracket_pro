@@ -1,23 +1,40 @@
 import { useState, useEffect, useRef } from "react";
-import { Search, CheckCircle2, XCircle, Smartphone, Trash2, UserPlus, Loader2 } from "lucide-react";
-import type { Player, GameTheme } from "../data/tournamentData";
+import { Search, CheckCircle2, XCircle, Smartphone, Trash2, UserPlus, Loader2, Shuffle, ArrowUpDown, Monitor, Hash } from "lucide-react";
+import type { Player, GameTheme, Station } from "../data/tournamentData";
 import { motion, AnimatePresence } from "motion/react";
 
 interface CheckInPanelProps {
   players: Player[];
   theme: GameTheme;
+  stations?: Station[];
   onCheckIn: (playerId: string, checked: boolean) => void;
   onRemovePlayer?: (playerId: string) => void;
   onAddPlayer?: (playerData: { tag: string; realName: string; seed: number; character?: string; fbUserId?: string }) => void;
+  onUpdateSeed?: (playerId: string, newSeed: number) => void;
+  onUpdatePlayerStation?: (playerId: string, stationId: number | null) => void;
+  onAutoSeed?: (mode: 'checked-in' | 'random' | 'tag') => void;
   isCustomTournament?: boolean;
   supabaseToken?: string | null;
 }
 
 type FilterMode = 'all' | 'checked' | 'unchecked';
 
-export function CheckInPanel({ players, theme, onCheckIn, onRemovePlayer, onAddPlayer, isCustomTournament, supabaseToken }: CheckInPanelProps) {
+export function CheckInPanel({ 
+  players, 
+  theme, 
+  stations,
+  onCheckIn, 
+  onRemovePlayer, 
+  onAddPlayer, 
+  onUpdateSeed,
+  onUpdatePlayerStation,
+  onAutoSeed,
+  isCustomTournament, 
+  supabaseToken 
+}: CheckInPanelProps) {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<FilterMode>('all');
+  const [sortBy, setSortBy] = useState<'seed' | 'tag' | 'status'>('seed');
 
   const filtered = players.filter(p => {
     const matchSearch = p.tag.toLowerCase().includes(search.toLowerCase()) ||
@@ -25,6 +42,13 @@ export function CheckInPanel({ players, theme, onCheckIn, onRemovePlayer, onAddP
       p.character.toLowerCase().includes(search.toLowerCase());
     const matchFilter = filter === 'all' || (filter === 'checked' ? p.checkedIn : !p.checkedIn);
     return matchSearch && matchFilter;
+  });
+
+  const sorted = [...filtered].sort((a, b) => {
+    if (sortBy === 'seed') return a.seed - b.seed;
+    if (sortBy === 'tag') return a.tag.localeCompare(b.tag);
+    if (sortBy === 'status') return (b.checkedIn ? 1 : 0) - (a.checkedIn ? 1 : 0) || a.seed - b.seed;
+    return 0;
   });
 
   const checkedCount = players.filter(p => p.checkedIn).length;
@@ -198,6 +222,61 @@ export function CheckInPanel({ players, theme, onCheckIn, onRemovePlayer, onAddP
         </div>
       </div>
 
+      {/* Flexible Seeding & Seating Toolbar */}
+      <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded text-xs" style={{ background: 'var(--card)', border: '1px solid rgba(122,158,192,0.15)' }}>
+        <div className="flex items-center gap-2">
+          <Hash size={14} style={{ color: theme.primaryColor }} />
+          <span className="font-mono text-xs uppercase tracking-wider font-bold" style={{ color: theme.primaryColor }}>
+            SEEDING & SEATING CONTROLS
+          </span>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-1 mr-2">
+            <span className="text-[11px] font-mono text-gray-400">Sort:</span>
+            {(['seed', 'tag', 'status'] as const).map(s => (
+              <button
+                key={s}
+                onClick={() => setSortBy(s)}
+                className={`px-2 py-1 rounded font-mono text-[10px] uppercase transition-all ${
+                  sortBy === s ? 'bg-cyan-500/20 text-[#00E5FF] border border-cyan-500/40' : 'bg-white/5 text-gray-400 hover:text-white'
+                }`}
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+
+          {onAutoSeed && (
+            <>
+              <button
+                onClick={() => onAutoSeed('checked-in')}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded font-mono text-[11px] bg-white/5 border border-white/10 hover:border-[#00E5FF]/50 hover:text-[#00E5FF] transition-all"
+                title="Seed checked-in players 1 through N, then remaining players"
+              >
+                <Hash size={12} />
+                <span>Auto-Seed</span>
+              </button>
+              <button
+                onClick={() => onAutoSeed('random')}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded font-mono text-[11px] bg-white/5 border border-white/10 hover:border-amber-400/50 hover:text-amber-400 transition-all"
+                title="Randomize player seeds for open brackets"
+              >
+                <Shuffle size={12} />
+                <span>Shuffle Seeds</span>
+              </button>
+              <button
+                onClick={() => onAutoSeed('tag')}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded font-mono text-[11px] bg-white/5 border border-white/10 hover:border-purple-400/50 hover:text-purple-400 transition-all"
+                title="Seed alphabetically by gamer tag"
+              >
+                <ArrowUpDown size={12} />
+                <span>Seed A-Z</span>
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+
       {/* Search & filter */}
       <div className="flex gap-2">
         <div className="relative flex-1">
@@ -240,29 +319,38 @@ export function CheckInPanel({ players, theme, onCheckIn, onRemovePlayer, onAddP
         <div
           className="grid text-xs tracking-widest px-4 py-2"
           style={{
-            gridTemplateColumns: '40px 1fr 120px 100px 100px 80px',
+            gridTemplateColumns: '60px 1fr 110px 125px 85px 80px',
             fontFamily: 'JetBrains Mono, monospace',
             color: 'var(--muted-foreground)',
             background: 'var(--sidebar)',
             borderBottom: '1px solid rgba(122,158,192,0.1)',
           }}
         >
-          <span>#</span>
+          <span>SEED</span>
           <span>PLAYER</span>
           <span>CHARACTER</span>
-          <span>COUNTRY</span>
-          <span>PHONE</span>
+          <span>SEAT / SETUP</span>
+          <span>NOTIFY</span>
           <span className="text-right">STATUS</span>
         </div>
 
         <div className="divide-y" style={{ borderColor: 'var(--border)' }}>
-          {filtered.length === 0 ? (
+          {sorted.length === 0 ? (
             <div className="py-8 text-center text-sm opacity-40" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
               No players found
             </div>
           ) : (
-            filtered.map(player => (
-              <PlayerRow key={player.id} player={player} theme={theme} onToggle={onCheckIn} onRemove={isCustomTournament ? onRemovePlayer : undefined} />
+            sorted.map(player => (
+              <PlayerRow 
+                key={player.id} 
+                player={player} 
+                theme={theme} 
+                stations={stations}
+                onToggle={onCheckIn} 
+                onUpdateSeed={onUpdateSeed}
+                onUpdatePlayerStation={onUpdatePlayerStation}
+                onRemove={isCustomTournament ? onRemovePlayer : undefined} 
+              />
             ))
           )}
         </div>
@@ -271,39 +359,87 @@ export function CheckInPanel({ players, theme, onCheckIn, onRemovePlayer, onAddP
   );
 }
 
-function PlayerRow({ player, theme, onToggle, onRemove }: { player: Player; theme: GameTheme; onToggle: (id: string, v: boolean) => void; onRemove?: (id: string) => void }) {
+function PlayerRow({ 
+  player, 
+  theme, 
+  stations,
+  onToggle, 
+  onUpdateSeed,
+  onUpdatePlayerStation,
+  onRemove 
+}: { 
+  player: Player; 
+  theme: GameTheme; 
+  stations?: Station[];
+  onToggle: (id: string, v: boolean) => void; 
+  onUpdateSeed?: (id: string, seed: number) => void;
+  onUpdatePlayerStation?: (id: string, stationId: number | null) => void;
+  onRemove?: (id: string) => void;
+}) {
   const [hovering, setHovering] = useState(false);
 
   return (
     <div
       className="grid items-center px-4 py-2.5 transition-all duration-100"
       style={{
-        gridTemplateColumns: '40px 1fr 120px 100px 100px 80px',
+        gridTemplateColumns: '60px 1fr 110px 125px 85px 80px',
         background: hovering ? `${theme.primaryColor}06` : 'transparent',
       }}
       onMouseEnter={() => setHovering(true)}
       onMouseLeave={() => setHovering(false)}
     >
-      <span className="text-xs tabular-nums opacity-40" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
-        {player.seed}
-      </span>
+      <div className="flex items-center">
+        {onUpdateSeed ? (
+          <input
+            type="number"
+            min="1"
+            max="999"
+            value={player.seed}
+            onChange={(e) => {
+              const val = parseInt(e.target.value, 10);
+              if (!isNaN(val)) onUpdateSeed(player.id, val);
+            }}
+            className="w-12 px-1.5 py-0.5 rounded text-xs tabular-nums text-center font-mono font-bold bg-black/40 border border-white/15 focus:border-[#00E5FF] focus:outline-none transition-all text-white"
+            title="Click to change seed"
+          />
+        ) : (
+          <span className="text-xs tabular-nums opacity-60 font-bold" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
+            #{player.seed}
+          </span>
+        )}
+      </div>
 
       <div>
-        <div className="text-sm" style={{ fontFamily: 'Rajdhani, sans-serif', fontWeight: 700, color: 'var(--foreground)' }}>
-          {player.tag}
+        <div className="text-sm flex items-center gap-1.5" style={{ fontFamily: 'Rajdhani, sans-serif', fontWeight: 700, color: 'var(--foreground)' }}>
+          <span>{player.tag}</span>
+          {player.countryFlag && <span className="text-xs">{player.countryFlag}</span>}
         </div>
         <div className="text-xs opacity-40" style={{ fontFamily: 'Inter, sans-serif' }}>
-          {player.realName}
+          {player.realName || player.country}
         </div>
       </div>
 
-      <span className="text-xs" style={{ fontFamily: 'Inter, sans-serif', color: 'var(--muted-foreground)' }}>
-        {player.character}
+      <span className="text-xs truncate pr-2" style={{ fontFamily: 'Inter, sans-serif', color: 'var(--muted-foreground)' }}>
+        {player.character || '—'}
       </span>
 
-      <span className="text-sm">
-        {player.countryFlag} <span className="text-xs opacity-50" style={{ fontFamily: 'JetBrains Mono, monospace' }}>{player.country}</span>
-      </span>
+      {/* Flexible Seating / Station Selector */}
+      <div className="pr-2">
+        <select
+          value={player.stationId ?? ''}
+          onChange={(e) => {
+            const val = e.target.value === '' ? null : parseInt(e.target.value, 10);
+            onUpdatePlayerStation?.(player.id, val);
+          }}
+          className="w-full text-[11px] font-mono bg-black/40 border border-white/10 rounded px-1.5 py-1 text-gray-300 focus:outline-none focus:border-[#00E5FF]"
+          title="Flexible station/seat assignment before bracket starts"
+        >
+          <option value="">Unassigned</option>
+          {stations?.map(s => (
+            <option key={s.id} value={s.id}>{s.name}</option>
+          ))}
+        </select>
+      </div>
 
       <div className="flex items-center gap-1">
         <Smartphone size={11} className="opacity-30" />

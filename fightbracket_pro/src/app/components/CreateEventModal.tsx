@@ -2,10 +2,28 @@ import React, { useState, useEffect } from 'react';
 import { X, Calendar, MapPin, Gamepad2, Trophy, Globe, Shield, Tv, Users, DollarSign, Sparkles, Check, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 
+export type EventMode = 'local' | 'online' | 'hybrid';
+
+export interface CreatedEventData {
+  name: string;
+  eventType: EventMode;
+  venueName?: string;
+  venueAddress?: string;
+  onlineServer?: string;
+  region?: string;
+  streamUrl?: string;
+  stationCount: number;
+  gameIds: string[];
+  format: any;
+  date?: string;
+}
+
 interface CreateEventModalProps {
+  onCreateEvent?: (data: CreatedEventData) => void;
+  theme?: any;
   isOpen: boolean;
   onClose: () => void;
-  getHeaders: () => Promise<HeadersInit>;
+  getHeaders?: () => Promise<HeadersInit>;
   onEventCreated?: (newEvent: any) => void;
   onEventUpdated?: (updatedEvent: any) => void;
   eventToEdit?: any;
@@ -35,7 +53,9 @@ export function CreateEventModal({
   onEventUpdated,
   eventToEdit,
   currentUser,
-  userProfile
+  userProfile,
+  onCreateEvent,
+  theme
 }: CreateEventModalProps) {
   // Tomorrow at 18:00 default
   const defaultDate = new Date();
@@ -50,6 +70,7 @@ export function CreateEventModal({
   const [format, setFormat] = useState('double_elimination');
   const [startDate, setStartDate] = useState(defaultDateStr);
   const [isOnline, setIsOnline] = useState(true);
+  const [locationType, setLocationType] = useState<EventMode>('online');
   const [venueName, setVenueName] = useState('');
   const [city, setCity] = useState('');
   const [state, setState] = useState('');
@@ -131,6 +152,27 @@ export function CreateEventModal({
 
     setSubmitting(true);
     try {
+      if (onCreateEvent) {
+        onCreateEvent({
+          name: name.trim(),
+          eventType: locationType,
+          venueName: locationType !== 'online' ? venueName.trim() : undefined,
+          venueAddress: locationType !== 'online' ? (address.trim() || `${city.trim()} ${state.trim()}`) : undefined,
+          onlineServer: locationType !== 'local' ? discordUrl.trim() : undefined,
+          region: city.trim() || 'North America',
+          streamUrl: streamUrl.trim() || undefined,
+          stationCount: locationType === 'online' ? 4 : 8,
+          gameIds: [selectedGameId === 'custom' ? 'tekken8' : selectedGameId],
+          format: format as any,
+          date: startDate,
+        });
+      }
+
+      if (!getHeaders) {
+        toast.success(eventToEdit ? 'Event updated!' : 'Event created!');
+        onClose();
+        return;
+      }
       const headers = await getHeaders();
       const payload: any = {
         name: name.trim(),
@@ -378,24 +420,33 @@ export function CreateEventModal({
               {/* Online vs In-Person Toggle */}
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-gray-300">Location Type</label>
-                <div className="grid grid-cols-2 gap-2 bg-black/40 p-1 rounded-xl border border-white/10">
+                <div className="grid grid-cols-3 gap-2 bg-black/40 p-1 rounded-xl border border-white/10">
                   <button
                     type="button"
-                    onClick={() => setIsOnline(true)}
-                    className={`py-1.5 px-3 rounded-lg text-xs font-bold tracking-wider transition-all flex items-center justify-center gap-1.5 ${
-                      isOnline ? 'bg-[#00E5FF]/20 text-[#00E5FF] border border-[#00E5FF]/40 shadow-sm' : 'text-gray-400 hover:text-white'
+                    onClick={() => { setIsOnline(true); setLocationType('online'); }}
+                    className={`py-1.5 px-2 rounded-lg text-[11px] font-bold tracking-wider transition-all flex items-center justify-center gap-1 ${
+                      locationType === 'online' ? 'bg-[#00E5FF]/20 text-[#00E5FF] border border-[#00E5FF]/40 shadow-sm' : 'text-gray-400 hover:text-white'
                     }`}
                   >
                     <Globe size={13} /> ONLINE
                   </button>
                   <button
                     type="button"
-                    onClick={() => setIsOnline(false)}
-                    className={`py-1.5 px-3 rounded-lg text-xs font-bold tracking-wider transition-all flex items-center justify-center gap-1.5 ${
-                      !isOnline ? 'bg-[#00E5FF]/20 text-[#00E5FF] border border-[#00E5FF]/40 shadow-sm' : 'text-gray-400 hover:text-white'
+                    onClick={() => { setIsOnline(false); setLocationType('local'); }}
+                    className={`py-1.5 px-2 rounded-lg text-[11px] font-bold tracking-wider transition-all flex items-center justify-center gap-1 ${
+                      locationType === 'local' ? 'bg-[#00E5FF]/20 text-[#00E5FF] border border-[#00E5FF]/40 shadow-sm' : 'text-gray-400 hover:text-white'
                     }`}
                   >
-                    <MapPin size={13} /> IN-PERSON
+                    <MapPin size={13} /> LOCAL
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setIsOnline(false); setLocationType('hybrid'); }}
+                    className={`py-1.5 px-2 rounded-lg text-[11px] font-bold tracking-wider transition-all flex items-center justify-center gap-1 ${
+                      locationType === 'hybrid' ? 'bg-[#00E5FF]/20 text-[#00E5FF] border border-[#00E5FF]/40 shadow-sm' : 'text-gray-400 hover:text-white'
+                    }`}
+                  >
+                    <Shield size={13} /> HYBRID
                   </button>
                 </div>
               </div>

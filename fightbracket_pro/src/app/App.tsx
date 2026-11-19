@@ -13,12 +13,13 @@ const API_URL = import.meta.env.VITE_API_URL || '';
 import { GameBanner } from "./components/GameBanner";
 import { AddPlayerModal } from "./components/AddPlayerModal";
 import { supabase } from "./supabaseClient";
-import { BracketView } from "./components/BracketView";
+import { BracketView, getTop8Standings } from "./components/BracketView";
 import { CheckInPanel } from "./components/CheckInPanel";
 import { StationsPanel } from "./components/StationsPanel";
 import { AnnouncementOverlay } from "./components/AnnouncementOverlay";
 import { GameSelectionModal } from "./components/GameSelectionModal";
 import { ImportModal } from "./components/ImportModal";
+import { CreateEventModal, type CreatedEventData } from "./components/CreateEventModal";
 import { CallMatchModal } from "./components/CallMatchModal";
 import { StreamsPanel } from "./components/StreamsPanel";
 import { ExhibitionsPanel } from "./components/ExhibitionsPanel";
@@ -86,8 +87,27 @@ export function parseStreamUrl(streamName: string, streamSource?: string): strin
   return `https://twitch.tv/${streamName}`;
 }
 
+export interface ActiveTournament {
+  name: string;
+  location: string;
+  slug?: string;
+  numAttendees?: number;
+  eventType?: 'local' | 'online' | 'hybrid';
+  isOnline?: boolean;
+  venueAddress?: string;
+  onlineDetails?: {
+    server?: string;
+    region?: string;
+    streamUrl?: string;
+    connectionRule?: string;
+  };
+  stationCount?: number;
+  format?: BracketType;
+  createdAt?: string;
+}
+
 export default function App() {
-  const safeParse = (key: string, defaultVal: any) => {
+  const safeParse = <T,>(key: string, defaultVal: T): T => {
     try { const saved = localStorage.getItem(key); return saved ? JSON.parse(saved) : defaultVal; } catch { return defaultVal; }
   };
 
@@ -106,6 +126,7 @@ export default function App() {
   const [announcement, setAnnouncement] = useState<BracketMatch | null>(null);
   const [showGameModal, setShowGameModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
+  const [showCreateEventModal, setShowCreateEventModal] = useState(false);
   const [showAddPlayerModal, setShowAddPlayerModal] = useState(false);
   const [pendingCallMatch, setPendingCallMatch] = useState<BracketMatch | null>(null);
   const [startggUser, setStartggUser] = useState<{ id: string; name: string } | null>(null);
@@ -197,9 +218,9 @@ export default function App() {
   const [showPasswordReset, setShowPasswordReset] = useState(false);
   const [showSupportModal, setShowSupportModal] = useState(false);
 
-  const [activeTournament, setActiveTournament] = useState<{ id?: string, name: string, location: string, slug?: string, subdomain?: string, numAttendees?: number, isLiveShared?: boolean } | null>(() => {
-    const saved = safeParse('fb_tournament', null);
-    if (saved && !saved.subdomain) {
+  const [activeTournament, setActiveTournament] = useState<ActiveTournament | null>(() => {
+    const saved = safeParse<ActiveTournament | null>('fb_tournament', null);
+    if (saved && !saved.subdomain && typeof generateRandomSubdomain === 'function') {
       saved.subdomain = generateRandomSubdomain('fb');
     }
     return saved;
@@ -641,9 +662,95 @@ export default function App() {
     setPlayers(prev => [...prev, newPlayer]);
   };
 
+  const handleUpdateSeed = useCallback((playerId: string, newSeed: number) => {
+    setPlayers(prev => prev.map(p => p.id === playerId ? { ...p, seed: Math.max(1, newSeed) } : p));
+    toast.success('Seed updated');
+  }, []);
+
+  const handleUpdatePlayerStation = useCallback((playerId: string, stationId: number | null) => {
+    setPlayers(prev => prev.map(p => p.id === playerId ? { ...p, stationId } : p));
+    toast.success(stationId ? `Assigned to Station ${stationId}` : 'Station assignment cleared');
+  }, []);
+
+  const handleAutoSeed = useCallback((mode: 'checked-in' | 'random' | 'tag') => {
+    if (!activeGame) return;
+    setPlayers(prev => {
+      const activeGamePlayers = prev.filter(p => p.gameId === activeGame);
+      const otherPlayers = prev.filter(p => p.gameId !== activeGame);
+
+      let sorted = [...activeGamePlayers];
+      if (mode === 'checked-in') {
+        sorted.sort((a, b) => (b.checkedIn ? 1 : 0) - (a.checkedIn ? 1 : 0) || a.seed - b.seed);
+      } else if (mode === 'random') {
+        sorted = sorted.sort(() => Math.random() - 0.5);
+      } else if (mode === 'tag') {
+        sorted.sort((a, b) => a.tag.localeCompare(b.tag));
+      }
+
+      const reseeded = sorted.map((p, idx) => ({ ...p, seed: idx + 1 }));
+      return [...otherPlayers, ...reseeded];
+    });
+    toast.success(`Seeding updated (${mode})`);
+  }, [activeGame]);
+
+  const handleCreateEvent = (data: CreatedEventData) => {
+    const newTournament: ActiveTournament = {
+      name: data.name,
+      location: data.eventType === 'online' ? 'Online' : (data.venueName || data.venueAddress || 'Local Venue'),
+      eventType: data.eventType,
+      isOnline: data.eventType === 'online',
+      venueAddress: data.venueAddress,
+      onlineDetails: {
+        server: data.onlineServer,
+        region: data.region,
+        streamUrl: data.streamUrl,
+      },
+      stationCount: data.stationCount,
+      format: data.format,
+      createdAt: data.date || new Date().toISOString(),
+    };
+    setActiveTournament(newTournament);
+    localStorage.setItem('fb_tournament', JSON.stringify(newTournament));
+
+    const newStations: Station[] = Array.from({ length: Math.max(1, data.stationCount) }).map((_, i) => ({
+      id: i + 1,
+      name: `Station ${i + 1}`,
+      active: true,
+      matchId: null,
+      gameId: null,
+    }));
+    setStations(newStations);
+    localStorage.setItem('fb_stations', JSON.stringify(newStations));
+
+    const newThemes: Record<string, GameTheme> = { ...gameThemes };
+    data.gameIds.forEach(gid => {
+      if (!newThemes[gid] && GAME_THEMES[gid]) {
+        newThemes[gid] = GAME_THEMES[gid];
+      }
+    });
+    setGameThemes(newThemes);
+    localStorage.setItem('fb_themes', JSON.stringify(newThemes));
+
+    setGameOrder(data.gameIds);
+    localStorage.setItem('fb_gameOrder', JSON.stringify(data.gameIds));
+
+    const firstGame = data.gameIds[0] || 'tekken8';
+    setActiveGame(firstGame);
+    localStorage.setItem('fb_activeGame', JSON.stringify(firstGame));
+
+    setAutoSyncSlug(null);
+    localStorage.removeItem('fb_autoSyncSlug');
+
+    setShowCreateEventModal(false);
+    toast.success(`Event created: ${data.name} (${data.eventType.toUpperCase()})`);
+  };
+
   const handleGenerateBracket = (type: BracketType) => {
     if (!activeGame) return;
-    const gamePlayerIds = players.filter(p => p.gameId === activeGame).map(p => p.id);
+    const gamePlayersList = players
+      .filter(p => p.gameId === activeGame)
+      .sort((a, b) => a.seed - b.seed);
+    const gamePlayerIds = gamePlayersList.map(p => p.id);
     if (gamePlayerIds.length === 0) {
       toast.error('Add players before generating bracket');
       return;
@@ -912,10 +1019,18 @@ export default function App() {
       
   const championId = startGgChampion ? startGgChampion.id : (maxRoundMatch && maxRoundMatch.state === 'completed' ? maxRoundMatch.winnerId : null);
 
-  const gamePlayers = activeGame ? players.filter(p => p.gameId === activeGame).map(p => ({
-    ...p,
-    status: (championId === p.id) ? 'winner' as const : (activePlayerIds.has(p.id) ? 'active' as const : 'eliminated' as const)
-  })).sort((a, b) => {
+  const gamePlayers = activeGame ? players.filter(p => p.gameId === activeGame).map(p => {
+    let status: 'winner' | 'active' | 'eliminated' = 'active';
+    if (championId === p.id) {
+      status = 'winner';
+    } else if (gameMatches.length > 0) {
+      status = activePlayerIds.has(p.id) ? 'active' : 'eliminated';
+    }
+    return {
+      ...p,
+      status
+    };
+  }).sort((a, b) => {
     if (a.status !== b.status) {
       if (a.status === 'winner') return -1;
       if (b.status === 'winner') return 1;
@@ -1972,9 +2087,13 @@ export default function App() {
             {activeTournament && (
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="flex items-center gap-1">
-                  <MapPin size={9} className="opacity-40" />
-                  <span className="text-xs opacity-40 truncate" style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9 }}>
-                    {activeTournament.location}
+                  {activeTournament.isOnline || activeTournament.eventType === 'online' ? (
+                    <Globe size={10} className="text-[#00E5FF] shrink-0" />
+                  ) : (
+                    <MapPin size={10} className="opacity-50 shrink-0" />
+                  )}
+                  <span className="text-xs opacity-60 truncate" style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 9 }}>
+                    {activeTournament.location} {activeTournament.eventType ? `· [${activeTournament.eventType.toUpperCase()}]` : ''}
                   </span>
                 </span>
                 {activeTournament.subdomain && (
@@ -2105,6 +2224,17 @@ export default function App() {
             style={{ background: 'var(--border)', border: '1px solid rgba(0,229,255,0.2)', color: '#00E5FF', fontFamily: 'JetBrains Mono, monospace' }}>
             <Globe size={11} />START.GG<ExternalLink size={9} />
           </a>
+          <button onClick={() => setShowCreateEventModal(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded text-[11px] font-bold tracking-widest uppercase hover:opacity-80 transition-opacity"
+            style={{
+              background: 'rgba(255,214,0,0.1)',
+              border: '1px solid rgba(255,214,0,0.4)',
+              color: '#FFD600',
+              fontFamily: 'JetBrains Mono, monospace'
+            }}>
+            <Zap size={11} />
+            + CREATE EVENT
+          </button>
           <button onClick={() => setShowImportModal(true)}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded text-[11px] font-bold tracking-widest uppercase hover:opacity-80 transition-opacity"
             style={{
@@ -2406,12 +2536,16 @@ export default function App() {
                   <BracketView
                     matches={gameMatches}
                     players={gamePlayers}
+                    stations={stations}
                     theme={theme}
                     onCallMatch={m => {
                       setPendingCallMatch(m);
                     }}
                     onViewAnnouncement={m => setAnnouncement(m)}
                     onGenerateBracket={handleGenerateBracket}
+                    onUpdateSeed={handleUpdateSeed}
+                    onUpdatePlayerStation={handleUpdatePlayerStation}
+                    onAutoSeed={handleAutoSeed}
                     selectedPool={selectedPool}
                     onSelectPool={setSelectedPool}
                     isImported={Boolean(autoSyncSlug)}
@@ -2432,10 +2566,14 @@ export default function App() {
                   <CheckInPanel 
                     players={gamePlayers} 
                     theme={theme} 
+                    stations={stations}
                     onCheckIn={handleCheckIn} 
                     onRemovePlayer={isHost ? handleRemovePlayer : undefined} 
                     onAddPlayer={handleAddPlayer}
-                    isCustomTournament={!autoSyncSlug}
+                    onUpdateSeed={handleUpdateSeed}
+                    onUpdatePlayerStation={handleUpdatePlayerStation}
+                    onAutoSeed={handleAutoSeed}
+                    isCustomTournament={!autoSyncSlug && !activeTournament?.slug}
                     supabaseToken={supabaseToken}
                   />
                 </div>
@@ -2562,7 +2700,18 @@ export default function App() {
         isOpen={showImportModal}
         onClose={() => setShowImportModal(false)}
         onImport={(slug) => handleLiveImport(slug)}
+        onOpenCreateEvent={() => {
+          setShowImportModal(false);
+          setShowCreateEventModal(true);
+        }}
         theme={theme || { id: 'default', displayName: 'FightBracket', shortName: 'FB', primaryColor: '#00E5FF', secondaryColor: '#FF006E', bgFrom: '#050A14', glowColor: 'rgba(0,229,255,0.4)', description: '', publisher: '' }}
+      />
+
+      <CreateEventModal
+        isOpen={showCreateEventModal}
+        onClose={() => setShowCreateEventModal(false)}
+        onCreateEvent={handleCreateEvent}
+        theme={theme}
       />
 
       {activeGame && theme && (
@@ -2755,6 +2904,10 @@ function OverviewTab({
     ? players.filter(p => p.tag.toLowerCase().includes(playerSearch.toLowerCase()) || (p.realName && p.realName.toLowerCase().includes(playerSearch.toLowerCase())))
     : players;
 
+  const top8Standings = useMemo(() => {
+    return getTop8Standings(matches, players);
+  }, [matches, players]);
+
   return (
     <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
       {/* Live matches full width */}
@@ -2881,7 +3034,8 @@ function OverviewTab({
           ) : (
             filteredPlayers.map(p => {
               const gt = gameThemes[p.gameId] || { primaryColor: '#aaa', shortName: 'GAME' };
-              const isEliminated = p.status === 'eliminated';
+              const pStatus = p.status || 'active';
+              const isEliminated = pStatus === 'eliminated';
               return (
                 <div key={p.id} className="flex items-center gap-3 px-5 py-3" style={{ borderBottom: '1px solid rgba(122,158,192,0.08)' }}>
                   <span className="text-base shrink-0">{p.countryFlag}</span>
@@ -2891,8 +3045,8 @@ function OverviewTab({
                     </div>
                     <div className="text-xs opacity-60 mt-0.5" style={{ fontFamily: 'JetBrains Mono, monospace' }}>{gt.shortName} · #{p.seed}</div>
                   </div>
-                  <span className="text-xs tabular-nums font-bold px-2 py-0.5 rounded border" style={{ fontFamily: 'JetBrains Mono, monospace', color: p.status === 'eliminated' ? '#FF4D4D' : p.status === 'winner' ? '#FFD600' : '#00FF88', borderColor: p.status === 'eliminated' ? '#FF4D4D40' : p.status === 'winner' ? '#FFD60040' : '#00FF8840', background: p.status === 'eliminated' ? '#FF4D4D10' : p.status === 'winner' ? '#FFD60010' : '#00FF8810' }}>
-                    {p.status.toUpperCase()}
+                  <span className="text-xs tabular-nums font-bold px-2 py-0.5 rounded border" style={{ fontFamily: 'JetBrains Mono, monospace', color: pStatus === 'eliminated' ? '#FF4D4D' : pStatus === 'winner' ? '#FFD600' : '#00FF88', borderColor: pStatus === 'eliminated' ? '#FF4D4D40' : pStatus === 'winner' ? '#FFD60040' : '#00FF8840', background: pStatus === 'eliminated' ? '#FF4D4D10' : pStatus === 'winner' ? '#FFD60010' : '#00FF8810' }}>
+                    {pStatus.toUpperCase()}
                   </span>
                   {isHost && (
                     <button onClick={() => onRemovePlayer(p.id)} className="opacity-50 hover:opacity-100 hover:text-[#FF1744] transition-all ml-1 p-1">
@@ -2915,29 +3069,26 @@ function OverviewTab({
           </div>
         </div>
         <div className="overflow-y-auto" style={{ maxHeight: 300 }}>
-          {players.filter(p => p.placement && p.placement <= 8).length === 0 ? (
+          {top8Standings.length === 0 ? (
             <div className="py-6 text-center text-xs opacity-40" style={{ fontFamily: 'JetBrains Mono, monospace' }}>Standings unavailable</div>
           ) : (
-            players
-              .filter(p => p.placement && p.placement <= 8)
-              .sort((a, b) => a.placement! - b.placement!)
-              .map((p, i) => {
-                const colors: Record<number, string> = { 1: '#FFD700', 2: '#C0C0C0', 3: '#CD7F32' };
-                const color = colors[p.placement!] || 'var(--foreground)';
-                return (
-                  <div key={p.id} className="flex items-center gap-3 px-5 py-3" style={{ borderBottom: '1px solid rgba(122,158,192,0.08)' }}>
-                    <div className="w-6 text-center text-sm font-bold" style={{ fontFamily: 'JetBrains Mono, monospace', color }}>
-                      {p.placement}
-                    </div>
-                    <span className="text-base">{p.countryFlag}</span>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-base leading-snug truncate" style={{ fontFamily: 'Rajdhani, sans-serif', fontWeight: 800, color: 'var(--foreground)' }}>
-                        {p.tag}
-                      </div>
+            top8Standings.map(({ placement, player: p }) => {
+              const colors: Record<number, string> = { 1: '#FFD700', 2: '#C0C0C0', 3: '#CD7F32' };
+              const color = colors[placement] || 'var(--foreground)';
+              return (
+                <div key={p.id} className="flex items-center gap-3 px-5 py-3" style={{ borderBottom: '1px solid rgba(122,158,192,0.08)' }}>
+                  <div className="w-6 text-center text-sm font-bold" style={{ fontFamily: 'JetBrains Mono, monospace', color }}>
+                    {placement}
+                  </div>
+                  <span className="text-base">{p.countryFlag}</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-base leading-snug truncate" style={{ fontFamily: 'Rajdhani, sans-serif', fontWeight: 800, color: 'var(--foreground)' }}>
+                      {p.tag}
                     </div>
                   </div>
-                );
-              })
+                </div>
+              );
+            })
           )}
         </div>
       </div>

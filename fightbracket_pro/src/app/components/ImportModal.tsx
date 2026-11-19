@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, X, Loader, Trophy, Users, Calendar, ArrowRight, Zap, Download } from 'lucide-react';
+import { Search, X, Loader, Trophy, Users, Calendar, ArrowRight, Zap, Download, Sparkles } from 'lucide-react';
 
 export interface EventItem {
   id: string;
@@ -20,9 +20,10 @@ interface ImportModalProps {
   onClose: () => void;
   onImport: (slug: string) => Promise<void>;
   theme: any;
+  onOpenCreateEvent?: () => void;
 }
 
-export function ImportModal({ isOpen, onClose, onImport, theme }: ImportModalProps) {
+export function ImportModal({ isOpen, onClose, onImport, theme, onOpenCreateEvent }: ImportModalProps) {
   const [inputUrl, setInputUrl] = useState('');
   const [loading, setLoading] = useState(false);
   const [importingSlug, setImportingSlug] = useState<string | null>(null);
@@ -108,6 +109,25 @@ export function ImportModal({ isOpen, onClose, onImport, theme }: ImportModalPro
           </div>
 
           <div className="p-5 flex flex-col gap-5 overflow-y-auto custom-scrollbar">
+            {onOpenCreateEvent && (
+              <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-xl bg-cyan-500/10 border border-cyan-500/25 text-xs">
+                <div className="flex items-center gap-2">
+                  <Sparkles size={15} className="text-[#00E5FF] shrink-0" />
+                  <span className="text-gray-300">Host your own event with Local, Online, or Multi-Hybrid bracket?</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    onOpenCreateEvent();
+                  }}
+                  className="px-3 py-1.5 rounded-lg font-bold text-[#00E5FF] hover:bg-cyan-500/20 border border-cyan-500/40 transition-all font-mono text-[11px] shrink-0"
+                >
+                  Create Event →
+                </button>
+              </div>
+            )}
+
             {/* Search Bar for Live Events */}
             <div className="space-y-2">
               <label className="text-xs font-bold text-gray-300 tracking-wider uppercase flex items-center gap-1.5">

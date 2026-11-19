@@ -4401,6 +4401,7 @@ def get_news(db: Session = Depends(get_db)):
                     "originalPrice": item.original_price,
                     "salePrice": item.sale_price,
                     "archived": item.archived or is_expired,
+                    "date": item.published_at.strftime("%b %d, %Y") if item.published_at else "Recent",
                     "publishedAt": item.published_at.isoformat() if item.published_at else ""
                 }
 
@@ -5010,7 +5011,7 @@ class EventSearchRequest(BaseModel):
     videogameId: Optional[int] = None
     location: Optional[str] = None
     page: int = 1
-    perPage: int = 20
+    perPage: int = 18
 
 @app.post("/api/events/search")
 def search_events(req: EventSearchRequest, user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):

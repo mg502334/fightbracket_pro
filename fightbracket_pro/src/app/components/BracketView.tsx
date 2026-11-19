@@ -1,14 +1,18 @@
 import { useState } from "react";
-import { Swords, Clock, CheckCircle2, AlertCircle, ChevronRight, Search, X, Layers, Filter, Sparkles, Tv, RefreshCw, Monitor, Smartphone, Radio, Share2, Globe } from "lucide-react";
-import { BracketType, type BracketMatch, type Player, type GameTheme, getChronologicalRoundName } from "../data/tournamentData";
+import { Swords, Clock, CheckCircle2, AlertCircle, ChevronRight, Search, X, Layers, Filter, Sparkles, Tv, RefreshCw, Monitor, Smartphone, Radio, Share2, Globe, Hash, Shuffle, ArrowUpDown } from "lucide-react";
+import { BracketType, type BracketMatch, type Player, type GameTheme, type Station, getChronologicalRoundName } from "../data/tournamentData";
 import { getBracketSubdomainUrl, sanitizeSubdomain } from "../utils/subdomain";
 
 interface BracketViewProps {
   matches: BracketMatch[];
   players: Player[];
+  stations?: Station[];
   theme: GameTheme;
   onCallMatch: (match: BracketMatch) => void;
   onGenerateBracket?: (type: BracketType) => void;
+  onUpdateSeed?: (playerId: string, newSeed: number) => void;
+  onUpdatePlayerStation?: (playerId: string, stationId: number | null) => void;
+  onAutoSeed?: (mode: 'checked-in' | 'random' | 'tag') => void;
   selectedPool?: string;
   onSelectPool?: (pool: string) => void;
   isImported?: boolean;
@@ -121,9 +125,13 @@ export function getTop8Standings(matches: BracketMatch[], players: Player[]): { 
 export function BracketView({
   matches,
   players,
+  stations,
   theme,
   onCallMatch,
   onGenerateBracket,
+  onUpdateSeed,
+  onUpdatePlayerStation,
+  onAutoSeed,
   selectedPool: externalSelectedPool,
   onSelectPool: externalOnSelectPool,
   isImported = false,
@@ -159,38 +167,189 @@ export function BracketView({
   };
 
   if (matches.length === 0) {
+    const sortedPlayers = [...players].sort((a, b) => a.seed - b.seed);
+
     return (
-      <div className="flex flex-col items-center justify-center h-full p-10 opacity-80 mt-10">
-        <Swords size={48} className="mb-4 opacity-30" style={{ color: theme.primaryColor }} />
-        <h3 className="text-xl tracking-widest mb-2" style={{ fontFamily: 'Rajdhani, sans-serif', fontWeight: 700 }}>BRACKET NOT GENERATED</h3>
-        <p className="text-sm opacity-60 mb-6 text-center max-w-sm" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
-          {players.length === 0 ? "Add players first, then generate the bracket to begin the tournament." : `${players.length} players added. Ready to generate bracket.`}
-        </p>
-        {isImported ? (
-          <div className="flex items-center gap-2 px-4 py-2 rounded bg-amber-500/10 text-amber-400 border border-amber-500/30 text-xs font-mono">
-            <span>Pool configuration and bracket generation is locked for imported tournaments.</span>
+      <div className="flex flex-col gap-6 max-w-4xl mx-auto p-4 md:p-6 animate-in fade-in duration-300">
+        {/* Header & Generator Card */}
+        <div className="p-6 rounded-xl border border-white/10 bg-[#0A0A0F] flex flex-col md:flex-row items-center justify-between gap-6 shadow-xl">
+          <div className="flex items-center gap-4">
+            <div className="p-3.5 rounded-lg bg-cyan-500/10 border border-cyan-500/30 text-cyan-400">
+              <Swords size={32} />
+            </div>
+            <div>
+              <h3 className="text-xl tracking-widest font-bold text-white font-rajdhani" style={{ fontFamily: 'Rajdhani, sans-serif' }}>
+                BRACKET CONFIGURATION
+              </h3>
+              <p className="text-xs text-gray-400 font-mono mt-0.5">
+                {players.length === 0 
+                  ? "Add players to begin. You can configure seeds and seating below." 
+                  : `${players.length} players ready · Double check seeds & seating before starting.`}
+              </p>
+            </div>
           </div>
-        ) : (
-          <div className="flex flex-col items-center gap-4 w-full max-w-xs">
-            <select 
-              value={selectedFormat}
-              onChange={(e) => setSelectedFormat(e.target.value as BracketType)}
-              className="w-full bg-black/40 border rounded px-3 py-2.5 text-sm focus:outline-none transition-colors"
-              style={{ borderColor: 'rgba(122,158,192,0.3)', fontFamily: 'JetBrains Mono, monospace' }}
-              disabled={players.length === 0}
+
+          {isImported ? (
+            <div className="flex items-center gap-2 px-4 py-2.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/30 text-xs font-mono">
+              <span>Pool configuration and bracket generation is locked for imported tournaments.</span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-3 w-full md:w-auto">
+              <select 
+                value={selectedFormat}
+                onChange={(e) => setSelectedFormat(e.target.value as BracketType)}
+                className="bg-black/60 border border-white/20 rounded-lg px-3 py-2.5 text-xs text-white focus:outline-none focus:border-[#00E5FF] font-mono transition-colors"
+                disabled={players.length === 0}
+              >
+                {Object.values(BracketType).map(format => (
+                  <option key={format} value={format}>{format.replace(/_/g, ' ')}</option>
+                ))}
+              </select>
+              <button 
+                disabled={players.length === 0}
+                onClick={() => onGenerateBracket?.(selectedFormat)} 
+                className="px-6 py-2.5 rounded-lg text-xs tracking-widest font-bold text-black hover:brightness-125 transition-all disabled:opacity-30 disabled:cursor-not-allowed shadow-[0_0_15px_rgba(6,182,212,0.3)] shrink-0" 
+                style={{ background: theme.primaryColor, fontFamily: 'Rajdhani, sans-serif' }}
+              >
+                GENERATE BRACKET
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Pre-Bracket Seeding & Seating Setup Card */}
+        {players.length > 0 && (
+          <div className="rounded-xl border border-white/10 bg-[#0F0F14] overflow-hidden shadow-lg">
+            {/* Seeding & Seating Toolbar */}
+            <div className="flex flex-wrap items-center justify-between gap-3 p-4 bg-[#14141B] border-b border-white/10">
+              <div className="flex items-center gap-2">
+                <Hash size={16} className="text-[#00E5FF]" />
+                <span className="font-mono text-xs font-bold text-white uppercase tracking-wider">
+                  PRE-BRACKET SEEDING & SEATING SETUP
+                </span>
+                <span className="text-[10px] text-gray-500 font-mono">({sortedPlayers.length} ENTRIES)</span>
+              </div>
+
+              {onAutoSeed && (
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    onClick={() => onAutoSeed('checked-in')}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-mono text-[11px] bg-white/5 border border-white/10 hover:border-[#00E5FF]/50 hover:text-[#00E5FF] transition-all text-gray-300"
+                    title="Seed checked-in players 1 through N first"
+                  >
+                    <Hash size={12} />
+                    <span>Auto-Seed</span>
+                  </button>
+                  <button
+                    onClick={() => onAutoSeed('random')}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-mono text-[11px] bg-white/5 border border-white/10 hover:border-amber-400/50 hover:text-amber-400 transition-all text-gray-300"
+                    title="Randomize player seeds for open brackets"
+                  >
+                    <Shuffle size={12} />
+                    <span>Shuffle Seeds</span>
+                  </button>
+                  <button
+                    onClick={() => onAutoSeed('tag')}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-mono text-[11px] bg-white/5 border border-white/10 hover:border-purple-400/50 hover:text-purple-400 transition-all text-gray-300"
+                    title="Seed alphabetically by gamer tag"
+                  >
+                    <ArrowUpDown size={12} />
+                    <span>Seed A-Z</span>
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Table Header */}
+            <div
+              className="grid text-xs tracking-widest px-4 py-2.5 font-mono text-gray-400 bg-black/40 border-b border-white/5"
+              style={{ gridTemplateColumns: '70px 1fr 120px 140px 90px' }}
             >
-              {Object.values(BracketType).map(format => (
-                <option key={format} value={format}>{format.replace(/_/g, ' ')}</option>
+              <span>SEED</span>
+              <span>PLAYER</span>
+              <span>CHARACTER</span>
+              <span>SEAT / SETUP</span>
+              <span className="text-right">CHECK-IN</span>
+            </div>
+
+            {/* Player List */}
+            <div className="divide-y divide-white/5 max-h-[460px] overflow-y-auto">
+              {sortedPlayers.map((player) => (
+                <div
+                  key={player.id}
+                  className="grid items-center px-4 py-2.5 hover:bg-white/[0.02] transition-colors"
+                  style={{ gridTemplateColumns: '70px 1fr 120px 140px 90px' }}
+                >
+                  {/* Seed Input */}
+                  <div className="flex items-center">
+                    {onUpdateSeed ? (
+                      <input
+                        type="number"
+                        min="1"
+                        max="999"
+                        value={player.seed}
+                        onChange={(e) => {
+                          const val = parseInt(e.target.value, 10);
+                          if (!isNaN(val)) onUpdateSeed(player.id, val);
+                        }}
+                        className="w-12 px-1.5 py-0.5 rounded text-xs tabular-nums text-center font-mono font-bold bg-black/50 border border-white/15 focus:border-[#00E5FF] focus:outline-none transition-all text-white"
+                        title="Click to edit seed number"
+                      />
+                    ) : (
+                      <span className="text-xs font-mono font-bold text-gray-400">
+                        #{player.seed}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Player Name */}
+                  <div>
+                    <div className="text-sm font-bold text-white flex items-center gap-1.5 font-rajdhani" style={{ fontFamily: 'Rajdhani, sans-serif' }}>
+                      <span>{player.tag}</span>
+                      {player.countryFlag && <span className="text-xs">{player.countryFlag}</span>}
+                    </div>
+                    <div className="text-xs text-gray-500 font-mono">
+                      {player.realName || player.country}
+                    </div>
+                  </div>
+
+                  {/* Character */}
+                  <span className="text-xs text-gray-400 truncate pr-2 font-mono">
+                    {player.character || '—'}
+                  </span>
+
+                  {/* Flexible Seating / Station Assignment */}
+                  <div className="pr-2">
+                    <select
+                      value={player.stationId ?? ''}
+                      onChange={(e) => {
+                        const val = e.target.value === '' ? null : parseInt(e.target.value, 10);
+                        onUpdatePlayerStation?.(player.id, val);
+                      }}
+                      className="w-full text-xs font-mono bg-black/60 border border-white/15 rounded px-2 py-1 text-gray-300 focus:outline-none focus:border-[#00E5FF]"
+                      title="Flexible station/seat assignment before bracket starts"
+                    >
+                      <option value="">Unassigned</option>
+                      {stations?.map(s => (
+                        <option key={s.id} value={s.id}>{s.name}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Status */}
+                  <div className="flex justify-end">
+                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono uppercase tracking-wider ${
+                      player.checkedIn 
+                        ? 'bg-green-500/10 text-green-400 border border-green-500/20' 
+                        : 'bg-red-500/10 text-red-400 border border-red-500/20'
+                    }`}>
+                      {player.checkedIn ? <CheckCircle2 size={10} /> : <X size={10} />}
+                      {player.checkedIn ? 'Ready' : 'Absent'}
+                    </span>
+                  </div>
+                </div>
               ))}
-            </select>
-            <button 
-              disabled={players.length === 0}
-              onClick={() => onGenerateBracket?.(selectedFormat)} 
-              className="w-full px-6 py-2.5 rounded text-sm tracking-widest font-bold text-black hover:brightness-125 transition-all disabled:opacity-30 disabled:cursor-not-allowed" 
-              style={{ background: theme.primaryColor, fontFamily: 'Rajdhani, sans-serif' }}
-            >
-              GENERATE BRACKET
-            </button>
+            </div>
           </div>
         )}
       </div>

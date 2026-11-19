@@ -39,6 +39,7 @@ export interface Player {
   placement?: number;
   fbUserId?: string;
   avatarUrl?: string;
+  stationId?: number | null;
 }
 
 export interface BracketMatch {

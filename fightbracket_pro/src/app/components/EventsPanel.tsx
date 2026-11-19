@@ -150,7 +150,7 @@ export function EventsPanel({
       const params = new URLSearchParams({
         upcoming: String(upcoming),
         page: String(page),
-        per_page: '12'
+        per_page: '18'
       });
       if (query) params.append('q', query);
       if (gameFilter) params.append('game', gameFilter);
@@ -190,7 +190,7 @@ export function EventsPanel({
           query: query,
           upcoming: upcoming,
           page: page,
-          perPage: 12,
+          perPage: 18,
           location: activeLocationFilter || undefined,
           videogameId: gameFilter ? parseInt(gameFilter) : undefined
         })
@@ -399,6 +399,23 @@ export function EventsPanel({
     }
   };
 
+  const getPageNumbers = () => {
+    const total = source === 'fightbracket' ? communityTotalPages : startggTotalPages;
+    const pages: (number | string)[] = [];
+    if (total <= 7) {
+      for (let i = 1; i <= total; i++) pages.push(i);
+    } else {
+      pages.push(1);
+      if (page > 3) pages.push("...");
+      const start = Math.max(2, page - 1);
+      const end = Math.min(total - 1, page + 1);
+      for (let i = start; i <= end; i++) pages.push(i);
+      if (page < total - 2) pages.push("...");
+      pages.push(total);
+    }
+    return pages;
+  };
+
   return (
     <div className="p-4 lg:p-8 animate-in fade-in duration-300 min-h-full" style={{ fontFamily: 'Inter, sans-serif' }}>
       <div className="max-w-6xl mx-auto space-y-6">
@@ -594,7 +611,7 @@ export function EventsPanel({
         {/* ─── Results View ────────────────────────────────────────────────── */}
         {loading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 opacity-60">
-            {[...Array(6)].map((_, i) => (
+            {[...Array(18)].map((_, i) => (
               <div key={i} className="bg-[#111116] rounded-2xl border border-white/5 h-72 animate-pulse" />
             ))}
           </div>
@@ -902,23 +919,55 @@ export function EventsPanel({
 
         {/* ─── Pagination ─────────────────────────────────────────────────── */}
         {((source === 'fightbracket' && communityTotalPages > 1) || (source === 'startgg' && startggTotalPages > 1)) && (
-          <div className="flex justify-center items-center gap-4 mt-10">
+          <div className="flex flex-wrap justify-center items-center gap-2 mt-10">
             <button
               onClick={() => setPage(p => Math.max(1, p - 1))}
               disabled={page === 1}
-              className="p-2 bg-[#111116] border border-white/10 rounded-xl text-gray-400 hover:text-white hover:border-[#00E5FF]/50 disabled:opacity-30 disabled:pointer-events-none transition-all"
+              className="flex items-center gap-1.5 px-3 py-2 bg-[#111116] border border-white/10 rounded-lg text-xs font-bold text-gray-400 hover:text-white hover:border-[#06b6d4]/50 disabled:opacity-30 disabled:pointer-events-none transition-all"
+              aria-label="Previous page"
             >
-              <ChevronLeft size={20} />
+              <ChevronLeft size={16} />
+              <span className="hidden sm:inline">Prev</span>
             </button>
-            <span className="text-xs text-gray-400 font-bold tracking-widest font-mono">
-              PAGE {page} OF {source === 'fightbracket' ? communityTotalPages : startggTotalPages}
-            </span>
+
+            <div className="flex flex-wrap items-center gap-1.5">
+              {getPageNumbers().map((p, idx) => {
+                if (p === "...") {
+                  return (
+                    <span key={`dots-${idx}`} className="px-2 text-gray-500 font-bold select-none text-xs">
+                      ...
+                    </span>
+                  );
+                }
+                const pageNum = Number(p);
+                const isActive = pageNum === page;
+                return (
+                  <button
+                    key={pageNum}
+                    onClick={() => setPage(pageNum)}
+                    className={`min-w-[36px] h-9 px-3 rounded-lg text-xs font-bold transition-all ${
+                      isActive
+                        ? "bg-[#06b6d4] text-black shadow-[0_0_15px_rgba(6,182,212,0.4)]"
+                        : "bg-[#111116] border border-white/10 text-gray-400 hover:text-white hover:border-[#06b6d4]/50"
+                    }`}
+                  >
+                    {pageNum}
+                  </button>
+                );
+              })}
+            </div>
+
             <button
-              onClick={() => setPage(p => Math.min(source === 'fightbracket' ? communityTotalPages : startggTotalPages, p + 1))}
+              onClick={() => {
+                const total = source === 'fightbracket' ? communityTotalPages : startggTotalPages;
+                setPage(p => Math.min(total, p + 1));
+              }}
               disabled={page === (source === 'fightbracket' ? communityTotalPages : startggTotalPages)}
-              className="p-2 bg-[#111116] border border-white/10 rounded-xl text-gray-400 hover:text-white hover:border-[#00E5FF]/50 disabled:opacity-30 disabled:pointer-events-none transition-all"
+              className="flex items-center gap-1.5 px-3 py-2 bg-[#111116] border border-white/10 rounded-lg text-xs font-bold text-gray-400 hover:text-white hover:border-[#06b6d4]/50 disabled:opacity-30 disabled:pointer-events-none transition-all"
+              aria-label="Next page"
             >
-              <ChevronRight size={20} />
+              <span className="hidden sm:inline">Next</span>
+              <ChevronRight size={16} />
             </button>
           </div>
         )}

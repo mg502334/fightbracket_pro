@@ -168,3 +168,5 @@ desktop.ini
 .idea/
 .vscode/
 *.sublime-*
+git ignore site]/
+turnstile-spin-scripts/

@@ -79,6 +79,18 @@ export function getActiveRegistrationState(item: NewsItem) {
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 const NOW = Date.now();
 
+export const formatNewsTimestamp = (publishedAt?: string | number, fallbackDate?: string) => {
+  if (publishedAt) {
+    const d = new Date(publishedAt);
+    if (!isNaN(d.getTime())) {
+      const dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      const timeStr = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      return `${dateStr} · ${timeStr}`;
+    }
+  }
+  return fallbackDate || 'Recent';
+};
+
 const DEFAULT_GAME_PATCHES: GamePatch[] = [
   {
     id: 'official-t8-v301',
@@ -706,7 +718,6 @@ export function NewsPage({ onNavigateHome, onSignUp }: NewsPageProps) {
                                     {displayBadge}
                                   </span>
                                 )}
-                                <span className="text-[10px] text-gray-500">{item.date}</span>
 
                                 {daysLeft && (
                                   <span 
@@ -737,6 +748,12 @@ export function NewsPage({ onNavigateHome, onSignUp }: NewsPageProps) {
                               <h2 className="text-base font-bold text-white mb-1" style={{ fontFamily: 'Rajdhani, sans-serif', fontSize: '1.15rem' }}>
                                 {item.title}
                               </h2>
+
+                              {/* Time & Date Stamp under title */}
+                              <div className="flex items-center gap-1.5 text-[11px] text-gray-400 mb-2 font-mono">
+                                <Clock size={12} className="text-[#00E5FF]/70 flex-shrink-0" />
+                                <span>{formatNewsTimestamp(item.publishedAt, item.date)}</span>
+                              </div>
 
                               {/* Deal specific price tags if available */}
                               {item.type === 'sale' && item.salePrice && (
@@ -942,14 +959,17 @@ export function NewsPage({ onNavigateHome, onSignUp }: NewsPageProps) {
                                 <span className="text-[10px] font-mono text-gray-400">
                                   by {patch.author}
                                 </span>
-                                <span className="text-[10px] font-mono text-gray-500 ml-auto">
-                                  {patch.date}
-                                </span>
                               </div>
 
-                              <h2 className="text-lg font-bold text-white mb-2" style={{ fontFamily: 'Rajdhani, sans-serif' }}>
+                              <h2 className="text-lg font-bold text-white mb-1" style={{ fontFamily: 'Rajdhani, sans-serif' }}>
                                 {patch.title}
                               </h2>
+
+                              {/* Time & Date Stamp under title */}
+                              <div className="flex items-center gap-1.5 text-[11px] text-gray-400 mb-2 font-mono">
+                                <Clock size={12} className="text-[#a78bfa]/70 flex-shrink-0" />
+                                <span>{formatNewsTimestamp(patch.timestamp ? patch.timestamp * 1000 : undefined, patch.date)}</span>
+                              </div>
 
                               <p className={`text-xs text-gray-300 leading-relaxed font-mono ${isExpanded ? '' : 'line-clamp-3'}`}>
                                 {patch.contents}
