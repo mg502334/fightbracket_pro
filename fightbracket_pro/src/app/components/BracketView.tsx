@@ -24,6 +24,7 @@ interface BracketViewProps {
   autoSyncSlug?: string | null;
   subdomain?: string | null;
   tournamentId?: string | null;
+  tournamentName?: string | null;
   onShareBracket?: () => Promise<string | null> | void;
 }
 
@@ -143,6 +144,7 @@ export function BracketView({
   autoSyncSlug,
   subdomain,
   tournamentId,
+  tournamentName,
   onShareBracket,
 }: BracketViewProps) {
   const [hoveredMatchId, setHoveredMatchId] = useState<string | null>(null);
@@ -386,7 +388,7 @@ export function BracketView({
       tournamentId: tournamentId || undefined,
       eventSlug: eventSlugToUse || undefined,
     });
-    const tournamentTitle = tournamentName || 'Tournament Bracket';
+    const tournamentTitle = tournamentName || theme?.displayName || 'Tournament Bracket';
 
     // Forwards the clean bracket link for Discord friends without auto sending any stats
     const cleanShareText = `🏆 Follow the tournament bracket for **${tournamentTitle}**:\n<${shareUrl}>`;

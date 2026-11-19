@@ -2556,6 +2556,7 @@ export default function App() {
                     autoSyncSlug={autoSyncSlug || (activeTournament?.subdomain ? activeTournament.subdomain : null)}
                     subdomain={activeTournament?.subdomain || null}
                     tournamentId={activeTournament?.id || activeTournament?.slug || null}
+                    tournamentName={activeTournament?.name || (theme ? `${theme.displayName} Tournament` : null)}
                     onShareBracket={handleShareBracketOrEvent}
                   />
                 </div>
