@@ -220,7 +220,7 @@ export default function App() {
 
   const [activeTournament, setActiveTournament] = useState<ActiveTournament | null>(() => {
     const saved = safeParse<ActiveTournament | null>('fb_tournament', null);
-    if (saved && !saved.subdomain && typeof generateRandomSubdomain === 'function') {
+    if (saved && !saved.subdomain) {
       saved.subdomain = generateRandomSubdomain('fb');
     }
     return saved;
