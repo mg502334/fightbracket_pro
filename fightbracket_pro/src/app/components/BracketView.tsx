@@ -1015,6 +1015,10 @@ export function BracketView({
                 searchMatchingPlayerIds={searchMatchingPlayerIds}
                 selectedPool={activePool !== 'ALL' ? activePool : undefined}
                 onPlayerClick={onPlayerClick}
+                onViewAnnouncement={onViewAnnouncement}
+                highlightedMatchId={highlightedMatchId}
+                subdomain={subdomain}
+                tournamentId={tournamentId}
               />
               <BracketSection
                 title={availablePhases.length > 1 ? `${phaseName} — LOSERS BRACKET` : 'LOSERS BRACKET'}
@@ -1028,6 +1032,10 @@ export function BracketView({
                 searchMatchingPlayerIds={searchMatchingPlayerIds}
                 selectedPool={activePool !== 'ALL' ? activePool : undefined}
                 onPlayerClick={onPlayerClick}
+                onViewAnnouncement={onViewAnnouncement}
+                highlightedMatchId={highlightedMatchId}
+                subdomain={subdomain}
+                tournamentId={tournamentId}
               />
               <BracketSection
                 title={availablePhases.length > 1 ? `${phaseName} — GRAND FINALS` : 'GRAND FINALS'}
@@ -1041,6 +1049,10 @@ export function BracketView({
                 searchMatchingPlayerIds={searchMatchingPlayerIds}
                 selectedPool={activePool !== 'ALL' ? activePool : undefined}
                 onPlayerClick={onPlayerClick}
+                onViewAnnouncement={onViewAnnouncement}
+                highlightedMatchId={highlightedMatchId}
+                subdomain={subdomain}
+                tournamentId={tournamentId}
               />
             </div>
           );
@@ -1053,7 +1065,8 @@ export function BracketView({
 import { computeBracketSlots } from '../data/bracketEngine';
 
 function BracketSection({ 
-  title, matches, allMatches, playerMap, theme, hoveredMatchId, setHoveredMatchId, onCallMatch, searchMatchingPlayerIds, selectedPool, onPlayerClick
+  title, matches, allMatches, playerMap, theme, hoveredMatchId, setHoveredMatchId, onCallMatch, searchMatchingPlayerIds, selectedPool, onPlayerClick,
+  onViewAnnouncement, highlightedMatchId, subdomain, tournamentId
 }: { 
   title: string; 
   matches: BracketMatch[]; 
@@ -1066,6 +1079,10 @@ function BracketSection({
   searchMatchingPlayerIds: Set<string>;
   selectedPool?: string;
   onPlayerClick?: (playerId: string) => void;
+  onViewAnnouncement?: (match: BracketMatch) => void;
+  highlightedMatchId?: string | null;
+  subdomain?: string | null;
+  tournamentId?: string | null;
 }) {
   if (matches.length === 0) return null;
 

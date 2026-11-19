@@ -54,6 +54,8 @@ export interface BracketMatch {
   stationId: number | null;
   player1Score: number;
   player2Score: number;
+  score1?: number;
+  score2?: number;
   winnerId: string | null;
   streamUrl?: string;
   bestOf: number;
@@ -87,6 +89,8 @@ export interface ExhibitionMatch {
   player2Name: string;
   player1Score: number;
   player2Score: number;
+  score1?: number;
+  score2?: number;
   firstTo: number;
   videoUrl: string;
   createdAt: number;

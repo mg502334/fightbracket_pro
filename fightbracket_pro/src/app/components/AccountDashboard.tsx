@@ -110,6 +110,10 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
     friends_only?: boolean;
     unread_messages_count?: number;
     pending_friend_requests_count?: number;
+    likes_count?: number;
+    followers_count?: number;
+    following_count?: number;
+    [key: string]: any;
   } | null>(null);
   const [profileLoading, setProfileLoading] = useState(true);
   const [profileError, setProfileError] = useState<string | null>(null);
@@ -2301,7 +2305,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
                               <button
                                 onClick={() => {
                                   localStorage.removeItem('fightbracket_imported_events_history');
-                                  setProfile(prev => ({ ...prev }));
+                                  setUserProfile(prev => prev ? { ...prev } : null);
                                 }}
                                 className="text-[10px] font-mono text-gray-500 hover:text-red-400 uppercase tracking-wider"
                               >

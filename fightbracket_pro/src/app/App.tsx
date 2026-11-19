@@ -88,9 +88,12 @@ export function parseStreamUrl(streamName: string, streamSource?: string): strin
 }
 
 export interface ActiveTournament {
+  id?: string;
   name: string;
   location: string;
   slug?: string;
+  subdomain?: string;
+  isLiveShared?: boolean;
   numAttendees?: number;
   eventType?: 'local' | 'online' | 'hybrid';
   isOnline?: boolean;
@@ -104,6 +107,11 @@ export interface ActiveTournament {
   stationCount?: number;
   format?: BracketType;
   createdAt?: string;
+  game_name?: string;
+  gameTheme?: string;
+  status?: string;
+  user_id?: string;
+  [key: string]: any;
 }
 
 export default function App() {
@@ -826,12 +834,12 @@ export default function App() {
   };
 
   const syncSharedBracketState = useCallback(async (overrideSub?: string) => {
-    const sub = sanitizeSubdomain(overrideSub || activeTournament?.subdomain);
+    const sub = sanitizeSubdomain(overrideSub || activeTournament?.subdomain || activeTournament?.slug || activeTournament?.id, 'fb');
     if (!sub) return null;
     const tournamentName = activeTournament?.name || (activeGame && gameThemes[activeGame]?.displayName ? `${gameThemes[activeGame].displayName} Event` : 'Local Event');
     const tournamentLocation = activeTournament?.location || 'Local / Offline';
     const tournamentId = activeTournament?.id || activeTournament?.slug || sub;
-    const updatedTournament = {
+    const updatedTournament: ActiveTournament = {
       ...(activeTournament || {}),
       id: tournamentId,
       name: tournamentName,
@@ -883,7 +891,7 @@ export default function App() {
   useEffect(() => {
     if (isApplyingRemoteRef.current) return;
     if (autoSyncSlug) return;
-    const sub = sanitizeSubdomain(activeTournament?.subdomain);
+    const sub = sanitizeSubdomain(activeTournament?.subdomain || activeTournament?.slug || activeTournament?.id, 'fb');
     if (!sub || (!activeTournament?.isLiveShared && matches.length === 0)) return;
 
     lastLocalChangeRef.current = Date.now();
@@ -897,7 +905,7 @@ export default function App() {
 
   // Live poll shared local bracket every 3.5s so everyone with the subdomain link sees live match updates as matches run
   const pullSharedBracketUpdates = useCallback(async () => {
-    const sub = sanitizeSubdomain(activeTournament?.subdomain);
+    const sub = sanitizeSubdomain(activeTournament?.subdomain || activeTournament?.slug || activeTournament?.id, 'fb');
     const tId = activeTournament?.id || activeTournament?.slug || sub;
     if (!tId || autoSyncSlug) return;
     if (Date.now() - lastLocalChangeRef.current < 2500) return;
@@ -931,7 +939,7 @@ export default function App() {
   }, [activeTournament?.subdomain, activeTournament?.id, activeTournament?.slug, autoSyncSlug]);
 
   useEffect(() => {
-    const sub = sanitizeSubdomain(activeTournament?.subdomain);
+    const sub = sanitizeSubdomain(activeTournament?.subdomain || activeTournament?.slug || activeTournament?.id, 'fb');
     if (!sub || (!activeTournament?.isLiveShared && matches.length === 0) || autoSyncSlug) return;
 
     const interval = setInterval(() => {
