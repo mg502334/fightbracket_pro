@@ -107,8 +107,13 @@ export interface ActiveTournament {
 }
 
 export default function App() {
-  const safeParse = <T,>(key: string, defaultVal: T): T => {
-    try { const saved = localStorage.getItem(key); return saved ? JSON.parse(saved) : defaultVal; } catch { return defaultVal; }
+  const safeParse = <T = any>(key: string, defaultVal: T): T => {
+    try {
+      const saved = localStorage.getItem(key);
+      return saved ? (JSON.parse(saved) as T) : defaultVal;
+    } catch {
+      return defaultVal;
+    }
   };
 
   const [activeGame, setActiveGame] = useState<string | null>(() => safeParse('fb_activeGame', null));
@@ -220,10 +225,11 @@ export default function App() {
 
   const [activeTournament, setActiveTournament] = useState<ActiveTournament | null>(() => {
     const saved = safeParse<ActiveTournament | null>('fb_tournament', null);
-    if (saved && !saved.subdomain) {
-      saved.subdomain = generateRandomSubdomain('fb');
-    }
-    return saved;
+    if (!saved) return null;
+    return {
+      ...saved,
+      subdomain: saved.subdomain || generateRandomSubdomain('fb'),
+    };
   });
   const [isSharingBracket, setIsSharingBracket] = useState(false);
   const lastServerUpdatedAtRef = useRef<string | null>(null);
