@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Swords, Clock, CheckCircle2, AlertCircle, ChevronRight, Search, X, Layers, Filter, Sparkles, Tv, RefreshCw, Monitor, Smartphone, Radio, Share2, Globe, Hash, Shuffle, ArrowUpDown, Copy, UserPlus, Users, Cloud } from "lucide-react";
+import { Swords, Clock, CheckCircle2, AlertCircle, ChevronRight, Search, X, Layers, Filter, Sparkles, Tv, RefreshCw, Monitor, Smartphone, Radio, Share2, Globe, Hash, Shuffle, ArrowUpDown, Copy, UserPlus, Users, Cloud, ExternalLink } from "lucide-react";
 import { BracketType, type BracketMatch, type Player, type GameTheme, type Station, getChronologicalRoundName } from "../data/tournamentData";
 import { getBracketSubdomainUrl, sanitizeSubdomain, getMatchPermalink } from "../utils/subdomain";
 import { toast } from "sonner";
@@ -196,28 +196,65 @@ export function BracketView({
     return (
       <div className="flex flex-col gap-6 max-w-4xl mx-auto p-4 md:p-6 animate-in fade-in duration-300">
         {/* Header & Generator Card */}
-        <div className="p-6 rounded-xl border border-white/10 bg-[#0A0A0F] flex flex-col md:flex-row items-center justify-between gap-6 shadow-xl">
-          <div className="flex items-center gap-4">
-            <div className="p-3.5 rounded-lg bg-cyan-500/10 border border-cyan-500/30 text-cyan-400">
-              <Swords size={32} />
+        {isImported ? (
+          <div className="p-6 rounded-xl border border-amber-500/30 bg-amber-500/5 flex flex-col md:flex-row items-center justify-between gap-6 shadow-xl">
+            <div className="flex items-center gap-4">
+              <div className="p-3.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400">
+                <Cloud size={32} />
+              </div>
+              <div>
+                <h3 className="text-xl tracking-widest font-bold text-white font-rajdhani" style={{ fontFamily: 'Rajdhani, sans-serif' }}>
+                  START.GG IMPORTED EVENT
+                </h3>
+                <p className="text-xs text-amber-300/80 font-mono mt-0.5">
+                  {players.length > 0 
+                    ? `${players.length} competitors synced from Start.gg · Bracket progression & seeds are managed on Start.gg.`
+                    : 'Bracket generation, seeding, and competitors are managed externally on Start.gg.'}
+                </p>
+              </div>
             </div>
-            <div>
-              <h3 className="text-xl tracking-widest font-bold text-white font-rajdhani" style={{ fontFamily: 'Rajdhani, sans-serif' }}>
-                BRACKET CONFIGURATION
-              </h3>
-              <p className="text-xs text-gray-400 font-mono mt-0.5">
-                {players.length === 0 
-                  ? "Add competitors to get started. You can configure seeds, setups, and formats below." 
-                  : `${players.length} players ready · Double check seeds & seating before starting.`}
-              </p>
+            <div className="flex flex-wrap items-center gap-2.5">
+              {autoSyncSlug && (
+                <a
+                  href={`https://start.gg/${autoSyncSlug}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 px-4 py-2.5 rounded-lg bg-white/5 border border-white/20 text-white font-mono text-xs hover:border-amber-400 hover:text-amber-300 transition-all font-bold"
+                >
+                  <ExternalLink size={13} />
+                  <span>VIEW ON START.GG</span>
+                </a>
+              )}
+              {onManualSync && (
+                <button
+                  type="button"
+                  onClick={onManualSync}
+                  className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/40 font-mono text-xs hover:bg-amber-500/30 transition-all cursor-pointer font-bold shrink-0"
+                >
+                  <RefreshCw size={13} className={isSyncing ? "animate-spin" : ""} />
+                  <span>{isSyncing ? "SYNCING..." : "SYNC BRACKET NOW"}</span>
+                </button>
+              )}
             </div>
           </div>
-
-          {isImported ? (
-            <div className="flex items-center gap-2 px-4 py-2.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/30 text-xs font-mono">
-              <span>Pool configuration and bracket generation is locked for imported tournaments.</span>
+        ) : (
+          <div className="p-6 rounded-xl border border-white/10 bg-[#0A0A0F] flex flex-col md:flex-row items-center justify-between gap-6 shadow-xl">
+            <div className="flex items-center gap-4">
+              <div className="p-3.5 rounded-lg bg-cyan-500/10 border border-cyan-500/30 text-cyan-400">
+                <Swords size={32} />
+              </div>
+              <div>
+                <h3 className="text-xl tracking-widest font-bold text-white font-rajdhani" style={{ fontFamily: 'Rajdhani, sans-serif' }}>
+                  BRACKET CONFIGURATION
+                </h3>
+                <p className="text-xs text-gray-400 font-mono mt-0.5">
+                  {players.length === 0 
+                    ? "Add competitors to get started. You can configure seeds, setups, and formats below." 
+                    : `${players.length} players ready · Double check seeds & seating before starting.`}
+                </p>
+              </div>
             </div>
-          ) : (
+
             <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
               {onOpenAddPlayer && players.length === 0 && (
                 <button
@@ -248,11 +285,11 @@ export function BracketView({
                 GENERATE BRACKET
               </button>
             </div>
-          )}
-        </div>
+          </div>
+        )}
 
-        {/* Empty State when 0 players */}
-        {players.length === 0 && (
+        {/* Empty State when 0 players — ONLY on non-imported events */}
+        {!isImported && players.length === 0 && (
           <div className="rounded-xl border border-dashed border-white/20 bg-[#0F0F14]/70 p-8 sm:p-10 text-center flex flex-col items-center justify-center gap-4 shadow-xl">
             <div className="w-14 h-14 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 shadow-[0_0_20px_rgba(0,229,255,0.15)]">
               <Users size={28} />
@@ -300,8 +337,8 @@ export function BracketView({
           </div>
         )}
 
-        {/* Pre-Bracket Seeding & Seating Setup Card */}
-        {players.length > 0 && (
+        {/* Pre-Bracket Seeding & Seating Setup Card — ONLY on non-imported events */}
+        {!isImported && players.length > 0 && (
           <div className="rounded-xl border border-white/10 bg-[#0F0F14] overflow-hidden shadow-lg">
             {/* Seeding & Seating Toolbar */}
             <div className="flex flex-wrap items-center justify-between gap-3 p-4 bg-[#14141B] border-b border-white/10">
