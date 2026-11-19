@@ -182,7 +182,7 @@ export function EventPublicPage() {
           <div className="flex items-center gap-2">
             <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/60 border border-cyan-500/30 text-cyan-400 font-mono text-xs">
               <Globe size={12} />
-              {eventSubdomain}.fightbracketpro.com
+              fightbracketpro.com/events/{eventSubdomain}
             </span>
             <button
               onClick={() => handleCopySubdomainLink(shareEventUrl, 'Event subdomain link')}

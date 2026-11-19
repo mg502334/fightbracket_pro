@@ -229,6 +229,7 @@ export default function App() {
   const lastServerUpdatedAtRef = useRef<string | null>(null);
   const lastLocalChangeRef = useRef<number>(0);
   const isApplyingRemoteRef = useRef<boolean>(false);
+  const [highlightedMatchId, setHighlightedMatchId] = useState<string | null>(() => typeof window !== 'undefined' ? (new URLSearchParams(window.location.search).get('match') || (window.location.pathname.startsWith('/m/') ? window.location.pathname.split('/m/')[1]?.split('/')[0] : null)) : null);
   const [autoSyncSlug, setAutoSyncSlug] = useState<string | null>(() => safeParse('fb_autoSyncSlug', null));
   const [exhibitions, setExhibitions] = useState<ExhibitionMatch[]>(() => safeParse('fb_exhibitions', []));
 
@@ -421,54 +422,100 @@ export default function App() {
     const path = window.location.pathname;
     const urlParams = new URLSearchParams(window.location.search);
     const eventParam = urlParams.get('event');
+    const matchParam = urlParams.get('match');
     const activeSub = extractActiveSubdomain();
 
-    if (path.startsWith('/t/')) {
-      const id = path.split('/t/')[1]?.split('/')[0];
-      if (id) {
-        fetch(`/api/public/tournaments/${encodeURIComponent(id)}`)
+    if (matchParam) {
+      setHighlightedMatchId(matchParam);
+      setActiveTab('bracket');
+    }
+
+    // Direct match permalink: fightbracketpro.com/m/<matchId>
+    if (path.startsWith('/m/')) {
+      const matchId = path.split('/m/')[1]?.split('/')[0];
+      if (matchId) {
+        setHighlightedMatchId(matchId);
+        setActiveTab('bracket');
+        fetch(`/api/public/matches/${encodeURIComponent(matchId)}`)
           .then(r => {
-            if (!r.ok) throw new Error('Not found');
+            if (!r.ok) throw new Error('Match not found');
             return r.json();
           })
           .then(data => {
-            const parsed = typeof data.tournament.data === 'string'
-              ? JSON.parse(data.tournament.data)
-              : data.tournament.data;
-            applyLoadedTournamentPayload(parsed, {
-              id: data.tournament.id,
-              name: data.tournament.name,
-              subdomain: data.tournament.subdomain || activeSub || undefined,
-              user_id: data.tournament.user_id,
-              updated_at: data.tournament.updated_at,
-            });
-            toast.success(`Loaded "${data.tournament.name || 'Tournament'}" — ready to run!`);
-          })
-          .catch(() => {
-            if (activeSub) {
-              fetch(`/api/public/resolve-subdomain/${encodeURIComponent(activeSub)}`)
-                .then(r => r.ok ? r.json() : Promise.reject())
-                .then(resData => {
-                  if (resData.tournament?.data) {
-                    const parsed = typeof resData.tournament.data === 'string'
-                      ? JSON.parse(resData.tournament.data)
-                      : resData.tournament.data;
-                    applyLoadedTournamentPayload(parsed, {
-                      id: resData.tournament.id,
-                      name: resData.tournament.name,
-                      subdomain: resData.subdomain || activeSub,
-                      user_id: resData.tournament.user_id,
-                    });
-                    toast.success(`Loaded "${resData.tournament.name}" — ready to run!`);
-                  }
-                })
-                .catch(() => toast.error("Tournament not found"));
-            } else {
-              toast.error("Tournament not found");
+            if (data.tournament?.data) {
+              const parsed = typeof data.tournament.data === 'string'
+                ? JSON.parse(data.tournament.data)
+                : data.tournament.data;
+              applyLoadedTournamentPayload(parsed, {
+                id: data.tournament.id,
+                name: data.tournament.name,
+                subdomain: data.tournament.subdomain,
+              });
+              setActiveTab('bracket');
+              toast.info(`Viewing Match ${matchId} in "${data.tournament.name || 'Tournament'}"`);
             }
-          });
+          })
+          .catch(() => {});
         return;
       }
+    }
+
+    let targetId: string | null = null;
+    if (path.startsWith('/t/')) {
+      targetId = path.split('/t/')[1]?.split('/')[0] || null;
+    } else if (
+      path.length > 1 &&
+      !path.startsWith('/events') &&
+      !path.startsWith('/api') &&
+      !path.startsWith('/auth') &&
+      !path.startsWith('/e/') &&
+      !path.startsWith('/twitch-extension')
+    ) {
+      const rootPart = path.slice(1).split('/')[0];
+      if (rootPart && (rootPart.startsWith('fb-') || rootPart.startsWith('ev-') || rootPart.length >= 4)) {
+        targetId = rootPart;
+      }
+    }
+
+    if (targetId) {
+      fetch(`/api/public/tournaments/${encodeURIComponent(targetId)}`)
+        .then(r => {
+          if (!r.ok) throw new Error('Not found');
+          return r.json();
+        })
+        .then(data => {
+          const parsed = typeof data.tournament.data === 'string'
+            ? JSON.parse(data.tournament.data)
+            : data.tournament.data;
+          applyLoadedTournamentPayload(parsed, {
+            id: data.tournament.id,
+            name: data.tournament.name,
+            subdomain: data.tournament.subdomain || targetId || activeSub || undefined,
+            user_id: data.tournament.user_id,
+            updated_at: data.tournament.updated_at,
+          });
+          toast.success(`Loaded "${data.tournament.name || 'Tournament'}" — ready to run!`);
+        })
+        .catch(() => {
+          fetch(`/api/public/resolve-subdomain/${encodeURIComponent(targetId!)}`)
+            .then(r => r.ok ? r.json() : Promise.reject())
+            .then(resData => {
+              if (resData.tournament?.data) {
+                const parsed = typeof resData.tournament.data === 'string'
+                  ? JSON.parse(resData.tournament.data)
+                  : resData.tournament.data;
+                applyLoadedTournamentPayload(parsed, {
+                  id: resData.tournament.id,
+                  name: resData.tournament.name,
+                  subdomain: resData.subdomain || targetId || activeSub,
+                  user_id: resData.tournament.user_id,
+                });
+                toast.success(`Loaded "${resData.tournament.name}" — ready to run!`);
+              }
+            })
+            .catch(() => toast.error("Tournament not found"));
+        });
+      return;
     }
 
     // Auto-import event bracket if shared permalink ?event=<slug> is present in URL
@@ -924,7 +971,7 @@ export default function App() {
       }
       if (options.notify) {
         await navigator.clipboard.writeText(shareUrl);
-        toast.success(`Live Subdomain Active (${activeTournament?.subdomain || sub}.fightbracketpro.com)! Link copied!`);
+        toast.success(`Bracket permalink copied! (${shareUrl})`);
       }
       return shareUrl;
     } catch (e) {
@@ -932,7 +979,7 @@ export default function App() {
       if (options.notify) {
         try {
           await navigator.clipboard.writeText(shareUrl);
-          toast.success(`Subdomain link copied (${sub}.fightbracketpro.com)!`);
+          toast.success(`Bracket permalink copied! (${shareUrl})`);
         } catch {}
       }
       return shareUrl;
@@ -2101,7 +2148,7 @@ export default function App() {
                     {(activeTournament.isLiveShared || matches.length > 0) && (
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                     )}
-                    <span>🌐 {activeTournament.subdomain}.fightbracketpro.com</span>
+                    <span>🔗 fightbracketpro.com/t/{activeTournament.subdomain}</span>
                     {(activeTournament.isLiveShared || matches.length > 0) && (
                       <span className="text-emerald-400 font-bold">• ACTIVE</span>
                     )}
@@ -2174,7 +2221,7 @@ export default function App() {
                     <div className="px-3 py-1.5 border-b border-white/10 mb-1">
                       <div className="text-[10px] uppercase tracking-wider text-gray-400 font-mono">Share Tournament Bracket</div>
                       <div className="text-xs font-bold truncate font-mono text-emerald-400">
-                        {activeTournament?.subdomain ? `${activeTournament.subdomain}.fightbracketpro.com` : 'Live Bracket Link'}
+                        {activeTournament?.subdomain ? `fightbracketpro.com/t/${activeTournament.subdomain}` : 'Live Bracket Link'}
                       </div>
                     </div>
 
@@ -2557,6 +2604,7 @@ export default function App() {
                     subdomain={activeTournament?.subdomain || null}
                     tournamentId={activeTournament?.id || activeTournament?.slug || null}
                     tournamentName={activeTournament?.name || (theme ? `${theme.displayName} Tournament` : null)}
+                    highlightedMatchId={highlightedMatchId}
                     onShareBracket={handleShareBracketOrEvent}
                   />
                 </div>
@@ -2941,6 +2989,17 @@ function OverviewTab({
                   <span className="text-xs tabular-nums" style={{ fontFamily: 'JetBrains Mono, monospace', color: '#FFD600' }}>
                     {m.player1Score} – {m.player2Score}
                   </span>
+                  <button
+                    onClick={() => {
+                      const url = `${window.location.origin}/m/${encodeURIComponent(m.id)}`;
+                      navigator.clipboard.writeText(url);
+                      toast.success(`Match permalink copied! (${url})`);
+                    }}
+                    title="Copy match link (.com/m/...)"
+                    className="opacity-40 hover:opacity-100 hover:text-[#00E5FF] transition-opacity p-1"
+                  >
+                    <Copy size={11} />
+                  </button>
                   {m.state === 'called' && (
                     <>
                       {m.calledAt && <MatchTimer calledAt={m.calledAt} />}

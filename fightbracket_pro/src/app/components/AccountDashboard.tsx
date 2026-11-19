@@ -2118,7 +2118,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
                                   <span>ID: {t.id}</span>
                                   {t.subdomain && (
                                     <span className="text-[#00E5FF] bg-[#00E5FF]/10 border border-[#00E5FF]/30 px-1.5 py-0.5 rounded">
-                                      🌐 {t.subdomain}.fightbracketpro.com
+                                      🔗 fightbracketpro.com/t/{t.subdomain}
                                     </span>
                                   )}
                                 </div>
@@ -2127,10 +2127,10 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
                                 <button
                                   onClick={() => {
                                     navigator.clipboard.writeText(shareSubUrl);
-                                    toast.success('Subdomain bracket link copied to clipboard!');
+                                    toast.success('Bracket permalink copied to clipboard!');
                                   }}
                                   className="flex items-center gap-1 px-2.5 py-1.5 bg-[#00E5FF]/10 text-[#00E5FF] hover:bg-[#00E5FF]/20 border border-[#00E5FF]/30 rounded font-rajdhani font-bold tracking-wider transition-colors text-xs"
-                                  title="Copy shareable subdomain link"
+                                  title="Copy shareable bracket permalink"
                                 >
                                   <Globe size={13} /> SHARE
                                 </button>
@@ -2334,7 +2334,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
                                       <div className="flex items-center gap-3 text-xs font-mono text-gray-400 flex-wrap">
                                         <span>👥 {item.playerCount || 0} players</span>
                                         {item.location && <span>• 📍 {item.location}</span>}
-                                        <span>• 🌐 {sub}.fightbracketpro.com</span>
+                                        <span>• 🔗 fightbracketpro.com/t/{sub}</span>
                                         <span>• {new Date(item.lastImportedAt).toLocaleDateString()}</span>
                                       </div>
                                     </div>
@@ -2343,10 +2343,10 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
                                       <button
                                         onClick={() => {
                                           navigator.clipboard.writeText(shareLink);
-                                          toast.success(`Subdomain bracket link copied! (${sub}.fightbracketpro.com)`);
+                                          toast.success(`Bracket permalink copied! (${shareLink})`);
                                         }}
                                         className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/80 text-xs font-mono font-bold border border-white/10 transition-colors flex items-center gap-1.5"
-                                        title="Copy unique subdomain share link for this bracket"
+                                        title="Copy unique permalink for this bracket"
                                       >
                                         <ExternalLink size={13} />
                                         <span>COPY LINK</span>

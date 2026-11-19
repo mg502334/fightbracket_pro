@@ -175,11 +175,11 @@ const DEFAULT_NEWS_ITEMS: NewsItem[] = [
     type: 'feature',
     date: 'Just Now',
     publishedAt: NOW - (10 * 60 * 1000), // 10 mins ago -> Active
-    title: 'Unique Random Subdomains & Live Active Bracket Sharing',
-    body: 'Every community event, Start.gg import, and locally created event now receives its own unique random subdomain (e.g. ev-xxxxxx.fightbracketpro.com / fb-xxxxxx.fightbracketpro.com). Share any local event or bracket in one click so anyone receiving the link can load, view, and run matches in real time!',
+    title: 'Unique Clean Permalinks & Live Active Bracket Sharing',
+    body: 'Every community event, Start.gg import, and locally created event now receives its own unique permalink (e.g. fightbracketpro.com/t/fb-xxxxxx or fightbracketpro.com/fb-xxxxxx). Share any local event or bracket in one click so anyone receiving the link can load, view, and run matches in real time!',
     badge: 'NEW UPGRADE',
     bullets: [
-      'Automatic Random Subdomains: Every event and shared bracket gets a dedicated subdomain link that resolves directly to your event or runnable bracket.',
+      'Automatic Unique Permalinks: Every event and shared bracket gets a clean permalink (.com/uniqueid) that resolves directly to your event or runnable bracket.',
       'Share, Load & Run Local Events: Create a local tournament, click SHARE, and send it to a co-organizer or player — they can load the full bracket and run matches (call matches, assign stations, report scores, manage check-ins).',
       'Live Active Bracket Sync: Shared local brackets stay active as you run matches, automatically syncing match calls, station assignments, and live scores every 3.5 seconds across all connected viewers and public event pages.',
     ],

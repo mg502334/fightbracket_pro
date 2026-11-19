@@ -1,7 +1,8 @@
-import { useState } from "react";
-import { Swords, Clock, CheckCircle2, AlertCircle, ChevronRight, Search, X, Layers, Filter, Sparkles, Tv, RefreshCw, Monitor, Smartphone, Radio, Share2, Globe, Hash, Shuffle, ArrowUpDown } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Swords, Clock, CheckCircle2, AlertCircle, ChevronRight, Search, X, Layers, Filter, Sparkles, Tv, RefreshCw, Monitor, Smartphone, Radio, Share2, Globe, Hash, Shuffle, ArrowUpDown, Copy } from "lucide-react";
 import { BracketType, type BracketMatch, type Player, type GameTheme, type Station, getChronologicalRoundName } from "../data/tournamentData";
-import { getBracketSubdomainUrl, sanitizeSubdomain } from "../utils/subdomain";
+import { getBracketSubdomainUrl, sanitizeSubdomain, getMatchPermalink } from "../utils/subdomain";
+import { toast } from "sonner";
 
 interface BracketViewProps {
   matches: BracketMatch[];
@@ -25,6 +26,7 @@ interface BracketViewProps {
   subdomain?: string | null;
   tournamentId?: string | null;
   tournamentName?: string | null;
+  highlightedMatchId?: string | null;
   onShareBracket?: () => Promise<string | null> | void;
 }
 
@@ -145,6 +147,7 @@ export function BracketView({
   subdomain,
   tournamentId,
   tournamentName,
+  highlightedMatchId,
   onShareBracket,
 }: BracketViewProps) {
   const [hoveredMatchId, setHoveredMatchId] = useState<string | null>(null);
@@ -157,6 +160,19 @@ export function BracketView({
   const [showDisplayMenu, setShowDisplayMenu] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [suggestionIndex, setSuggestionIndex] = useState(-1);
+
+  // Auto-scroll and focus on highlighted match permalink
+  useEffect(() => {
+    if (highlightedMatchId) {
+      const timer = setTimeout(() => {
+        const el = document.getElementById(`match-card-${highlightedMatchId}`);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+        }
+      }, 350);
+      return () => clearTimeout(timer);
+    }
+  }, [highlightedMatchId]);
 
   const playerSuggestions = playerSearch.trim()
     ? players.filter(p => p.tag.toLowerCase().includes(playerSearch.toLowerCase().trim())).slice(0, 6)
@@ -655,11 +671,11 @@ export function BracketView({
           {onShareBracket && (
             <button
               onClick={() => onShareBracket()}
-              title="Save & copy unique subdomain bracket link so anyone can load or run this bracket"
+              title="Save & copy permalink so anyone can load or run this bracket directly"
               className="flex items-center gap-1.5 h-10 px-3.5 rounded-lg text-xs font-mono font-bold tracking-wider uppercase border transition-all hover:brightness-125 bg-emerald-500/10 text-emerald-400 border-emerald-500/40"
             >
               <Share2 size={14} />
-              <span>{subdomain ? `${subdomain}.fightbracketpro.com` : 'SHARE LINK'}</span>
+              <span>{subdomain ? `fightbracketpro.com/t/${subdomain}` : 'SHARE LINK'}</span>
             </button>
           )}
 
@@ -1358,8 +1374,11 @@ function BracketSection({
                       )}
 
                       <div
+                        id={`match-card-${match.id}`}
                         className={`rounded-lg overflow-hidden cursor-pointer transition-all duration-200 w-full ${
-                          matchesSearch
+                          highlightedMatchId === match.id
+                            ? 'ring-2 ring-cyan-400 shadow-[0_0_25px_rgba(0,229,255,0.85)] scale-[1.03]'
+                            : matchesSearch
                             ? 'ring-2 ring-cyan-400 shadow-[0_0_20px_rgba(0,229,255,0.4)] scale-[1.02]'
                             : match.state === 'called'
                               ? 'ring-2 ring-amber-400/90 shadow-[0_0_18px_rgba(255,214,0,0.35)]'
@@ -1415,6 +1434,18 @@ function BracketSection({
                               </span>
                             )}
                             {match.identifier ? `MATCH ${match.identifier} · ` : ''}BO{match.bestOf}
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const url = getMatchPermalink(match.id, tournamentId || subdomain);
+                                navigator.clipboard.writeText(url);
+                                toast.success(`Match permalink copied! (${url})`);
+                              }}
+                              title="Copy match link (fightbracketpro.com/m/...)"
+                              className="opacity-40 hover:opacity-100 hover:text-[#00E5FF] transition-opacity p-0.5 ml-0.5 inline-flex items-center"
+                            >
+                              <Copy size={9} />
+                            </button>
                           </span>
                           <div className="flex items-center gap-1">
                             <Icon size={10} style={{ color: cfg.color }} className={match.state === 'called' ? 'animate-pulse' : ''} />

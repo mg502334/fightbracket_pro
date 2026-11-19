@@ -385,7 +385,7 @@ export function PostCard({
             <div className="flex items-center gap-2 flex-wrap mb-0.5">
               <span className="text-[10px] uppercase font-bold tracking-widest text-[#00E5FF]">{post.attachedEvent.game}</span>
               <span className="text-[9px] font-mono text-cyan-300 bg-cyan-500/10 border border-cyan-500/30 px-1.5 py-0.2 rounded">
-                {sanitizeSubdomain(post.attachedEvent.subdomain, 'ev')}.fightbracketpro.com
+                fightbracketpro.com/events/{sanitizeSubdomain(post.attachedEvent.subdomain, 'ev')}
               </span>
             </div>
             <div className="text-sm font-rajdhani font-bold text-white truncate">{post.attachedEvent.name}</div>

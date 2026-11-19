@@ -57,46 +57,66 @@ export function extractActiveSubdomain(): string | null {
 }
 
 /**
- * Builds the base origin with the given random subdomain.
- * - On fightbracketpro.com -> https://<sub>.fightbracketpro.com
- * - On localhost -> http://<sub>.localhost:<port>
- * - Elsewhere -> https://<sub>.fightbracketpro.com
+ * Builds the canonical base URL for the site without wildcard subdomain requirements.
+ * - On fightbracketpro.com -> https://fightbracketpro.com
+ * - On localhost:5173 -> http://localhost:5173
  */
-export function getSubdomainOrigin(subdomain?: string): string {
+export function getBaseOrigin(): string {
   if (typeof window === 'undefined') {
     return 'https://fightbracketpro.com';
   }
   const { protocol, host } = window.location;
+  // If host has a subdomain like ev-123.fightbracketpro.com, strip it to apex
+  if (host.endsWith('.fightbracketpro.com')) {
+    return `${protocol}//fightbracketpro.com`;
+  }
+  if (host.includes('.localhost')) {
+    const port = window.location.port ? `:${window.location.port}` : '';
+    return `${protocol}//localhost${port}`;
+  }
   return `${protocol}//${host}`;
 }
 
-/**
- * Builds a shareable event page URL with its random subdomain.
- */
-export function getEventSubdomainUrl(subdomain?: string | null, slugOrId?: string | null): string {
-  const cleanSub = sanitizeSubdomain(subdomain, 'ev');
-  const origin = getSubdomainOrigin(cleanSub);
-  const targetSlug = slugOrId || cleanSub;
-  return `${origin}/events/${encodeURIComponent(targetSlug)}?sub=${encodeURIComponent(cleanSub)}`;
+export function getSubdomainOrigin(subdomain?: string): string {
+  return getBaseOrigin();
 }
 
 /**
- * Builds a shareable bracket page link with its random subdomain that can be loaded and run.
+ * Builds a shareable event page URL: https://fightbracketpro.com/events/<uniqueId>
+ */
+export function getEventSubdomainUrl(subdomain?: string | null, slugOrId?: string | null): string {
+  const cleanSub = sanitizeSubdomain(subdomain, 'ev');
+  const origin = getBaseOrigin();
+  const targetSlug = slugOrId || cleanSub;
+  return `${origin}/events/${encodeURIComponent(targetSlug)}`;
+}
+
+/**
+ * Builds a shareable bracket permalink link:
+ * https://fightbracketpro.com/t/<uniqueId>
  */
 export function getBracketSubdomainUrl(options: {
   subdomain?: string | null;
   tournamentId?: string | null;
   eventSlug?: string | null;
 }): string {
-  const cleanSub = sanitizeSubdomain(options.subdomain, 'fb');
-  const origin = getSubdomainOrigin(cleanSub);
+  const origin = getBaseOrigin();
+  const uniqueId = options.tournamentId || options.subdomain || options.eventSlug || generateRandomSubdomain('fb');
+  return `${origin}/t/${encodeURIComponent(uniqueId)}`;
+}
 
-  if (options.tournamentId && options.tournamentId !== cleanSub) {
-    return `${origin}/t/${encodeURIComponent(options.tournamentId)}?sub=${encodeURIComponent(cleanSub)}`;
+/**
+ * Builds a direct match permalink:
+ * https://fightbracketpro.com/m/<uniqueMatchId>
+ * or with tournament context:
+ * https://fightbracketpro.com/t/<tournamentId>?match=<matchId>
+ */
+export function getMatchPermalink(matchId: string, tournamentId?: string | null): string {
+  const origin = getBaseOrigin();
+  const cleanMatchId = encodeURIComponent(matchId);
+  if (tournamentId) {
+    return `${origin}/t/${encodeURIComponent(tournamentId)}?match=${cleanMatchId}`;
   }
-  if (options.eventSlug) {
-    return `${origin}/?event=${encodeURIComponent(options.eventSlug)}&sub=${encodeURIComponent(cleanSub)}`;
-  }
-  return `${origin}/?sub=${encodeURIComponent(cleanSub)}`;
+  return `${origin}/m/${cleanMatchId}`;
 }
 

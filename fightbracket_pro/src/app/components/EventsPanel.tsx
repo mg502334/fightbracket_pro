@@ -744,7 +744,7 @@ export function EventsPanel({
                           {ev.format.replace('_', ' ')}
                         </span>
                         <span className="text-[10px] text-cyan-300 bg-black/70 px-2 py-0.5 rounded font-mono border border-cyan-500/30 truncate">
-                          {sanitizeSubdomain(ev.subdomain, 'ev')}.fightbracketpro.com
+                          fightbracketpro.com/events/{sanitizeSubdomain(ev.subdomain, 'ev')}
                         </span>
                       </div>
                     </div>
@@ -868,7 +868,7 @@ export function EventsPanel({
                     <div className="absolute inset-0 bg-gradient-to-t from-[#0A0A0F] to-transparent opacity-80" />
                     <div className="absolute top-2.5 right-2.5 flex items-center gap-1.5">
                       <span className="text-[9px] font-mono px-2 py-0.5 rounded bg-black/75 border border-cyan-500/30 text-cyan-300">
-                        {sanitizeSubdomain(event.subdomain, 'sgg')}.fightbracketpro.com
+                        fightbracketpro.com/t/{sanitizeSubdomain(event.subdomain, 'sgg')}
                       </span>
                       <button
                         onClick={(e) => {

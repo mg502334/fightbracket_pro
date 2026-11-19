@@ -2448,6 +2448,37 @@ def get_public_tournament(tournament_id: str, db: Session = Depends(get_db)):
         }
     }
 
+@app.get("/api/public/matches/{match_id}")
+def get_public_match(match_id: str, db: Session = Depends(get_db)):
+    """Resolve a specific match permalink (.com/m/<match_id>) to its parent tournament and match info."""
+    if not db:
+        raise HTTPException(status_code=404, detail="Database not available")
+    clean_id = match_id.strip()
+
+    tournaments = db.query(DBTournament).order_by(DBTournament.updated_at.desc()).limit(150).all()
+    for t in tournaments:
+        if t.data and clean_id in t.data:
+            try:
+                parsed = json.loads(t.data) if isinstance(t.data, str) else t.data
+                matches_list = parsed.get("matches", []) if isinstance(parsed, dict) else []
+                for m in matches_list:
+                    if str(m.get("id")) == clean_id:
+                        return {
+                            "status": "success",
+                            "tournament": {
+                                "id": t.id,
+                                "name": t.name,
+                                "subdomain": t.subdomain,
+                                "data": t.data,
+                                "updated_at": t.updated_at.isoformat() if t.updated_at else None
+                            },
+                            "match": m
+                        }
+            except Exception:
+                continue
+
+    raise HTTPException(status_code=404, detail="Match not found")
+
 @app.get("/api/public/events/{slug}")
 def get_public_event(slug: str, db: Session = Depends(get_db)):
     if not db:

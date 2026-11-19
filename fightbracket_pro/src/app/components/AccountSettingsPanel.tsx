@@ -701,7 +701,7 @@ export function AccountSettingsPanel({
                                 {ev.format?.replace('_', ' ') || 'Double Elimination'}
                               </span>
                               <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-300 border border-cyan-500/30">
-                                {sanitizeSubdomain(ev.subdomain, 'ev')}.fightbracketpro.com
+                                fightbracketpro.com/events/{sanitizeSubdomain(ev.subdomain, 'ev')}
                               </span>
                             </div>
 
