@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Swords, Clock, CheckCircle2, AlertCircle, ChevronRight, Search, X, Layers, Filter, Sparkles, Tv, RefreshCw, Monitor, Smartphone, Radio, Share2, Globe, Hash, Shuffle, ArrowUpDown, Copy, UserPlus, Users, Cloud, ExternalLink } from "lucide-react";
+import { Swords, Clock, CheckCircle2, AlertCircle, ChevronRight, ChevronDown, Search, X, Layers, Filter, Sparkles, Tv, RefreshCw, Monitor, Smartphone, Radio, Share2, Globe, Hash, Shuffle, ArrowUpDown, Copy, UserPlus, Users, Cloud, ExternalLink } from "lucide-react";
 import { BracketType, type BracketMatch, type Player, type GameTheme, type Station, getChronologicalRoundName } from "../data/tournamentData";
 import { getBracketSubdomainUrl, sanitizeSubdomain, getMatchPermalink } from "../utils/subdomain";
 import { toast } from "sonner";
@@ -255,31 +255,35 @@ export function BracketView({
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+            <div className="flex flex-col gap-2.5 w-full sm:w-[220px] shrink-0">
               {onOpenAddPlayer && players.length === 0 && (
                 <button
                   type="button"
                   onClick={onOpenAddPlayer}
-                  className="flex items-center gap-1.5 px-4 py-2.5 rounded-lg text-xs tracking-wider font-bold text-black bg-[#00E5FF] hover:brightness-110 shadow-[0_0_15px_rgba(0,229,255,0.4)] transition-all font-mono shrink-0 cursor-pointer"
+                  className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-xs tracking-wider font-bold text-black bg-[#00E5FF] hover:brightness-110 shadow-[0_0_15px_rgba(0,229,255,0.4)] transition-all font-mono cursor-pointer"
                 >
                   <UserPlus size={14} />
                   <span>+ ADD PLAYER</span>
                 </button>
               )}
-              <select 
-                value={selectedFormat}
-                onChange={(e) => setSelectedFormat(e.target.value as BracketType)}
-                className="bg-black/60 border border-white/20 rounded-lg px-3 py-2.5 text-xs text-white focus:outline-none focus:border-[#00E5FF] font-mono transition-colors"
-                disabled={players.length === 0}
-              >
-                {Object.values(BracketType).map(format => (
-                  <option key={format} value={format}>{format.replace(/_/g, ' ')}</option>
-                ))}
-              </select>
+              <div className="relative w-full">
+                <select 
+                  value={selectedFormat}
+                  onChange={(e) => setSelectedFormat(e.target.value as BracketType)}
+                  className="w-full bg-black/70 border border-white/20 rounded-lg px-3.5 py-2.5 pr-8 text-xs text-white focus:outline-none focus:border-[#00E5FF] font-mono transition-colors cursor-pointer appearance-none uppercase"
+                >
+                  {Object.values(BracketType).map(format => (
+                    <option key={format} value={format} className="bg-[#0F1420] text-white py-1">
+                      {format.replace(/_/g, ' ')}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400" />
+              </div>
               <button 
                 disabled={players.length === 0}
                 onClick={() => onGenerateBracket?.(selectedFormat)} 
-                className="px-6 py-2.5 rounded-lg text-xs tracking-widest font-bold text-black hover:brightness-125 transition-all disabled:opacity-30 disabled:cursor-not-allowed shadow-[0_0_15px_rgba(6,182,212,0.3)] shrink-0" 
+                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-xs tracking-widest font-bold text-black hover:brightness-125 transition-all disabled:opacity-30 disabled:cursor-not-allowed shadow-[0_0_15px_rgba(6,182,212,0.3)] cursor-pointer" 
                 style={{ background: theme.primaryColor, fontFamily: 'Rajdhani, sans-serif' }}
               >
                 GENERATE BRACKET
