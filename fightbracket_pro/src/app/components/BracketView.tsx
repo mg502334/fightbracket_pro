@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Swords, Clock, CheckCircle2, AlertCircle, ChevronRight, Search, X, Layers, Filter, Sparkles, Tv, RefreshCw, Monitor, Smartphone, Radio, Share2, Globe, Hash, Shuffle, ArrowUpDown, Copy } from "lucide-react";
+import { Swords, Clock, CheckCircle2, AlertCircle, ChevronRight, Search, X, Layers, Filter, Sparkles, Tv, RefreshCw, Monitor, Smartphone, Radio, Share2, Globe, Hash, Shuffle, ArrowUpDown, Copy, UserPlus, Users, Cloud } from "lucide-react";
 import { BracketType, type BracketMatch, type Player, type GameTheme, type Station, getChronologicalRoundName } from "../data/tournamentData";
 import { getBracketSubdomainUrl, sanitizeSubdomain, getMatchPermalink } from "../utils/subdomain";
 import { toast } from "sonner";
@@ -14,6 +14,9 @@ interface BracketViewProps {
   onUpdateSeed?: (playerId: string, newSeed: number) => void;
   onUpdatePlayerStation?: (playerId: string, stationId: number | null) => void;
   onAutoSeed?: (mode: 'checked-in' | 'random' | 'tag') => void;
+  onOpenAddPlayer?: () => void;
+  onOpenImportModal?: () => void;
+  onLoadDemoPlayers?: () => void;
   selectedPool?: string;
   onSelectPool?: (pool: string) => void;
   isImported?: boolean;
@@ -135,6 +138,9 @@ export function BracketView({
   onUpdateSeed,
   onUpdatePlayerStation,
   onAutoSeed,
+  onOpenAddPlayer,
+  onOpenImportModal,
+  onLoadDemoPlayers,
   selectedPool: externalSelectedPool,
   onSelectPool: externalOnSelectPool,
   isImported = false,
@@ -201,7 +207,7 @@ export function BracketView({
               </h3>
               <p className="text-xs text-gray-400 font-mono mt-0.5">
                 {players.length === 0 
-                  ? "Add players to begin. You can configure seeds and seating below." 
+                  ? "Add competitors to get started. You can configure seeds, setups, and formats below." 
                   : `${players.length} players ready · Double check seeds & seating before starting.`}
               </p>
             </div>
@@ -212,7 +218,17 @@ export function BracketView({
               <span>Pool configuration and bracket generation is locked for imported tournaments.</span>
             </div>
           ) : (
-            <div className="flex items-center gap-3 w-full md:w-auto">
+            <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+              {onOpenAddPlayer && players.length === 0 && (
+                <button
+                  type="button"
+                  onClick={onOpenAddPlayer}
+                  className="flex items-center gap-1.5 px-4 py-2.5 rounded-lg text-xs tracking-wider font-bold text-black bg-[#00E5FF] hover:brightness-110 shadow-[0_0_15px_rgba(0,229,255,0.4)] transition-all font-mono shrink-0 cursor-pointer"
+                >
+                  <UserPlus size={14} />
+                  <span>+ ADD PLAYER</span>
+                </button>
+              )}
               <select 
                 value={selectedFormat}
                 onChange={(e) => setSelectedFormat(e.target.value as BracketType)}
@@ -235,6 +251,55 @@ export function BracketView({
           )}
         </div>
 
+        {/* Empty State when 0 players */}
+        {players.length === 0 && (
+          <div className="rounded-xl border border-dashed border-white/20 bg-[#0F0F14]/70 p-8 sm:p-10 text-center flex flex-col items-center justify-center gap-4 shadow-xl">
+            <div className="w-14 h-14 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 shadow-[0_0_20px_rgba(0,229,255,0.15)]">
+              <Users size={28} />
+            </div>
+            <div className="max-w-md">
+              <h4 className="text-lg font-bold text-white font-rajdhani uppercase tracking-wider">
+                NO COMPETITORS REGISTERED YET
+              </h4>
+              <p className="text-xs text-gray-400 font-mono mt-1 leading-relaxed">
+                Add players manually, import an existing event from Start.gg, or generate sample competitors to preview your bracket layout.
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center justify-center gap-3 mt-2">
+              {onOpenAddPlayer && (
+                <button
+                  type="button"
+                  onClick={onOpenAddPlayer}
+                  className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-[#00E5FF] text-black font-bold font-mono text-xs hover:brightness-110 shadow-[0_0_15px_rgba(0,229,255,0.35)] transition-all cursor-pointer"
+                >
+                  <UserPlus size={14} />
+                  <span>Add First Player</span>
+                </button>
+              )}
+              {onOpenImportModal && (
+                <button
+                  type="button"
+                  onClick={onOpenImportModal}
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-white/5 border border-white/20 text-white font-mono text-xs hover:border-[#00E5FF] hover:text-[#00E5FF] transition-all cursor-pointer"
+                >
+                  <Cloud size={14} />
+                  <span>Import Start.gg Bracket</span>
+                </button>
+              )}
+              {onLoadDemoPlayers && (
+                <button
+                  type="button"
+                  onClick={onLoadDemoPlayers}
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400 font-mono text-xs hover:bg-amber-500/20 transition-all cursor-pointer"
+                >
+                  <Sparkles size={14} />
+                  <span>Load Demo 8 Players</span>
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Pre-Bracket Seeding & Seating Setup Card */}
         {players.length > 0 && (
           <div className="rounded-xl border border-white/10 bg-[#0F0F14] overflow-hidden shadow-lg">
@@ -248,34 +313,46 @@ export function BracketView({
                 <span className="text-[10px] text-gray-500 font-mono">({sortedPlayers.length} ENTRIES)</span>
               </div>
 
-              {onAutoSeed && (
-                <div className="flex flex-wrap items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                {onOpenAddPlayer && (
                   <button
-                    onClick={() => onAutoSeed('checked-in')}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-mono text-[11px] bg-white/5 border border-white/10 hover:border-[#00E5FF]/50 hover:text-[#00E5FF] transition-all text-gray-300"
-                    title="Seed checked-in players 1 through N first"
+                    type="button"
+                    onClick={onOpenAddPlayer}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-mono text-[11px] bg-[#00E5FF]/15 text-[#00E5FF] border border-[#00E5FF]/40 hover:bg-[#00E5FF]/25 transition-all font-bold cursor-pointer mr-1"
                   >
-                    <Hash size={12} />
-                    <span>Auto-Seed</span>
+                    <UserPlus size={12} />
+                    <span>+ Add Player</span>
                   </button>
-                  <button
-                    onClick={() => onAutoSeed('random')}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-mono text-[11px] bg-white/5 border border-white/10 hover:border-amber-400/50 hover:text-amber-400 transition-all text-gray-300"
-                    title="Randomize player seeds for open brackets"
-                  >
-                    <Shuffle size={12} />
-                    <span>Shuffle Seeds</span>
-                  </button>
-                  <button
-                    onClick={() => onAutoSeed('tag')}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-mono text-[11px] bg-white/5 border border-white/10 hover:border-purple-400/50 hover:text-purple-400 transition-all text-gray-300"
-                    title="Seed alphabetically by gamer tag"
-                  >
-                    <ArrowUpDown size={12} />
-                    <span>Seed A-Z</span>
-                  </button>
-                </div>
-              )}
+                )}
+                {onAutoSeed && (
+                  <>
+                    <button
+                      onClick={() => onAutoSeed('checked-in')}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-mono text-[11px] bg-white/5 border border-white/10 hover:border-[#00E5FF]/50 hover:text-[#00E5FF] transition-all text-gray-300"
+                      title="Seed checked-in players 1 through N first"
+                    >
+                      <Hash size={12} />
+                      <span>Auto-Seed</span>
+                    </button>
+                    <button
+                      onClick={() => onAutoSeed('random')}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-mono text-[11px] bg-white/5 border border-white/10 hover:border-amber-400/50 hover:text-amber-400 transition-all text-gray-300"
+                      title="Randomize player seeds for open brackets"
+                    >
+                      <Shuffle size={12} />
+                      <span>Shuffle Seeds</span>
+                    </button>
+                    <button
+                      onClick={() => onAutoSeed('tag')}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-mono text-[11px] bg-white/5 border border-white/10 hover:border-purple-400/50 hover:text-purple-400 transition-all text-gray-300"
+                      title="Seed alphabetically by gamer tag"
+                    >
+                      <ArrowUpDown size={12} />
+                      <span>Seed A-Z</span>
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
 
             {/* Table Header */}

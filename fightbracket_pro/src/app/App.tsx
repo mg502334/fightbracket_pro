@@ -754,6 +754,25 @@ export default function App() {
     toast.success(`Seeding updated (${mode})`);
   }, [activeGame]);
 
+  const handleLoadDemoPlayers = useCallback(() => {
+    if (!activeGame) return;
+    const demoTags = ['Phoenix', 'Shadow', 'Striker', 'Blaze', 'Vortex', 'Apex', 'Titan', 'Ghost'];
+    const demoPlayers: Player[] = demoTags.map((tag, i) => ({
+      id: `demo-${activeGame}-${i + 1}-${Date.now()}`,
+      tag,
+      realName: `Player ${i + 1}`,
+      seed: i + 1,
+      country: 'US',
+      countryFlag: '🎮',
+      checkedIn: true,
+      phone: '',
+      smsNotified: false,
+      gameId: activeGame,
+    }));
+    setPlayers(prev => [...prev.filter(p => p.gameId !== activeGame), ...demoPlayers]);
+    toast.success(`Loaded 8 competitors for ${gameThemes[activeGame]?.displayName || 'tournament'}!`);
+  }, [activeGame, gameThemes]);
+
   const handleCreateEvent = (data: CreatedEventData) => {
     const newTournament: ActiveTournament = {
       name: data.name,
@@ -2593,7 +2612,11 @@ export default function App() {
               )}
               {activeTab === 'bracket' && (
                 <div>
-                  <SectionHeader title="TOURNAMENT BRACKET" subtitle={`${theme.displayName} · Double Elimination`} theme={theme} />
+                  <SectionHeader
+                    title="TOURNAMENT BRACKET"
+                    subtitle={`${theme.displayName} · ${gameMatches.length > 0 ? (gameMatches.some(m => m.round < 0 || m.roundName?.toLowerCase().includes('loser')) ? 'Double Elimination' : 'Single Elimination') : (activeTournament?.format ? activeTournament.format.replace(/_/g, ' ') : 'Bracket Configuration')}`}
+                    theme={theme}
+                  />
                   <BracketView
                     matches={gameMatches}
                     players={gamePlayers}
@@ -2607,6 +2630,9 @@ export default function App() {
                     onUpdateSeed={handleUpdateSeed}
                     onUpdatePlayerStation={handleUpdatePlayerStation}
                     onAutoSeed={handleAutoSeed}
+                    onOpenAddPlayer={() => setShowAddPlayerModal(true)}
+                    onOpenImportModal={() => setShowImportModal(true)}
+                    onLoadDemoPlayers={handleLoadDemoPlayers}
                     selectedPool={selectedPool}
                     onSelectPool={setSelectedPool}
                     isImported={Boolean(autoSyncSlug)}
