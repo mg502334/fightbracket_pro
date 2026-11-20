@@ -207,7 +207,7 @@ export function BracketView({
                   START.GG IMPORTED EVENT
                 </h3>
                 <p className="text-xs text-amber-300/80 font-mono mt-0.5">
-                  {players.length > 0 
+                  {players.length > 0
                     ? `${players.length} competitors synced from Start.gg · Bracket progression & seeds are managed on Start.gg.`
                     : 'Bracket generation, seeding, and competitors are managed externally on Start.gg.'}
                 </p>
@@ -248,8 +248,8 @@ export function BracketView({
                   BRACKET CONFIGURATION
                 </h3>
                 <p className="text-xs text-gray-400 font-mono mt-0.5">
-                  {players.length === 0 
-                    ? "Add competitors to get started. You can configure seeds, setups, and formats below." 
+                  {players.length === 0
+                    ? "Add competitors to get started. You can configure seeds, setups, and formats below."
                     : `${players.length} players ready · Double check seeds & seating before starting.`}
                 </p>
               </div>
@@ -267,7 +267,7 @@ export function BracketView({
                 </button>
               )}
               <div className="relative w-full">
-                <select 
+                <select
                   value={selectedFormat}
                   onChange={(e) => setSelectedFormat(e.target.value as BracketType)}
                   className="w-full bg-black/70 border border-white/20 rounded-lg px-3.5 py-2.5 pr-8 text-xs text-white focus:outline-none focus:border-[#00E5FF] font-mono transition-colors cursor-pointer appearance-none uppercase"
@@ -280,10 +280,10 @@ export function BracketView({
                 </select>
                 <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400" />
               </div>
-              <button 
+              <button
                 disabled={players.length === 0}
-                onClick={() => onGenerateBracket?.(selectedFormat)} 
-                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-xs tracking-widest font-bold text-black hover:brightness-125 transition-all disabled:opacity-30 disabled:cursor-not-allowed shadow-[0_0_15px_rgba(6,182,212,0.3)] cursor-pointer" 
+                onClick={() => onGenerateBracket?.(selectedFormat)}
+                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-xs tracking-widest font-bold text-black hover:brightness-125 transition-all disabled:opacity-30 disabled:cursor-not-allowed shadow-[0_0_15px_rgba(6,182,212,0.3)] cursor-pointer"
                 style={{ background: theme.primaryColor, fontFamily: 'Rajdhani, sans-serif' }}
               >
                 GENERATE BRACKET
@@ -463,11 +463,10 @@ export function BracketView({
 
                   {/* Status */}
                   <div className="flex justify-end">
-                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono uppercase tracking-wider ${
-                      player.checkedIn 
-                        ? 'bg-green-500/10 text-green-400 border border-green-500/20' 
-                        : 'bg-red-500/10 text-red-400 border border-red-500/20'
-                    }`}>
+                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono uppercase tracking-wider ${player.checkedIn
+                      ? 'bg-green-500/10 text-green-400 border border-green-500/20'
+                      : 'bg-red-500/10 text-red-400 border border-red-500/20'
+                      }`}>
                       {player.checkedIn ? <CheckCircle2 size={10} /> : <X size={10} />}
                       {player.checkedIn ? 'Ready' : 'Absent'}
                     </span>
@@ -561,7 +560,7 @@ export function BracketView({
   const isMatchFoundBySearch = (m: BracketMatch) => {
     if (!query) return false;
     return (m.player1Id && searchMatchingPlayerIds.has(m.player1Id)) ||
-           (m.player2Id && searchMatchingPlayerIds.has(m.player2Id));
+      (m.player2Id && searchMatchingPlayerIds.has(m.player2Id));
   };
 
   const matchingMatchesCount = query
@@ -598,15 +597,14 @@ export function BracketView({
             <div className="flex items-center gap-1.5 bg-black/40 px-3 rounded-lg border border-white/10 h-10 shrink-0">
               <Layers size={14} className="opacity-50" style={{ color: theme.primaryColor }} />
               <span className="text-[10px] font-mono font-bold tracking-widest opacity-50 mr-1 uppercase">PHASE:</span>
-              
+
               {availablePhases.length > 1 && (
                 <button
                   onClick={() => setSelectedPhase('ALL')}
-                  className={`h-7 px-2.5 rounded text-xs font-mono font-bold tracking-wider uppercase transition-all ${
-                    activePhase === 'ALL'
-                      ? 'text-black'
-                      : 'text-white/70 hover:text-white hover:bg-white/10'
-                  }`}
+                  className={`h-7 px-2.5 rounded text-xs font-mono font-bold tracking-wider uppercase transition-all ${activePhase === 'ALL'
+                    ? 'text-black'
+                    : 'text-white/70 hover:text-white hover:bg-white/10'
+                    }`}
                   style={{
                     background: activePhase === 'ALL' ? theme.primaryColor : 'transparent',
                   }}
@@ -619,11 +617,10 @@ export function BracketView({
                 <button
                   key={p}
                   onClick={() => setSelectedPhase(p)}
-                  className={`h-7 px-2.5 rounded text-xs font-mono font-bold tracking-wider uppercase transition-all ${
-                    activePhase === p
-                      ? 'text-black'
-                      : 'text-white/70 hover:text-white hover:bg-white/10'
-                  }`}
+                  className={`h-7 px-2.5 rounded text-xs font-mono font-bold tracking-wider uppercase transition-all ${activePhase === p
+                    ? 'text-black'
+                    : 'text-white/70 hover:text-white hover:bg-white/10'
+                    }`}
                   style={{
                     background: activePhase === p ? theme.primaryColor : 'transparent',
                   }}
@@ -727,11 +724,10 @@ export function BracketView({
                         handleSelectPlayer(p.tag);
                       }}
                       onMouseEnter={() => setSuggestionIndex(idx)}
-                      className={`w-full flex items-center justify-between p-2 rounded-lg text-left transition-all ${
-                        isSelected
-                          ? 'bg-cyan-500/25 text-cyan-300 border border-cyan-500/50'
-                          : 'bg-white/5 text-white/80 hover:bg-white/10 border border-transparent'
-                      }`}
+                      className={`w-full flex items-center justify-between p-2 rounded-lg text-left transition-all ${isSelected
+                        ? 'bg-cyan-500/25 text-cyan-300 border border-cyan-500/50'
+                        : 'bg-white/5 text-white/80 hover:bg-white/10 border border-transparent'
+                        }`}
                     >
                       <div className="flex items-center gap-2 truncate">
                         {p.avatarUrl ? (
@@ -757,11 +753,10 @@ export function BracketView({
           {query && (
             <button
               onClick={() => setFilterMatchesOnly(!filterMatchesOnly)}
-              className={`h-10 px-3.5 flex items-center gap-1.5 rounded-lg text-xs font-mono font-bold tracking-wider uppercase border transition-all ${
-                filterMatchesOnly
-                  ? 'bg-cyan-500/20 text-cyan-400 border-cyan-400/50'
-                  : 'bg-white/5 text-white/70 border-white/10 hover:bg-white/10'
-              }`}
+              className={`h-10 px-3.5 flex items-center gap-1.5 rounded-lg text-xs font-mono font-bold tracking-wider uppercase border transition-all ${filterMatchesOnly
+                ? 'bg-cyan-500/20 text-cyan-400 border-cyan-400/50'
+                : 'bg-white/5 text-white/70 border-white/10 hover:bg-white/10'
+                }`}
             >
               <Filter size={12} />
               {filterMatchesOnly ? 'SHOW ALL' : 'FILTER MATCHES'}
@@ -800,7 +795,7 @@ export function BracketView({
               }}
             >
               <svg width="14" height="14" viewBox="0 0 127.14 96.36" fill="#5865F2" aria-hidden="true">
-                <path d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36,77.7,77.7,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.66,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1A105.25,105.25,0,0,0,126.6,80.22h0C129.24,52.84,122.09,29.11,107.7,8.07ZM42.45,65.69C36.18,65.69,31,60,31,53s5-12.74,11.43-12.74S54,46,53.89,53,48.84,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.25,60,73.25,53s5-12.74,11.44-12.74S96.23,46,96.12,53,91.08,65.69,84.69,65.69Z"/>
+                <path d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36,77.7,77.7,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.66,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1A105.25,105.25,0,0,0,126.6,80.22h0C129.24,52.84,122.09,29.11,107.7,8.07ZM42.45,65.69C36.18,65.69,31,60,31,53s5-12.74,11.43-12.74S54,46,53.89,53,48.84,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.25,60,73.25,53s5-12.74,11.44-12.74S96.23,46,96.12,53,91.08,65.69,84.69,65.69Z" />
               </svg>
               DISCORD
             </button>
@@ -1171,12 +1166,12 @@ export function BracketView({
 
 import { computeBracketSlots } from '../data/bracketEngine';
 
-function BracketSection({ 
+function BracketSection({
   title, matches, allMatches, playerMap, theme, hoveredMatchId, setHoveredMatchId, onCallMatch, searchMatchingPlayerIds, selectedPool, onPlayerClick,
   onViewAnnouncement, highlightedMatchId, subdomain, tournamentId
-}: { 
-  title: string; 
-  matches: BracketMatch[]; 
+}: {
+  title: string;
+  matches: BracketMatch[];
   allMatches: BracketMatch[];
   playerMap: Record<string, Player>;
   theme: GameTheme;
@@ -1222,7 +1217,7 @@ function BracketSection({
             const slotA = slotMap.slots.get(a.id) ?? 9999;
             const slotB = slotMap.slots.get(b.id) ?? 9999;
             if (slotA !== slotB) return slotA - slotB;
-            
+
             // Priority 2: start.gg identifier letters (N < O < P < Q < W < X...)
             const idA = a.identifier;
             const idB = b.identifier;
@@ -1238,7 +1233,7 @@ function BracketSection({
           const isLast = rIdx === rounds.length - 1;
           const totalRounds = rounds.length;
           const isGrandFinals = title.includes("GRAND");
-          
+
           let roundName = getChronologicalRoundName(rIdx, totalRounds, isLosers, isGrandFinals);
           if (roundMatches.length > 0 && roundMatches[0].roundName) {
             const mName = roundMatches[0].roundName;
@@ -1260,7 +1255,7 @@ function BracketSection({
               >
                 {roundName}
               </div>
-              <div 
+              <div
                 className="relative w-full"
                 style={{ height: (slotMap.maxSlot + 1) * SLOT_SIZE }}
               >
@@ -1274,13 +1269,13 @@ function BracketSection({
                   const isLive = match.state === 'in_progress' || match.state === 'called';
 
                   const matchesSearch = (p1 && searchMatchingPlayerIds.has(p1.id)) ||
-                                       (p2 && searchMatchingPlayerIds.has(p2.id));
+                    (p2 && searchMatchingPlayerIds.has(p2.id));
 
                   const slot = slotMap.slots.get(match.id) ?? mIdx;
 
                   return (
-                    <div 
-                      key={match.id} 
+                    <div
+                      key={match.id}
                       className="absolute w-full"
                       style={{ top: slot * SLOT_SIZE }}
                     >
@@ -1372,19 +1367,19 @@ function BracketSection({
                             const glowOpacity = isHighlighted ? 0.6 : 0.35;
 
                             return (
-                              <svg 
+                              <svg
                                 className="absolute pointer-events-none"
-                                style={{ 
+                                style={{
                                   top: 0,
                                   left: '100%',
-                                  width: dx, 
-                                  height: 1, 
+                                  width: dx,
+                                  height: 1,
                                   overflow: 'visible',
                                   zIndex: isHighlighted ? 3 : 1
                                 }}
                               >
                                 {/* Glowing Ambient Path Background */}
-                                <path 
+                                <path
                                   d={pathD}
                                   fill="none"
                                   stroke={strokeColor}
@@ -1393,7 +1388,7 @@ function BracketSection({
                                   style={{ filter: `drop-shadow(0 0 6px ${strokeColor})` }}
                                 />
                                 {/* Solid Main Connection Path */}
-                                <path 
+                                <path
                                   d={pathD}
                                   fill="none"
                                   stroke={strokeColor}
@@ -1405,11 +1400,11 @@ function BracketSection({
                               </svg>
                             );
                           }
-                          
+
                           return (
-                            <div 
-                              className="absolute top-[53.5px] left-full h-0.5 w-6 shadow-[0_0_8px_rgba(41,121,255,0.4)]" 
-                              style={{ background: theme.primaryColor, opacity: 0.75 }} 
+                            <div
+                              className="absolute top-[53.5px] left-full h-0.5 w-6 shadow-[0_0_8px_rgba(41,121,255,0.4)]"
+                              style={{ background: theme.primaryColor, opacity: 0.75 }}
                             />
                           );
                         })()
@@ -1420,7 +1415,7 @@ function BracketSection({
                         (() => {
                           let winDest = "Next Phase";
                           let loseDest = "Next Phase";
-                          
+
                           const isWinnersFinal = match.roundName?.toLowerCase().includes('winners final');
                           const isLosersFinal = match.roundName?.toLowerCase().includes('losers final');
                           const isGrandFinal = match.roundName?.toLowerCase().includes('grand final');
@@ -1438,41 +1433,41 @@ function BracketSection({
                             if (destMatches.length > 0) {
                               const wMatch = destMatches.find(m => m.round > 0 || m.roundName?.toLowerCase().includes('grand'));
                               const lMatch = destMatches.find(m => m.round < 0 || m.roundName?.toLowerCase().includes('loser'));
-                              
+
                               if (wMatch) winDest = wMatch.roundName?.toLowerCase().includes('grand') ? "Grand Finals" : (wMatch.phase || winDest);
                               if (lMatch) loseDest = lMatch.phase || loseDest;
-                              
+
                               if (!wMatch && destMatches[0]) winDest = destMatches[0].phase || winDest;
                             } else {
                               const currentPhase = match.phase;
                               if (currentPhase) {
-                                 const availablePhases = Array.from(new Set(allMatches.map(m => m.phase).filter(Boolean))) as string[];
-                                 
-                                 availablePhases.sort((a, b) => {
-                                    const aPool = a.toLowerCase().includes('pool');
-                                    const bPool = b.toLowerCase().includes('pool');
-                                    if (aPool && !bPool) return -1;
-                                    if (!aPool && bPool) return 1;
-                                    
-                                    const aTop = a.match(/top\s*(\d+)/i);
-                                    const bTop = b.match(/top\s*(\d+)/i);
-                                    if (aTop && bTop) return parseInt(bTop[1]) - parseInt(aTop[1]);
-                                    
-                                    return a.localeCompare(b);
-                                 });
+                                const availablePhases = Array.from(new Set(allMatches.map(m => m.phase).filter(Boolean))) as string[];
 
-                                 const idx = availablePhases.indexOf(currentPhase);
-                                 if (idx >= 0 && idx < availablePhases.length - 1) {
-                                    winDest = availablePhases[idx + 1];
-                                    loseDest = availablePhases[idx + 1];
-                                 }
+                                availablePhases.sort((a, b) => {
+                                  const aPool = a.toLowerCase().includes('pool');
+                                  const bPool = b.toLowerCase().includes('pool');
+                                  if (aPool && !bPool) return -1;
+                                  if (!aPool && bPool) return 1;
+
+                                  const aTop = a.match(/top\s*(\d+)/i);
+                                  const bTop = b.match(/top\s*(\d+)/i);
+                                  if (aTop && bTop) return parseInt(bTop[1]) - parseInt(aTop[1]);
+
+                                  return a.localeCompare(b);
+                                });
+
+                                const idx = availablePhases.indexOf(currentPhase);
+                                if (idx >= 0 && idx < availablePhases.length - 1) {
+                                  winDest = availablePhases[idx + 1];
+                                  loseDest = availablePhases[idx + 1];
+                                }
                               }
                             }
                           }
                           if (winDest === "Next Phase" && loseDest === "Next Phase") return null;
 
                           const p2Won = match.winnerId === match.player2Id;
-                          
+
                           const wPill = (
                             <div className="flex items-center gap-1 text-[9px] font-mono font-bold px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-md whitespace-nowrap">
                               <span>→</span> {winDest} [W]
@@ -1499,32 +1494,30 @@ function BracketSection({
 
                       <div
                         id={`match-card-${match.id}`}
-                        className={`rounded-lg overflow-hidden cursor-pointer transition-all duration-200 w-full ${
-                          highlightedMatchId === match.id
-                            ? 'ring-2 ring-cyan-400 shadow-[0_0_25px_rgba(0,229,255,0.85)] scale-[1.03]'
-                            : matchesSearch
+                        className={`rounded-lg overflow-hidden cursor-pointer transition-all duration-200 w-full ${highlightedMatchId === match.id
+                          ? 'ring-2 ring-cyan-400 shadow-[0_0_25px_rgba(0,229,255,0.85)] scale-[1.03]'
+                          : matchesSearch
                             ? 'ring-2 ring-cyan-400 shadow-[0_0_20px_rgba(0,229,255,0.4)] scale-[1.02]'
                             : match.state === 'called'
                               ? 'ring-2 ring-amber-400/90 shadow-[0_0_18px_rgba(255,214,0,0.35)]'
                               : ''
-                        }`}
+                          }`}
                         style={{
                           background: isHovered
                             ? `${theme.primaryColor}12`
                             : match.state === 'called'
                               ? 'rgba(255, 214, 0, 0.08)'
                               : cfg.bg,
-                          border: `1px solid ${
-                            matchesSearch
-                              ? theme.primaryColor
-                              : match.state === 'called'
-                                ? '#FFD600'
-                                : isLive
-                                  ? theme.primaryColor
-                                  : isHovered
-                                    ? `${theme.primaryColor}40`
-                                    : 'rgba(122,158,192,0.15)'
-                          }`,
+                          border: `1px solid ${matchesSearch
+                            ? theme.primaryColor
+                            : match.state === 'called'
+                              ? '#FFD600'
+                              : isLive
+                                ? theme.primaryColor
+                                : isHovered
+                                  ? `${theme.primaryColor}40`
+                                  : 'rgba(122,158,192,0.15)'
+                            }`,
                           boxShadow:
                             match.state === 'called'
                               ? '0 0 16px rgba(255, 214, 0, 0.35)'
@@ -1650,12 +1643,12 @@ function BracketSection({
                           const isTwitch = match.streamUrl.includes('twitch.tv');
                           const isYouTube = match.streamUrl.includes('youtube.com') || match.streamUrl.includes('youtu.be');
                           const isTikTok = match.streamUrl.includes('tiktok.com');
-                          
+
                           const platformName = isTwitch ? 'TWITCH' : isYouTube ? 'YOUTUBE' : isTikTok ? 'TIKTOK' : 'STREAM';
                           const platformColor = isTwitch ? '#6441a5' : isYouTube ? '#FF0000' : isTikTok ? '#00f2fe' : theme.primaryColor;
-                          
-                          const buttonText = match.state === 'completed' 
-                            ? `WAS ON ${platformName}` 
+
+                          const buttonText = match.state === 'completed'
+                            ? `WAS ON ${platformName}`
                             : match.state === 'pending'
                               ? `SCHEDULED ON ${platformName}`
                               : `WATCH LIVE ON ${platformName}`;
@@ -1727,14 +1720,13 @@ function PlayerSlot({
 
   return (
     <div
-      className={`flex items-center justify-between px-3 py-1.5 h-[29px] transition-colors ${
-        isSearched ? 'bg-cyan-500/15' : isWinner ? 'bg-white/[0.03]' : ''
-      }`}
+      className={`flex items-center justify-between px-3 py-1.5 h-[29px] transition-colors ${isSearched ? 'bg-cyan-500/15' : isWinner ? 'bg-white/[0.03]' : ''
+        }`}
       style={{ opacity: isCompleted && !isWinner ? 0.45 : 1 }}
     >
       <div className="flex items-center gap-1.5 min-w-0 flex-1">
         {player.seed !== undefined && player.seed !== null && (
-          <span 
+          <span
             className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-white/5 border border-white/5 text-gray-400 shrink-0 min-w-[24px] text-center tabular-nums"
           >
             {player.seed}
@@ -1750,9 +1742,8 @@ function PlayerSlot({
               onClick();
             }
           }}
-          className={`flex items-center gap-1 text-left transition-colors min-w-0 flex-1 ${
-            player.fbUserId ? 'hover:text-cyan-300 cursor-pointer' : ''
-          }`}
+          className={`flex items-center gap-1 text-left transition-colors min-w-0 flex-1 ${player.fbUserId ? 'hover:text-cyan-300 cursor-pointer' : ''
+            }`}
         >
           <span
             className="text-sm truncate leading-snug flex items-center gap-1"
@@ -1822,7 +1813,7 @@ function BracketSeedInput({ player, onUpdateSeed }: { player: Player; onUpdateSe
         }
       }}
       className="w-12 px-1.5 py-0.5 rounded text-xs tabular-nums text-center font-mono font-bold bg-black/50 border border-white/15 focus:border-[#00E5FF] focus:outline-none transition-all text-white"
-      title="Click to edit seed number (hotswaps if occupied)"
+      title="Click to edit seed number (hotswaps duplicate seeds)"
     />
   );
 }
