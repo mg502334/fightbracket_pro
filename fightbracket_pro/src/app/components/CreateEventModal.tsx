@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Calendar, MapPin, Gamepad2, Trophy, Globe, Shield, Tv, Users, DollarSign, Sparkles, Check, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
+import { toDateTimeLocalInput } from '../utils/dateUtils';
 
 export type EventMode = 'local' | 'online' | 'hybrid';
 
@@ -59,11 +60,11 @@ export function CreateEventModal({
   theme,
   onRequireLogin
 }: CreateEventModalProps) {
-  // Tomorrow at 18:00 default
+  // Tomorrow at 18:00 local time default
   const defaultDate = new Date();
   defaultDate.setDate(defaultDate.getDate() + 1);
   defaultDate.setHours(18, 0, 0, 0);
-  const defaultDateStr = defaultDate.toISOString().slice(0, 16);
+  const defaultDateStr = toDateTimeLocalInput(defaultDate);
 
   const [name, setName] = useState('');
   const [selectedGameId, setSelectedGameId] = useState('tekken8');
@@ -95,10 +96,12 @@ export function CreateEventModal({
       setSelectedGameId(eventToEdit.gameId || 'tekken8');
       setEventType(eventToEdit.eventType || 'tournament');
       setFormat(eventToEdit.format || 'double_elimination');
-      if (eventToEdit.startDate) {
+      if (eventToEdit.startDate || eventToEdit.date) {
         try {
-          const d = new Date(eventToEdit.startDate);
-          setStartDate(d.toISOString().slice(0, 16));
+          const localVal = toDateTimeLocalInput(eventToEdit.startDate || eventToEdit.date);
+          if (localVal) {
+            setStartDate(localVal);
+          }
         } catch {}
       }
       setIsOnline(eventToEdit.isOnline ?? true);
@@ -200,6 +203,8 @@ export function CreateEventModal({
 
     setSubmitting(true);
     try {
+      const startDateUtcIso = new Date(startDate).toISOString();
+
       if (onCreateEvent) {
         onCreateEvent({
           name: name.trim(),
@@ -212,7 +217,7 @@ export function CreateEventModal({
           stationCount: locationType === 'online' ? 4 : 8,
           gameIds: [selectedGameId === 'custom' ? 'tekken8' : selectedGameId],
           format: format as any,
-          date: startDate,
+          date: startDateUtcIso,
         });
       }
 
@@ -228,7 +233,7 @@ export function CreateEventModal({
         game_id: selectedGameId === 'custom' ? 'custom' : selectedGameId,
         event_type: eventType,
         format: format,
-        start_date: new Date(startDate).toISOString(),
+        start_date: startDateUtcIso,
         is_online: isOnline,
         venue_name: !isOnline ? venueName.trim() || undefined : undefined,
         city: !isOnline ? city.trim() || undefined : undefined,

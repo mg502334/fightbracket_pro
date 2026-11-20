@@ -9,6 +9,7 @@ import {
 import { SettingsCard, SettingsInput, SaveButton, Toggle, VisibilitySelect } from './SettingsUI';
 import { CreateEventModal } from './CreateEventModal';
 import { getEventSubdomainUrl, getBracketSubdomainUrl, sanitizeSubdomain } from '../utils/subdomain';
+import { formatEventDateTime } from '../utils/dateUtils';
 
 type SettingsTab = "profile" | "events" | "privacy" | "integrations" | "notifications" | "danger";
 
@@ -711,7 +712,7 @@ export function AccountSettingsPanel({
                             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-400 font-mono">
                               <span className="flex items-center gap-1 text-gray-300">
                                 <Calendar size={13} className="text-cyan-400" />
-                                {ev.date || 'TBD'}
+                                {formatEventDateTime(ev.startDate, ev.date)}
                               </span>
                               <span>•</span>
                               <span className="flex items-center gap-1">

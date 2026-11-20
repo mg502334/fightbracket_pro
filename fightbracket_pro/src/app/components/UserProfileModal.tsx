@@ -6,6 +6,7 @@ import { SteamStatsPanel } from './SteamStatsPanel';
 import { StartggCareerPanel } from './StartggCareerPanel';
 import { GAME_COVERS } from '../data/gameCovers';
 import { PostCard, Post } from './FeedPanel';
+import { formatEventDateTime } from '../utils/dateUtils';
 
 interface UserProfileData {
   id: string;
@@ -701,7 +702,7 @@ export function UserProfileModal({ isOpen, onClose, targetUserId, supabaseToken,
                                 )}
                               </div>
                               <h4 className="text-white font-bold font-rajdhani text-lg">{evt.name}</h4>
-                              <p className="text-xs text-gray-400 font-mono mt-0.5">{evt.date}</p>
+                              <p className="text-xs text-gray-400 font-mono mt-0.5">{formatEventDateTime(evt.startDate, evt.date)}</p>
                             </div>
                             <div className="flex items-center gap-2">
                                 <span className="text-xs font-mono text-white/60 bg-black/40 px-2 py-1 rounded">{evt.format.replace('_', ' ').toUpperCase()}</span>

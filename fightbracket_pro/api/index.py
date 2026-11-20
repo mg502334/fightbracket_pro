@@ -5196,6 +5196,19 @@ def search_events(req: EventSearchRequest, user_id: str = Depends(get_current_us
 
 # ─── FightBracket Community Events Endpoints ─────────────────────────────────
 
+def _format_iso_utc(dt):
+    if not dt:
+        return None
+    if getattr(dt, 'tzinfo', None) is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    iso = dt.isoformat()
+    if iso.endswith("+00:00"):
+        iso = iso[:-6] + "Z"
+    elif not iso.endswith("Z") and ("+" not in iso[10:] and "-" not in iso[10:]):
+        iso += "Z"
+    return iso
+
+
 def _serialize_event(event: DBEvent, db: Session, current_user_id: Optional[str] = None) -> dict:
     import json as _json
     organizer = db.query(DBUser).filter(DBUser.id == event.user_id).first() if db else None
@@ -5230,9 +5243,9 @@ def _serialize_event(event: DBEvent, db: Session, current_user_id: Optional[str]
         "gameId": event.game_id,
         "eventType": event.event_type or "tournament",
         "format": event.format or "double_elimination",
-        "startDate": event.start_date.isoformat() if event.start_date else None,
+        "startDate": _format_iso_utc(event.start_date),
         "date": date_str,
-        "endDate": event.end_date.isoformat() if event.end_date else None,
+        "endDate": _format_iso_utc(event.end_date),
         "isOnline": event.is_online,
         "showOnProfile": getattr(event, 'show_on_profile', False),
         "location": loc_str,

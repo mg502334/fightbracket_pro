@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "motion/react";
 import {
   Trophy, GitBranch, UserCheck, User, Monitor, MessageSquare, Smartphone,
   ExternalLink, RefreshCw, Zap, MapPin, Globe, Moon, Sun, X, Tv, Cloud, Play, LayoutGrid, Trash2, Megaphone, Search,
-  Settings, LogOut, ChevronDown, LayoutDashboard, Share2, Copy, FileText
+  Settings, LogOut, ChevronDown, LayoutDashboard, Share2, Copy, FileText, Sparkles
 } from "lucide-react";
 import { useTheme } from "next-themes";
 

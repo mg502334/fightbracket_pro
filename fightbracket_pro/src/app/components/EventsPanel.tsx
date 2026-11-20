@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import startggGames from '../data/startggGames.json';
 import { CreateEventModal } from './CreateEventModal';
 import { getEventSubdomainUrl, getBracketSubdomainUrl, sanitizeSubdomain } from '../utils/subdomain';
+import { formatEventDateTime, parseEventDate } from '../utils/dateUtils';
 
 interface StartggEvent {
   id: string;
@@ -115,62 +116,19 @@ export function EventsPanel({
   const [registeringId, setRegisteringId] = useState<string | null>(null);
 
   const formatLocalTime = (isoString?: string, fallbackStr?: string) => {
-    if (!isoString && !fallbackStr) return 'TBA';
-    if (!isoString) return fallbackStr;
-    try {
-      const safeIso = isoString.endsWith('Z') || isoString.includes('+') || (isoString.includes('-') && isoString.length > 10) ? isoString : isoString + 'Z';
-      const d = new Date(safeIso);
-      if (isNaN(d.getTime())) return fallbackStr;
-      return new Intl.DateTimeFormat('en-US', {
-        month: 'short',
-        day: 'numeric',
-        hour: 'numeric',
-        minute: '2-digit',
-        timeZoneName: 'short'
-      }).format(d);
-    } catch {
-      return fallbackStr;
-    }
+    return formatEventDateTime(isoString, fallbackStr);
   };
 
   const isEventPast = (ev: CommunityEvent | null | undefined): boolean => {
     if (!ev) return false;
     if (ev.status === 'completed' || ev.status === 'past') return true;
 
-    const parseDate = (isoStr?: string, fallbackStr?: string): Date | null => {
-      if (isoStr) {
-        try {
-          let s = isoStr.trim();
-          if (s.includes(' ') && !s.includes('T')) {
-            s = s.replace(' ', 'T');
-          }
-          const safeIso = s.endsWith('Z') || s.includes('+') || (s.includes('-') && s.length > 10)
-            ? s
-            : s + 'Z';
-          const d = new Date(safeIso);
-          if (!isNaN(d.getTime())) return d;
-        } catch {
-          // continue
-        }
-      }
-      if (fallbackStr) {
-        try {
-          const cleanFallback = fallbackStr.replace(' · ', ' ');
-          const d = new Date(cleanFallback);
-          if (!isNaN(d.getTime())) return d;
-        } catch {
-          // continue
-        }
-      }
-      return null;
-    };
-
-    const endDate = parseDate(ev.endDate);
+    const endDate = parseEventDate(ev.endDate);
     if (endDate) {
       return endDate.getTime() < Date.now();
     }
 
-    const startDate = parseDate(ev.startDate, ev.date);
+    const startDate = parseEventDate(ev.startDate, ev.date);
     if (startDate) {
       return startDate.getTime() < Date.now();
     }
@@ -756,17 +714,17 @@ export function EventsPanel({
                       <div className="absolute inset-0 bg-gradient-to-t from-[#0D0D14] via-black/40 to-transparent" />
 
                       {/* Top Badges */}
-                      <div className="absolute top-3 left-3 right-3 flex items-center justify-between gap-2">
+                      <div className="absolute top-3 left-3 right-3 flex items-start justify-between gap-2">
                         <span 
-                          className="text-[10px] font-bold tracking-wider uppercase px-2.5 py-1 rounded-md bg-black/70 border border-white/15 text-[#00E5FF]"
+                          className="text-[10px] font-bold tracking-wider uppercase px-2.5 py-1 rounded-md bg-black/70 border border-white/15 text-[#00E5FF] leading-tight"
                           style={{ fontFamily: 'JetBrains Mono, monospace' }}
                         >
                           {ev.game}
                         </span>
 
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex items-center gap-1.5 shrink-0">
                           <span 
-                            className={`text-[10px] font-bold tracking-wider uppercase px-2 py-0.5 rounded-md border ${
+                            className={`text-[10px] font-bold tracking-wider uppercase px-2 py-0.5 rounded-md border whitespace-nowrap shrink-0 ${
                               ev.isOnline 
                                 ? 'bg-[#00E5FF]/20 border-[#00E5FF]/40 text-[#00E5FF]' 
                                 : 'bg-emerald-500/20 border-emerald-500/40 text-emerald-400'
@@ -780,7 +738,7 @@ export function EventsPanel({
                             <button
                               onClick={(e) => handleDeleteEvent(ev.id, e)}
                               title="Delete Event"
-                              className="p-1 rounded bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500 hover:text-white transition-colors"
+                              className="p-1 rounded bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500 hover:text-white transition-colors shrink-0"
                             >
                               <Trash2 size={13} />
                             </button>
@@ -793,7 +751,7 @@ export function EventsPanel({
                               toast.success(`Event link copied: ${subUrl}`);
                             }}
                             title="Copy Event Link"
-                            className="p-1 rounded bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 hover:bg-cyan-500 hover:text-white transition-colors"
+                            className="p-1 rounded bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 hover:bg-cyan-500 hover:text-white transition-colors shrink-0"
                           >
                             <Share2 size={13} />
                           </button>

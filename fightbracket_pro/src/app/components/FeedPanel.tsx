@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { RecentsWidget, RecentTournamentItem } from './RecentsWidget';
 import { DealsWidget } from './DealsWidget';
 import { getEventSubdomainUrl, sanitizeSubdomain } from '../utils/subdomain';
+import { formatEventDateTime } from '../utils/dateUtils';
 
 const parseContentWithLinks = (text: string) => {
   const regex = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)|(https?:\/\/[^\s]+)/g;
@@ -389,7 +390,7 @@ export function PostCard({
               </span>
             </div>
             <div className="text-sm font-rajdhani font-bold text-white truncate">{post.attachedEvent.name}</div>
-            <div className="text-xs text-gray-400 font-mono mt-0.5">{post.attachedEvent.date}</div>
+            <div className="text-xs text-gray-400 font-mono mt-0.5">{formatEventDateTime(post.attachedEvent.startDate, post.attachedEvent.date)}</div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <span className="text-[10px] font-mono text-white/60 bg-black/40 px-2 py-1 rounded hidden sm:inline-block">
@@ -881,7 +882,7 @@ export function FeedPanel({ userProfile, getHeaders }: { userProfile: any, getHe
                           className="px-2 py-1.5 hover:bg-white/5 cursor-pointer flex justify-between items-center rounded"
                         >
                           <span className="text-xs text-white truncate">{evt.name}</span>
-                          <span className="text-[9px] text-gray-500 font-mono">{evt.date}</span>
+                          <span className="text-[9px] text-gray-500 font-mono">{formatEventDateTime(evt.startDate, evt.date)}</span>
                         </div>
                       ))}
                       {myEvents.length === 0 && (

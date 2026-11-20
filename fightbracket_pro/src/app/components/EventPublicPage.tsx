@@ -4,6 +4,7 @@ import { Trophy, Calendar, MapPin, Users, ChevronLeft, GitBranch, Share2, Globe,
 import { toast, Toaster } from 'sonner';
 import { GAME_COVERS } from '../data/gameCovers';
 import { extractActiveSubdomain, getEventSubdomainUrl, getBracketSubdomainUrl, sanitizeSubdomain } from '../utils/subdomain';
+import { formatEventDateTime } from '../utils/dateUtils';
 
 export function EventPublicPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -15,22 +16,7 @@ export function EventPublicPage() {
   const [error, setError] = useState<string | null>(null);
 
   const formatLocalTime = (isoString?: string, fallbackStr?: string) => {
-    if (!isoString && !fallbackStr) return 'TBA';
-    if (!isoString) return fallbackStr;
-    try {
-      const safeIso = isoString.endsWith('Z') || isoString.includes('+') || (isoString.includes('-') && isoString.length > 10) ? isoString : isoString + 'Z';
-      const d = new Date(safeIso);
-      if (isNaN(d.getTime())) return fallbackStr;
-      return new Intl.DateTimeFormat('en-US', {
-        month: 'short',
-        day: 'numeric',
-        hour: 'numeric',
-        minute: '2-digit',
-        timeZoneName: 'short'
-      }).format(d);
-    } catch {
-      return fallbackStr;
-    }
+    return formatEventDateTime(isoString, fallbackStr);
   };
 
   useEffect(() => {
