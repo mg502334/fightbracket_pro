@@ -745,7 +745,7 @@ export default function App() {
       if (occupant) {
         setMatches(prevMatches => {
           const gameMatches = prevMatches.filter(m => m.gameId === target.gameId);
-          const hasStarted = gameMatches.some(m => m.state === 'in_progress' || m.state === 'completed' || (m.p1Score ?? 0) > 0 || (m.p2Score ?? 0) > 0);
+          const hasStarted = gameMatches.some(m => m.state === 'in_progress' || m.state === 'completed' || (m.player1Score ?? 0) > 0 || (m.player2Score ?? 0) > 0);
           if (hasStarted) return prevMatches;
 
           return prevMatches.map(m => {
