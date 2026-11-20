@@ -77,6 +77,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [gamerTag, setGamerTag] = useState('');
+  const [birthday, setBirthday] = useState('');
   const [email, setEmail] = useState('');
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [password, setPassword] = useState('');
@@ -100,6 +101,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
     first_name?: string;
     last_name?: string;
     gamer_tag?: string;
+    birthday?: string;
     bio?: string;
     startgg_slug?: string;
     startgg_data?: string;
@@ -558,6 +560,26 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
     e.preventDefault();
 
     if (!isLogin) {
+      if (!gamerTag.trim()) {
+        toast.error('Usertag / Gamer Tag is required to create an account.');
+        return;
+      }
+      if (!firstName.trim()) {
+        toast.error('First name is required.');
+        return;
+      }
+      if (!lastName.trim()) {
+        toast.error('Last name is required.');
+        return;
+      }
+      if (!email.trim()) {
+        toast.error('Email is required by Supabase.');
+        return;
+      }
+      if (!password) {
+        toast.error('Password is required.');
+        return;
+      }
       if (password !== confirmPassword) {
         toast.error('Passwords do not match');
         return;
@@ -621,7 +643,9 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
           data: {
             first_name: firstName.trim(),
             last_name: lastName.trim(),
-            gamer_tag: gamerTag.trim()
+            gamer_tag: gamerTag.trim(),
+            usertag: gamerTag.trim(),
+            birthday: birthday ? birthday.trim() : null
           }
         }
       });
@@ -641,7 +665,8 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
               body: JSON.stringify({
                 first_name: firstName.trim(),
                 last_name: lastName.trim(),
-                gamer_tag: gamerTag.trim()
+                gamer_tag: gamerTag.trim(),
+                birthday: birthday ? birthday.trim() : null
               })
             });
           } catch (e) {
@@ -1079,7 +1104,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-semibold text-gray-400 tracking-wider uppercase mb-1.5 font-mono">
-                      FIRST NAME
+                      FIRST NAME <span className="text-[#00E5FF]">*</span>
                     </label>
                     <input
                       id="firstName"
@@ -1094,7 +1119,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-gray-400 tracking-wider uppercase mb-1.5 font-mono">
-                      LAST NAME
+                      LAST NAME <span className="text-[#00E5FF]">*</span>
                     </label>
                     <input
                       id="lastName"
@@ -1109,7 +1134,7 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
                   </div>
                   <div className="sm:col-span-2">
                     <label className="block text-xs font-semibold text-gray-400 tracking-wider uppercase mb-1.5 font-mono">
-                      GAMER TAG <span className="text-gray-500 font-normal normal-case">(Optional)</span>
+                      USERTAG / GAMER TAG <span className="text-[#00E5FF]">*</span>
                     </label>
                     <input
                       id="gamerTag"
@@ -1118,15 +1143,37 @@ export function AccountDashboard({ user, theme, currentTournamentData, onLoad, o
                       value={gamerTag}
                       onChange={(e) => setGamerTag(e.target.value)}
                       placeholder="e.g. ShadowStriker"
+                      required
                       className="w-full bg-[#121929]/90 border border-white/10 rounded-lg px-4 py-3 text-white placeholder-gray-600 outline-none text-sm font-mono transition-colors focus:border-[#00E5FF] focus:ring-1 focus:ring-[#00E5FF]"
                     />
+                  </div>
+                  <div className="sm:col-span-2">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="block text-xs font-semibold text-gray-400 tracking-wider uppercase font-mono">
+                        BIRTHDAY <span className="text-gray-500 font-normal normal-case">(Optional)</span>
+                      </label>
+                      <span className="text-[11px] font-mono text-cyan-400 flex items-center gap-1 bg-cyan-950/40 px-2 py-0.5 rounded border border-cyan-500/20">
+                        <Shield size={12} className="text-[#00E5FF]" /> Year is kept private
+                      </span>
+                    </div>
+                    <input
+                      id="birthday"
+                      name="birthday"
+                      type="date"
+                      value={birthday}
+                      onChange={(e) => setBirthday(e.target.value)}
+                      className="w-full bg-[#121929]/90 border border-white/10 rounded-lg px-4 py-3 text-white placeholder-gray-600 outline-none text-sm font-mono transition-colors focus:border-[#00E5FF] focus:ring-1 focus:ring-[#00E5FF]"
+                    />
+                    <p className="text-[11px] text-gray-400 font-mono mt-1">
+                      Year is kept private. Only your month and day are shown to others on public profiles.
+                    </p>
                   </div>
                 </div>
               )}
 
               <div>
                 <label className="block text-xs font-semibold text-gray-400 tracking-wider uppercase mb-1.5 font-mono">
-                  EMAIL ADDRESS
+                  EMAIL ADDRESS <span className="text-[#00E5FF]">*</span> <span className="text-gray-500 font-normal normal-case">(Required by Supabase)</span>
                 </label>
                 <input
                   id="email"

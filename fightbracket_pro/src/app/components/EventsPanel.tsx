@@ -118,7 +118,7 @@ export function EventsPanel({
     if (!isoString && !fallbackStr) return 'TBA';
     if (!isoString) return fallbackStr;
     try {
-      const safeIso = isoString.endsWith('Z') || isoString.includes('+') || isoString.includes('-') && isoString.length > 10 ? isoString : isoString + 'Z';
+      const safeIso = isoString.endsWith('Z') || isoString.includes('+') || (isoString.includes('-') && isoString.length > 10) ? isoString : isoString + 'Z';
       const d = new Date(safeIso);
       if (isNaN(d.getTime())) return fallbackStr;
       return new Intl.DateTimeFormat('en-US', {
@@ -131,6 +131,47 @@ export function EventsPanel({
     } catch {
       return fallbackStr;
     }
+  };
+
+  const isEventPast = (ev: CommunityEvent | null | undefined): boolean => {
+    if (!ev) return false;
+    if (ev.status === 'completed' || ev.status === 'past') return true;
+
+    const parseDate = (isoStr?: string, fallbackStr?: string): Date | null => {
+      if (isoStr) {
+        try {
+          const safeIso = isoStr.endsWith('Z') || isoStr.includes('+') || (isoStr.includes('-') && isoStr.length > 10)
+            ? isoStr
+            : isoStr + 'Z';
+          const d = new Date(safeIso);
+          if (!isNaN(d.getTime())) return d;
+        } catch {
+          // continue
+        }
+      }
+      if (fallbackStr) {
+        try {
+          const cleanFallback = fallbackStr.replace(' · ', ' ');
+          const d = new Date(cleanFallback);
+          if (!isNaN(d.getTime())) return d;
+        } catch {
+          // continue
+        }
+      }
+      return null;
+    };
+
+    const endDate = parseDate(ev.endDate);
+    if (endDate) {
+      return endDate.getTime() < Date.now();
+    }
+
+    const startDate = parseDate(ev.startDate, ev.date);
+    if (startDate) {
+      return startDate.getTime() < Date.now();
+    }
+
+    return false;
   };
 
   useEffect(() => {
@@ -232,6 +273,11 @@ export function EventsPanel({
       return;
     }
 
+    if (isEventPast(event) || !upcoming) {
+      toast.error('This event has already ended. Registration is closed.');
+      return;
+    }
+
     setRegisteringId(event.id);
     try {
       const headers = await getHeaders();
@@ -317,7 +363,12 @@ export function EventsPanel({
     setLoadingDetails(true);
     setEventParticipants([]);
     try {
-      const headers = await getHeaders();
+      let headers: HeadersInit = {};
+      if (currentUser && getHeaders) {
+        try {
+          headers = await getHeaders();
+        } catch { }
+      }
       const res = await fetch(`/api/community-events/${event.id}`, { headers });
       if (res.ok) {
         const data = await res.json();
@@ -675,6 +726,7 @@ export function EventsPanel({
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
               {communityEvents.map((ev) => {
+                const isPast = !upcoming || isEventPast(ev);
                 const isFull = ev.maxEntrants > 0 && ev.fighters >= ev.maxEntrants;
                 const percentFull = Math.min(100, Math.round(((ev.fighters || 0) / (ev.maxEntrants || 64)) * 100));
 
@@ -818,9 +870,18 @@ export function EventsPanel({
                       {/* Join / Register Button */}
                       <button
                         onClick={(e) => handleToggleRegistration(ev, e)}
-                        disabled={registeringId === ev.id || (!ev.isRegistered && isFull)}
+                        disabled={isPast || registeringId === ev.id || (!ev.isRegistered && isFull)}
+                        title={
+                          isPast
+                            ? 'This event has ended. Registration is closed.'
+                            : isFull && !ev.isRegistered
+                            ? 'This event is full.'
+                            : undefined
+                        }
                         className={`flex-1 flex items-center justify-center gap-1 py-2 px-3 rounded-xl text-xs font-bold tracking-wider transition-all uppercase ${
-                          ev.isRegistered
+                          isPast
+                            ? 'bg-white/5 text-gray-500 border border-white/5 cursor-not-allowed opacity-60'
+                            : ev.isRegistered
                             ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 hover:bg-emerald-500/30'
                             : isFull
                             ? 'bg-white/5 text-gray-500 border border-white/5 cursor-not-allowed'
@@ -830,6 +891,14 @@ export function EventsPanel({
                       >
                         {registeringId === ev.id ? (
                           '...'
+                        ) : isPast ? (
+                          ev.isRegistered ? (
+                            <>
+                              <Check size={13} /> REGISTERED
+                            </>
+                          ) : (
+                            'EVENT ENDED'
+                          )
                         ) : ev.isRegistered ? (
                           <>
                             <Check size={13} /> REGISTERED
@@ -1151,24 +1220,50 @@ export function EventsPanel({
                 <Share2 size={14} /> SHARE EVENT
               </button>
 
-              <button
-                onClick={(e) => handleToggleRegistration(selectedDetailEvent, e)}
-                disabled={registeringId === selectedDetailEvent.id}
-                className={`px-5 py-2.5 rounded-xl text-xs font-bold tracking-wider transition-all uppercase ${
-                  selectedDetailEvent.isRegistered
-                    ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 hover:bg-emerald-500/30'
-                    : 'bg-white/10 text-white border border-white/20 hover:bg-white/20'
-                }`}
-                style={{ fontFamily: 'Rajdhani, sans-serif' }}
-              >
-                {registeringId === selectedDetailEvent.id ? (
-                  '...'
-                ) : selectedDetailEvent.isRegistered ? (
-                  'CANCEL REGISTRATION'
-                ) : (
-                  'REGISTER NOW'
-                )}
-              </button>
+              {(() => {
+                const isDetailPast = !upcoming || isEventPast(selectedDetailEvent);
+                const isDetailFull = (selectedDetailEvent.maxEntrants || 0) > 0 && (selectedDetailEvent.fighters || 0) >= selectedDetailEvent.maxEntrants;
+
+                return (
+                  <button
+                    onClick={(e) => handleToggleRegistration(selectedDetailEvent, e)}
+                    disabled={isDetailPast || registeringId === selectedDetailEvent.id || (!selectedDetailEvent.isRegistered && isDetailFull)}
+                    title={
+                      isDetailPast
+                        ? 'This event has concluded. Registration is closed.'
+                        : isDetailFull && !selectedDetailEvent.isRegistered
+                        ? 'This event is full.'
+                        : undefined
+                    }
+                    className={`px-5 py-2.5 rounded-xl text-xs font-bold tracking-wider transition-all uppercase ${
+                      isDetailPast
+                        ? 'bg-white/5 text-gray-500 border border-white/5 cursor-not-allowed opacity-60'
+                        : selectedDetailEvent.isRegistered
+                        ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 hover:bg-emerald-500/30'
+                        : isDetailFull
+                        ? 'bg-white/5 text-gray-500 border border-white/5 cursor-not-allowed'
+                        : 'bg-white/10 text-white border border-white/20 hover:bg-white/20'
+                    }`}
+                    style={{ fontFamily: 'Rajdhani, sans-serif' }}
+                  >
+                    {registeringId === selectedDetailEvent.id ? (
+                      '...'
+                    ) : isDetailPast ? (
+                      selectedDetailEvent.isRegistered ? (
+                        'REGISTERED (EVENT ENDED)'
+                      ) : (
+                        'EVENT ENDED'
+                      )
+                    ) : selectedDetailEvent.isRegistered ? (
+                      'CANCEL REGISTRATION'
+                    ) : isDetailFull ? (
+                      'EVENT FULL'
+                    ) : (
+                      'REGISTER NOW'
+                    )}
+                  </button>
+                );
+              })()}
             </div>
           </div>
         </div>

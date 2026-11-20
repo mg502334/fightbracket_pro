@@ -12,6 +12,7 @@ class DBUser(Base):
     first_name = Column(String, nullable=True)
     last_name = Column(String, nullable=True)
     gamer_tag = Column(String, nullable=True)
+    birthday = Column(String, nullable=True) # User's birthday (YYYY-MM-DD). Year is kept private on public views!
     bio = Column(String, nullable=True)
     location = Column(String, nullable=True)  # User's preferred region / city / zip for event suggestions
     avatar_url = Column(String, nullable=True)

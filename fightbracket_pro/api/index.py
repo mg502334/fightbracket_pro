@@ -292,6 +292,7 @@ class ProfileUpdateRequest(BaseModel):
     first_name: Optional[str] = None
     last_name: Optional[str] = None
     gamer_tag: Optional[str] = None
+    birthday: Optional[str] = None
     bio: Optional[str] = None
     location: Optional[str] = None
     avatar_url: Optional[str] = None
@@ -949,6 +950,7 @@ def get_or_create_user(db: Session, user_id: str, meta: dict = None) -> DBUser:
             first_name=meta.get("first_name", ""),
             last_name=meta.get("last_name", ""),
             gamer_tag=resolved_tag,
+            birthday=meta.get("birthday") or None,
             avatar_url=resolved_avatar if resolved_avatar else None
         )
         db.add(user)
@@ -986,6 +988,9 @@ def get_or_create_user(db: Session, user_id: str, meta: dict = None) -> DBUser:
         updated_meta = False
         if not getattr(user, 'gamer_tag', None) and resolved_tag:
             user.gamer_tag = resolved_tag
+            updated_meta = True
+        if not getattr(user, 'birthday', None) and meta.get("birthday"):
+            user.birthday = meta.get("birthday")
             updated_meta = True
         if not getattr(user, 'avatar_url', None) and resolved_avatar:
             user.avatar_url = resolved_avatar
@@ -1131,6 +1136,7 @@ def get_user_profile(payload: dict = Depends(get_current_user_payload), db: Sess
                 "first_name": getattr(user, 'first_name', '') or "",
                 "last_name": getattr(user, 'last_name', '') or "",
                 "gamer_tag": getattr(user, 'gamer_tag', '') or "",
+                "birthday": getattr(user, 'birthday', '') or "",
                 "bio": user.bio or "",
                 "location": user.location or "",
                 "avatar_url": user.avatar_url or "",
@@ -1195,6 +1201,8 @@ def update_user_profile(req: ProfileUpdateRequest, user_id: str = Depends(get_cu
             user.gamer_tag = tag_clean # type: ignore
         else:
             user.gamer_tag = "" # type: ignore
+    if req.birthday is not None:
+        user.birthday = req.birthday.strip() if req.birthday else None # type: ignore
     if req.bio is not None:
         user.bio = req.bio.strip() # type: ignore
     if req.location is not None:
@@ -2265,11 +2273,39 @@ def get_target_user_profile(target_user_id: str, user_id: str = Depends(get_curr
         target_role = 'admin' if target_is_admin else ('organizer' if target_is_organizer else 'player')
 
     uid_str = getattr(target_user, 'unique_id', None) or (target_ui.unique_id if target_ui else "FB-USER")
+
+    def _format_public_birthday(raw_bday: Optional[str]) -> Optional[str]:
+        """Formats birthday with the year strictly kept private (e.g. 'April 15')."""
+        if not raw_bday:
+            return None
+        raw_bday = raw_bday.strip()
+        try:
+            from datetime import datetime
+            if len(raw_bday) == 10 and raw_bday[4] == '-' and raw_bday[7] == '-':
+                dt = datetime.strptime(raw_bday, "%Y-%m-%d")
+                return dt.strftime("%B %d")
+            if '/' in raw_bday:
+                parts = raw_bday.split('/')
+                if len(parts) >= 2:
+                    month, day = int(parts[0]), int(parts[1])
+                    dt = datetime(2000, month, day)
+                    return dt.strftime("%B %d")
+        except Exception:
+            pass
+        import re
+        cleaned = re.sub(r'\b(19|20)\d{2}\b', '', raw_bday).strip(' -/,')
+        return cleaned if cleaned else None
+
+    raw_bday = getattr(target_user, 'birthday', None)
+    public_bday_display = _format_public_birthday(raw_bday)
+
     return {
         "profile": {
             "id": target_user.id,
             "unique_id": uid_str,
             "gamer_tag": target_user.gamer_tag or "",
+            "birthday": (raw_bday or "") if is_self else None,
+            "birthday_display": raw_bday if is_self else public_bday_display,
             "avatar_url": target_user.avatar_url or "",
             "profile_color": getattr(target_user, 'profile_color', '') or "",
             "bio": "" if public_restricted else (target_user.bio or ""),
@@ -5856,6 +5892,23 @@ def register_community_event(
     ).first()
     if existing:
         return {"status": "already_registered", "message": "You are already registered for this event."}
+
+    # Prevent joining past or concluded events
+    now = datetime.now(timezone.utc)
+    event_start = event.start_date
+    if event_start and event_start.tzinfo is None:
+        event_start = event_start.replace(tzinfo=timezone.utc)
+    event_end = event.end_date
+    if event_end and event_end.tzinfo is None:
+        event_end = event_end.replace(tzinfo=timezone.utc)
+
+    is_past = (
+        event.status in ("completed", "past")
+        or (event_end and event_end < now)
+        or (event_start and not event_end and event_start < now)
+    )
+    if is_past:
+        raise HTTPException(status_code=400, detail="Cannot join past events. Registration is closed.")
         
     if event.max_entrants and (event.entrants_count or 0) >= event.max_entrants:
         raise HTTPException(status_code=400, detail="Event registration is full.")
