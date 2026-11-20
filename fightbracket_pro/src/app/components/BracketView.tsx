@@ -142,6 +142,10 @@ export function BracketView({
   onUpdateSeed,
   onUpdatePlayerStation,
   onAutoSeed,
+  onSwapSeeds,
+  onStartTournament,
+  onRestartTournament,
+  isTournamentStarted = false,
   onOpenAddPlayer,
   onOpenImportModal,
   onLoadDemoPlayers,
@@ -170,6 +174,11 @@ export function BracketView({
   const [showDisplayMenu, setShowDisplayMenu] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [suggestionIndex, setSuggestionIndex] = useState(-1);
+  const [seedingViewTab, setSeedingViewTab] = useState<'matchups' | 'list'>('matchups');
+  const [dragOverPlayerId, setDragOverPlayerId] = useState<string | null>(null);
+  const [dragOverMatchupSlot, setDragOverMatchupSlot] = useState<string | null>(null);
+  const [dragSlotOver, setDragSlotOver] = useState<string | null>(null);
+  const [showRestartModal, setShowRestartModal] = useState<boolean>(false);
 
   // Auto-scroll and focus on highlighted match permalink
   useEffect(() => {
@@ -358,6 +367,36 @@ export function BracketView({
                 <span className="text-[10px] text-gray-500 font-mono">({sortedPlayers.length} ENTRIES)</span>
               </div>
 
+              {/* View Mode Switcher: Matchup Spots vs List */}
+              <div className="flex items-center gap-1 bg-black/60 p-1 rounded-lg border border-white/10">
+                <button
+                  type="button"
+                  onClick={() => setSeedingViewTab('matchups')}
+                  className={`flex items-center gap-1.5 px-3 py-1 rounded text-xs font-mono font-bold uppercase transition-all cursor-pointer ${
+                    seedingViewTab === 'matchups'
+                      ? 'bg-[#00E5FF] text-black shadow-md'
+                      : 'text-gray-400 hover:text-white'
+                  }`}
+                  title="View and manually drag & drop high seed vs low seed opening matchups"
+                >
+                  <Swords size={12} />
+                  <span>Matchup Spots</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSeedingViewTab('list')}
+                  className={`flex items-center gap-1.5 px-3 py-1 rounded text-xs font-mono font-bold uppercase transition-all cursor-pointer ${
+                    seedingViewTab === 'list'
+                      ? 'bg-[#00E5FF] text-black shadow-md'
+                      : 'text-gray-400 hover:text-white'
+                  }`}
+                  title="View competitor list with seed inputs and station seating"
+                >
+                  <Users size={12} />
+                  <span>Roster List</span>
+                </button>
+              </div>
+
               <div className="flex flex-wrap items-center gap-2">
                 {onOpenAddPlayer && (
                   <button
@@ -373,7 +412,7 @@ export function BracketView({
                   <>
                     <button
                       onClick={() => onAutoSeed('checked-in')}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-mono text-[11px] bg-white/5 border border-white/10 hover:border-[#00E5FF]/50 hover:text-[#00E5FF] transition-all text-gray-300"
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-mono text-[11px] bg-white/5 border border-white/10 hover:border-[#00E5FF]/50 hover:text-[#00E5FF] transition-all text-gray-300 cursor-pointer"
                       title="Seed checked-in players 1 through N first"
                     >
                       <Hash size={12} />
@@ -381,7 +420,7 @@ export function BracketView({
                     </button>
                     <button
                       onClick={() => onAutoSeed('random')}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-mono text-[11px] bg-white/5 border border-white/10 hover:border-amber-400/50 hover:text-amber-400 transition-all text-gray-300"
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-mono text-[11px] bg-white/5 border border-white/10 hover:border-amber-400/50 hover:text-amber-400 transition-all text-gray-300 cursor-pointer"
                       title="Randomize player seeds for open brackets"
                     >
                       <Shuffle size={12} />
@@ -389,7 +428,7 @@ export function BracketView({
                     </button>
                     <button
                       onClick={() => onAutoSeed('tag')}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-mono text-[11px] bg-white/5 border border-white/10 hover:border-purple-400/50 hover:text-purple-400 transition-all text-gray-300"
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-mono text-[11px] bg-white/5 border border-white/10 hover:border-purple-400/50 hover:text-purple-400 transition-all text-gray-300 cursor-pointer"
                       title="Seed alphabetically by gamer tag"
                     >
                       <ArrowUpDown size={12} />
@@ -400,84 +439,291 @@ export function BracketView({
               </div>
             </div>
 
-            {/* Rule Note */}
-            <div className="px-4 py-2 bg-black/30 border-b border-white/5 flex items-center gap-1.5 text-[11px] font-mono text-gray-400">
-              <span className="text-[#00E5FF] font-bold">Rule Note:</span>
-              <span>All seeds are strictly 1-to-1 unique. Changing a seed number automatically hotswaps with the occupying competitor.</span>
+            {/* Rule Note / Guidance */}
+            <div className="px-4 py-2 bg-black/30 border-b border-white/5 flex items-center justify-between text-[11px] font-mono text-gray-400 flex-wrap gap-2">
+              <div className="flex items-center gap-1.5">
+                <span className="text-[#00E5FF] font-bold">Standard Practice:</span>
+                <span>
+                  {seedingViewTab === 'matchups'
+                    ? 'Round 1 pairs High Seeds vs Low Seeds (e.g. #1 vs #8). Drag and drop competitors between spots to adjust matchups before initiating the tournament.'
+                    : 'Seeds are strictly 1-to-1 unique. Drag and drop rows or edit seed numbers to hotswap seeds.'}
+                </span>
+              </div>
+              <span className="text-gray-500 text-[10px]">Start.gg-style manual seeding</span>
             </div>
 
-            {/* Table Header */}
-            <div
-              className="grid text-xs tracking-widest px-4 py-2.5 font-mono text-gray-400 bg-black/40 border-b border-white/5"
-              style={{ gridTemplateColumns: '70px 1fr 120px 140px 90px' }}
-            >
-              <span>SEED</span>
-              <span>PLAYER</span>
-              <span>CHARACTER</span>
-              <span>SEAT / SETUP</span>
-              <span className="text-right">CHECK-IN</span>
-            </div>
+            {/* Content: Matchups View OR List View */}
+            {seedingViewTab === 'matchups' ? (
+              (() => {
+                const n = sortedPlayers.length;
+                let p = 1;
+                while (p < n) p *= 2;
+                if (p < 2) p = 2;
+                const order = getSeedingOrder(p);
+                const numMatches = p / 2;
 
-            {/* Player List */}
-            <div className="divide-y divide-white/5 max-h-[460px] overflow-y-auto">
-              {sortedPlayers.map((player) => (
+                return (
+                  <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-3.5 max-h-[500px] overflow-y-auto">
+                    {Array.from({ length: numMatches }).map((_, i) => {
+                      const highSeedIdx = order[i * 2];
+                      const lowSeedIdx = order[i * 2 + 1];
+                      const highSeedNum = highSeedIdx + 1;
+                      const lowSeedNum = lowSeedIdx + 1;
+
+                      const playerHigh = sortedPlayers.find(pl => pl.seed === highSeedNum);
+                      const playerLow = sortedPlayers.find(pl => pl.seed === lowSeedNum);
+
+                      const isHighOver = dragOverMatchupSlot === `m${i}-high`;
+                      const isLowOver = dragOverMatchupSlot === `m${i}-low`;
+
+                      return (
+                        <div
+                          key={i}
+                          className="rounded-xl border border-white/10 bg-black/40 overflow-hidden shadow-sm flex flex-col"
+                        >
+                          <div className="flex items-center justify-between px-3 py-1.5 bg-white/5 border-b border-white/5 text-[10px] font-mono">
+                            <span className="font-bold text-white tracking-widest uppercase">
+                              MATCH {i + 1}
+                            </span>
+                            <span className="text-gray-500">
+                              Seed #{highSeedNum} vs #{lowSeedNum}
+                            </span>
+                          </div>
+
+                          {/* High Seed Spot */}
+                          <div
+                            draggable={Boolean(playerHigh)}
+                            onDragStart={(e) => {
+                              if (playerHigh) {
+                                e.dataTransfer.setData('text/plain', playerHigh.id);
+                                e.dataTransfer.effectAllowed = 'move';
+                              }
+                            }}
+                            onDragOver={(e) => {
+                              e.preventDefault();
+                              e.dataTransfer.dropEffect = 'move';
+                              if (dragOverMatchupSlot !== `m${i}-high`) {
+                                setDragOverMatchupSlot(`m${i}-high`);
+                              }
+                            }}
+                            onDragLeave={() => setDragOverMatchupSlot(null)}
+                            onDrop={(e) => {
+                              e.preventDefault();
+                              setDragOverMatchupSlot(null);
+                              const sourceId = e.dataTransfer.getData('text/plain');
+                              if (sourceId) {
+                                if (playerHigh) {
+                                  if (sourceId !== playerHigh.id && onSwapSeeds) {
+                                    onSwapSeeds(sourceId, playerHigh.id);
+                                  }
+                                } else if (onUpdateSeed) {
+                                  onUpdateSeed(sourceId, highSeedNum);
+                                }
+                              }
+                            }}
+                            className={`flex items-center justify-between p-2.5 transition-all ${
+                              isHighOver ? 'bg-cyan-500/25 ring-2 ring-cyan-400' : 'hover:bg-white/[0.03]'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-cyan-500/15 border border-cyan-500/30 text-cyan-300 shrink-0">
+                                HIGH #{highSeedNum}
+                              </span>
+                              {playerHigh ? (
+                                <div className="flex items-center gap-1.5 min-w-0">
+                                  <GripVertical size={13} className="text-gray-500 hover:text-white cursor-grab shrink-0" />
+                                  <span className="text-sm font-bold text-white truncate font-rajdhani" style={{ fontFamily: 'Rajdhani, sans-serif' }}>
+                                    {playerHigh.tag}
+                                  </span>
+                                  {playerHigh.character && (
+                                    <span className="text-[11px] text-gray-400 font-mono truncate">
+                                      ({playerHigh.character})
+                                    </span>
+                                  )}
+                                </div>
+                              ) : (
+                                <span className="text-xs text-gray-500 font-mono italic">Empty · Drop player here</span>
+                              )}
+                            </div>
+                            {playerHigh?.countryFlag && <span className="text-xs shrink-0">{playerHigh.countryFlag}</span>}
+                          </div>
+
+                          <div className="h-px bg-white/5 relative flex items-center justify-center">
+                            <span className="absolute bg-[#0F0F14] px-2 text-[9px] font-mono text-gray-500 font-bold uppercase">
+                              VS
+                            </span>
+                          </div>
+
+                          {/* Low Seed Spot */}
+                          <div
+                            draggable={Boolean(playerLow)}
+                            onDragStart={(e) => {
+                              if (playerLow) {
+                                e.dataTransfer.setData('text/plain', playerLow.id);
+                                e.dataTransfer.effectAllowed = 'move';
+                              }
+                            }}
+                            onDragOver={(e) => {
+                              e.preventDefault();
+                              e.dataTransfer.dropEffect = 'move';
+                              if (dragOverMatchupSlot !== `m${i}-low`) {
+                                setDragOverMatchupSlot(`m${i}-low`);
+                              }
+                            }}
+                            onDragLeave={() => setDragOverMatchupSlot(null)}
+                            onDrop={(e) => {
+                              e.preventDefault();
+                              setDragOverMatchupSlot(null);
+                              const sourceId = e.dataTransfer.getData('text/plain');
+                              if (sourceId) {
+                                if (playerLow) {
+                                  if (sourceId !== playerLow.id && onSwapSeeds) {
+                                    onSwapSeeds(sourceId, playerLow.id);
+                                  }
+                                } else if (onUpdateSeed) {
+                                  onUpdateSeed(sourceId, lowSeedNum);
+                                }
+                              }
+                            }}
+                            className={`flex items-center justify-between p-2.5 transition-all ${
+                              isLowOver ? 'bg-purple-500/25 ring-2 ring-purple-400' : 'hover:bg-white/[0.03]'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-purple-500/15 border border-purple-500/30 text-purple-300 shrink-0">
+                                LOW #{lowSeedNum}
+                              </span>
+                              {playerLow ? (
+                                <div className="flex items-center gap-1.5 min-w-0">
+                                  <GripVertical size={13} className="text-gray-500 hover:text-white cursor-grab shrink-0" />
+                                  <span className="text-sm font-bold text-white truncate font-rajdhani" style={{ fontFamily: 'Rajdhani, sans-serif' }}>
+                                    {playerLow.tag}
+                                  </span>
+                                  {playerLow.character && (
+                                    <span className="text-[11px] text-gray-400 font-mono truncate">
+                                      ({playerLow.character})
+                                    </span>
+                                  )}
+                                </div>
+                              ) : (
+                                <span className="text-xs text-gray-500 font-mono italic">BYE / Empty · Drop player here</span>
+                              )}
+                            </div>
+                            {playerLow?.countryFlag && <span className="text-xs shrink-0">{playerLow.countryFlag}</span>}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()
+            ) : (
+              <div>
+                {/* Table Header */}
                 <div
-                  key={player.id}
-                  className="grid items-center px-4 py-2.5 hover:bg-white/[0.02] transition-colors"
-                  style={{ gridTemplateColumns: '70px 1fr 120px 140px 90px' }}
+                  className="grid text-xs tracking-widest px-4 py-2.5 font-mono text-gray-400 bg-black/40 border-b border-white/5"
+                  style={{ gridTemplateColumns: '28px 70px 1fr 120px 140px 90px' }}
                 >
-                  {/* Seed Input */}
-                  <div className="flex items-center">
-                    <BracketSeedInput player={player} onUpdateSeed={onUpdateSeed} />
-                  </div>
-
-                  {/* Player Name */}
-                  <div>
-                    <div className="text-sm font-bold text-white flex items-center gap-1.5 font-rajdhani" style={{ fontFamily: 'Rajdhani, sans-serif' }}>
-                      <span>{player.tag}</span>
-                      {player.countryFlag && <span className="text-xs">{player.countryFlag}</span>}
-                    </div>
-                    <div className="text-xs text-gray-500 font-mono">
-                      {player.realName || player.country}
-                    </div>
-                  </div>
-
-                  {/* Character */}
-                  <span className="text-xs text-gray-400 truncate pr-2 font-mono">
-                    {player.character || '—'}
-                  </span>
-
-                  {/* Flexible Seating / Station Assignment */}
-                  <div className="pr-2">
-                    <select
-                      value={player.stationId ?? ''}
-                      onChange={(e) => {
-                        const val = e.target.value === '' ? null : parseInt(e.target.value, 10);
-                        onUpdatePlayerStation?.(player.id, val);
-                      }}
-                      className="w-full text-xs font-mono bg-black/60 border border-white/15 rounded px-2 py-1 text-gray-300 focus:outline-none focus:border-[#00E5FF]"
-                      title="Flexible station/seat assignment before bracket starts"
-                    >
-                      <option value="">Unassigned</option>
-                      {stations?.map(s => (
-                        <option key={s.id} value={s.id}>{s.name}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Status */}
-                  <div className="flex justify-end">
-                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono uppercase tracking-wider ${player.checkedIn
-                      ? 'bg-green-500/10 text-green-400 border border-green-500/20'
-                      : 'bg-red-500/10 text-red-400 border border-red-500/20'
-                      }`}>
-                      {player.checkedIn ? <CheckCircle2 size={10} /> : <X size={10} />}
-                      {player.checkedIn ? 'Ready' : 'Absent'}
-                    </span>
-                  </div>
+                  <span></span>
+                  <span>SEED</span>
+                  <span>PLAYER</span>
+                  <span>CHARACTER</span>
+                  <span>SEAT / SETUP</span>
+                  <span className="text-right">CHECK-IN</span>
                 </div>
-              ))}
-            </div>
+
+                {/* Player List */}
+                <div className="divide-y divide-white/5 max-h-[460px] overflow-y-auto">
+                  {sortedPlayers.map((player) => {
+                    const isRowOver = dragOverPlayerId === player.id;
+
+                    return (
+                      <div
+                        key={player.id}
+                        draggable={true}
+                        onDragStart={(e) => {
+                          e.dataTransfer.setData('text/plain', player.id);
+                          e.dataTransfer.effectAllowed = 'move';
+                        }}
+                        onDragOver={(e) => {
+                          e.preventDefault();
+                          e.dataTransfer.dropEffect = 'move';
+                          if (dragOverPlayerId !== player.id) setDragOverPlayerId(player.id);
+                        }}
+                        onDragLeave={() => setDragOverPlayerId(null)}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          setDragOverPlayerId(null);
+                          const sourceId = e.dataTransfer.getData('text/plain');
+                          if (sourceId && sourceId !== player.id && onSwapSeeds) {
+                            onSwapSeeds(sourceId, player.id);
+                          }
+                        }}
+                        className={`grid items-center px-4 py-2.5 transition-colors ${
+                          isRowOver ? 'bg-cyan-500/20 ring-2 ring-cyan-400' : 'hover:bg-white/[0.02]'
+                        }`}
+                        style={{ gridTemplateColumns: '28px 70px 1fr 120px 140px 90px' }}
+                      >
+                        {/* Drag Handle */}
+                        <div className="flex items-center text-gray-500 hover:text-cyan-400 cursor-grab active:cursor-grabbing" title="Drag to reorder/swap seeds">
+                          <GripVertical size={14} />
+                        </div>
+
+                        {/* Seed Input */}
+                        <div className="flex items-center">
+                          <BracketSeedInput player={player} onUpdateSeed={onUpdateSeed} />
+                        </div>
+
+                        {/* Player Name */}
+                        <div>
+                          <div className="text-sm font-bold text-white flex items-center gap-1.5 font-rajdhani" style={{ fontFamily: 'Rajdhani, sans-serif' }}>
+                            <span>{player.tag}</span>
+                            {player.countryFlag && <span className="text-xs">{player.countryFlag}</span>}
+                          </div>
+                          <div className="text-xs text-gray-500 font-mono">
+                            {player.realName || player.country}
+                          </div>
+                        </div>
+
+                        {/* Character */}
+                        <span className="text-xs text-gray-400 truncate pr-2 font-mono">
+                          {player.character || '—'}
+                        </span>
+
+                        {/* Flexible Seating / Station Assignment */}
+                        <div className="pr-2">
+                          <select
+                            value={player.stationId ?? ''}
+                            onChange={(e) => {
+                              const val = e.target.value === '' ? null : parseInt(e.target.value, 10);
+                              onUpdatePlayerStation?.(player.id, val);
+                            }}
+                            className="w-full text-xs font-mono bg-black/60 border border-white/15 rounded px-2 py-1 text-gray-300 focus:outline-none focus:border-[#00E5FF]"
+                            title="Flexible station/seat assignment before bracket starts"
+                          >
+                            <option value="">Unassigned</option>
+                            {stations?.map(s => (
+                              <option key={s.id} value={s.id}>{s.name}</option>
+                            ))}
+                          </select>
+                        </div>
+
+                        {/* Status */}
+                        <div className="flex justify-end">
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono uppercase tracking-wider ${player.checkedIn
+                            ? 'bg-green-500/10 text-green-400 border border-green-500/20'
+                            : 'bg-red-500/10 text-red-400 border border-red-500/20'
+                            }`}>
+                            {player.checkedIn ? <CheckCircle2 size={10} /> : <X size={10} />}
+                            {player.checkedIn ? 'Ready' : 'Absent'}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -586,6 +832,148 @@ export function BracketView({
 
   return (
     <div className="overflow-auto pb-8 h-full space-y-6 p-4">
+      {/* Tournament Status & Lifecycle Control Banner */}
+      {!isImported ? (
+        !isTournamentStarted ? (
+          <div className="flex flex-wrap items-center justify-between gap-4 p-4 rounded-xl border border-amber-500/30 bg-gradient-to-r from-amber-500/10 via-black/60 to-black/80 shadow-lg">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-lg bg-amber-500/20 border border-amber-500/40 text-amber-300">
+                <Unlock size={20} />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h4 className="text-sm font-bold font-mono tracking-wider text-white uppercase">
+                    BRACKET PREVIEW · SEEDING UNLOCKED
+                  </h4>
+                  <span className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 text-[10px] font-mono font-bold uppercase">
+                    Drag & Drop Enabled
+                  </span>
+                </div>
+                <p className="text-xs text-gray-300 font-mono mt-0.5">
+                  Round 1 matchups can be manually adjusted. Drag & drop competitors across matches to swap seed spots, then start the tournament to lock seeds.
+                </p>
+              </div>
+            </div>
+
+            {onStartTournament && (
+              <button
+                type="button"
+                onClick={onStartTournament}
+                className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-mono text-xs font-bold text-black uppercase tracking-wider transition-all shadow-[0_0_15px_rgba(0,229,255,0.4)] cursor-pointer hover:brightness-110 shrink-0"
+                style={{ background: theme.primaryColor || '#00E5FF' }}
+              >
+                <Play size={13} fill="currentColor" />
+                <Lock size={12} />
+                <span>START TOURNAMENT (LOCK SEEDS)</span>
+              </button>
+            )}
+          </div>
+        ) : (
+          <div className="flex flex-wrap items-center justify-between gap-4 p-4 rounded-xl border border-green-500/30 bg-gradient-to-r from-green-500/10 via-black/60 to-black/80 shadow-lg">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-lg bg-green-500/20 border border-green-500/40 text-green-400">
+                <Lock size={20} />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h4 className="text-sm font-bold font-mono tracking-wider text-white uppercase">
+                    TOURNAMENT IN PROGRESS · SEEDS LOCKED
+                  </h4>
+                  <span className="px-2 py-0.5 rounded bg-green-500/20 text-green-400 text-[10px] font-mono font-bold uppercase flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+                    Live Tournament
+                  </span>
+                </div>
+                <p className="text-xs text-gray-300 font-mono mt-0.5">
+                  Matches are live. Competitor seeds and Round 1 match spots are locked.
+                </p>
+              </div>
+            </div>
+
+            {onRestartTournament && (
+              <button
+                type="button"
+                onClick={() => setShowRestartModal(true)}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl font-mono text-xs font-bold text-amber-300 bg-amber-500/15 border border-amber-500/30 hover:bg-amber-500/25 transition-all cursor-pointer shrink-0"
+              >
+                <RotateCcw size={13} />
+                <span>RESTART TOURNAMENT</span>
+              </button>
+            )}
+          </div>
+        )
+      ) : (
+        <div className="flex flex-wrap items-center justify-between gap-4 p-4 rounded-xl border border-cyan-500/30 bg-gradient-to-r from-cyan-500/10 via-black/60 to-black/80 shadow-lg">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-lg bg-cyan-500/20 border border-cyan-500/40 text-cyan-300">
+              <Lock size={20} />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h4 className="text-sm font-bold font-mono tracking-wider text-white uppercase">
+                  START.GG IMPORTED EVENT · SEEDS LOCKED
+                </h4>
+                <span className="px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 text-[10px] font-mono font-bold uppercase">
+                  Synced From Start.gg
+                </span>
+              </div>
+              <p className="text-xs text-cyan-300/80 font-mono mt-0.5">
+                Competitor seeds and progression match Start.gg and are locked and non-adjustable.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Restart Tournament Confirmation Modal */}
+      {showRestartModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+          <div className="relative w-full max-w-md p-6 rounded-2xl bg-[#070D18] border border-amber-500/40 font-mono flex flex-col gap-4 shadow-2xl">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-lg bg-amber-500/20 border border-amber-500/30 text-amber-300">
+                <RotateCcw size={22} />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-white uppercase" style={{ fontFamily: 'Rajdhani, sans-serif' }}>
+                  RESTART TOURNAMENT?
+                </h3>
+                <p className="text-xs text-gray-400">Reset bracket progression and unlock seeds</p>
+              </div>
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-white/5 border border-white/10 text-xs text-gray-300 space-y-2">
+              <p className="font-bold text-white">Restarting will:</p>
+              <ul className="list-disc pl-4 space-y-1 text-gray-400">
+                <li>Reset all match scores and results back to pending</li>
+                <li>Unlock seeds and enable Round 1 drag & drop adjustment</li>
+                <li className="text-green-400 font-bold">Keep all {players.length} registered players in registration</li>
+              </ul>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowRestartModal(false)}
+                className="px-4 py-2 rounded-lg text-xs font-mono uppercase bg-white/5 hover:bg-white/10 text-gray-300 transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowRestartModal(false);
+                  onRestartTournament?.();
+                }}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-mono font-bold uppercase bg-amber-500 text-black hover:bg-amber-400 transition-colors shadow-md cursor-pointer"
+              >
+                <RotateCcw size={13} />
+                <span>Confirm Restart & Unlock</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Start.gg Style Navigation & Search Controls Bar */}
       <div
         className="flex flex-wrap items-center justify-between gap-4 p-4 rounded-xl border"
