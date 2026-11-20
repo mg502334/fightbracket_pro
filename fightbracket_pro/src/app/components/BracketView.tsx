@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { Swords, Clock, CheckCircle2, AlertCircle, ChevronRight, ChevronDown, Search, X, Layers, Filter, Sparkles, Tv, RefreshCw, Monitor, Smartphone, Radio, Share2, Globe, Hash, Shuffle, ArrowUpDown, Copy, UserPlus, Users, Cloud, ExternalLink } from "lucide-react";
-import { BracketType, type BracketMatch, type Player, type GameTheme, type Station, getChronologicalRoundName } from "../data/tournamentData";
+import { Swords, Clock, CheckCircle2, AlertCircle, ChevronRight, ChevronDown, Search, X, Layers, Filter, Sparkles, Tv, RefreshCw, Monitor, Smartphone, Radio, Share2, Globe, Hash, Shuffle, ArrowUpDown, Copy, UserPlus, Users, Cloud, ExternalLink, Lock, Unlock, Play, RotateCcw, GripVertical } from "lucide-react";
+import { BracketType, type BracketMatch, type Player, type GameTheme, type Station, getChronologicalRoundName, getSeedingOrder } from "../data/tournamentData";
 import { getBracketSubdomainUrl, sanitizeSubdomain, getMatchPermalink } from "../utils/subdomain";
 import { toast } from "sonner";
 
@@ -14,6 +14,10 @@ interface BracketViewProps {
   onUpdateSeed?: (playerId: string, newSeed: number) => void;
   onUpdatePlayerStation?: (playerId: string, stationId: number | null) => void;
   onAutoSeed?: (mode: 'checked-in' | 'random' | 'tag') => void;
+  onSwapSeeds?: (player1Id: string, player2Id: string) => void;
+  onStartTournament?: () => void;
+  onRestartTournament?: () => void;
+  isTournamentStarted?: boolean;
   onOpenAddPlayer?: () => void;
   onOpenImportModal?: () => void;
   onLoadDemoPlayers?: () => void;

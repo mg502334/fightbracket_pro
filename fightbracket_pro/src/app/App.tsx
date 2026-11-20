@@ -39,7 +39,8 @@ import { Users, UserPlus } from "lucide-react";
 
 import {
   type BracketMatch, type Player, type Station, type SMSLog, type GameTheme, type ExhibitionMatch,
-  GAME_THEMES, PLAYERS, gen16Bracket, generateMockDataForGame, generateDynamicBracket, BracketType
+  GAME_THEMES, PLAYERS, gen16Bracket, generateMockDataForGame, generateDynamicBracket, BracketType,
+  repairDoubleEliminationBracket
 } from "./data/tournamentData";
 import {
   extractActiveSubdomain,
@@ -129,6 +130,15 @@ export default function App() {
   const [players, setPlayers] = useState<Player[]>(() => safeParse('fb_players', []));
   const [matches, setMatches] = useState<BracketMatch[]>(() => safeParse('fb_matches', []));
   const [selectedPool, setSelectedPool] = useState<string>('ALL');
+
+  // Auto-heal double elimination bracket states (e.g. if losers skipped out or players were overwritten)
+  useEffect(() => {
+    if (matches.length === 0) return;
+    const { matches: repaired, repaired: didRepair } = repairDoubleEliminationBracket(matches);
+    if (didRepair) {
+      setMatches(repaired);
+    }
+  }, [matches]);
 
   // Generating default stations
   const [stations, setStations] = useState<Station[]>(() => safeParse('fb_stations',
@@ -295,7 +305,7 @@ export default function App() {
     try {
       const searchParams = new URLSearchParams(window.location.search);
       const hashParams = new URLSearchParams(window.location.hash.startsWith('#') ? window.location.hash.substring(1) : window.location.hash);
-      
+
       const error = searchParams.get('error') || hashParams.get('error');
       const errorDesc = searchParams.get('error_description') || hashParams.get('error_description');
       if (error || errorDesc) {
@@ -307,7 +317,7 @@ export default function App() {
         const cleanUrl = window.location.pathname;
         window.history.replaceState({}, document.title, cleanUrl);
       }
-    } catch {}
+    } catch { }
 
     supabase.auth.getSession().then(({ data: { session } }: any) => {
       setSupabaseUser(session?.user ?? null);
@@ -367,7 +377,7 @@ export default function App() {
                 return newStations;
               });
             }
-          } catch {}
+          } catch { }
         }
         // Load Discord webhook URLs & callout switches
         if (profile?.discord_webhook_url) {
@@ -409,20 +419,20 @@ export default function App() {
     const sub = sanitizeSubdomain(meta?.subdomain || parsed.activeTournament?.subdomain) || generateRandomSubdomain('fb');
     const tournamentObj = parsed.activeTournament
       ? {
-          ...parsed.activeTournament,
-          id: meta?.id || parsed.activeTournament.id || parsed.activeTournament.slug,
-          slug: parsed.activeTournament.slug || meta?.id || sub,
-          subdomain: sub,
-          isLiveShared: true,
-        }
+        ...parsed.activeTournament,
+        id: meta?.id || parsed.activeTournament.id || parsed.activeTournament.slug,
+        slug: parsed.activeTournament.slug || meta?.id || sub,
+        subdomain: sub,
+        isLiveShared: true,
+      }
       : {
-          id: meta?.id || sub,
-          name: meta?.name || 'Shared Event',
-          location: 'Local / Shared',
-          slug: meta?.id || sub,
-          subdomain: sub,
-          isLiveShared: true,
-        };
+        id: meta?.id || sub,
+        name: meta?.name || 'Shared Event',
+        location: 'Local / Shared',
+        slug: meta?.id || sub,
+        subdomain: sub,
+        isLiveShared: true,
+      };
     setActiveTournament(tournamentObj);
     setTournamentOwnerId(meta?.user_id || null);
     setLastSyncedAt(new Date());
@@ -469,7 +479,7 @@ export default function App() {
               toast.info(`Viewing Match ${matchId} in "${data.tournament.name || 'Tournament'}"`);
             }
           })
-          .catch(() => {});
+          .catch(() => { });
         return;
       }
     }
@@ -534,7 +544,7 @@ export default function App() {
 
     // Auto-import event bracket if shared permalink ?event=<slug> is present in URL
     if (eventParam) {
-      handleLiveImport(eventParam).catch(() => {});
+      handleLiveImport(eventParam).catch(() => { });
       return;
     }
 
@@ -559,10 +569,10 @@ export default function App() {
             });
             toast.success(`Loaded shared event (${activeSub}.fightbracketpro.com) — ready to run!`);
           } else if (data.event?.startgg_slug) {
-            handleLiveImport(data.event.startgg_slug).catch(() => {});
+            handleLiveImport(data.event.startgg_slug).catch(() => { });
           }
         })
-        .catch(() => {});
+        .catch(() => { });
     }
   }, [applyLoadedTournamentPayload]);
 
@@ -645,7 +655,7 @@ export default function App() {
     }
 
     // Check if preset theme exists in GAME_THEMES
-    const presetThemeKey = Object.keys(GAME_THEMES).find(k => 
+    const presetThemeKey = Object.keys(GAME_THEMES).find(k =>
       GAME_THEMES[k].displayName.toLowerCase() === game.name.toLowerCase() ||
       game.name.toLowerCase().includes(GAME_THEMES[k].displayName.toLowerCase()) ||
       GAME_THEMES[k].displayName.toLowerCase().includes(game.name.toLowerCase())
@@ -954,7 +964,7 @@ export default function App() {
         setLastSyncedAt(new Date());
         return resJson;
       }
-    } catch {}
+    } catch { }
     return null;
   }, [activeTournament, activeGame, gameThemes, players, matches, stations, gameOrder, smsLogs, autoSyncSlug, exhibitions]);
 
@@ -1006,7 +1016,7 @@ export default function App() {
       setTimeout(() => {
         isApplyingRemoteRef.current = false;
       }, 300);
-    } catch {}
+    } catch { }
   }, [activeTournament?.subdomain, activeTournament?.id, activeTournament?.slug, autoSyncSlug]);
 
   useEffect(() => {
@@ -1065,7 +1075,7 @@ export default function App() {
         try {
           await navigator.clipboard.writeText(shareUrl);
           toast.success(`Bracket permalink copied! (${shareUrl})`);
-        } catch {}
+        } catch { }
       }
       return shareUrl;
     } finally {
@@ -1141,14 +1151,14 @@ export default function App() {
       m.roundName.toLowerCase() === 'grand finals'
     )
   );
-  const grandFinalMatch = grandFinalMatches.length > 0 
+  const grandFinalMatch = grandFinalMatches.length > 0
     ? grandFinalMatches.reduce((prev, current) => (Math.abs(prev.round) > Math.abs(current.round)) ? prev : current)
     : null;
 
   const maxRoundMatch = grandFinalMatch || (gameMatches.length > 0 ?
     gameMatches.reduce((prev, current) =>
       (prev && Math.abs(prev.round) > Math.abs(current.round)) ? prev : current, gameMatches[0]) : null);
-      
+
   const championId = startGgChampion ? startGgChampion.id : (maxRoundMatch && maxRoundMatch.state === 'completed' ? maxRoundMatch.winnerId : null);
 
   const gamePlayers = activeGame ? players.filter(p => p.gameId === activeGame).map(p => {
@@ -1191,7 +1201,7 @@ export default function App() {
       channel.postMessage(payload);
       try {
         localStorage.setItem('fightbracket_display_state', JSON.stringify(payload));
-      } catch (e) {}
+      } catch (e) { }
 
       channel.onmessage = (event) => {
         if (event.data?.type === 'REQUEST_INITIAL_STATE') {
@@ -1237,7 +1247,7 @@ export default function App() {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${supabaseToken}` },
         body: JSON.stringify({ discord_text_callouts_enabled: nextVal })
-      }).catch(() => {});
+      }).catch(() => { });
     }
   }, [discordTextCallouts, supabaseToken]);
 
@@ -1251,7 +1261,7 @@ export default function App() {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${supabaseToken}` },
         body: JSON.stringify({ discord_voice_callouts_enabled: nextVal })
-      }).catch(() => {});
+      }).catch(() => { });
     }
   }, [discordVoiceCallouts, supabaseToken]);
 
@@ -1667,7 +1677,7 @@ export default function App() {
           newGameIds.push(gameId);
           let hue = Math.floor(Math.random() * 360);
           const gameName = (ev.videogame?.name || evName).toLowerCase();
-          
+
           let primaryColor = `hsl(${hue}, 100%, 60%)`;
           let secondaryColor = `hsl(${(hue + 45) % 360}, 100%, 60%)`;
           let bgFrom = `hsl(${hue}, 80%, 10%)`;
@@ -1770,7 +1780,7 @@ export default function App() {
           if (matchState === 'completed' && p1 && p2) {
             const p1Player = newPlayers.find(np => np.id === String(p1));
             if (p1Player && p1 !== loserId) p1Player.checkedIn = true;
-            
+
             const p2Player = newPlayers.find(np => np.id === String(p2));
             if (p2Player && p2 !== loserId) p2Player.checkedIn = true;
           }
@@ -1815,20 +1825,20 @@ export default function App() {
       if (!hasTreeData) {
         for (const m of newMatches) {
           m.prereqSetIds = m.prereqSetIds || [];
-          
+
           if (m.player1Id) {
-            const p1Prereq = newMatches.find(prev => 
-              prev.pool === m.pool && 
-              Math.abs(prev.round) < Math.abs(m.round) && 
+            const p1Prereq = newMatches.find(prev =>
+              prev.pool === m.pool &&
+              Math.abs(prev.round) < Math.abs(m.round) &&
               prev.winnerId === m.player1Id
             );
             if (p1Prereq && !m.prereqSetIds.includes(p1Prereq.id)) m.prereqSetIds.push(p1Prereq.id);
           }
-          
+
           if (m.player2Id) {
-            const p2Prereq = newMatches.find(prev => 
-              prev.pool === m.pool && 
-              Math.abs(prev.round) < Math.abs(m.round) && 
+            const p2Prereq = newMatches.find(prev =>
+              prev.pool === m.pool &&
+              Math.abs(prev.round) < Math.abs(m.round) &&
               prev.winnerId === m.player2Id
             );
             if (p2Prereq && !m.prereqSetIds.includes(p2Prereq.id)) m.prereqSetIds.push(p2Prereq.id);
@@ -1850,11 +1860,11 @@ export default function App() {
             rMap.get(m.round)!.push(m);
           }
 
-          const rounds = Array.from(rMap.keys()).sort((a,b)=>a-b);
+          const rounds = Array.from(rMap.keys()).sort((a, b) => a - b);
           for (let i = 0; i < rounds.length - 1; i++) {
             const currRound = rMap.get(rounds[i])!;
-            const nextRound = rMap.get(rounds[i+1])!;
-            
+            const nextRound = rMap.get(rounds[i + 1])!;
+
             const sortByIndentifier = (a: any, b: any) => {
               const idA = a.identifier;
               const idB = b.identifier;
@@ -1870,15 +1880,15 @@ export default function App() {
 
             for (let j = 0; j < nextRound.length; j++) {
               const parent = nextRound[j];
-              if (parent.prereqSetIds && parent.prereqSetIds.length === 2) continue; 
-              
+              if (parent.prereqSetIds && parent.prereqSetIds.length === 2) continue;
+
               const c1 = currRound[j * 2];
               const c2 = currRound[j * 2 + 1];
-              
+
               if (c1 && !parent.prereqSetIds!.includes(c1.id)) parent.prereqSetIds!.push(c1.id);
               if (c2 && !parent.prereqSetIds!.includes(c2.id)) parent.prereqSetIds!.push(c2.id);
             }
-          } 
+          }
 
           const lMatches = pMatches.filter(m => m.round < 0);
           const lMap = new Map<number, typeof newMatches>();
@@ -1887,11 +1897,11 @@ export default function App() {
             lMap.get(m.round)!.push(m);
           }
 
-          const lRounds = Array.from(lMap.keys()).sort((a,b)=>Math.abs(a)-Math.abs(b));
+          const lRounds = Array.from(lMap.keys()).sort((a, b) => Math.abs(a) - Math.abs(b));
           for (let i = 0; i < lRounds.length - 1; i++) {
             const currRound = lMap.get(lRounds[i])!;
-            const nextRound = lMap.get(lRounds[i+1])!;
-            
+            const nextRound = lMap.get(lRounds[i + 1])!;
+
             const sortByIndentifier = (a: any, b: any) => {
               const idA = a.identifier;
               const idB = b.identifier;
@@ -1908,16 +1918,16 @@ export default function App() {
             if (currRound.length === nextRound.length) {
               for (let j = 0; j < nextRound.length; j++) {
                 const parent = nextRound[j];
-                if (parent.prereqSetIds && parent.prereqSetIds.length > 0) continue; 
-                
+                if (parent.prereqSetIds && parent.prereqSetIds.length > 0) continue;
+
                 const child = currRound[j];
                 if (child && !parent.prereqSetIds!.includes(child.id)) parent.prereqSetIds!.push(child.id);
               }
             } else if (currRound.length === nextRound.length * 2) {
               for (let j = 0; j < nextRound.length; j++) {
                 const parent = nextRound[j];
-                if (parent.prereqSetIds && parent.prereqSetIds.length === 2) continue; 
-                
+                if (parent.prereqSetIds && parent.prereqSetIds.length === 2) continue;
+
                 const c1 = currRound[j * 2];
                 const c2 = currRound[j * 2 + 1];
                 if (c1 && !parent.prereqSetIds!.includes(c1.id)) parent.prereqSetIds!.push(c1.id);
@@ -1939,12 +1949,12 @@ export default function App() {
           if (mapRes.ok) {
             const { mapping } = await mapRes.json();
             newPlayers.forEach((p: any) => {
-               const sSlug = p._tempSlug;
-               if (sSlug && mapping[sSlug]) {
-                 p.fbUserId = mapping[sSlug].fbUserId;
-                 p.avatarUrl = mapping[sSlug].avatarUrl;
-               }
-               delete p._tempSlug;
+              const sSlug = p._tempSlug;
+              if (sSlug && mapping[sSlug]) {
+                p.fbUserId = mapping[sSlug].fbUserId;
+                p.avatarUrl = mapping[sSlug].avatarUrl;
+              }
+              delete p._tempSlug;
             });
           }
         } catch (e) {
@@ -2019,7 +2029,7 @@ export default function App() {
           const filtered = historyList.filter((h: any) => h.slug !== slug);
           const updated = [historyItem, ...filtered].slice(0, 20);
           localStorage.setItem('fightbracket_imported_events_history', JSON.stringify(updated));
-        } catch(e) {}
+        } catch (e) { }
       }
     } finally {
       setIsSyncing(false);
@@ -2049,7 +2059,7 @@ export default function App() {
 
     try {
       await fetch(`/api/user/data?user_id=${userId}`, { method: 'DELETE' });
-    } catch (_) {}
+    } catch (_) { }
     toast.success('Tournament cleared!');
   };
 
@@ -2070,8 +2080,19 @@ export default function App() {
 
       // 1. Advance winner to the next round / destination match
       if (winnerId) {
+        const isWinnersMatch = match.round > 0 && !match.roundName?.toLowerCase().includes('grand final');
+        const isLosersMatch = match.round < 0;
+
         // Priority 1: Match with prereqSetIds containing this match
-        const destMatch = updated.find(m => m.gameId === match.gameId && m.prereqSetIds?.includes(matchId));
+        // Note: A winner from winners bracket CANNOT go to a losers match (round < 0).
+        // A winner from losers bracket CANNOT go to winners bracket (round > 0), only to another losers match or Grand Finals.
+        const destMatch = updated.find(m => {
+          if (m.gameId !== match.gameId) return false;
+          if (isWinnersMatch && m.round < 0) return false;
+          if (isLosersMatch && m.round > 0 && !m.roundName?.toLowerCase().includes('grand final')) return false;
+          return m.prereqSetIds?.includes(matchId);
+        });
+
         if (destMatch) {
           if (destMatch.prereqSetIds && destMatch.prereqSetIds[0] === matchId) {
             destMatch.player1Id = winnerId;
@@ -2101,23 +2122,28 @@ export default function App() {
 
       // 2. Advance loser in Double Elimination / drop brackets
       if (loserId) {
-        if (match.loserNextMatchId) {
-          const lDest = updated.find(m => m.id === match.loserNextMatchId);
-          if (lDest) {
-            if (!lDest.player1Id) {
-              lDest.player1Id = loserId;
-            } else if (!lDest.player2Id) {
-              lDest.player2Id = loserId;
-            }
-          }
-        } else {
-          const lDest = updated.find(m => m.gameId === match.gameId && m.loserPrereqSetIds?.includes(matchId));
-          if (lDest) {
-            if (lDest.loserPrereqSetIds && lDest.loserPrereqSetIds[0] === matchId) {
+        let lDest = match.loserNextMatchId ? updated.find(m => m.id === match.loserNextMatchId) : null;
+        if (!lDest) {
+          lDest = updated.find(m => m.gameId === match.gameId && m.loserPrereqSetIds?.includes(matchId));
+        }
+
+        if (lDest) {
+          // In double elimination:
+          // In drop rounds (Major rounds in losers), player1Id comes from the previous losers round,
+          // and player2Id comes from the dropping winners match!
+          // In Losers Round 1, loserPrereqSetIds[0] goes to player1Id, loserPrereqSetIds[1] goes to player2Id.
+          if (lDest.prereqSetIds && lDest.prereqSetIds.length > 0) {
+            lDest.player2Id = loserId;
+          } else if (lDest.loserPrereqSetIds && lDest.loserPrereqSetIds.length > 1) {
+            if (lDest.loserPrereqSetIds[0] === matchId) {
               lDest.player1Id = loserId;
             } else {
               lDest.player2Id = loserId;
             }
+          } else if (!lDest.player1Id || lDest.player1Id === loserId) {
+            lDest.player1Id = loserId;
+          } else {
+            lDest.player2Id = loserId;
           }
         }
       }
@@ -2191,10 +2217,10 @@ export default function App() {
               <Zap size={14} color="#050A14" />
             </div>
             <div>
-              <div 
-                className="tracking-widest italic" 
-                style={{ 
-                  fontFamily: 'Rajdhani, sans-serif', 
+              <div
+                className="tracking-widest italic"
+                style={{
+                  fontFamily: 'Rajdhani, sans-serif',
                   fontWeight: 800,
                   fontSize: '1.2rem',
                   lineHeight: 1.1,
@@ -2202,12 +2228,12 @@ export default function App() {
                   color: '#fff',
                 }}
               >
-                <span style={{ 
-                  color: '#FF00FF', 
-                  textShadow: '0 0 8px rgba(255,0,255,0.5)' 
+                <span style={{
+                  color: '#FF00FF',
+                  textShadow: '0 0 8px rgba(255,0,255,0.5)'
                 }}>FIGHTBRACKET</span>
-                <span className="ml-1" style={{ 
-                  color: '#00FFCC', 
+                <span className="ml-1" style={{
+                  color: '#00FFCC',
                   textShadow: '0 0 8px rgba(0,255,204,0.5)',
                   WebkitTextStroke: '1px #00FFCC'
                 }}>PRO</span>
@@ -2286,9 +2312,8 @@ export default function App() {
                 <span>{isSharingBracket ? 'SHARING...' : 'SHARE'}</span>
                 <ChevronDown
                   size={11}
-                  className={`opacity-70 transition-transform duration-200 ${
-                    showShareMenu ? 'rotate-180' : ''
-                  }`}
+                  className={`opacity-70 transition-transform duration-200 ${showShareMenu ? 'rotate-180' : ''
+                    }`}
                 />
               </button>
 
@@ -2328,7 +2353,7 @@ export default function App() {
                       className="w-full flex items-center gap-2.5 px-3 py-2 text-left text-xs font-mono font-medium text-gray-200 hover:text-white hover:bg-white/10 transition-colors"
                     >
                       <svg width="14" height="14" viewBox="0 0 127.14 96.36" fill="#5865F2" className="shrink-0" aria-hidden="true">
-                        <path d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36,77.7,77.7,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.66,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1A105.25,105.25,0,0,0,126.6,80.22h0C129.24,52.84,122.09,29.11,107.7,8.07ZM42.45,65.69C36.18,65.69,31,60,31,53s5-12.74,11.43-12.74S54,46,53.89,53,48.84,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.25,60,73.25,53s5-12.74,11.44-12.74S96.23,46,96.12,53,91.08,65.69,84.69,65.69Z"/>
+                        <path d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36,77.7,77.7,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.66,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1A105.25,105.25,0,0,0,126.6,80.22h0C129.24,52.84,122.09,29.11,107.7,8.07ZM42.45,65.69C36.18,65.69,31,60,31,53s5-12.74,11.43-12.74S54,46,53.89,53,48.84,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.25,60,73.25,53s5-12.74,11.44-12.74S96.23,46,96.12,53,91.08,65.69,84.69,65.69Z" />
                       </svg>
                       <div className="flex flex-col">
                         <span className="font-bold text-[#8A96F8]">Discord Friends</span>
@@ -2414,17 +2439,15 @@ export default function App() {
                 <span>{authDisplayName || 'ACCOUNT'}</span>
                 <ChevronDown
                   size={11}
-                  className={`opacity-70 transition-transform duration-200 ${
-                    showUserMenu ? 'rotate-180' : 'group-hover:rotate-180'
-                  }`}
+                  className={`opacity-70 transition-transform duration-200 ${showUserMenu ? 'rotate-180' : 'group-hover:rotate-180'
+                    }`}
                 />
               </button>
 
               {/* Dropdown Menu (Hover on Desktop, Click/Tap Toggle on Mobile & Desktop) */}
               <div
-                className={`absolute right-0 top-full pt-1.5 z-50 min-w-[200px] ${
-                  showUserMenu ? 'block' : 'hidden md:group-hover:block'
-                }`}
+                className={`absolute right-0 top-full pt-1.5 z-50 min-w-[200px] ${showUserMenu ? 'block' : 'hidden md:group-hover:block'
+                  }`}
               >
                 <div
                   className="rounded-lg shadow-2xl overflow-hidden py-1.5 backdrop-blur-xl animate-in fade-in zoom-in-95 duration-150"
@@ -2729,12 +2752,12 @@ export default function App() {
                       </button>
                     )}
                   </div>
-                  <CheckInPanel 
-                    players={gamePlayers} 
-                    theme={theme} 
+                  <CheckInPanel
+                    players={gamePlayers}
+                    theme={theme}
                     stations={stations}
-                    onCheckIn={handleCheckIn} 
-                    onRemovePlayer={isHost ? handleRemovePlayer : undefined} 
+                    onCheckIn={handleCheckIn}
+                    onRemovePlayer={isHost ? handleRemovePlayer : undefined}
                     onAddPlayer={handleAddPlayer}
                     onOpenAddPlayer={() => setShowAddPlayerModal(true)}
                     onUpdateSeed={handleUpdateSeed}
@@ -2947,10 +2970,10 @@ export default function App() {
         style={{ background: 'var(--sidebar)', borderColor: 'var(--border)', fontFamily: 'JetBrains Mono, monospace' }}
       >
         <div className="flex flex-col items-center gap-2 text-center">
-          <div 
-            className="tracking-widest italic" 
-            style={{ 
-              fontFamily: 'Rajdhani, sans-serif', 
+          <div
+            className="tracking-widest italic"
+            style={{
+              fontFamily: 'Rajdhani, sans-serif',
               fontWeight: 800,
               fontSize: '1rem',
               lineHeight: 1.1,
@@ -2961,7 +2984,7 @@ export default function App() {
             <span style={{ color: '#FF00FF', textShadow: '0 0 8px rgba(255,0,255,0.5)' }}>FIGHTBRACKET</span>
             <span className="ml-1" style={{ color: '#00FFCC', textShadow: '0 0 8px rgba(0,255,204,0.5)', WebkitTextStroke: '1px #00FFCC' }}>PRO</span>
           </div>
-          
+
           <div className="flex items-center justify-center gap-4 sm:gap-6 mt-1 flex-wrap">
             {([
               { id: 'help', label: 'Help' },

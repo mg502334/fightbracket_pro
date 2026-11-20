@@ -399,10 +399,10 @@ export function PostCard({
               onClick={() => {
                 const subUrl = getEventSubdomainUrl(post.attachedEvent.subdomain, post.attachedEvent.slug || post.attachedEvent.id);
                 navigator.clipboard.writeText(subUrl);
-                toast.success(`Event subdomain link copied: ${subUrl}`);
+                toast.success(`Event link copied: ${subUrl}`);
               }}
               className="p-1.5 rounded bg-cyan-500/15 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/30 transition-colors"
-              title="Copy Event Subdomain Link"
+              title="Copy Event Link"
             >
               <Share2 size={13} />
             </button>

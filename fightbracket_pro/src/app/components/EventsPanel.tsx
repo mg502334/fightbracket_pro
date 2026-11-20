@@ -1137,12 +1137,12 @@ export function EventsPanel({
                 onClick={() => {
                   const subUrl = getEventSubdomainUrl(selectedDetailEvent.subdomain, selectedDetailEvent.slug);
                   navigator.clipboard.writeText(subUrl);
-                  toast.success(`Subdomain link copied: ${subUrl}`);
+                  toast.success(`Event link copied: ${subUrl}`);
                 }}
                 className="px-4 py-2.5 rounded-xl bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 hover:bg-cyan-500/25 text-xs font-bold tracking-wider transition-all uppercase flex items-center gap-1.5"
                 style={{ fontFamily: 'Rajdhani, sans-serif' }}
               >
-                <Share2 size={14} /> SHARE SUBDOMAIN
+                <Share2 size={14} /> SHARE EVENT
               </button>
 
               <button

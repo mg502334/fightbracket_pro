@@ -798,17 +798,17 @@ export function AccountSettingsPanel({
                             <Trophy size={13} /> BRACKET
                           </button>
 
-                          {/* Copy Subdomain Share Link */}
+                          {/* Copy Event Share Link */}
                           <button
                             onClick={() => {
                               const subUrl = getEventSubdomainUrl(ev.subdomain, ev.slug || ev.id);
                               navigator.clipboard.writeText(subUrl);
-                              toast.success(`Subdomain link copied: ${subUrl}`);
+                              toast.success(`Event link copied: ${subUrl}`);
                             }}
                             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-rajdhani font-bold text-xs tracking-wider transition-all"
-                            title="Copy Subdomain Share Link"
+                            title="Copy Event Share Link"
                           >
-                            <Share2 size={13} /> SHARE SUBDOMAIN
+                            <Share2 size={13} /> SHARE EVENT
                           </button>
 
                           {/* Public Page Link */}

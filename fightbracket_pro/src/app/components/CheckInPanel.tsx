@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Search, CheckCircle2, XCircle, Smartphone, Trash2, UserPlus, Loader2, Shuffle, ArrowUpDown, Monitor, Hash } from "lucide-react";
+import { Search, CheckCircle2, XCircle, Smartphone, Trash2, UserPlus, Loader2, Shuffle, ArrowUpDown, Monitor, Hash, Lock, GripVertical } from "lucide-react";
 import type { Player, GameTheme, Station } from "../data/tournamentData";
 import { motion, AnimatePresence } from "motion/react";
 
@@ -14,7 +14,9 @@ interface CheckInPanelProps {
   onUpdateSeed?: (playerId: string, newSeed: number) => void;
   onUpdatePlayerStation?: (playerId: string, stationId: number | null) => void;
   onAutoSeed?: (mode: 'checked-in' | 'random' | 'tag') => void;
+  onSwapSeeds?: (player1Id: string, player2Id: string) => void;
   isCustomTournament?: boolean;
+  isTournamentStarted?: boolean;
   supabaseToken?: string | null;
 }
 
@@ -31,9 +33,12 @@ export function CheckInPanel({
   onUpdateSeed,
   onUpdatePlayerStation,
   onAutoSeed,
-  isCustomTournament, 
+  onSwapSeeds,
+  isCustomTournament,
+  isTournamentStarted,
   supabaseToken 
 }: CheckInPanelProps) {
+  const isSeedsLocked = !isCustomTournament || Boolean(isTournamentStarted);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<FilterMode>('all');
   const [sortBy, setSortBy] = useState<'seed' | 'tag' | 'status'>('seed');
@@ -232,6 +237,12 @@ export function CheckInPanel({
             <span className="font-mono text-xs uppercase tracking-wider font-bold" style={{ color: theme.primaryColor }}>
               SEEDING & SEATING CONTROLS
             </span>
+            {isSeedsLocked && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-amber-500/15 border border-amber-500/30 text-amber-300 font-mono text-[10px] font-bold uppercase tracking-wider">
+                <Lock size={10} />
+                {!isCustomTournament ? 'Start.gg Locked' : 'Tournament In Progress (Locked)'}
+              </span>
+            )}
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <div className="flex items-center gap-1 mr-2">
@@ -249,11 +260,11 @@ export function CheckInPanel({
               ))}
             </div>
 
-          {onAutoSeed && (
+          {!isSeedsLocked && onAutoSeed && (
             <>
               <button
                 onClick={() => onAutoSeed('checked-in')}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded font-mono text-[11px] bg-white/5 border border-white/10 hover:border-[#00E5FF]/50 hover:text-[#00E5FF] transition-all"
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded font-mono text-[11px] bg-white/5 border border-white/10 hover:border-[#00E5FF]/50 hover:text-[#00E5FF] transition-all cursor-pointer"
                 title="Seed checked-in players 1 through N, then remaining players"
               >
                 <Hash size={12} />
@@ -261,7 +272,7 @@ export function CheckInPanel({
               </button>
               <button
                 onClick={() => onAutoSeed('random')}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded font-mono text-[11px] bg-white/5 border border-white/10 hover:border-amber-400/50 hover:text-amber-400 transition-all"
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded font-mono text-[11px] bg-white/5 border border-white/10 hover:border-amber-400/50 hover:text-amber-400 transition-all cursor-pointer"
                 title="Randomize player seeds for open brackets"
               >
                 <Shuffle size={12} />
@@ -269,7 +280,7 @@ export function CheckInPanel({
               </button>
               <button
                 onClick={() => onAutoSeed('tag')}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded font-mono text-[11px] bg-white/5 border border-white/10 hover:border-purple-400/50 hover:text-purple-400 transition-all"
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded font-mono text-[11px] bg-white/5 border border-white/10 hover:border-purple-400/50 hover:text-purple-400 transition-all cursor-pointer"
                 title="Seed alphabetically by gamer tag"
               >
                 <ArrowUpDown size={12} />
@@ -278,7 +289,7 @@ export function CheckInPanel({
             </>
           )}
 
-          {isCustomTournament && (onOpenAddPlayer || onAddPlayer) && (
+          {isCustomTournament && !isTournamentStarted && (onOpenAddPlayer || onAddPlayer) && (
             <button
               onClick={() => onOpenAddPlayer ? onOpenAddPlayer() : undefined}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded font-mono text-[11px] font-bold tracking-wider transition-all cursor-pointer shadow-md"
@@ -296,7 +307,13 @@ export function CheckInPanel({
         </div>
         <div className="flex items-center gap-1.5 text-[11px] font-mono text-gray-400 border-t border-white/5 pt-2">
           <span className="text-[#00E5FF] font-bold">Rule Note:</span>
-          <span>Seeds are strictly 1-to-1 unique. Changing any seed automatically hotswaps with the occupying competitor so no two seeds can ever be duplicate.</span>
+          <span>
+            {isSeedsLocked
+              ? (!isCustomTournament
+                  ? 'Start.gg imported seeds are fixed and non-adjustable to match external tournament brackets.'
+                  : 'Seeds are locked while the tournament is underway. Restart the tournament from Bracket View to unlock and adjust.')
+              : 'Seeds are strictly 1-to-1 unique. Drag and drop rows or edit seed numbers to hotswap seeds before tournament begins.'}
+          </span>
         </div>
       </div>
 
@@ -342,13 +359,14 @@ export function CheckInPanel({
         <div
           className="grid text-xs tracking-widest px-4 py-2"
           style={{
-            gridTemplateColumns: '60px 1fr 110px 125px 85px 80px',
+            gridTemplateColumns: isSeedsLocked ? '70px 1fr 110px 125px 85px 80px' : '28px 65px 1fr 110px 125px 85px 80px',
             fontFamily: 'JetBrains Mono, monospace',
             color: 'var(--muted-foreground)',
             background: 'var(--sidebar)',
             borderBottom: '1px solid rgba(122,158,192,0.1)',
           }}
         >
+          {!isSeedsLocked && <span></span>}
           <span>SEED</span>
           <span>PLAYER</span>
           <span>CHARACTER</span>
@@ -387,10 +405,12 @@ export function CheckInPanel({
                 player={player} 
                 theme={theme} 
                 stations={stations}
+                isSeedsLocked={isSeedsLocked}
                 onToggle={onCheckIn} 
-                onUpdateSeed={onUpdateSeed}
+                onUpdateSeed={isSeedsLocked ? undefined : onUpdateSeed}
                 onUpdatePlayerStation={onUpdatePlayerStation}
-                onRemove={isCustomTournament ? onRemovePlayer : undefined} 
+                onSwapSeeds={isSeedsLocked ? undefined : onSwapSeeds}
+                onRemove={isCustomTournament && !isTournamentStarted ? onRemovePlayer : undefined} 
               />
             ))
           )}
@@ -404,20 +424,25 @@ function PlayerRow({
   player, 
   theme, 
   stations,
+  isSeedsLocked,
   onToggle, 
   onUpdateSeed,
   onUpdatePlayerStation,
+  onSwapSeeds,
   onRemove 
 }: { 
   player: Player; 
   theme: GameTheme; 
   stations?: Station[];
+  isSeedsLocked?: boolean;
   onToggle: (id: string, v: boolean) => void; 
   onUpdateSeed?: (id: string, seed: number) => void;
   onUpdatePlayerStation?: (id: string, stationId: number | null) => void;
+  onSwapSeeds?: (p1Id: string, p2Id: string) => void;
   onRemove?: (id: string) => void;
 }) {
   const [hovering, setHovering] = useState(false);
+  const [isDragOver, setIsDragOver] = useState(false);
   const [seedInput, setSeedInput] = useState<string>(String(player.seed));
 
   useEffect(() => {
@@ -437,16 +462,45 @@ function PlayerRow({
 
   return (
     <div
-      className="grid items-center px-4 py-2.5 transition-all duration-100"
+      draggable={!isSeedsLocked}
+      onDragStart={(e) => {
+        if (isSeedsLocked) return;
+        e.dataTransfer.setData('text/plain', player.id);
+        e.dataTransfer.effectAllowed = 'move';
+      }}
+      onDragOver={(e) => {
+        if (isSeedsLocked) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        if (!isDragOver) setIsDragOver(true);
+      }}
+      onDragLeave={() => setIsDragOver(false)}
+      onDrop={(e) => {
+        if (isSeedsLocked) return;
+        e.preventDefault();
+        setIsDragOver(false);
+        const sourceId = e.dataTransfer.getData('text/plain');
+        if (sourceId && sourceId !== player.id && onSwapSeeds) {
+          onSwapSeeds(sourceId, player.id);
+        }
+      }}
+      className={`grid items-center px-4 py-2.5 transition-all duration-100 ${
+        isDragOver ? 'bg-cyan-500/20 ring-2 ring-cyan-400 ring-inset' : hovering ? `${theme.primaryColor}06` : 'transparent'
+      }`}
       style={{
-        gridTemplateColumns: '60px 1fr 110px 125px 85px 80px',
-        background: hovering ? `${theme.primaryColor}06` : 'transparent',
+        gridTemplateColumns: isSeedsLocked ? '70px 1fr 110px 125px 85px 80px' : '28px 65px 1fr 110px 125px 85px 80px',
       }}
       onMouseEnter={() => setHovering(true)}
       onMouseLeave={() => setHovering(false)}
     >
+      {!isSeedsLocked && (
+        <div className="flex items-center text-gray-500 hover:text-cyan-400 cursor-grab active:cursor-grabbing" title="Drag to reorder/swap seeds">
+          <GripVertical size={14} />
+        </div>
+      )}
+
       <div className="flex items-center">
-        {onUpdateSeed ? (
+        {!isSeedsLocked && onUpdateSeed ? (
           <input
             type="number"
             min="1"
@@ -464,8 +518,9 @@ function PlayerRow({
             title="Click to change seed (hotswaps duplicate seeds)"
           />
         ) : (
-          <span className="text-xs tabular-nums opacity-60 font-bold" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
+          <span className="flex items-center gap-1 text-xs tabular-nums opacity-80 font-bold" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
             #{player.seed}
+            {isSeedsLocked && <Lock size={10} className="text-amber-400" />}
           </span>
         )}
       </div>

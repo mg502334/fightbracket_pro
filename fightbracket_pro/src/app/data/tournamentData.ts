@@ -399,7 +399,7 @@ export function getChronologicalRoundName(rIndex: number, totalRounds: number, i
 /**
  * Standard tournament bracket seeding order for power of 2 size
  */
-function getSeedingOrder(power: number): number[] {
+export function getSeedingOrder(power: number): number[] {
   if (power === 1) return [0];
   const prev = getSeedingOrder(power / 2);
   const order: number[] = [];
@@ -609,13 +609,14 @@ function generateDoubleEliminationBracket(gameId: string, playerIds: string[]): 
     for (let i = 0; i < roundMatchesCount; i++) {
       const matchId = `${gameId}-de-l-r${lr}-m${i}`;
       let prereqSetIds: string[] = [];
+      let loserPrereqSetIds: string[] = [];
 
       if (lr === 1) {
         // Losers Round 1: feeds from losers of Winners Round 1
         const w1 = winnersRounds[0][i * 2];
         const w2 = winnersRounds[0][i * 2 + 1];
         if (w1 && w2) {
-          prereqSetIds = [w1.id, w2.id];
+          loserPrereqSetIds = [w1.id, w2.id];
           w1.loserNextMatchId = matchId;
           w2.loserNextMatchId = matchId;
         }
@@ -625,13 +626,13 @@ function generateDoubleEliminationBracket(gameId: string, playerIds: string[]): 
         const prevL2 = losersRounds[lr - 2][i * 2 + 1];
         if (prevL1 && prevL2) prereqSetIds = [prevL1.id, prevL2.id];
       } else {
-        // Major Round: 1 Losers match + 1 Drop from Winners Bracket
+        // Major Round: 1 Losers match (P1) + 1 Drop from Winners Bracket (P2)
         const prevL = losersRounds[lr - 2][i];
         const wRoundIndex = lr / 2; // Winners round that drops here
         const wDrop = winnersRounds[wRoundIndex]?.[i];
         if (prevL) prereqSetIds.push(prevL.id);
         if (wDrop) {
-          prereqSetIds.push(wDrop.id);
+          loserPrereqSetIds.push(wDrop.id);
           wDrop.loserNextMatchId = matchId;
         }
       }
@@ -652,6 +653,7 @@ function generateDoubleEliminationBracket(gameId: string, playerIds: string[]): 
         bestOf: lr === totalLosersRounds ? 5 : 3,
         identifier: getMatchIdentifier(matchCounter++),
         prereqSetIds: prereqSetIds.length > 0 ? prereqSetIds : undefined,
+        loserPrereqSetIds: loserPrereqSetIds.length > 0 ? loserPrereqSetIds : undefined,
       };
 
       currentRoundMatches.push(lMatch);
@@ -688,6 +690,118 @@ function generateDoubleEliminationBracket(gameId: string, playerIds: string[]): 
 
   matches.push(gfMatch);
   return matches;
+}
+
+/**
+ * Validates and repairs double elimination bracket match progression states.
+ * Fixes anomalies such as:
+ * - Winners Final winners mistakenly assigned to Losers Final instead of Grand Finals
+ * - Winners Semis losers not properly dropping into Losers Quarters or getting overwritten
+ * - Prematurely active Losers Final when earlier Losers rounds are pending
+ */
+export function repairDoubleEliminationBracket(matches: BracketMatch[]): { matches: BracketMatch[]; repaired: boolean } {
+  const hasDE = matches.some(m => m.round < 0 || m.roundName?.toLowerCase().includes('loser'));
+  if (!hasDE) return { matches, repaired: false };
+
+  let changed = false;
+  const newMatches = matches.map(m => ({ ...m }));
+  const gameIds = Array.from(new Set(newMatches.map(m => m.gameId)));
+
+  for (const gid of gameIds) {
+    const gameMatches = newMatches.filter(m => m.gameId === gid);
+
+    // Winners Final
+    const wfMatch = gameMatches.find(m =>
+      m.roundName?.toLowerCase().includes('winners final') ||
+      (m.round > 0 && m.roundName?.toLowerCase().includes('final') && !m.roundName?.toLowerCase().includes('grand'))
+    );
+
+    // Losers Final (highest absolute round among negative rounds)
+    const lRounds = gameMatches.filter(x => x.round < 0).map(x => Math.abs(x.round));
+    const maxLRound = lRounds.length > 0 ? Math.max(...lRounds) : -1;
+    const lfMatch = gameMatches.find(m =>
+      m.roundName?.toLowerCase().includes('losers final') ||
+      (m.round < 0 && Math.abs(m.round) === maxLRound)
+    );
+
+    // Grand Finals
+    const gfMatch = gameMatches.find(m =>
+      m.roundName?.toLowerCase().includes('grand final') && !m.roundName?.toLowerCase().includes('reset')
+    );
+
+    // 1. If Winners Final is completed, ensure winner goes to Grand Finals and NOT Losers Final
+    if (wfMatch && wfMatch.state === 'completed' && wfMatch.winnerId) {
+      const wfWinner = wfMatch.winnerId;
+      const wfLoser = wfMatch.player1Id === wfWinner ? wfMatch.player2Id : wfMatch.player1Id;
+
+      if (gfMatch && gfMatch.player1Id !== wfWinner) {
+        gfMatch.player1Id = wfWinner;
+        changed = true;
+      }
+
+      if (lfMatch) {
+        // If Losers Final contains the Winners Final winner, fix it!
+        if (lfMatch.player1Id === wfWinner || lfMatch.player2Id === wfWinner) {
+          changed = true;
+          // The WF loser belongs in Losers Final as player2Id
+          lfMatch.player2Id = wfLoser;
+
+          // Player 1 of Losers Final comes from Losers Semi-Final (round just before Losers Final)
+          const lsMatch = gameMatches.find(m =>
+            m.roundName?.toLowerCase().includes('losers semi') ||
+            (m.round < 0 && Math.abs(m.round) === maxLRound - 1)
+          );
+
+          lfMatch.player1Id = (lsMatch && lsMatch.state === 'completed' && lsMatch.winnerId) ? lsMatch.winnerId : null;
+
+          // If P1 of Losers Final is still unknown (Losers Semi not played), Losers Final cannot be live
+          if (!lfMatch.player1Id) {
+            lfMatch.state = 'pending';
+            lfMatch.player1Score = 0;
+            lfMatch.player2Score = 0;
+            lfMatch.winnerId = null;
+            lfMatch.stationId = null;
+          }
+        } else if (!lfMatch.player2Id && wfLoser) {
+          lfMatch.player2Id = wfLoser;
+          changed = true;
+        }
+      }
+    }
+
+    // 2. Fix Winners Semis losers dropping into Losers Quarters (round -2)
+    const wSemis = gameMatches.filter(m =>
+      m.roundName?.toLowerCase().includes('winners semi') ||
+      (m.round === 2 && gameMatches.some(x => x.round === 3))
+    ).sort((a, b) => (a.matchNumber || 0) - (b.matchNumber || 0));
+
+    const lQuarters = gameMatches.filter(m =>
+      m.roundName?.toLowerCase().includes('losers quarter') ||
+      m.round === -2
+    ).sort((a, b) => (a.matchNumber || 0) - (b.matchNumber || 0));
+
+    if (wSemis.length >= 2 && lQuarters.length >= 2) {
+      const s0 = wSemis[0];
+      const s1 = wSemis[1];
+
+      const s0Loser = s0.state === 'completed' && s0.winnerId ? (s0.player1Id === s0.winnerId ? s0.player2Id : s0.player1Id) : null;
+      const s1Loser = s1.state === 'completed' && s1.winnerId ? (s1.player1Id === s1.winnerId ? s1.player2Id : s1.player1Id) : null;
+
+      const lq0 = lQuarters[0];
+      const lq1 = lQuarters[1];
+
+      if (s0Loser && !lq0.player2Id && lq0.player1Id !== s0Loser && lq0.player1Id !== s1Loser) {
+        lq0.player2Id = s0Loser;
+        changed = true;
+      }
+      if (s1Loser && !lq1.player2Id && lq1.player1Id !== s1Loser && lq1.player1Id !== s0Loser) {
+        lq1.player2Id = s1Loser;
+        changed = true;
+      }
+    }
+  }
+
+  return { matches: changed ? newMatches : matches, repaired: changed };
 }
 
 function generateRoundRobinBracket(gameId: string, playerIds: string[]): BracketMatch[] {

@@ -126,14 +126,19 @@ export function CallMatchModal({
           <div className="grid grid-cols-3 sm:grid-cols-4 gap-2.5 mb-6 max-h-56 overflow-y-auto custom-scrollbar pr-1">
             {availableStations.map(s => {
               const isSelected = selectedStation === s.id;
+              const rawName = (s.name || '').trim();
+              const defaultMatch = rawName.match(/^station\s*#?\(?(\d+)\)?$/i);
+              const isCustom = !defaultMatch && rawName.length > 0;
+              const stationNum = defaultMatch ? defaultMatch[1] : String(s.number || s.id);
+
               return (
                 <button
                   key={s.id}
                   onClick={() => setSelectedStation(s.id)}
-                  className={`flex flex-col items-center justify-center p-3 rounded-xl border transition-all relative ${
+                  className={`flex flex-col items-center justify-center p-2.5 sm:p-3 min-h-[84px] rounded-xl border transition-all relative ${
                     isSelected
                       ? 'scale-[1.03] shadow-lg'
-                      : 'opacity-70 hover:opacity-100 hover:border-slate-500'
+                      : 'opacity-75 hover:opacity-100 hover:border-slate-500'
                   }`}
                   style={{
                     background: isSelected
@@ -149,19 +154,45 @@ export function CallMatchModal({
                     </span>
                   )}
                   <Monitor
-                    size={20}
-                    className="mb-1.5"
+                    size={18}
+                    className="mb-1 shrink-0"
                     style={{ color: isSelected ? theme.primaryColor : '#94A3B8' }}
                   />
-                  <span
-                    className="text-sm font-bold font-mono text-center truncate max-w-full px-1"
-                    style={{ color: isSelected ? '#FFFFFF' : '#E2E8F0' }}
-                    title={s.name}
-                  >
-                    {s.name || `STATION ${s.id}`}
-                  </span>
+                  {isCustom ? (
+                    <div className="flex flex-col items-center justify-center min-w-0 w-full px-1 text-center">
+                      <span
+                        className="text-[9px] font-mono font-bold tracking-wider uppercase opacity-75 mb-0.5"
+                        style={{ color: isSelected ? theme.primaryColor : '#94A3B8' }}
+                      >
+                        STATION #{stationNum}
+                      </span>
+                      <span
+                        className="text-xs font-bold leading-tight break-words line-clamp-2 max-w-full"
+                        style={{ color: isSelected ? '#FFFFFF' : '#E2E8F0' }}
+                        title={s.name}
+                      >
+                        {s.name}
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center min-w-0 w-full px-1 text-center">
+                      <span
+                        className="text-[10px] font-mono font-bold tracking-widest uppercase opacity-75"
+                        style={{ color: isSelected ? theme.primaryColor : '#94A3B8' }}
+                      >
+                        STATION
+                      </span>
+                      <span
+                        className="text-base sm:text-lg font-black font-mono leading-none mt-0.5"
+                        style={{ color: isSelected ? '#FFFFFF' : '#F1F5F9' }}
+                        title={`Station #${stationNum}`}
+                      >
+                        #{stationNum}
+                      </span>
+                    </div>
+                  )}
                   {s.streamName && (
-                    <span className="text-[9px] font-mono text-cyan-400 uppercase tracking-tighter truncate max-w-full">
+                    <span className="text-[9px] font-mono text-cyan-400 uppercase tracking-tighter mt-1 font-bold">
                       STREAM
                     </span>
                   )}
