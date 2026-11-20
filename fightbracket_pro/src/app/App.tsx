@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "motion/react";
 import {
   Trophy, GitBranch, UserCheck, User, Monitor, MessageSquare, Smartphone,
   ExternalLink, RefreshCw, Zap, MapPin, Globe, Moon, Sun, X, Tv, Cloud, Play, LayoutGrid, Trash2, Megaphone, Search,
-  Settings, LogOut, ChevronDown, LayoutDashboard, Share2, Copy
+  Settings, LogOut, ChevronDown, LayoutDashboard, Share2, Copy, FileText
 } from "lucide-react";
 import { useTheme } from "next-themes";
 
@@ -35,6 +35,8 @@ import { TermsOfServiceModal } from "./components/TermsOfServiceModal";
 import { NewsPage } from "./components/NewsPage";
 import { PasswordResetModal } from "./components/PasswordResetModal";
 import { SupportModal } from "./components/SupportModal";
+import { ClearTournamentModal } from "./components/ClearTournamentModal";
+import { DraftsModal, type TournamentDraft } from "./components/DraftsModal";
 import { Users, UserPlus } from "lucide-react";
 
 import {
@@ -147,6 +149,10 @@ export default function App() {
 
   const [smsLogs, setSmsLogs] = useState<SMSLog[]>(() => safeParse('fb_smsLogs', []));
   const [announcement, setAnnouncement] = useState<BracketMatch | null>(null);
+  const [isTournamentStarted, setIsTournamentStarted] = useState<boolean>(() => safeParse('fb_tournament_started', false));
+  const [savedDrafts, setSavedDrafts] = useState<TournamentDraft[]>(() => safeParse('fb_saved_drafts', []));
+  const [showClearModal, setShowClearModal] = useState(false);
+  const [showDraftsModal, setShowDraftsModal] = useState(false);
   const [showGameModal, setShowGameModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [showCreateEventModal, setShowCreateEventModal] = useState(false);
@@ -734,6 +740,15 @@ export default function App() {
   };
 
   const handleUpdateSeed = useCallback((playerId: string, newSeed: number) => {
+    if (autoSyncSlug || activeTournament?.isImported || (activeGame && activeGame.startsWith('startgg-'))) {
+      toast.error('Imported seeds from Start.gg are locked and cannot be adjusted.');
+      return;
+    }
+    if (isTournamentStarted) {
+      toast.error('Seeds are locked while tournament is in progress. Restart tournament to unlock.');
+      return;
+    }
+
     const validSeed = Math.max(1, newSeed);
     let occupantTag: string | null = null;
     let targetTag: string | null = null;
@@ -756,7 +771,7 @@ export default function App() {
         setMatches(prevMatches => {
           const gameMatches = prevMatches.filter(m => m.gameId === target.gameId);
           const hasStarted = gameMatches.some(m => m.state === 'in_progress' || m.state === 'completed' || (m.player1Score ?? 0) > 0 || (m.player2Score ?? 0) > 0);
-          if (hasStarted) return prevMatches;
+          if (hasStarted || isTournamentStarted) return prevMatches;
 
           return prevMatches.map(m => {
             if (m.gameId !== target.gameId) return m;
@@ -788,7 +803,101 @@ export default function App() {
     } else {
       toast.success(`Seed updated to #${validSeed}`);
     }
+  }, [autoSyncSlug, activeTournament?.isImported, activeGame, isTournamentStarted]);
+
+  const handleSwapSeeds = useCallback((p1Id: string, p2Id: string) => {
+    if (!p1Id || !p2Id || p1Id === p2Id) return;
+    if (autoSyncSlug || activeTournament?.isImported || (activeGame && activeGame.startsWith('startgg-'))) {
+      toast.error('Imported seeds from Start.gg are locked and cannot be adjusted.');
+      return;
+    }
+    if (isTournamentStarted) {
+      toast.error('Seeds are locked while the tournament is underway. Restart the tournament to adjust seeds.');
+      return;
+    }
+
+    let p1Tag = '';
+    let p2Tag = '';
+    let p1Seed = 0;
+    let p2Seed = 0;
+
+    setPlayers(prev => {
+      const p1 = prev.find(p => p.id === p1Id);
+      const p2 = prev.find(p => p.id === p2Id);
+      if (!p1 || !p2) return prev;
+      p1Tag = p1.tag;
+      p2Tag = p2.tag;
+      p1Seed = p1.seed;
+      p2Seed = p2.seed;
+
+      return prev.map(p => {
+        if (p.id === p1Id) return { ...p, seed: p2Seed };
+        if (p.id === p2Id) return { ...p, seed: p1Seed };
+        return p;
+      });
+    });
+
+    // Also hotswap match slots in Round 0 of bracket
+    setMatches(prevMatches => {
+      return prevMatches.map(m => {
+        if (m.round !== 0) return m;
+        let nextP1 = m.player1Id;
+        let nextP2 = m.player2Id;
+        if (nextP1 === p1Id) nextP1 = p2Id;
+        else if (nextP1 === p2Id) nextP1 = p1Id;
+        if (nextP2 === p1Id) nextP2 = p2Id;
+        else if (nextP2 === p2Id) nextP2 = p1Id;
+        return { ...m, player1Id: nextP1, player2Id: nextP2 };
+      });
+    });
+
+    toast.success(`Swapped Seeds: #${p1Seed} ${p1Tag} ↔ #${p2Seed} ${p2Tag}`);
+  }, [autoSyncSlug, activeTournament?.isImported, activeGame, isTournamentStarted]);
+
+  const handleStartTournament = useCallback(() => {
+    setIsTournamentStarted(true);
+    localStorage.setItem('fb_tournament_started', 'true');
+    setActiveTournament(prev => prev ? { ...prev, status: 'in_progress', isStarted: true } : prev);
+    toast.success('Tournament started! Bracket and seeds are now locked.');
   }, []);
+
+  const handleRestartTournament = useCallback(() => {
+    setMatches(prev => {
+      if (!activeGame) return prev;
+      return prev.map(m => {
+        if (m.gameId !== activeGame) return m;
+        if (m.round === 0) {
+          const isBye = !m.player1Id || !m.player2Id;
+          const winner = isBye ? (m.player1Id || m.player2Id) : null;
+          return {
+            ...m,
+            player1Score: isBye && m.player1Id ? 2 : 0,
+            player2Score: isBye && m.player2Id ? 2 : 0,
+            winnerId: winner,
+            state: isBye ? 'completed' : 'pending',
+            stationId: null,
+          };
+        }
+        return {
+          ...m,
+          player1Id: null,
+          player2Id: null,
+          player1Score: 0,
+          player2Score: 0,
+          winnerId: null,
+          state: 'pending',
+          stationId: null,
+        };
+      });
+    });
+
+    setStations(prev => prev.map(s => s.gameId === activeGame ? { ...s, matchId: null } : s));
+
+    setIsTournamentStarted(false);
+    localStorage.setItem('fb_tournament_started', 'false');
+    setActiveTournament(prev => prev ? { ...prev, status: 'draft', isStarted: false } : prev);
+    toast.success('Tournament restarted! Bracket reset and seeds unlocked. All registered players preserved.');
+  }, [activeGame]);
 
   const handleUpdatePlayerStation = useCallback((playerId: string, stationId: number | null) => {
     setPlayers(prev => prev.map(p => p.id === playerId ? { ...p, stationId } : p));
@@ -797,6 +906,14 @@ export default function App() {
 
   const handleAutoSeed = useCallback((mode: 'checked-in' | 'random' | 'tag') => {
     if (!activeGame) return;
+    if (autoSyncSlug || activeTournament?.isImported || (activeGame && activeGame.startsWith('startgg-'))) {
+      toast.error('Imported seeds from Start.gg are locked and cannot be adjusted.');
+      return;
+    }
+    if (isTournamentStarted) {
+      toast.error('Seeds are locked while the tournament is underway.');
+      return;
+    }
     setPlayers(prev => {
       const activeGamePlayers = prev.filter(p => p.gameId === activeGame);
       const otherPlayers = prev.filter(p => p.gameId !== activeGame);
@@ -814,7 +931,7 @@ export default function App() {
       return [...otherPlayers, ...reseeded];
     });
     toast.success(`Seeding updated (${mode})`);
-  }, [activeGame]);
+  }, [activeGame, autoSyncSlug, activeTournament?.isImported, isTournamentStarted]);
 
   const handleLoadDemoPlayers = useCallback(() => {
     if (!activeGame) return;
@@ -836,6 +953,11 @@ export default function App() {
   }, [activeGame, gameThemes]);
 
   const handleCreateEvent = (data: CreatedEventData) => {
+    if (!supabaseUser) {
+      toast.error('You must have an account first in order to create an event.');
+      setActiveTab('account');
+      return;
+    }
     const newTournament: ActiveTournament = {
       name: data.name,
       location: data.eventType === 'online' ? 'Online' : (data.venueName || data.venueAddress || 'Local Venue'),
@@ -1519,7 +1641,7 @@ export default function App() {
         event(id: $eventId) {
           entrants(query: {page: $page, perPage: 100}) {
             pageInfo { totalPages total }
-            nodes { id name participants { gamerTag user { slug } } seeds { seedNum } standing { placement } }
+            nodes { id name initialSeedNum participants { gamerTag user { slug } } seeds { seedNum } standing { placement } }
           }
         }
       }
@@ -1714,21 +1836,24 @@ export default function App() {
         }
 
         const entrants = ev.entrants?.nodes || [];
-        entrants.forEach((ent: any) => {
+        entrants.forEach((ent: any, idx: number) => {
           const userSlug = ent.participants?.[0]?.user?.slug;
+          const assignedSeed = ent.initialSeedNum ?? ent.seeds?.[0]?.seedNum ?? (idx + 1);
           newPlayers.push({
             id: String(ent.id),
             tag: ent.participants?.[0]?.gamerTag || ent.name,
             realName: ent.name,
             country: 'US',
             countryFlag: '🇺🇸',
-            seed: ent.seeds?.[0]?.seedNum || 1,
+            seed: assignedSeed,
             checkedIn: true,
             phone: '',
             smsNotified: false,
             character: 'Unknown',
             placement: ent.standing?.placement,
             gameId,
+            isLocked: true,
+            isImported: true,
             ...(userSlug ? { _tempSlug: userSlug } : {})
           } as any);
         });
@@ -1979,7 +2104,7 @@ export default function App() {
         }
       }
       const importedSub = sanitizeSubdomain(activeTournament?.subdomain) || generateRandomSubdomain('sgg');
-      setActiveTournament({ id: slug, name: tName, location: tLocation, slug, subdomain: importedSub });
+      setActiveTournament({ id: slug, name: tName, location: tLocation, slug, subdomain: importedSub, isImported: true, isLocked: true });
 
       setPlayers(prev => {
         const filteredPrev = prev.filter(p => !p.id.startsWith('tk') && !p.id.startsWith('sf') && !p.id.startsWith('ff'));
@@ -2037,7 +2162,7 @@ export default function App() {
     }
   }
 
-  const handleClearTournament = async () => {
+  const performClearTournament = async () => {
     localStorage.removeItem('fb_tournament');
     localStorage.removeItem('fb_players');
     localStorage.removeItem('fb_matches');
@@ -2045,6 +2170,7 @@ export default function App() {
     localStorage.removeItem('fb_gameOrder');
     localStorage.removeItem('fb_autoSyncSlug');
     localStorage.removeItem('fb_activeGame');
+    localStorage.removeItem('fb_tournament_started');
 
     setPlayers([]);
     setGameThemes({});
@@ -2052,6 +2178,7 @@ export default function App() {
     setActiveGame(null);
     setActiveTournament(null);
     setAutoSyncSlug(null);
+    setIsTournamentStarted(false);
     setExhibitions([]);
     setSmsLogs([]);
     setMatches([]);
@@ -2060,7 +2187,83 @@ export default function App() {
     try {
       await fetch(`/api/user/data?user_id=${userId}`, { method: 'DELETE' });
     } catch (_) { }
-    toast.success('Tournament cleared!');
+  };
+
+  const handleClearTournament = () => {
+    const isImported = Boolean(
+      autoSyncSlug || 
+      activeTournament?.isImported || 
+      (activeGame && activeGame.startsWith('startgg-'))
+    );
+
+    if (isImported) {
+      // Quickly clears imported tournament without confirmation prompt
+      performClearTournament();
+      toast.success('Imported tournament cleared!');
+    } else {
+      // Local tournament: prompt user to confirm the clear or save draft
+      setShowClearModal(true);
+    }
+  };
+
+  const handleSaveDraft = (thenClear: boolean = false) => {
+    const draftId = `draft-${Date.now()}`;
+    const newDraft: TournamentDraft = {
+      id: draftId,
+      name: activeTournament?.name || (theme ? `${theme.displayName} Tournament` : 'Local Tournament'),
+      savedAt: new Date().toISOString(),
+      gameId: activeGame || 'unknown',
+      gameDisplayName: theme?.displayName || activeGame || 'Local Game',
+      playerCount: players.length,
+      matchCount: matches.length,
+      players: [...players],
+      matches: [...matches],
+      tournament: activeTournament ? { ...activeTournament } : null,
+      themes: { ...gameThemes },
+      gameOrder: [...gameOrder],
+    };
+
+    const updated = [newDraft, ...savedDrafts.filter(d => d.id !== draftId)].slice(0, 20);
+    setSavedDrafts(updated);
+    localStorage.setItem('fb_saved_drafts', JSON.stringify(updated));
+
+    if (thenClear) {
+      performClearTournament();
+      setShowClearModal(false);
+      toast.success('Draft saved and tournament cleared!');
+    } else {
+      setShowClearModal(false);
+      toast.success('Tournament draft saved successfully!');
+    }
+  };
+
+  const handleLoadDraft = (draft: TournamentDraft) => {
+    setPlayers(draft.players || []);
+    setMatches(draft.matches || []);
+    setGameThemes(draft.themes || {});
+    setGameOrder(draft.gameOrder || []);
+    setActiveGame(draft.gameId || null);
+    setActiveTournament(draft.tournament || null);
+    setAutoSyncSlug(null);
+    setIsTournamentStarted(false);
+
+    localStorage.setItem('fb_players', JSON.stringify(draft.players || []));
+    localStorage.setItem('fb_matches', JSON.stringify(draft.matches || []));
+    localStorage.setItem('fb_themes', JSON.stringify(draft.themes || {}));
+    localStorage.setItem('fb_gameOrder', JSON.stringify(draft.gameOrder || []));
+    if (draft.gameId) localStorage.setItem('fb_activeGame', JSON.stringify(draft.gameId));
+    if (draft.tournament) localStorage.setItem('fb_tournament', JSON.stringify(draft.tournament));
+    localStorage.setItem('fb_tournament_started', 'false');
+
+    setShowDraftsModal(false);
+    toast.success(`Loaded draft "${draft.name}"!`);
+  };
+
+  const handleDeleteDraft = (id: string) => {
+    const updated = savedDrafts.filter(d => d.id !== id);
+    setSavedDrafts(updated);
+    localStorage.setItem('fb_saved_drafts', JSON.stringify(updated));
+    toast.success('Draft deleted');
   };
 
   const handleReportScore = (matchId: string, p1Score: number, p2Score: number, winnerId: string | null) => {
@@ -2383,7 +2586,14 @@ export default function App() {
             style={{ background: 'var(--border)', border: '1px solid rgba(0,229,255,0.2)', color: '#00E5FF', fontFamily: 'JetBrains Mono, monospace' }}>
             <Globe size={11} />START.GG<ExternalLink size={9} />
           </a>
-          <button onClick={() => setShowCreateEventModal(true)}
+          <button onClick={() => {
+            if (!supabaseUser) {
+              toast.error('You must have an account first in order to create an event.');
+              setActiveTab('account');
+              return;
+            }
+            setShowCreateEventModal(true);
+          }}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded text-[11px] font-bold tracking-widest uppercase hover:opacity-80 transition-opacity"
             style={{
               background: 'rgba(255,214,0,0.1)',
@@ -2405,6 +2615,22 @@ export default function App() {
             <GitBranch size={11} />
             IMPORT LIVE
           </button>
+          {savedDrafts.length > 0 && (
+            <button
+              onClick={() => setShowDraftsModal(true)}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded text-[11px] font-bold tracking-widest uppercase hover:opacity-90 transition-all cursor-pointer"
+              style={{
+                background: 'rgba(0,229,255,0.1)',
+                border: '1px solid rgba(0,229,255,0.35)',
+                color: '#00E5FF',
+                fontFamily: 'JetBrains Mono, monospace',
+              }}
+              title="View and restore saved drafts"
+            >
+              <FileText size={11} />
+              <span>DRAFTS ({savedDrafts.length})</span>
+            </button>
+          )}
           {(activeTournament || players.length > 0 || gameOrder.length > 0) && (
             <button onClick={handleClearTournament}
               className="flex items-center justify-center px-2 py-1 rounded font-bold tracking-widest uppercase transition-all hover:!bg-[#FF1744] hover:!text-white group"
@@ -2707,12 +2933,16 @@ export default function App() {
                     onUpdateSeed={handleUpdateSeed}
                     onUpdatePlayerStation={handleUpdatePlayerStation}
                     onAutoSeed={handleAutoSeed}
+                    onSwapSeeds={handleSwapSeeds}
+                    onStartTournament={handleStartTournament}
+                    onRestartTournament={handleRestartTournament}
+                    isTournamentStarted={isTournamentStarted}
                     onOpenAddPlayer={() => setShowAddPlayerModal(true)}
                     onOpenImportModal={() => setShowImportModal(true)}
                     onLoadDemoPlayers={handleLoadDemoPlayers}
                     selectedPool={selectedPool}
                     onSelectPool={setSelectedPool}
-                    isImported={Boolean(autoSyncSlug)}
+                    isImported={Boolean(autoSyncSlug || activeTournament?.isImported || (activeGame && activeGame.startsWith('startgg-')))}
                     onPlayerClick={(id) => setTargetProfileUserId(id)}
                     onManualSync={autoSyncSlug ? () => handleLiveImport(autoSyncSlug) : () => { syncSharedBracketState(); pullSharedBracketUpdates(); }}
                     lastSyncedAt={lastSyncedAt}
@@ -2763,7 +2993,9 @@ export default function App() {
                     onUpdateSeed={handleUpdateSeed}
                     onUpdatePlayerStation={handleUpdatePlayerStation}
                     onAutoSeed={handleAutoSeed}
+                    onSwapSeeds={handleSwapSeeds}
                     isCustomTournament={!autoSyncSlug && !activeTournament?.isImported && !activeGame.startsWith('startgg-')}
+                    isTournamentStarted={isTournamentStarted}
                     supabaseToken={supabaseToken}
                   />
                 </div>
@@ -2891,6 +3123,12 @@ export default function App() {
         onClose={() => setShowImportModal(false)}
         onImport={(slug) => handleLiveImport(slug)}
         onOpenCreateEvent={() => {
+          if (!supabaseUser) {
+            toast.error('You must have an account first in order to create an event.');
+            setShowImportModal(false);
+            setActiveTab('account');
+            return;
+          }
           setShowImportModal(false);
           setShowCreateEventModal(true);
         }}
@@ -2901,6 +3139,47 @@ export default function App() {
         isOpen={showCreateEventModal}
         onClose={() => setShowCreateEventModal(false)}
         onCreateEvent={handleCreateEvent}
+        theme={theme}
+        currentUser={supabaseUser}
+        onRequireLogin={() => {
+          setShowCreateEventModal(false);
+          setActiveTab('account');
+        }}
+        getHeaders={supabaseUser ? async () => {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (!session?.access_token) {
+            throw new Error('Please log in again.');
+          }
+          return {
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json'
+          };
+        } : undefined}
+      />
+
+      <ClearTournamentModal
+        isOpen={showClearModal}
+        onClose={() => setShowClearModal(false)}
+        tournamentName={activeTournament?.name || (theme ? `${theme.displayName} Tournament` : 'Local Tournament')}
+        gameDisplayName={theme?.displayName || activeGame || 'Local Game'}
+        playerCount={players.length}
+        matchCount={matches.length}
+        onConfirmClear={async () => {
+          await performClearTournament();
+          setShowClearModal(false);
+          toast.success('Tournament cleared!');
+        }}
+        onSaveDraft={() => handleSaveDraft(false)}
+        onSaveDraftAndClear={() => handleSaveDraft(true)}
+        theme={theme}
+      />
+
+      <DraftsModal
+        isOpen={showDraftsModal}
+        onClose={() => setShowDraftsModal(false)}
+        drafts={savedDrafts}
+        onLoadDraft={handleLoadDraft}
+        onDeleteDraft={handleDeleteDraft}
         theme={theme}
       />
 

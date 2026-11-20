@@ -1969,33 +1969,99 @@ function BracketSection({
                           </div>
                         </div>
 
-                        <PlayerSlot
-                          player={p1}
-                          score={match.player1Score}
-                          isWinner={match.winnerId === match.player1Id}
-                          isCompleted={match.state === 'completed'}
-                          theme={theme}
-                          isSearched={Boolean(p1 && searchMatchingPlayerIds.has(p1.id))}
-                          onClick={() => {
-                            if (canCall && onCallMatch) onCallMatch(match);
-                            else if (match.state === 'called' && onViewAnnouncement) onViewAnnouncement(match);
-                          }}
-                          onPlayerClick={onPlayerClick}
-                        />
-                        <div className="h-px" style={{ background: 'rgba(255,255,255,0.06)' }} />
-                        <PlayerSlot
-                          player={p2}
-                          score={match.player2Score}
-                          isWinner={match.winnerId === match.player2Id}
-                          isCompleted={match.state === 'completed'}
-                          theme={theme}
-                          isSearched={Boolean(p2 && searchMatchingPlayerIds.has(p2.id))}
-                          onClick={() => {
-                            if (canCall && onCallMatch) onCallMatch(match);
-                            else if (match.state === 'called' && onViewAnnouncement) onViewAnnouncement(match);
-                          }}
-                          onPlayerClick={onPlayerClick}
-                        />
+                        {(() => {
+                          const isRound0Unlocked = !isImported && !isTournamentStarted && match.round === 0;
+
+                          return (
+                            <>
+                              <PlayerSlot
+                                player={p1}
+                                score={match.player1Score}
+                                isWinner={match.winnerId === match.player1Id}
+                                isCompleted={match.state === 'completed'}
+                                theme={theme}
+                                isSearched={Boolean(p1 && searchMatchingPlayerIds.has(p1.id))}
+                                isLocked={isImported || isTournamentStarted}
+                                isDraggable={isRound0Unlocked && Boolean(p1)}
+                                isDragOver={dragSlotOver === `${match.id}-p1`}
+                                onDragStart={(e) => {
+                                  if (p1) {
+                                    e.dataTransfer.setData('text/plain', p1.id);
+                                    e.dataTransfer.effectAllowed = 'move';
+                                  }
+                                }}
+                                onDragOver={(e) => {
+                                  if (isRound0Unlocked) {
+                                    e.preventDefault();
+                                    e.dataTransfer.dropEffect = 'move';
+                                    if (dragSlotOver !== `${match.id}-p1`) setDragSlotOver(`${match.id}-p1`);
+                                  }
+                                }}
+                                onDragLeave={() => {
+                                  if (dragSlotOver === `${match.id}-p1`) setDragSlotOver(null);
+                                }}
+                                onDrop={(e) => {
+                                  if (isRound0Unlocked) {
+                                    e.preventDefault();
+                                    setDragSlotOver(null);
+                                    const sourceId = e.dataTransfer.getData('text/plain');
+                                    if (sourceId && sourceId !== p1?.id && onSwapSeeds && p1) {
+                                      onSwapSeeds(sourceId, p1.id);
+                                    }
+                                  }
+                                }}
+                                onClick={() => {
+                                  if (canCall && onCallMatch) onCallMatch(match);
+                                  else if (match.state === 'called' && onViewAnnouncement) onViewAnnouncement(match);
+                                }}
+                                onPlayerClick={onPlayerClick}
+                              />
+                              <div className="h-px" style={{ background: 'rgba(255,255,255,0.06)' }} />
+                              <PlayerSlot
+                                player={p2}
+                                score={match.player2Score}
+                                isWinner={match.winnerId === match.player2Id}
+                                isCompleted={match.state === 'completed'}
+                                theme={theme}
+                                isSearched={Boolean(p2 && searchMatchingPlayerIds.has(p2.id))}
+                                isLocked={isImported || isTournamentStarted}
+                                isDraggable={isRound0Unlocked && Boolean(p2)}
+                                isDragOver={dragSlotOver === `${match.id}-p2`}
+                                onDragStart={(e) => {
+                                  if (p2) {
+                                    e.dataTransfer.setData('text/plain', p2.id);
+                                    e.dataTransfer.effectAllowed = 'move';
+                                  }
+                                }}
+                                onDragOver={(e) => {
+                                  if (isRound0Unlocked) {
+                                    e.preventDefault();
+                                    e.dataTransfer.dropEffect = 'move';
+                                    if (dragSlotOver !== `${match.id}-p2`) setDragSlotOver(`${match.id}-p2`);
+                                  }
+                                }}
+                                onDragLeave={() => {
+                                  if (dragSlotOver === `${match.id}-p2`) setDragSlotOver(null);
+                                }}
+                                onDrop={(e) => {
+                                  if (isRound0Unlocked) {
+                                    e.preventDefault();
+                                    setDragSlotOver(null);
+                                    const sourceId = e.dataTransfer.getData('text/plain');
+                                    if (sourceId && sourceId !== p2?.id && onSwapSeeds && p2) {
+                                      onSwapSeeds(sourceId, p2.id);
+                                    }
+                                  }
+                                }}
+                                onClick={() => {
+                                  if (canCall && onCallMatch) onCallMatch(match);
+                                  else if (match.state === 'called' && onViewAnnouncement) onViewAnnouncement(match);
+                                }}
+                                onPlayerClick={onPlayerClick}
+                              />
+                            </>
+                          );
+                        })()}
 
                         {canCall && isHovered && (
                           <div
@@ -2086,6 +2152,13 @@ function PlayerSlot({
   isSearched,
   onClick,
   onPlayerClick,
+  isDraggable,
+  onDragStart,
+  onDragOver,
+  onDragLeave,
+  onDrop,
+  isDragOver,
+  isLocked,
 }: {
   player: Player | null;
   score: number;
@@ -2095,11 +2168,25 @@ function PlayerSlot({
   isSearched?: boolean;
   onClick?: () => void;
   onPlayerClick?: (id: string) => void;
+  isDraggable?: boolean;
+  onDragStart?: (e: React.DragEvent) => void;
+  onDragOver?: (e: React.DragEvent) => void;
+  onDragLeave?: (e: React.DragEvent) => void;
+  onDrop?: (e: React.DragEvent) => void;
+  isDragOver?: boolean;
+  isLocked?: boolean;
 }) {
   if (!player) {
     return (
-      <div className="flex items-center gap-2 px-3 py-1.5 h-[29px]">
-        <span className="text-xs opacity-30 italic font-mono text-[11px]">TBD</span>
+      <div
+        onDragOver={onDragOver}
+        onDragLeave={onDragLeave}
+        onDrop={onDrop}
+        className={`flex items-center gap-2 px-3 py-1.5 h-[29px] transition-colors ${
+          isDragOver ? 'bg-cyan-500/20 ring-1 ring-cyan-400' : ''
+        }`}
+      >
+        <span className="text-xs opacity-30 italic font-mono text-[11px]">TBD / BYE</span>
       </div>
     );
   }
@@ -2112,16 +2199,36 @@ function PlayerSlot({
 
   return (
     <div
-      className={`flex items-center justify-between px-3 py-1.5 h-[29px] transition-colors ${isSearched ? 'bg-cyan-500/15' : isWinner ? 'bg-white/[0.03]' : ''
-        }`}
+      draggable={isDraggable}
+      onDragStart={onDragStart}
+      onDragOver={onDragOver}
+      onDragLeave={onDragLeave}
+      onDrop={onDrop}
+      className={`flex items-center justify-between px-3 py-1.5 h-[29px] transition-colors ${
+        isDragOver
+          ? 'bg-cyan-500/25 ring-2 ring-cyan-400'
+          : isSearched
+          ? 'bg-cyan-500/15'
+          : isWinner
+          ? 'bg-white/[0.03]'
+          : ''
+      }`}
       style={{ opacity: isCompleted && !isWinner ? 0.45 : 1 }}
     >
       <div className="flex items-center gap-1.5 min-w-0 flex-1">
+        {isDraggable && (
+          <GripVertical
+            size={11}
+            className="text-gray-500 hover:text-white cursor-grab active:cursor-grabbing shrink-0"
+            title="Drag to swap bracket spot"
+          />
+        )}
         {player.seed !== undefined && player.seed !== null && (
           <span
-            className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-white/5 border border-white/5 text-gray-400 shrink-0 min-w-[24px] text-center tabular-nums"
+            className="inline-flex items-center gap-1 text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-white/5 border border-white/5 text-gray-400 shrink-0 min-w-[24px] text-center tabular-nums"
           >
-            {player.seed}
+            <span>{player.seed}</span>
+            {isLocked && <Lock size={8} className="text-amber-400/80" />}
           </span>
         )}
         {countryBadge}

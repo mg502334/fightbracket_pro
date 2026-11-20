@@ -441,7 +441,7 @@ export function EventsPanel({
               <button
                 onClick={() => {
                   if (!currentUser) {
-                    toast.error('Please log in to host a tournament event.');
+                    toast.error('You must have an account first in order to create an event.');
                     return;
                   }
                   setShowCreateModal(true);
@@ -659,7 +659,13 @@ export function EventsPanel({
                 </p>
               </div>
               <button
-                onClick={() => setShowCreateModal(true)}
+                onClick={() => {
+                  if (!currentUser) {
+                    toast.error('You must have an account first in order to create an event.');
+                    return;
+                  }
+                  setShowCreateModal(true);
+                }}
                 className="px-5 py-2 bg-[#00E5FF]/10 text-[#00E5FF] border border-[#00E5FF]/40 rounded-xl text-xs font-bold tracking-wider hover:bg-[#00E5FF]/20 transition-all uppercase"
                 style={{ fontFamily: 'Rajdhani, sans-serif' }}
               >
@@ -728,9 +734,9 @@ export function EventsPanel({
                               e.stopPropagation();
                               const subUrl = getEventSubdomainUrl(ev.subdomain, ev.slug);
                               navigator.clipboard.writeText(subUrl);
-                              toast.success(`Event subdomain link copied: ${subUrl}`);
+                              toast.success(`Event link copied: ${subUrl}`);
                             }}
-                            title="Copy Event Subdomain Link"
+                            title="Copy Event Link"
                             className="p-1 rounded bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 hover:bg-cyan-500 hover:text-white transition-colors"
                           >
                             <Share2 size={13} />
@@ -879,9 +885,9 @@ export function EventsPanel({
                             eventSlug: event.slug
                           });
                           navigator.clipboard.writeText(shareUrl);
-                          toast.success(`Subdomain bracket link copied: ${shareUrl}`);
+                          toast.success(`Bracket link copied: ${shareUrl}`);
                         }}
-                        title="Copy Subdomain Share Link"
+                        title="Copy Bracket Link"
                         className="p-1.5 rounded bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 hover:bg-cyan-500 hover:text-black transition-colors"
                       >
                         <Share2 size={12} />

@@ -185,7 +185,7 @@ export function EventPublicPage() {
               fightbracketpro.com/events/{eventSubdomain}
             </span>
             <button
-              onClick={() => handleCopySubdomainLink(shareEventUrl, 'Event subdomain link')}
+              onClick={() => handleCopySubdomainLink(shareEventUrl, 'Event link')}
               className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/40 text-cyan-300 font-mono text-xs font-bold transition-all"
             >
               {copiedLink ? <Check size={13} /> : <Share2 size={13} />}
@@ -270,13 +270,13 @@ export function EventPublicPage() {
               </div>
               <div className="flex items-center gap-2 shrink-0">
                 <button
-                  onClick={() => handleCopySubdomainLink(shareBracketUrl, 'Bracket subdomain link')}
+                  onClick={() => handleCopySubdomainLink(shareBracketUrl, 'Bracket link')}
                   className="px-3 py-1.5 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 text-xs font-mono font-bold flex items-center gap-1.5 transition-colors"
                 >
                   <Copy size={12} /> COPY BRACKET LINK
                 </button>
                 <button
-                  onClick={() => handleCopySubdomainLink(shareEventUrl, 'Event page subdomain link')}
+                  onClick={() => handleCopySubdomainLink(shareEventUrl, 'Event link')}
                   className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white border border-white/15 text-xs font-mono font-bold flex items-center gap-1.5 transition-colors"
                 >
                   <Share2 size={12} /> EVENT LINK
