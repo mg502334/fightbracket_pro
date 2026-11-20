@@ -140,9 +140,13 @@ export function EventsPanel({
     const parseDate = (isoStr?: string, fallbackStr?: string): Date | null => {
       if (isoStr) {
         try {
-          const safeIso = isoStr.endsWith('Z') || isoStr.includes('+') || (isoStr.includes('-') && isoStr.length > 10)
-            ? isoStr
-            : isoStr + 'Z';
+          let s = isoStr.trim();
+          if (s.includes(' ') && !s.includes('T')) {
+            s = s.replace(' ', 'T');
+          }
+          const safeIso = s.endsWith('Z') || s.includes('+') || (s.includes('-') && s.length > 10)
+            ? s
+            : s + 'Z';
           const d = new Date(safeIso);
           if (!isNaN(d.getTime())) return d;
         } catch {
@@ -274,7 +278,7 @@ export function EventsPanel({
     }
 
     if (isEventPast(event) || !upcoming) {
-      toast.error('This event has already ended. Registration is closed.');
+      toast.error('This event is completed. Registration is closed.');
       return;
     }
 
@@ -873,7 +877,7 @@ export function EventsPanel({
                         disabled={isPast || registeringId === ev.id || (!ev.isRegistered && isFull)}
                         title={
                           isPast
-                            ? 'This event has ended. Registration is closed.'
+                            ? 'This event is completed. Registration is closed.'
                             : isFull && !ev.isRegistered
                             ? 'This event is full.'
                             : undefined
@@ -892,13 +896,7 @@ export function EventsPanel({
                         {registeringId === ev.id ? (
                           '...'
                         ) : isPast ? (
-                          ev.isRegistered ? (
-                            <>
-                              <Check size={13} /> REGISTERED
-                            </>
-                          ) : (
-                            'EVENT ENDED'
-                          )
+                          'COMPLETED'
                         ) : ev.isRegistered ? (
                           <>
                             <Check size={13} /> REGISTERED
@@ -1230,7 +1228,7 @@ export function EventsPanel({
                     disabled={isDetailPast || registeringId === selectedDetailEvent.id || (!selectedDetailEvent.isRegistered && isDetailFull)}
                     title={
                       isDetailPast
-                        ? 'This event has concluded. Registration is closed.'
+                        ? 'This event is completed. Registration is closed.'
                         : isDetailFull && !selectedDetailEvent.isRegistered
                         ? 'This event is full.'
                         : undefined
@@ -1249,11 +1247,7 @@ export function EventsPanel({
                     {registeringId === selectedDetailEvent.id ? (
                       '...'
                     ) : isDetailPast ? (
-                      selectedDetailEvent.isRegistered ? (
-                        'REGISTERED (EVENT ENDED)'
-                      ) : (
-                        'EVENT ENDED'
-                      )
+                      'COMPLETED'
                     ) : selectedDetailEvent.isRegistered ? (
                       'CANCEL REGISTRATION'
                     ) : isDetailFull ? (
