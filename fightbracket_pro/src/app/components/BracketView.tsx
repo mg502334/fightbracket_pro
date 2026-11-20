@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Swords, Clock, CheckCircle2, AlertCircle, ChevronRight, ChevronDown, Search, X, Layers, Filter, Sparkles, Tv, RefreshCw, Monitor, Smartphone, Radio, Share2, Globe, Hash, Shuffle, ArrowUpDown, Copy, UserPlus, Users, Cloud, ExternalLink, Lock, Unlock, Play, RotateCcw, GripVertical } from "lucide-react";
+import { Swords, Clock, CheckCircle2, AlertCircle, ChevronRight, ChevronDown, Search, X, Layers, Filter, Sparkles, Tv, RefreshCw, Monitor, Smartphone, Radio, Share2, Globe, Hash, Shuffle, ArrowUpDown, Copy, UserPlus, Users, Cloud, ExternalLink, Lock, Unlock, Play, RotateCcw, GripVertical, Dices } from "lucide-react";
 import { BracketType, type BracketMatch, type Player, type GameTheme, type Station, getChronologicalRoundName, getSeedingOrder } from "../data/tournamentData";
 import { getBracketSubdomainUrl, sanitizeSubdomain, getMatchPermalink } from "../utils/subdomain";
 import { toast } from "sonner";
@@ -13,7 +13,7 @@ interface BracketViewProps {
   onGenerateBracket?: (type: BracketType) => void;
   onUpdateSeed?: (playerId: string, newSeed: number) => void;
   onUpdatePlayerStation?: (playerId: string, stationId: number | null) => void;
-  onAutoSeed?: (mode: 'checked-in' | 'random' | 'tag') => void;
+  onAutoSeed?: (mode: 'checked-in' | 'random' | 'tag' | 'random-high-low') => void;
   onSwapSeeds?: (player1Id: string, player2Id: string) => void;
   onStartTournament?: () => void;
   onRestartTournament?: () => void;
@@ -344,10 +344,11 @@ export function BracketView({
                 <button
                   type="button"
                   onClick={onLoadDemoPlayers}
-                  className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400 font-mono text-xs hover:bg-amber-500/20 transition-all cursor-pointer"
+                  title="Trial an interactive 8-player bracket without needing an account or creating an event"
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400 font-mono text-xs hover:bg-amber-500/20 transition-all cursor-pointer uppercase"
                 >
                   <Sparkles size={14} />
-                  <span>Load Demo 8 Players</span>
+                  <span>Demo Bracket Trial (8 Players)</span>
                 </button>
               )}
             </div>
@@ -419,6 +420,14 @@ export function BracketView({
                       <span>Auto-Seed</span>
                     </button>
                     <button
+                      onClick={() => onAutoSeed('random-high-low')}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-mono text-[11px] bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 hover:bg-cyan-500/20 hover:border-cyan-400 transition-all cursor-pointer font-bold"
+                      title="Instant random High vs Low seeding — top half high seeds are randomly paired vs bottom half low seeds"
+                    >
+                      <Dices size={12} />
+                      <span>Random High vs Low</span>
+                    </button>
+                    <button
                       onClick={() => onAutoSeed('random')}
                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-mono text-[11px] bg-white/5 border border-white/10 hover:border-amber-400/50 hover:text-amber-400 transition-all text-gray-300 cursor-pointer"
                       title="Randomize player seeds for open brackets"
@@ -449,7 +458,20 @@ export function BracketView({
                     : 'Seeds are strictly 1-to-1 unique. Drag and drop rows or edit seed numbers to hotswap seeds.'}
                 </span>
               </div>
-              <span className="text-gray-500 text-[10px]">Start.gg-style manual seeding</span>
+              <div className="flex items-center gap-2">
+                {seedingViewTab === 'matchups' && onAutoSeed && (
+                  <button
+                    type="button"
+                    onClick={() => onAutoSeed('random-high-low')}
+                    className="flex items-center gap-1 px-2.5 py-1 rounded bg-[#00E5FF]/10 border border-[#00E5FF]/40 text-[#00E5FF] hover:bg-[#00E5FF]/20 text-[10px] font-bold transition-all cursor-pointer"
+                    title="Instant random High vs Low pairings for all opening matches"
+                  >
+                    <Dices size={11} />
+                    <span>Auto-Seat Random High vs Low</span>
+                  </button>
+                )}
+                <span className="text-gray-500 text-[10px]">Start.gg-style manual seeding</span>
+              </div>
             </div>
 
             {/* Content: Matchups View OR List View */}
@@ -855,18 +877,31 @@ export function BracketView({
               </div>
             </div>
 
-            {onStartTournament && (
-              <button
-                type="button"
-                onClick={onStartTournament}
-                className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-mono text-xs font-bold text-black uppercase tracking-wider transition-all shadow-[0_0_15px_rgba(0,229,255,0.4)] cursor-pointer hover:brightness-110 shrink-0"
-                style={{ background: theme.primaryColor || '#00E5FF' }}
-              >
-                <Play size={13} fill="currentColor" />
-                <Lock size={12} />
-                <span>START TOURNAMENT (LOCK SEEDS)</span>
-              </button>
-            )}
+            <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+              {onAutoSeed && (
+                <button
+                  type="button"
+                  onClick={() => onAutoSeed('random-high-low')}
+                  className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl font-mono text-xs font-bold text-cyan-300 bg-cyan-500/10 border border-cyan-500/30 hover:bg-cyan-500/20 hover:border-cyan-400 transition-all cursor-pointer"
+                  title="Instant random High vs Low seating for opening round matches"
+                >
+                  <Dices size={13} />
+                  <span>Random High vs Low</span>
+                </button>
+              )}
+              {onStartTournament && (
+                <button
+                  type="button"
+                  onClick={onStartTournament}
+                  className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-mono text-xs font-bold text-black uppercase tracking-wider transition-all shadow-[0_0_15px_rgba(0,229,255,0.4)] cursor-pointer hover:brightness-110 shrink-0"
+                  style={{ background: theme.primaryColor || '#00E5FF' }}
+                >
+                  <Play size={13} fill="currentColor" />
+                  <Lock size={12} />
+                  <span>START TOURNAMENT (LOCK SEEDS)</span>
+                </button>
+              )}
+            </div>
           </div>
         ) : (
           <div className="flex flex-wrap items-center justify-between gap-4 p-4 rounded-xl border border-green-500/30 bg-gradient-to-r from-green-500/10 via-black/60 to-black/80 shadow-lg">

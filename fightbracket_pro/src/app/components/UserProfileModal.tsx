@@ -14,6 +14,8 @@ interface UserProfileData {
   avatar_url?: string;
   profile_color?: string;
   bio?: string;
+  birthday?: string;
+  birthday_display?: string;
   startgg_slug?: string;
   tekken_id?: string;
   steam_id?: string;
@@ -309,6 +311,11 @@ export function UserProfileModal({ isOpen, onClose, targetUserId, supabaseToken,
                       {profile?.is_friend && (
                         <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
                           FRIEND
+                        </span>
+                      )}
+                      {profile?.birthday_display && (
+                        <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 flex items-center gap-1" title="Birthday (Year is kept private)">
+                          🎂 {profile.birthday_display}
                         </span>
                       )}
                     </div>

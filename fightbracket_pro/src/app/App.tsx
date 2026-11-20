@@ -904,7 +904,7 @@ export default function App() {
     toast.success(stationId ? `Assigned to Station ${stationId}` : 'Station assignment cleared');
   }, []);
 
-  const handleAutoSeed = useCallback((mode: 'checked-in' | 'random' | 'tag') => {
+  const handleAutoSeed = useCallback((mode: 'checked-in' | 'random' | 'tag' | 'random-high-low') => {
     if (!activeGame) return;
     if (autoSyncSlug || activeTournament?.isImported || (activeGame && activeGame.startsWith('startgg-'))) {
       toast.error('Imported seeds from Start.gg are locked and cannot be adjusted.');
@@ -914,30 +914,73 @@ export default function App() {
       toast.error('Seeds are locked while the tournament is underway.');
       return;
     }
-    setPlayers(prev => {
-      const activeGamePlayers = prev.filter(p => p.gameId === activeGame);
-      const otherPlayers = prev.filter(p => p.gameId !== activeGame);
 
-      let sorted = [...activeGamePlayers];
-      if (mode === 'checked-in') {
-        sorted.sort((a, b) => (b.checkedIn ? 1 : 0) - (a.checkedIn ? 1 : 0) || a.seed - b.seed);
-      } else if (mode === 'random') {
-        sorted = sorted.sort(() => Math.random() - 0.5);
-      } else if (mode === 'tag') {
-        sorted.sort((a, b) => a.tag.localeCompare(b.tag));
+    const activeGamePlayers = players.filter(p => p.gameId === activeGame);
+    if (activeGamePlayers.length === 0) return;
+
+    let sorted = [...activeGamePlayers];
+    if (mode === 'checked-in') {
+      sorted.sort((a, b) => (b.checkedIn ? 1 : 0) - (a.checkedIn ? 1 : 0) || a.seed - b.seed);
+    } else if (mode === 'random') {
+      sorted = sorted.sort(() => Math.random() - 0.5);
+    } else if (mode === 'tag') {
+      sorted.sort((a, b) => a.tag.localeCompare(b.tag));
+    } else if (mode === 'random-high-low') {
+      if (sorted.length < 2) {
+        toast.error('At least 2 players are required for High vs Low seeding.');
+        return;
       }
+      // Sort to establish baseline tier hierarchy (checked-in / previous seed)
+      sorted.sort((a, b) => (b.checkedIn ? 1 : 0) - (a.checkedIn ? 1 : 0) || a.seed - b.seed);
+      const half = Math.ceil(sorted.length / 2);
+      const highTier = sorted.slice(0, half).sort(() => Math.random() - 0.5);
+      const lowTier = sorted.slice(half).sort(() => Math.random() - 0.5);
+      // High tier occupies top seeds (1..half); Low tier occupies bottom seeds (half+1..N)
+      sorted = [...highTier, ...lowTier];
+    }
 
-      const reseeded = sorted.map((p, idx) => ({ ...p, seed: idx + 1 }));
+    const reseeded = sorted.map((p, idx) => ({ ...p, seed: idx + 1 }));
+    const reseededIds = reseeded.map(p => p.id);
+
+    setPlayers(prev => {
+      const otherPlayers = prev.filter(p => p.gameId !== activeGame);
       return [...otherPlayers, ...reseeded];
     });
-    toast.success(`Seeding updated (${mode})`);
-  }, [activeGame, autoSyncSlug, activeTournament?.isImported, isTournamentStarted]);
+
+    // If matches already exist in preview mode, re-sync dynamic bracket pairings with updated seeds
+    setMatches(prevMatches => {
+      const gameMatches = prevMatches.filter(m => m.gameId === activeGame);
+      if (gameMatches.length === 0 || isTournamentStarted) return prevMatches;
+
+      const activeFormat = activeTournament?.format || BracketType.SINGLE_ELIMINATION;
+      const newGameMatches = generateDynamicBracket(activeGame, reseededIds, activeFormat);
+      return [...prevMatches.filter(m => m.gameId !== activeGame), ...newGameMatches];
+    });
+
+    const modeLabels: Record<string, string> = {
+      'checked-in': 'Checked-In First',
+      'random': 'Random Shuffle',
+      'tag': 'A-Z Alphabetical',
+      'random-high-low': 'Random High vs Low Seating',
+    };
+    toast.success(`Seeding updated: ${modeLabels[mode] || mode}`);
+  }, [activeGame, autoSyncSlug, activeTournament?.isImported, activeTournament?.format, isTournamentStarted, players]);
 
   const handleLoadDemoPlayers = useCallback(() => {
-    if (!activeGame) return;
+    const targetGame = activeGame || (gameOrder.length > 0 ? gameOrder[0] : 'tekken8');
+    if (!gameThemes[targetGame] && GAME_THEMES[targetGame]) {
+      setGameThemes(prev => ({ ...prev, [targetGame]: GAME_THEMES[targetGame] }));
+    }
+    if (!gameOrder.includes(targetGame)) {
+      setGameOrder(prev => prev.length > 0 ? prev : ['tekken8', 'sf6', 'fatalFury']);
+    }
+    if (activeGame !== targetGame) {
+      setActiveGame(targetGame);
+    }
+
     const demoTags = ['Phoenix', 'Shadow', 'Striker', 'Blaze', 'Vortex', 'Apex', 'Titan', 'Ghost'];
     const demoPlayers: Player[] = demoTags.map((tag, i) => ({
-      id: `demo-${activeGame}-${i + 1}-${Date.now()}`,
+      id: `demo-${targetGame}-${i + 1}-${Date.now()}`,
       tag,
       realName: `Player ${i + 1}`,
       seed: i + 1,
@@ -946,11 +989,34 @@ export default function App() {
       checkedIn: true,
       phone: '',
       smsNotified: false,
-      gameId: activeGame,
+      gameId: targetGame,
     }));
-    setPlayers(prev => [...prev.filter(p => p.gameId !== activeGame), ...demoPlayers]);
-    toast.success(`Loaded 8 competitors for ${gameThemes[activeGame]?.displayName || 'tournament'}!`);
-  }, [activeGame, gameThemes]);
+    setPlayers(prev => [...prev.filter(p => p.gameId !== targetGame), ...demoPlayers]);
+
+    // Automatically generate bracket matches for demo trial
+    const gamePlayerIds = demoPlayers.map(p => p.id);
+    const newMatches = generateDynamicBracket(targetGame, gamePlayerIds, BracketType.DOUBLE_ELIMINATION);
+    lastLocalChangeRef.current = Date.now();
+    setMatches(prev => [...prev.filter(m => m.gameId !== targetGame), ...newMatches]);
+
+    // Set demo trial tournament (no account required, nor does it create a new event)
+    const demoTournament: ActiveTournament = {
+      id: `demo-trial-${Date.now()}`,
+      name: `${(gameThemes[targetGame] || GAME_THEMES[targetGame])?.displayName || 'Tekken 8'} Demo Trial`,
+      location: 'Local / Offline Trial',
+      eventType: 'local',
+      isOnline: false,
+      isDemo: true,
+      isLiveShared: false,
+      format: BracketType.DOUBLE_ELIMINATION,
+      createdAt: new Date().toISOString(),
+    };
+    setActiveTournament(demoTournament);
+    setAutoSyncSlug(null);
+    setIsTournamentStarted(false);
+    setActiveTab('bracket');
+    toast.success(`Demo bracket trial loaded! You can test match reporting, station calls, and bracket progression without an account.`);
+  }, [activeGame, gameOrder, gameThemes]);
 
   const handleCreateEvent = (data: CreatedEventData) => {
     if (!supabaseUser) {
@@ -1023,6 +1089,12 @@ export default function App() {
     lastLocalChangeRef.current = Date.now();
     setMatches(prev => [...prev.filter(m => m.gameId !== activeGame), ...newMatches]);
     setActiveTournament(prev => {
+      if (prev?.isDemo) {
+        return {
+          ...prev,
+          format: type,
+        };
+      }
       const sub = sanitizeSubdomain(prev?.subdomain) || generateRandomSubdomain('fb');
       return {
         id: prev?.id || prev?.slug || sub,
@@ -1037,6 +1109,10 @@ export default function App() {
   };
 
   const syncSharedBracketState = useCallback(async (overrideSub?: string) => {
+    if (activeTournament?.isDemo) {
+      // Demo bracket trial stays purely local; does not create or broadcast a remote event
+      return null;
+    }
     const sub = sanitizeSubdomain(overrideSub || activeTournament?.subdomain || activeTournament?.slug || activeTournament?.id, 'fb');
     if (!sub) return null;
     const tournamentName = activeTournament?.name || (activeGame && gameThemes[activeGame]?.displayName ? `${gameThemes[activeGame].displayName} Event` : 'Local Event');
@@ -1094,6 +1170,7 @@ export default function App() {
   useEffect(() => {
     if (isApplyingRemoteRef.current) return;
     if (autoSyncSlug) return;
+    if (activeTournament?.isDemo) return;
     const sub = sanitizeSubdomain(activeTournament?.subdomain || activeTournament?.slug || activeTournament?.id, 'fb');
     if (!sub || (!activeTournament?.isLiveShared && matches.length === 0)) return;
 
@@ -2459,7 +2536,12 @@ export default function App() {
                     {activeTournament.location} {activeTournament.eventType ? `· [${activeTournament.eventType.toUpperCase()}]` : ''}
                   </span>
                 </span>
-                {activeTournament.subdomain && (
+                {activeTournament.isDemo ? (
+                  <span className="inline-flex items-center gap-1.5 text-[9px] font-mono px-2 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/40 font-bold uppercase tracking-wider">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+                    <span>DEMO BRACKET TRIAL · NO EVENT CREATED</span>
+                  </span>
+                ) : activeTournament.subdomain ? (
                   <span className="inline-flex items-center gap-1.5 text-[9px] font-mono px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/30">
                     {(activeTournament.isLiveShared || matches.length > 0) && (
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
@@ -2469,7 +2551,7 @@ export default function App() {
                       <span className="text-emerald-400 font-bold">• ACTIVE</span>
                     )}
                   </span>
-                )}
+                ) : null}
               </div>
             )}
           </div>
@@ -2889,12 +2971,40 @@ export default function App() {
             />
           </div>
         ) : !activeGame || !theme ? (
-          <div className="absolute inset-0 flex flex-col items-center justify-center p-10 text-center opacity-50">
-            <Trophy size={64} className="mb-6 opacity-20" />
+          <div className="absolute inset-0 flex flex-col items-center justify-center p-10 text-center">
+            <Trophy size={64} className="mb-6 opacity-20 text-[#00E5FF]" />
             <h2 className="text-2xl tracking-widest mb-2" style={{ fontFamily: 'Rajdhani, sans-serif', fontWeight: 700 }}>NO TOURNAMENT LOADED</h2>
-            <p className="text-sm max-w-md" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
-              Import a live tournament from Start.gg or add a game manually to get started.
+            <p className="text-sm max-w-md text-gray-400 mb-6" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
+              Import a live bracket from Start.gg or launch a demo bracket trial to test bracket features without an account.
             </p>
+            <div className="flex flex-wrap items-center justify-center gap-3">
+              <button
+                onClick={() => handleLoadDemoPlayers()}
+                className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs tracking-wider uppercase transition-all shadow-[0_0_20px_rgba(255,214,0,0.25)] hover:opacity-90 cursor-pointer"
+                style={{
+                  background: 'linear-gradient(135deg, rgba(255,214,0,0.2), rgba(255,109,0,0.2))',
+                  border: '1px solid rgba(255,214,0,0.5)',
+                  color: '#FFD600',
+                  fontFamily: 'JetBrains Mono, monospace'
+                }}
+              >
+                <Sparkles size={14} />
+                DEMO BRACKET TRIAL
+              </button>
+              <button
+                onClick={() => setShowImportModal(true)}
+                className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs tracking-wider uppercase transition-all shadow-[0_0_20px_rgba(0,229,255,0.2)] hover:opacity-90 cursor-pointer"
+                style={{
+                  background: 'rgba(0,229,255,0.15)',
+                  border: '1px solid rgba(0,229,255,0.4)',
+                  color: '#00E5FF',
+                  fontFamily: 'JetBrains Mono, monospace'
+                }}
+              >
+                <GitBranch size={14} />
+                IMPORT LIVE BRACKET
+              </button>
+            </div>
           </div>
         ) : (
           <AnimatePresence mode="wait">
@@ -3122,6 +3232,7 @@ export default function App() {
         isOpen={showImportModal}
         onClose={() => setShowImportModal(false)}
         onImport={(slug) => handleLiveImport(slug)}
+        onStartDemoTrial={handleLoadDemoPlayers}
         onOpenCreateEvent={() => {
           if (!supabaseUser) {
             toast.error('You must have an account first in order to create an event.');

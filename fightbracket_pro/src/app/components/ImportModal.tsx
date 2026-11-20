@@ -21,9 +21,10 @@ interface ImportModalProps {
   onImport: (slug: string) => Promise<void>;
   theme: any;
   onOpenCreateEvent?: () => void;
+  onStartDemoTrial?: () => void;
 }
 
-export function ImportModal({ isOpen, onClose, onImport, theme, onOpenCreateEvent }: ImportModalProps) {
+export function ImportModal({ isOpen, onClose, onImport, theme, onOpenCreateEvent, onStartDemoTrial }: ImportModalProps) {
   const [inputUrl, setInputUrl] = useState('');
   const [loading, setLoading] = useState(false);
   const [importingSlug, setImportingSlug] = useState<string | null>(null);
@@ -112,6 +113,25 @@ export function ImportModal({ isOpen, onClose, onImport, theme, onOpenCreateEven
           </div>
 
           <div className="p-5 flex flex-col gap-5 overflow-y-auto custom-scrollbar">
+            {onStartDemoTrial && (
+              <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-xl bg-amber-500/10 border border-amber-500/25 text-xs">
+                <div className="flex items-center gap-2">
+                  <Sparkles size={15} className="text-amber-400 shrink-0" />
+                  <span className="text-gray-300">Just exploring? Try a local demo trial bracket with sample competitors (no account required).</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    onStartDemoTrial();
+                  }}
+                  className="px-3 py-1.5 rounded-lg font-bold text-amber-400 hover:bg-amber-500/20 border border-amber-500/40 transition-all font-mono text-[11px] shrink-0 cursor-pointer uppercase"
+                >
+                  Demo Bracket Trial →
+                </button>
+              </div>
+            )}
+
             {onOpenCreateEvent && (
               <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-xl bg-cyan-500/10 border border-cyan-500/25 text-xs">
                 <div className="flex items-center gap-2">

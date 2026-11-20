@@ -50,6 +50,7 @@ export function AccountSettingsPanel({
   const [firstName, setFirstName] = useState(userProfile?.first_name || '');
   const [lastName, setLastName] = useState(userProfile?.last_name || '');
   const [displayName, setDisplayName] = useState(userProfile?.gamer_tag || user?.user_metadata?.displayName || '');
+  const [birthday, setBirthday] = useState(userProfile?.birthday || '');
   const [bio, setBio] = useState(userProfile?.bio || '');
   const [location, setLocation] = useState(userProfile?.location || '');
   const [profileColor, setProfileColor] = useState(userProfile?.profile_color || '');
@@ -95,6 +96,7 @@ export function AccountSettingsPanel({
       setFirstName(userProfile.first_name || '');
       setLastName(userProfile.last_name || '');
       setDisplayName(userProfile.gamer_tag || user?.user_metadata?.displayName || '');
+      setBirthday(userProfile.birthday || '');
       setBio(userProfile.bio || '');
       setLocation(userProfile.location || '');
       setProfileColor(userProfile.profile_color || '');
@@ -131,7 +133,7 @@ export function AccountSettingsPanel({
       await fetch('/api/user/profile', {
         method: 'PUT',
         headers,
-        body: JSON.stringify({ first_name: firstName, last_name: lastName, gamer_tag: displayName, bio, location, profile_color: profileColor })
+        body: JSON.stringify({ first_name: firstName, last_name: lastName, gamer_tag: displayName, birthday, bio, location, profile_color: profileColor })
       });
       fetchUserProfile();
       toast.success('Profile updated successfully');
@@ -934,6 +936,15 @@ export function AccountSettingsPanel({
               </div>
               <div className="mb-4">
                 <SettingsInput label="Gamer Tag / Display Name" value={displayName} onChange={e => setDisplayName(e.target.value)} helper="This is how you appear in brackets and leaderboards." />
+              </div>
+              <div className="mb-4">
+                <SettingsInput
+                  label="Birthday (Optional — Year is kept private)"
+                  type="date"
+                  value={birthday}
+                  onChange={e => setBirthday(e.target.value)}
+                  helper="Year is kept private. Only your month and day will ever be visible on public profiles."
+                />
               </div>
               <div className="mb-5">
                 <SettingsInput label="Bio" value={bio} onChange={e => setBio(e.target.value)} placeholder="Main character, stream schedule, etc..." />

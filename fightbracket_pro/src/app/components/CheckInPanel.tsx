@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Search, CheckCircle2, XCircle, Smartphone, Trash2, UserPlus, Loader2, Shuffle, ArrowUpDown, Monitor, Hash, Lock, GripVertical } from "lucide-react";
+import { Search, CheckCircle2, XCircle, Smartphone, Trash2, UserPlus, Loader2, Shuffle, ArrowUpDown, Monitor, Hash, Lock, GripVertical, Dices } from "lucide-react";
 import type { Player, GameTheme, Station } from "../data/tournamentData";
 import { motion, AnimatePresence } from "motion/react";
 
@@ -13,7 +13,7 @@ interface CheckInPanelProps {
   onOpenAddPlayer?: () => void;
   onUpdateSeed?: (playerId: string, newSeed: number) => void;
   onUpdatePlayerStation?: (playerId: string, stationId: number | null) => void;
-  onAutoSeed?: (mode: 'checked-in' | 'random' | 'tag') => void;
+  onAutoSeed?: (mode: 'checked-in' | 'random' | 'tag' | 'random-high-low') => void;
   onSwapSeeds?: (player1Id: string, player2Id: string) => void;
   isCustomTournament?: boolean;
   isTournamentStarted?: boolean;
@@ -269,6 +269,14 @@ export function CheckInPanel({
               >
                 <Hash size={12} />
                 <span>Auto-Seed</span>
+              </button>
+              <button
+                onClick={() => onAutoSeed('random-high-low')}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded font-mono text-[11px] bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 hover:bg-cyan-500/20 hover:border-cyan-400 transition-all cursor-pointer font-bold"
+                title="Instant random High vs Low seeding — top half high seeds are randomly paired vs bottom half low seeds"
+              >
+                <Dices size={12} />
+                <span>Random High vs Low</span>
               </button>
               <button
                 onClick={() => onAutoSeed('random')}
