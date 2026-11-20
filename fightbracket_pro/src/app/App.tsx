@@ -35,7 +35,7 @@ import { TermsOfServiceModal } from "./components/TermsOfServiceModal";
 import { NewsPage } from "./components/NewsPage";
 import { PasswordResetModal } from "./components/PasswordResetModal";
 import { SupportModal } from "./components/SupportModal";
-import { Users } from "lucide-react";
+import { Users, UserPlus } from "lucide-react";
 
 import {
   type BracketMatch, type Player, type Station, type SMSLog, type GameTheme, type ExhibitionMatch,
@@ -2653,7 +2653,30 @@ export default function App() {
               )}
               {activeTab === 'checkin' && (
                 <div>
-                  <SectionHeader title="PARTICIPANT CHECK-IN" subtitle={`${checkedInCount} of ${gamePlayers.length} checked in`} theme={theme} />
+                  <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
+                    <div>
+                      <div className="text-xl tracking-wider font-bold" style={{ fontFamily: 'Rajdhani, sans-serif', color: theme?.primaryColor || '#00E5FF' }}>
+                        PARTICIPANT CHECK-IN
+                      </div>
+                      <div className="text-xs opacity-40 mt-0.5" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
+                        {checkedInCount} of {gamePlayers.length} checked in
+                      </div>
+                    </div>
+                    {(!autoSyncSlug && !activeTournament?.isImported && !activeGame.startsWith('startgg-')) && (
+                      <button
+                        onClick={() => setShowAddPlayerModal(true)}
+                        className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg font-mono text-xs font-bold transition-all cursor-pointer shadow-md"
+                        style={{
+                          background: theme?.primaryColor || '#00E5FF',
+                          color: '#050A14',
+                          boxShadow: `0 0 10px ${(theme?.primaryColor || '#00E5FF')}40`
+                        }}
+                      >
+                        <UserPlus size={14} />
+                        <span>+ ADD PLAYER</span>
+                      </button>
+                    )}
+                  </div>
                   <CheckInPanel 
                     players={gamePlayers} 
                     theme={theme} 
@@ -2661,10 +2684,11 @@ export default function App() {
                     onCheckIn={handleCheckIn} 
                     onRemovePlayer={isHost ? handleRemovePlayer : undefined} 
                     onAddPlayer={handleAddPlayer}
+                    onOpenAddPlayer={() => setShowAddPlayerModal(true)}
                     onUpdateSeed={handleUpdateSeed}
                     onUpdatePlayerStation={handleUpdatePlayerStation}
                     onAutoSeed={handleAutoSeed}
-                    isCustomTournament={!autoSyncSlug && !activeTournament?.slug}
+                    isCustomTournament={!autoSyncSlug && !activeTournament?.isImported && !activeGame.startsWith('startgg-')}
                     supabaseToken={supabaseToken}
                   />
                 </div>

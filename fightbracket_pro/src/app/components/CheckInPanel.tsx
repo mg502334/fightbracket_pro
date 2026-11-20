@@ -10,6 +10,7 @@ interface CheckInPanelProps {
   onCheckIn: (playerId: string, checked: boolean) => void;
   onRemovePlayer?: (playerId: string) => void;
   onAddPlayer?: (playerData: { tag: string; realName: string; seed: number; character?: string; fbUserId?: string }) => void;
+  onOpenAddPlayer?: () => void;
   onUpdateSeed?: (playerId: string, newSeed: number) => void;
   onUpdatePlayerStation?: (playerId: string, stationId: number | null) => void;
   onAutoSeed?: (mode: 'checked-in' | 'random' | 'tag') => void;
@@ -26,6 +27,7 @@ export function CheckInPanel({
   onCheckIn, 
   onRemovePlayer, 
   onAddPlayer, 
+  onOpenAddPlayer,
   onUpdateSeed,
   onUpdatePlayerStation,
   onAutoSeed,
@@ -274,6 +276,21 @@ export function CheckInPanel({
               </button>
             </>
           )}
+
+          {isCustomTournament && (onOpenAddPlayer || onAddPlayer) && (
+            <button
+              onClick={() => onOpenAddPlayer ? onOpenAddPlayer() : undefined}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded font-mono text-[11px] font-bold tracking-wider transition-all cursor-pointer shadow-md"
+              style={{
+                background: theme.primaryColor,
+                color: '#050A14',
+                boxShadow: `0 0 10px ${theme.primaryColor}50`
+              }}
+            >
+              <UserPlus size={13} />
+              <span>+ ADD PLAYER</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -336,8 +353,26 @@ export function CheckInPanel({
 
         <div className="divide-y" style={{ borderColor: 'var(--border)' }}>
           {sorted.length === 0 ? (
-            <div className="py-8 text-center text-sm opacity-40" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
-              No players found
+            <div className="py-12 flex flex-col items-center justify-center gap-3 text-center">
+              <div className="p-3 rounded-full bg-white/5 border border-white/10 text-gray-400">
+                <UserPlus size={24} style={{ color: theme.primaryColor }} />
+              </div>
+              <div>
+                <div className="text-sm font-bold text-white font-mono">NO PLAYERS FOUND</div>
+                <div className="text-xs text-gray-500 font-mono mt-1">
+                  {search ? 'No players matched your search filter.' : 'Add your first tournament competitor to begin check-in and seeding.'}
+                </div>
+              </div>
+              {isCustomTournament && (onOpenAddPlayer || onAddPlayer) && !search && (
+                <button
+                  onClick={() => onOpenAddPlayer ? onOpenAddPlayer() : undefined}
+                  className="mt-2 flex items-center gap-2 px-4 py-2 rounded-lg font-mono text-xs font-bold transition-all cursor-pointer"
+                  style={{ background: theme.primaryColor, color: '#050A14', boxShadow: `0 0 12px ${theme.primaryColor}40` }}
+                >
+                  <UserPlus size={14} />
+                  <span>+ Add First Player</span>
+                </button>
+              )}
             </div>
           ) : (
             sorted.map(player => (
