@@ -10,6 +10,10 @@ interface OfficialRulesModalProps {
 
 const GLOBAL_RULES = [
   {
+    title: 'Seeding & Hotswap Rule',
+    content: 'All tournament seeds are strictly unique (1-to-1). Entering or adjusting a competitor\'s seed number to one that is already occupied automatically hotswaps seeds with that player. No two competitors may ever share the same seed number in the bracket.',
+  },
+  {
     title: 'Double Elimination Format',
     content: 'Tournaments run in a standard double-elimination bracket. Players who lose a set are moved to the Losers Bracket. A second loss eliminates them from the tournament.',
   },

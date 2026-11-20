@@ -396,6 +396,12 @@ export function BracketView({
               </div>
             </div>
 
+            {/* Rule Note */}
+            <div className="px-4 py-2 bg-black/30 border-b border-white/5 flex items-center gap-1.5 text-[11px] font-mono text-gray-400">
+              <span className="text-[#00E5FF] font-bold">Rule Note:</span>
+              <span>All seeds are strictly 1-to-1 unique. Changing a seed number automatically hotswaps with the occupying competitor.</span>
+            </div>
+
             {/* Table Header */}
             <div
               className="grid text-xs tracking-widest px-4 py-2.5 font-mono text-gray-400 bg-black/40 border-b border-white/5"
@@ -418,24 +424,7 @@ export function BracketView({
                 >
                   {/* Seed Input */}
                   <div className="flex items-center">
-                    {onUpdateSeed ? (
-                      <input
-                        type="number"
-                        min="1"
-                        max="999"
-                        value={player.seed}
-                        onChange={(e) => {
-                          const val = parseInt(e.target.value, 10);
-                          if (!isNaN(val)) onUpdateSeed(player.id, val);
-                        }}
-                        className="w-12 px-1.5 py-0.5 rounded text-xs tabular-nums text-center font-mono font-bold bg-black/50 border border-white/15 focus:border-[#00E5FF] focus:outline-none transition-all text-white"
-                        title="Click to edit seed number"
-                      />
-                    ) : (
-                      <span className="text-xs font-mono font-bold text-gray-400">
-                        #{player.seed}
-                      </span>
-                    )}
+                    <BracketSeedInput player={player} onUpdateSeed={onUpdateSeed} />
                   </div>
 
                   {/* Player Name */}
@@ -1793,5 +1782,47 @@ function PlayerSlot({
         {score}
       </span>
     </div>
+  );
+}
+
+function BracketSeedInput({ player, onUpdateSeed }: { player: Player; onUpdateSeed?: (id: string, seed: number) => void }) {
+  const [seedInput, setSeedInput] = useState<string>(String(player.seed));
+
+  useEffect(() => {
+    setSeedInput(String(player.seed));
+  }, [player.seed]);
+
+  const commitSeed = () => {
+    const val = parseInt(seedInput, 10);
+    if (!isNaN(val) && val >= 1) {
+      if (val !== player.seed && onUpdateSeed) {
+        onUpdateSeed(player.id, val);
+      }
+    } else {
+      setSeedInput(String(player.seed));
+    }
+  };
+
+  if (!onUpdateSeed) {
+    return <span className="text-xs font-mono font-bold text-gray-400">#{player.seed}</span>;
+  }
+
+  return (
+    <input
+      type="number"
+      min="1"
+      max="999"
+      value={seedInput}
+      onChange={(e) => setSeedInput(e.target.value)}
+      onBlur={commitSeed}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') {
+          commitSeed();
+          (e.target as HTMLInputElement).blur();
+        }
+      }}
+      className="w-12 px-1.5 py-0.5 rounded text-xs tabular-nums text-center font-mono font-bold bg-black/50 border border-white/15 focus:border-[#00E5FF] focus:outline-none transition-all text-white"
+      title="Click to edit seed number (hotswaps if occupied)"
+    />
   );
 }

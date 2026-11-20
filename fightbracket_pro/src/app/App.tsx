@@ -724,8 +724,60 @@ export default function App() {
   };
 
   const handleUpdateSeed = useCallback((playerId: string, newSeed: number) => {
-    setPlayers(prev => prev.map(p => p.id === playerId ? { ...p, seed: Math.max(1, newSeed) } : p));
-    toast.success('Seed updated');
+    const validSeed = Math.max(1, newSeed);
+    let occupantTag: string | null = null;
+    let targetTag: string | null = null;
+
+    setPlayers(prev => {
+      const target = prev.find(p => p.id === playerId);
+      if (!target) return prev;
+      targetTag = target.tag;
+      const oldSeed = target.seed;
+      if (oldSeed === validSeed) return prev;
+
+      // Find if another player in the SAME game already has this seed
+      const occupant = prev.find(p => p.id !== playerId && p.gameId === target.gameId && p.seed === validSeed);
+      if (occupant) {
+        occupantTag = occupant.tag;
+      }
+
+      // Also hotswap bracket match slots if bracket has not started
+      if (occupant) {
+        setMatches(prevMatches => {
+          const gameMatches = prevMatches.filter(m => m.gameId === target.gameId);
+          const hasStarted = gameMatches.some(m => m.state === 'in_progress' || m.state === 'completed' || (m.p1Score ?? 0) > 0 || (m.p2Score ?? 0) > 0);
+          if (hasStarted) return prevMatches;
+
+          return prevMatches.map(m => {
+            if (m.gameId !== target.gameId) return m;
+            let p1 = m.player1Id;
+            let p2 = m.player2Id;
+            if (p1 === target.id) p1 = occupant.id;
+            else if (p1 === occupant.id) p1 = target.id;
+            if (p2 === target.id) p2 = occupant.id;
+            else if (p2 === occupant.id) p2 = target.id;
+            return { ...m, player1Id: p1, player2Id: p2 };
+          });
+        });
+      }
+
+      return prev.map(p => {
+        if (p.id === playerId) {
+          return { ...p, seed: validSeed };
+        }
+        if (occupant && p.id === occupant.id) {
+          // Hotswap occupant seed so no two seeds can ever be the same
+          return { ...p, seed: oldSeed };
+        }
+        return p;
+      });
+    });
+
+    if (occupantTag) {
+      toast.success(`Hotswapped Seed #${validSeed}: ${targetTag} ↔ ${occupantTag}`);
+    } else {
+      toast.success(`Seed updated to #${validSeed}`);
+    }
   }, []);
 
   const handleUpdatePlayerStation = useCallback((playerId: string, stationId: number | null) => {

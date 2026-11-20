@@ -225,28 +225,29 @@ export function CheckInPanel({
       </div>
 
       {/* Flexible Seeding & Seating Toolbar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded text-xs" style={{ background: 'var(--card)', border: '1px solid rgba(122,158,192,0.15)' }}>
-        <div className="flex items-center gap-2">
-          <Hash size={14} style={{ color: theme.primaryColor }} />
-          <span className="font-mono text-xs uppercase tracking-wider font-bold" style={{ color: theme.primaryColor }}>
-            SEEDING & SEATING CONTROLS
-          </span>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="flex items-center gap-1 mr-2">
-            <span className="text-[11px] font-mono text-gray-400">Sort:</span>
-            {(['seed', 'tag', 'status'] as const).map(s => (
-              <button
-                key={s}
-                onClick={() => setSortBy(s)}
-                className={`px-2 py-1 rounded font-mono text-[10px] uppercase transition-all ${
-                  sortBy === s ? 'bg-cyan-500/20 text-[#00E5FF] border border-cyan-500/40' : 'bg-white/5 text-gray-400 hover:text-white'
-                }`}
-              >
-                {s}
-              </button>
-            ))}
+      <div className="flex flex-col gap-2.5 p-3 rounded text-xs" style={{ background: 'var(--card)', border: '1px solid rgba(122,158,192,0.15)' }}>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <Hash size={14} style={{ color: theme.primaryColor }} />
+            <span className="font-mono text-xs uppercase tracking-wider font-bold" style={{ color: theme.primaryColor }}>
+              SEEDING & SEATING CONTROLS
+            </span>
           </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-1 mr-2">
+              <span className="text-[11px] font-mono text-gray-400">Sort:</span>
+              {(['seed', 'tag', 'status'] as const).map(s => (
+                <button
+                  key={s}
+                  onClick={() => setSortBy(s)}
+                  className={`px-2 py-1 rounded font-mono text-[10px] uppercase transition-all ${
+                    sortBy === s ? 'bg-cyan-500/20 text-[#00E5FF] border border-cyan-500/40' : 'bg-white/5 text-gray-400 hover:text-white'
+                  }`}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
 
           {onAutoSeed && (
             <>
@@ -291,6 +292,11 @@ export function CheckInPanel({
               <span>+ ADD PLAYER</span>
             </button>
           )}
+          </div>
+        </div>
+        <div className="flex items-center gap-1.5 text-[11px] font-mono text-gray-400 border-t border-white/5 pt-2">
+          <span className="text-[#00E5FF] font-bold">Rule Note:</span>
+          <span>Seeds are strictly 1-to-1 unique. Changing any seed automatically hotswaps with the occupying competitor so no two seeds can ever be duplicate.</span>
         </div>
       </div>
 
@@ -412,6 +418,22 @@ function PlayerRow({
   onRemove?: (id: string) => void;
 }) {
   const [hovering, setHovering] = useState(false);
+  const [seedInput, setSeedInput] = useState<string>(String(player.seed));
+
+  useEffect(() => {
+    setSeedInput(String(player.seed));
+  }, [player.seed]);
+
+  const commitSeed = () => {
+    const val = parseInt(seedInput, 10);
+    if (!isNaN(val) && val >= 1) {
+      if (val !== player.seed && onUpdateSeed) {
+        onUpdateSeed(player.id, val);
+      }
+    } else {
+      setSeedInput(String(player.seed));
+    }
+  };
 
   return (
     <div
@@ -429,13 +451,17 @@ function PlayerRow({
             type="number"
             min="1"
             max="999"
-            value={player.seed}
-            onChange={(e) => {
-              const val = parseInt(e.target.value, 10);
-              if (!isNaN(val)) onUpdateSeed(player.id, val);
+            value={seedInput}
+            onChange={(e) => setSeedInput(e.target.value)}
+            onBlur={commitSeed}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                commitSeed();
+                (e.target as HTMLInputElement).blur();
+              }
             }}
             className="w-12 px-1.5 py-0.5 rounded text-xs tabular-nums text-center font-mono font-bold bg-black/40 border border-white/15 focus:border-[#00E5FF] focus:outline-none transition-all text-white"
-            title="Click to change seed"
+            title="Click to change seed (hotswaps duplicate seeds)"
           />
         ) : (
           <span className="text-xs tabular-nums opacity-60 font-bold" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
