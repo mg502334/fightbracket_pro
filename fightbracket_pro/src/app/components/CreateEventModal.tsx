@@ -29,6 +29,7 @@ interface CreateEventModalProps {
   eventToEdit?: any;
   currentUser?: any;
   userProfile?: any;
+  onRequireLogin?: () => void;
 }
 
 const POPULAR_GAMES = [
@@ -55,7 +56,8 @@ export function CreateEventModal({
   currentUser,
   userProfile,
   onCreateEvent,
-  theme
+  theme,
+  onRequireLogin
 }: CreateEventModalProps) {
   // Tomorrow at 18:00 default
   const defaultDate = new Date();
@@ -139,12 +141,58 @@ export function CreateEventModal({
 
   if (!isOpen) return null;
 
+  if (!currentUser) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
+        <div 
+          className="bg-[#0D0D12] border border-amber-500/30 rounded-2xl w-full max-w-md p-6 flex flex-col items-center text-center shadow-[0_0_50px_rgba(0,0,0,0.8)]"
+          style={{ fontFamily: 'Inter, sans-serif' }}
+        >
+          <div className="w-14 h-14 rounded-2xl bg-amber-500/15 border border-amber-500/40 flex items-center justify-center text-amber-400 mb-4 shadow-[0_0_20px_rgba(245,158,11,0.2)]">
+            <AlertCircle size={28} />
+          </div>
+          <h2 className="text-xl font-bold tracking-wider text-white uppercase mb-2" style={{ fontFamily: 'Rajdhani, sans-serif' }}>
+            ACCOUNT REQUIRED
+          </h2>
+          <p className="text-sm text-gray-300 mb-6 font-mono leading-relaxed text-xs">
+            User must have an account first in order to create an event. Please log in or create an account to organize tournaments, manage live brackets, and activate organizer privileges.
+          </p>
+          <div className="flex items-center gap-3 w-full">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 px-4 py-2.5 rounded-xl border border-white/10 text-gray-400 hover:text-white hover:bg-white/5 font-mono text-xs font-semibold transition-all"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                onClose();
+                onRequireLogin?.();
+              }}
+              className="flex-1 px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#00E5FF] to-[#00B4D8] text-[#050A14] font-bold text-xs tracking-wider hover:opacity-90 transition-all font-mono shadow-[0_0_20px_rgba(0,229,255,0.3)] uppercase"
+            >
+              Log In / Register
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const selectedGameObj = POPULAR_GAMES.find(g => g.id === selectedGameId);
   const gameDisplayName = selectedGameId === 'custom' ? customGameName || 'Custom FGC Game' : (selectedGameObj?.name || 'Fighting Game');
   const activeBanner = customBannerUrl || selectedGameObj?.banner || 'https://cdn.cloudflare.steamstatic.com/steam/apps/1778820/header.jpg';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!currentUser) {
+      toast.error('You must have an account first in order to create an event.');
+      onClose();
+      onRequireLogin?.();
+      return;
+    }
     if (!name.trim()) {
       toast.error('Please enter an event name.');
       return;
